@@ -6,7 +6,7 @@
  */
 
 const API_URL = import.meta.env.PROD
-  ? import.meta.env.VITE_API_URL || 'https://email-builder-backend.onrender.com'
+  ? import.meta.env.VITE_API_URL || 'https://email-helper-backend.onrender.com'
   : 'http://localhost:3001';
 
 export default API_URL;
