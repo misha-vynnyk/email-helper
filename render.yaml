@@ -24,4 +24,3 @@ services:
       - key: ALLOW_ALL_CORS_DEV
         value: 0
     healthCheckPath: /api/health
-
