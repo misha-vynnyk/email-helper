@@ -4,7 +4,7 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
-  base: '/flexibuilder-pro/',
+  base: '/email-helper/',
   server: {
     proxy: {
       '/api': {
