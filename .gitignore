@@ -4,7 +4,7 @@ server/node_modules/
 
 # Build output
 dist/
-server/dist/
+# server/dist/  # Committed for Render deployment
 build/
 
 # Logs
