@@ -2,15 +2,10 @@
  * HTML Sanitizer
  *
  * Sanitizes HTML content to prevent XSS attacks
- * Uses DOMPurify with email-safe configuration
+ * Uses isomorphic-dompurify (works in Node.js without jsdom)
  */
 
-import { JSDOM } from "jsdom";
-import createDOMPurify from "dompurify";
-
-// Create DOMPurify instance with jsdom window
-const window = new JSDOM("").window;
-const DOMPurify = createDOMPurify(window as any);
+import DOMPurify from "isomorphic-dompurify";
 
 /**
  * Email-safe DOMPurify configuration
