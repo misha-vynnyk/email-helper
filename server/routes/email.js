@@ -8,29 +8,50 @@ const router = express.Router();
  */
 router.post("/send-email", async (req, res) => {
   try {
-    const { to, subject, html, smtp } = req.body;
+    const { userEmail, subject, html, senderEmail, appPassword } = req.body;
 
     // Validation
-    if (!to || !subject || !html) {
+    if (!userEmail || !subject || !html) {
       return res.status(400).json({
-        error: "Missing required fields: to, subject, html",
+        error: "Missing required fields: userEmail, subject, html",
       });
     }
 
-    if (!smtp || !smtp.host || !smtp.port || !smtp.user || !smtp.pass) {
+    if (!senderEmail || !appPassword) {
       return res.status(400).json({
-        error: "Missing SMTP configuration",
+        error: "Missing email credentials: senderEmail, appPassword",
       });
+    }
+
+    // Determine SMTP settings based on sender email domain
+    const emailDomain = senderEmail.split("@")[1]?.toLowerCase();
+    let smtpConfig = {
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false,
+    };
+
+    // Support for different email providers
+    if (emailDomain?.includes("outlook") || emailDomain?.includes("hotmail")) {
+      smtpConfig = {
+        host: "smtp.office365.com",
+        port: 587,
+        secure: false,
+      };
+    } else if (emailDomain?.includes("yahoo")) {
+      smtpConfig = {
+        host: "smtp.mail.yahoo.com",
+        port: 465,
+        secure: true,
+      };
     }
 
     // Create transporter
     const transporter = nodemailer.createTransport({
-      host: smtp.host,
-      port: parseInt(smtp.port),
-      secure: smtp.secure !== false, // true for 465, false for other ports
+      ...smtpConfig,
       auth: {
-        user: smtp.user,
-        pass: smtp.pass,
+        user: senderEmail,
+        pass: appPassword,
       },
     });
 
@@ -39,8 +60,8 @@ router.post("/send-email", async (req, res) => {
 
     // Send email
     const info = await transporter.sendMail({
-      from: smtp.user,
-      to,
+      from: senderEmail,
+      to: userEmail,
       subject,
       html,
     });
