@@ -16,10 +16,10 @@ try {
 }
 
 /**
- * GET /api/block-files
+ * GET /api/blocks/list
  * List all block files
  */
-router.get("/", async (req, res) => {
+router.get("/list", async (req, res) => {
   try {
     if (!blockFileManager) {
       return res.status(503).json({ error: "BlockFileManager not available" });
