@@ -4,12 +4,13 @@
  * Cross-platform support (Windows, macOS, Linux)
  */
 
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import { existsSync, statSync } from 'fs';
-import { v4 as uuid } from 'uuid';
-import * as os from 'os';
-import { getStoragePaths, getTemplateRoots, expandTilde } from './utils/storagePathResolver';
+import * as fs from "fs/promises";
+import * as path from "path";
+import { existsSync, statSync } from "fs";
+import { v4 as uuid } from "uuid";
+import * as os from "os";
+import { getStoragePaths, getTemplateRoots, expandTilde } from "./utils/storagePathResolver";
+import { getWorkspaceManager } from "./workspaceManager";
 
 /**
  * Email Template Structure
@@ -29,7 +30,7 @@ export interface EmailTemplate {
   createdAt: number; // When added to library
 }
 
-export type TemplateCategory = 'Newsletter' | 'Transactional' | 'Marketing' | 'Internal' | 'Other';
+export type TemplateCategory = "Newsletter" | "Transactional" | "Marketing" | "Internal" | "Other";
 
 /**
  * Template Metadata Storage
@@ -54,6 +55,7 @@ interface TemplateManagerConfig {
 export class TemplateManager {
   private config: TemplateManagerConfig;
   private metadata: TemplateMetadata;
+  private workspaceManager = getWorkspaceManager();
 
   constructor(config?: Partial<TemplateManagerConfig>) {
     const paths = getStoragePaths();
@@ -85,16 +87,18 @@ export class TemplateManager {
 
       // Load existing metadata
       if (existsSync(this.config.metadataPath)) {
-        const content = await fs.readFile(this.config.metadataPath, 'utf-8');
+        const content = await fs.readFile(this.config.metadataPath, "utf-8");
         this.metadata = JSON.parse(content);
       } else {
         // Create initial metadata file
         await this.saveMetadata();
       }
 
-      console.log(`✅ TemplateManager initialized with ${this.metadata.templates.length} templates`);
+      console.log(
+        `✅ TemplateManager initialized with ${this.metadata.templates.length} templates`
+      );
     } catch (error) {
-      console.error('❌ Failed to initialize TemplateManager:', error);
+      console.error("❌ Failed to initialize TemplateManager:", error);
       throw error;
     }
   }
@@ -130,7 +134,7 @@ export class TemplateManager {
       }
 
       // Read HTML content
-      const content = await fs.readFile(template.filePath, 'utf-8');
+      const content = await fs.readFile(template.filePath, "utf-8");
       return content;
     } catch (error) {
       console.error(`❌ Failed to read template ${id}:`, error);
@@ -143,7 +147,9 @@ export class TemplateManager {
    */
   async addTemplate(
     filePath: string,
-    metadata: Partial<Omit<EmailTemplate, 'id' | 'filePath' | 'fileSize' | 'lastModified' | 'createdAt'>>
+    metadata: Partial<
+      Omit<EmailTemplate, "id" | "filePath" | "fileSize" | "lastModified" | "createdAt">
+    >
   ): Promise<EmailTemplate> {
     try {
       // Expand tilde and normalize path
@@ -162,17 +168,17 @@ export class TemplateManager {
       // Check if already exists
       const existing = this.metadata.templates.find((t) => t.filePath === normalizedPath);
       if (existing) {
-        throw new Error('Template already exists in library');
+        throw new Error("Template already exists in library");
       }
 
       // Create template object
       const template: EmailTemplate = {
         id: uuid(),
         filePath: normalizedPath,
-        name: metadata.name || path.basename(filePath, '.html'),
+        name: metadata.name || path.basename(filePath, ".html"),
         relativePath: metadata.relativePath, // Preserve folder structure
         folderPath: metadata.folderPath, // Parent folder(s)
-        category: metadata.category || 'Other',
+        category: metadata.category || "Other",
         tags: metadata.tags || [],
         description: metadata.description,
         thumbnail: metadata.thumbnail,
@@ -191,7 +197,7 @@ export class TemplateManager {
       console.log(`✅ Added template: ${template.name} (${template.id})`);
       return template;
     } catch (error) {
-      console.error('❌ Failed to add template:', error);
+      console.error("❌ Failed to add template:", error);
       throw error;
     }
   }
@@ -256,7 +262,9 @@ export class TemplateManager {
       try {
         // Check if file exists
         if (!existsSync(template.filePath)) {
-          console.log(`⚠️ Removing template with missing file: ${template.name} (${template.filePath})`);
+          console.log(
+            `⚠️ Removing template with missing file: ${template.name} (${template.filePath})`
+          );
           removed.push(template);
         } else {
           validTemplates.push(template);
@@ -322,12 +330,12 @@ export class TemplateManager {
           const folderParts = path
             .dirname(relativePath)
             .split(path.sep)
-            .filter((p) => p && p !== '.');
-          const folderPath = folderParts.length > 0 ? folderParts.join(' / ') : undefined;
+            .filter((p) => p && p !== ".");
+          const folderPath = folderParts.length > 0 ? folderParts.join(" / ") : undefined;
 
           const template = await this.addTemplate(filePath, {
             name: path.basename(filePath, path.extname(filePath)),
-            category: options.category || 'Other',
+            category: options.category || "Other",
             tags: options.tags || [],
             relativePath, // Store relative path
             folderPath, // Store folder structure
@@ -341,7 +349,7 @@ export class TemplateManager {
       console.log(`✅ Imported ${imported.length} templates from ${folderPath}`);
       return imported;
     } catch (error) {
-      console.error('❌ Failed to import folder:', error);
+      console.error("❌ Failed to import folder:", error);
       throw error;
     }
   }
@@ -358,7 +366,7 @@ export class TemplateManager {
 
     try {
       if (!existsSync(template.filePath)) {
-        throw new Error('File no longer exists');
+        throw new Error("File no longer exists");
       }
 
       const stats = statSync(template.filePath);
@@ -385,50 +393,60 @@ export class TemplateManager {
 
       // Check if path exists
       if (!existsSync(normalized)) {
-        return { valid: false, reason: 'Path does not exist' };
+        return { valid: false, reason: "Path does not exist" };
       }
 
       // Get stats
       const stats = statSync(normalized);
 
+      // SECURITY CHECK: Use WorkspaceManager to validate access
+      let accessCheck = this.workspaceManager.canAccess(normalized, false); // Read-only access
+
+      // If access denied, try to register this path as a workspace
+      if (!accessCheck.allowed) {
+        const result = await this.workspaceManager.requestWorkspaceAccess(
+          normalized,
+          "Template Directory"
+        );
+
+        if (result.success) {
+          // Re-check access after registration
+          accessCheck = this.workspaceManager.canAccess(normalized, false);
+        } else {
+          return { valid: false, reason: result.error || "Access denied" };
+        }
+      }
+
+      if (!accessCheck.allowed) {
+        return { valid: false, reason: accessCheck.reason || "Access denied" };
+      }
+
       // For folder import, accept directories
       if (stats.isDirectory()) {
-        // Check if within allowed roots
-        const isAllowed = this.config.allowedRoots.some((root) => normalized.startsWith(path.normalize(root)));
-        if (!isAllowed) {
-          return { valid: false, reason: 'Directory not in allowed roots' };
-        }
         return { valid: true };
       }
 
       // For files, check extension
-      if (!normalized.toLowerCase().endsWith('.html') && !normalized.toLowerCase().endsWith('.htm')) {
-        return { valid: false, reason: 'Not an HTML file' };
-      }
-
-      // Check if within allowed roots
-      const isAllowed = this.config.allowedRoots.some((root) => normalized.startsWith(path.normalize(root)));
-      if (!isAllowed) {
-        return { valid: false, reason: 'Path not in allowed roots' };
-      }
-
-      // Block system directories (macOS specific)
-      const blockedPaths = ['/System', '/Library', '/private/etc', '/private/var', '/usr', '/bin', '/sbin'];
-      const isBlocked = blockedPaths.some((blocked) => normalized.startsWith(blocked));
-      if (isBlocked) {
-        return { valid: false, reason: 'System directory blocked' };
+      if (
+        !normalized.toLowerCase().endsWith(".html") &&
+        !normalized.toLowerCase().endsWith(".htm")
+      ) {
+        return { valid: false, reason: "Not an HTML file" };
       }
 
       // Check file size
       if (stats.size > this.config.maxFileSize) {
-        return { valid: false, reason: `File too large (max ${this.config.maxFileSize / 1024 / 1024}MB)` };
+        return {
+          valid: false,
+          reason: `File too large (max ${this.config.maxFileSize / 1024 / 1024}MB)`,
+        };
       }
 
       // Check read permission
       try {
         await fs.access(normalized, fs.constants.R_OK);
       } catch {
-        return { valid: false, reason: 'No read permission' };
+        return { valid: false, reason: "No read permission" };
       }
 
       return { valid: true };
@@ -452,7 +470,7 @@ export class TemplateManager {
 
     // Check if directory exists
     if (!existsSync(normalized) || !statSync(normalized).isDirectory()) {
-      throw new Error('Path must be an existing directory');
+      throw new Error("Path must be an existing directory");
     }
 
     // Add to allowed roots
@@ -465,7 +483,9 @@ export class TemplateManager {
   /**
    * Remove allowed root and clean up templates from that directory
    */
-  async removeAllowedRoot(rootPath: string): Promise<{ removed: number; templates: EmailTemplate[] }> {
+  async removeAllowedRoot(
+    rootPath: string
+  ): Promise<{ removed: number; templates: EmailTemplate[] }> {
     const normalized = expandTilde(rootPath);
 
     // Remove from allowed roots
@@ -477,7 +497,9 @@ export class TemplateManager {
 
     for (const template of this.metadata.templates) {
       if (template.filePath.startsWith(normalized)) {
-        console.log(`🗑️ Removing template from deleted directory: ${template.name} (${template.filePath})`);
+        console.log(
+          `🗑️ Removing template from deleted directory: ${template.name} (${template.filePath})`
+        );
         templatesToRemove.push(template);
       } else {
         validTemplates.push(template);
@@ -489,7 +511,9 @@ export class TemplateManager {
       this.metadata.templates = validTemplates;
       this.metadata.lastUpdated = Date.now();
       await this.saveMetadata();
-      console.log(`🧹 Removed ${templatesToRemove.length} templates from deleted directory: ${normalized}`);
+      console.log(
+        `🧹 Removed ${templatesToRemove.length} templates from deleted directory: ${normalized}`
+      );
     }
 
     console.log(`✅ Removed allowed root: ${normalized}`);
@@ -506,9 +530,9 @@ export class TemplateManager {
   private async saveMetadata(): Promise<void> {
     try {
       const content = JSON.stringify(this.metadata, null, 2);
-      await fs.writeFile(this.config.metadataPath, content, 'utf-8');
+      await fs.writeFile(this.config.metadataPath, content, "utf-8");
     } catch (error) {
-      console.error('❌ Failed to save metadata:', error);
+      console.error("❌ Failed to save metadata:", error);
       throw error;
     }
   }
@@ -529,7 +553,7 @@ export class TemplateManager {
           await scan(fullPath);
         } else if (entry.isFile()) {
           const ext = path.extname(entry.name).toLowerCase();
-          if (ext === '.html' || ext === '.htm') {
+          if (ext === ".html" || ext === ".htm") {
             htmlFiles.push(fullPath);
           }
         }

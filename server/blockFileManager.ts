@@ -3,7 +3,7 @@
  *
  * Handles creation, reading, updating, and deletion of TypeScript block files.
  * Cross-platform support (Windows, macOS, Linux)
- * 
+ *
  * Security: Uses WorkspaceManager for secure file system access
  */
 import * as fs from "fs/promises";
@@ -307,7 +307,7 @@ export default ${this.toPascalCase(block.id)};
 
   /**
    * Validate and resolve target directory path using WorkspaceManager
-   * 
+   *
    * @security Uses WorkspaceManager to ensure path is in allowed workspace
    */
   private async validateTargetPath(targetPath: string): Promise<string> {
@@ -325,8 +325,23 @@ export default ${this.toPascalCase(block.id)};
     const normalizedPath = path.normalize(resolvedPath);
 
     // SECURITY CHECK: Use WorkspaceManager to validate access
-    const accessCheck = this.workspaceManager.canAccess(normalizedPath, true);
-    
+    let accessCheck = this.workspaceManager.canAccess(normalizedPath, true);
+
+    // If access denied, try to register this path as a workspace
+    if (!accessCheck.allowed) {
+      const result = await this.workspaceManager.requestWorkspaceAccess(
+        normalizedPath,
+        "Custom Blocks"
+      );
+
+      if (result.success) {
+        // Re-check access after registration
+        accessCheck = this.workspaceManager.canAccess(normalizedPath, true);
+      } else {
+        throw new Error(`Access denied: ${result.error || "Path not in allowed workspace"}`);
+      }
+    }
+
     if (!accessCheck.allowed) {
       throw new Error(`Access denied: ${accessCheck.reason || "Path not in allowed workspace"}`);
     }
@@ -336,7 +351,7 @@ export default ${this.toPascalCase(block.id)};
       // Check if parent directory is in workspace
       const parentDir = path.dirname(normalizedPath);
       const parentAccess = this.workspaceManager.canAccess(parentDir, true);
-      
+
       if (!parentAccess.allowed) {
         throw new Error("Cannot create directory: parent path not in workspace");
       }
@@ -370,7 +385,7 @@ export default ${this.toPascalCase(block.id)};
   }): Promise<BlockFile> {
     // SECURITY: Sanitize HTML content to prevent XSS
     const sanitizedHTML = sanitizeHTML(data.html);
-    
+
     // Sanitize ID
     const blockId = this.toKebabCase(data.id.replace(/[^a-zA-Z0-9-]/g, "-"));
     const fileName = `${blockId}.ts`;

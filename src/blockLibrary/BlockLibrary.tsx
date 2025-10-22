@@ -7,6 +7,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   Add as AddIcon,
+  Refresh as RefreshIcon,
   Search as SearchIcon,
   SearchOffOutlined,
   Settings as SettingsIcon,
@@ -395,6 +396,44 @@ export default function BlockLibrary() {
           display='flex'
           gap={1}
         >
+          <Button
+            variant='outlined'
+            startIcon={<RefreshIcon />}
+            onClick={async () => {
+              setLoading(true);
+              try {
+                const predefined = loadPredefinedBlocks();
+                const files = await loadFileBlocks();
+                const custom = loadCustomBlocks();
+
+                setPredefinedBlocks(predefined);
+
+                // Filter file blocks based on visible storage locations
+                const locations = getStorageLocations(false); // Exclude hidden
+                if (locations.length === 0) {
+                  setFileBlocks(files);
+                } else {
+                  const allowedPaths = new Set(locations.map((loc) => loc.path));
+                  const filteredFiles = files.filter((block) => {
+                    if (!block.filePath) return false;
+                    return Array.from(allowedPaths).some((path) => block.filePath.includes(path));
+                  });
+                  setFileBlocks(filteredFiles);
+                }
+
+                setCustomBlocks(custom.map((b) => ({ ...b, source: "localStorage" as const })));
+                setError(null);
+              } catch (err) {
+                setError(formatErrorMessage(err));
+              } finally {
+                setLoading(false);
+              }
+            }}
+            size='small'
+            disabled={loading || operationLoading}
+          >
+            Refresh
+          </Button>
           <Button
             variant='outlined'
             startIcon={<SettingsIcon />}

@@ -1,6 +1,6 @@
 /**
  * Workspace Manager
- * 
+ *
  * Cross-platform secure file system access management.
  * Manages allowed workspace directories with platform-specific security.
  */
@@ -19,9 +19,9 @@ export type SecurityLevel = "strict" | "balanced" | "permissive";
  * Access Zones (security levels for workspaces)
  */
 export enum AccessZone {
-  PROJECT_ONLY = "project",      // Project folder only (highest security)
+  PROJECT_ONLY = "project", // Project folder only (highest security)
   USER_WORKSPACES = "workspaces", // User-approved folders
-  RESTRICTED = "restricted"       // Needs additional checks
+  RESTRICTED = "restricted", // Needs additional checks
 }
 
 /**
@@ -30,12 +30,12 @@ export enum AccessZone {
 export interface Workspace {
   id: string;
   path: string;
-  zone: AccessZone;              // Security zone
+  zone: AccessZone; // Security zone
   addedAt: number;
   accessCount: number;
   lastAccess: number;
   label?: string;
-  readonly?: boolean;             // Read-only workspace
+  readonly?: boolean; // Read-only workspace
 }
 
 /**
@@ -71,17 +71,7 @@ const PLATFORM_BLOCKED_PATHS: Record<NodeJS.Platform, string[]> = {
     "/cores",
     "/dev",
   ],
-  linux: [
-    "/etc",
-    "/usr",
-    "/bin",
-    "/sbin",
-    "/boot",
-    "/root",
-    "/sys",
-    "/proc",
-    "/dev",
-  ],
+  linux: ["/etc", "/usr", "/bin", "/sbin", "/boot", "/root", "/sys", "/proc", "/dev"],
   // Other platforms use linux defaults
   aix: [],
   android: [],
@@ -127,20 +117,17 @@ export class WorkspaceManager {
   private configFilePath: string;
   private projectRoot: string;
 
-  constructor(
-    securityLevel: SecurityLevel = "balanced",
-    projectRoot?: string
-  ) {
+  constructor(securityLevel: SecurityLevel = "balanced", projectRoot?: string) {
     this.config = { ...SECURITY_POLICIES[securityLevel] };
     this.projectRoot = projectRoot || path.resolve(__dirname, "../..");
     this.configFilePath = path.join(this.projectRoot, "server/data/.workspaces.json");
-    
+
     // Load platform-specific blocked paths
     this.loadBlockedPaths();
-    
+
     // Load persisted workspaces
     this.loadWorkspaces();
-    
+
     // Always add project root as default workspace
     this.addProjectWorkspace();
   }
@@ -154,7 +141,7 @@ export class WorkspaceManager {
 
     // Add user-specific paths to block list
     const homeDir = os.homedir();
-    
+
     if (platform === "darwin") {
       this.blockedPaths.push(path.join(homeDir, "Library"));
       this.blockedPaths.push(path.join(homeDir, ".Trash"));
@@ -187,6 +174,37 @@ export class WorkspaceManager {
         readonly: false,
       });
     }
+
+    // Also add src/blocks and data/blocks as default workspaces
+    const srcBlocksId = "src-blocks";
+    const srcBlocksPath = path.join(this.projectRoot, "src/blocks");
+    if (!this.workspaces.has(srcBlocksId) && existsSync(srcBlocksPath)) {
+      this.workspaces.set(srcBlocksId, {
+        id: srcBlocksId,
+        path: srcBlocksPath,
+        zone: AccessZone.PROJECT_ONLY,
+        addedAt: Date.now(),
+        accessCount: 0,
+        lastAccess: Date.now(),
+        label: "Source Blocks",
+        readonly: false,
+      });
+    }
+
+    const dataBlocksId = "data-blocks";
+    const dataBlocksPath = path.join(this.projectRoot, "server/data/blocks/files");
+    if (!this.workspaces.has(dataBlocksId) && existsSync(dataBlocksPath)) {
+      this.workspaces.set(dataBlocksId, {
+        id: dataBlocksId,
+        path: dataBlocksPath,
+        zone: AccessZone.PROJECT_ONLY,
+        addedAt: Date.now(),
+        accessCount: 0,
+        lastAccess: Date.now(),
+        label: "Data Blocks",
+        readonly: false,
+      });
+    }
   }
 
   /**
@@ -197,7 +215,7 @@ export class WorkspaceManager {
       if (existsSync(this.configFilePath)) {
         const data = await fs.readFile(this.configFilePath, "utf8");
         const parsed = JSON.parse(data);
-        
+
         if (parsed.workspaces && Array.isArray(parsed.workspaces)) {
           parsed.workspaces.forEach((ws: Workspace) => {
             // Verify workspace still exists
@@ -257,7 +275,7 @@ export class WorkspaceManager {
    */
   private isBlocked(filePath: string): boolean {
     const normalized = this.normalizePath(filePath);
-    
+
     return this.blockedPaths.some((blocked) => {
       const normalizedBlocked = this.normalizePath(blocked);
       return normalized.startsWith(normalizedBlocked);
@@ -289,22 +307,20 @@ export class WorkspaceManager {
         return { valid: false, reason: "System directory is blocked for security" };
       }
 
-      // Check if exists
-      if (!existsSync(normalized)) {
-        return { valid: false, reason: "Directory does not exist" };
+      // If path exists, verify it's a directory
+      if (existsSync(normalized)) {
+        const stats = statSync(normalized);
+        if (!stats.isDirectory()) {
+          return { valid: false, reason: "Path is not a directory" };
+        }
       }
-
-      // Check if it's actually a directory
-      const stats = statSync(normalized);
-      if (!stats.isDirectory()) {
-        return { valid: false, reason: "Path is not a directory" };
-      }
+      // Note: Allow non-existent paths - they will be created if needed
 
       return { valid: true };
     } catch (error) {
-      return { 
-        valid: false, 
-        reason: `Validation error: ${error instanceof Error ? error.message : "Unknown"}` 
+      return {
+        valid: false,
+        reason: `Validation error: ${error instanceof Error ? error.message : "Unknown"}`,
       };
     }
   }
@@ -330,7 +346,7 @@ export class WorkspaceManager {
     ];
 
     const isSafe = safePaths.some((safe) => normalized.startsWith(safe));
-    
+
     if (isSafe) {
       return AccessZone.USER_WORKSPACES;
     }
@@ -343,16 +359,16 @@ export class WorkspaceManager {
    * Request access to a new workspace
    */
   async requestWorkspaceAccess(
-    dirPath: string, 
+    dirPath: string,
     label?: string,
     readonly: boolean = false
   ): Promise<{ success: boolean; workspaceId?: string; error?: string; zone?: AccessZone }> {
     try {
       // Check workspace limit
       if (this.workspaces.size >= this.config.maxWorkspaces) {
-        return { 
-          success: false, 
-          error: `Maximum ${this.config.maxWorkspaces} workspaces allowed` 
+        return {
+          success: false,
+          error: `Maximum ${this.config.maxWorkspaces} workspaces allowed`,
         };
       }
 
@@ -363,11 +379,9 @@ export class WorkspaceManager {
       }
 
       const normalized = this.normalizePath(dirPath);
-      
+
       // Check if already added
-      const existing = Array.from(this.workspaces.values()).find(
-        (ws) => ws.path === normalized
-      );
+      const existing = Array.from(this.workspaces.values()).find((ws) => ws.path === normalized);
       if (existing) {
         return { success: true, workspaceId: existing.id, zone: existing.zone };
       }
@@ -399,9 +413,9 @@ export class WorkspaceManager {
       console.log(`✅ Added workspace [${zone}]: ${normalized}`);
       return { success: true, workspaceId: id, zone };
     } catch (error) {
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : "Unknown error" 
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }
@@ -426,9 +440,12 @@ export class WorkspaceManager {
   /**
    * Check if file path can be accessed
    */
-  canAccess(filePath: string, requireWrite: boolean = false): { 
-    allowed: boolean; 
-    reason?: string; 
+  canAccess(
+    filePath: string,
+    requireWrite: boolean = false
+  ): {
+    allowed: boolean;
+    reason?: string;
     workspace?: string;
     zone?: AccessZone;
   } {
@@ -450,27 +467,27 @@ export class WorkspaceManager {
         if (normalized.startsWith(workspace.path)) {
           // Check readonly restriction
           if (requireWrite && workspace.readonly) {
-            return { 
-              allowed: false, 
+            return {
+              allowed: false,
               reason: "Workspace is read-only",
               workspace: workspace.id,
-              zone: workspace.zone
+              zone: workspace.zone,
             };
           }
 
-          return { 
-            allowed: true, 
+          return {
+            allowed: true,
             workspace: workspace.id,
-            zone: workspace.zone
+            zone: workspace.zone,
           };
         }
       }
 
       return { allowed: false, reason: "Path not in any allowed workspace" };
     } catch (error) {
-      return { 
-        allowed: false, 
-        reason: error instanceof Error ? error.message : "Unknown error" 
+      return {
+        allowed: false,
+        reason: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }
@@ -548,7 +565,9 @@ export class WorkspaceManager {
   /**
    * Check file size
    */
-  async validateFileSize(filePath: string): Promise<{ valid: boolean; size?: number; reason?: string }> {
+  async validateFileSize(
+    filePath: string
+  ): Promise<{ valid: boolean; size?: number; reason?: string }> {
     try {
       if (!existsSync(filePath)) {
         return { valid: false, reason: "File does not exist" };
@@ -557,18 +576,18 @@ export class WorkspaceManager {
       const stats = statSync(filePath);
       if (stats.size > this.config.maxFileSize) {
         const maxMB = (this.config.maxFileSize / 1024 / 1024).toFixed(1);
-        return { 
-          valid: false, 
+        return {
+          valid: false,
           size: stats.size,
-          reason: `File too large (max ${maxMB}MB)` 
+          reason: `File too large (max ${maxMB}MB)`,
         };
       }
 
       return { valid: true, size: stats.size };
     } catch (error) {
-      return { 
-        valid: false, 
-        reason: error instanceof Error ? error.message : "Unknown error" 
+      return {
+        valid: false,
+        reason: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }
@@ -588,4 +607,3 @@ export function getWorkspaceManager(): WorkspaceManager {
   }
   return workspaceManagerInstance;
 }
-

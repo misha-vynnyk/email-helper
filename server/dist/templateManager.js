@@ -45,11 +45,13 @@ const path = __importStar(require("path"));
 const fs_1 = require("fs");
 const uuid_1 = require("uuid");
 const storagePathResolver_1 = require("./utils/storagePathResolver");
+const workspaceManager_1 = require("./workspaceManager");
 /**
  * Template Manager Class
  */
 class TemplateManager {
     constructor(config) {
+        this.workspaceManager = (0, workspaceManager_1.getWorkspaceManager)();
         const paths = (0, storagePathResolver_1.getStoragePaths)();
         this.config = {
             metadataPath: paths.templateMetadata,
@@ -75,7 +77,7 @@ class TemplateManager {
             }
             // Load existing metadata
             if ((0, fs_1.existsSync)(this.config.metadataPath)) {
-                const content = await fs.readFile(this.config.metadataPath, 'utf-8');
+                const content = await fs.readFile(this.config.metadataPath, "utf-8");
                 this.metadata = JSON.parse(content);
             }
             else {
@@ -85,7 +87,7 @@ class TemplateManager {
             console.log(`✅ TemplateManager initialized with ${this.metadata.templates.length} templates`);
         }
         catch (error) {
-            console.error('❌ Failed to initialize TemplateManager:', error);
+            console.error("❌ Failed to initialize TemplateManager:", error);
             throw error;
         }
     }
@@ -116,7 +118,7 @@ class TemplateManager {
                 throw new Error(`Template file no longer exists: ${template.filePath}`);
             }
             // Read HTML content
-            const content = await fs.readFile(template.filePath, 'utf-8');
+            const content = await fs.readFile(template.filePath, "utf-8");
             return content;
         }
         catch (error) {
@@ -142,16 +144,16 @@ class TemplateManager {
             // Check if already exists
             const existing = this.metadata.templates.find((t) => t.filePath === normalizedPath);
             if (existing) {
-                throw new Error('Template already exists in library');
+                throw new Error("Template already exists in library");
             }
             // Create template object
             const template = {
                 id: (0, uuid_1.v4)(),
                 filePath: normalizedPath,
-                name: metadata.name || path.basename(filePath, '.html'),
+                name: metadata.name || path.basename(filePath, ".html"),
                 relativePath: metadata.relativePath, // Preserve folder structure
                 folderPath: metadata.folderPath, // Parent folder(s)
-                category: metadata.category || 'Other',
+                category: metadata.category || "Other",
                 tags: metadata.tags || [],
                 description: metadata.description,
                 thumbnail: metadata.thumbnail,
@@ -168,7 +170,7 @@ class TemplateManager {
             return template;
         }
         catch (error) {
-            console.error('❌ Failed to add template:', error);
+            console.error("❌ Failed to add template:", error);
             throw error;
         }
     }
@@ -276,11 +278,11 @@ class TemplateManager {
                     const folderParts = path
                         .dirname(relativePath)
                         .split(path.sep)
-                        .filter((p) => p && p !== '.');
-                    const folderPath = folderParts.length > 0 ? folderParts.join(' / ') : undefined;
+                        .filter((p) => p && p !== ".");
+                    const folderPath = folderParts.length > 0 ? folderParts.join(" / ") : undefined;
                     const template = await this.addTemplate(filePath, {
                         name: path.basename(filePath, path.extname(filePath)),
-                        category: options.category || 'Other',
+                        category: options.category || "Other",
                         tags: options.tags || [],
                         relativePath, // Store relative path
                         folderPath, // Store folder structure
@@ -295,7 +297,7 @@ class TemplateManager {
             return imported;
         }
         catch (error) {
-            console.error('❌ Failed to import folder:', error);
+            console.error("❌ Failed to import folder:", error);
             throw error;
         }
     }
@@ -310,7 +312,7 @@ class TemplateManager {
         }
         try {
             if (!(0, fs_1.existsSync)(template.filePath)) {
-                throw new Error('File no longer exists');
+                throw new Error("File no longer exists");
             }
             const stats = (0, fs_1.statSync)(template.filePath);
             return await this.updateTemplate(id, {
@@ -334,44 +336,48 @@ class TemplateManager {
             const normalized = path.normalize(path.resolve(expanded));
             // Check if path exists
             if (!(0, fs_1.existsSync)(normalized)) {
-                return { valid: false, reason: 'Path does not exist' };
+                return { valid: false, reason: "Path does not exist" };
             }
             // Get stats
             const stats = (0, fs_1.statSync)(normalized);
+            // SECURITY CHECK: Use WorkspaceManager to validate access
+            let accessCheck = this.workspaceManager.canAccess(normalized, false); // Read-only access
+            // If access denied, try to register this path as a workspace
+            if (!accessCheck.allowed) {
+                const result = await this.workspaceManager.requestWorkspaceAccess(normalized, "Template Directory");
+                if (result.success) {
+                    // Re-check access after registration
+                    accessCheck = this.workspaceManager.canAccess(normalized, false);
+                }
+                else {
+                    return { valid: false, reason: result.error || "Access denied" };
+                }
+            }
+            if (!accessCheck.allowed) {
+                return { valid: false, reason: accessCheck.reason || "Access denied" };
+            }
             // For folder import, accept directories
             if (stats.isDirectory()) {
-                // Check if within allowed roots
-                const isAllowed = this.config.allowedRoots.some((root) => normalized.startsWith(path.normalize(root)));
-                if (!isAllowed) {
-                    return { valid: false, reason: 'Directory not in allowed roots' };
-                }
                 return { valid: true };
             }
             // For files, check extension
-            if (!normalized.toLowerCase().endsWith('.html') && !normalized.toLowerCase().endsWith('.htm')) {
-                return { valid: false, reason: 'Not an HTML file' };
-            }
-            // Check if within allowed roots
-            const isAllowed = this.config.allowedRoots.some((root) => normalized.startsWith(path.normalize(root)));
-            if (!isAllowed) {
-                return { valid: false, reason: 'Path not in allowed roots' };
-            }
-            // Block system directories (macOS specific)
-            const blockedPaths = ['/System', '/Library', '/private/etc', '/private/var', '/usr', '/bin', '/sbin'];
-            const isBlocked = blockedPaths.some((blocked) => normalized.startsWith(blocked));
-            if (isBlocked) {
-                return { valid: false, reason: 'System directory blocked' };
+            if (!normalized.toLowerCase().endsWith(".html") &&
+                !normalized.toLowerCase().endsWith(".htm")) {
+                return { valid: false, reason: "Not an HTML file" };
             }
             // Check file size
             if (stats.size > this.config.maxFileSize) {
-                return { valid: false, reason: `File too large (max ${this.config.maxFileSize / 1024 / 1024}MB)` };
+                return {
+                    valid: false,
+                    reason: `File too large (max ${this.config.maxFileSize / 1024 / 1024}MB)`,
+                };
             }
             // Check read permission
             try {
                 await fs.access(normalized, fs.constants.R_OK);
             }
             catch {
-                return { valid: false, reason: 'No read permission' };
+                return { valid: false, reason: "No read permission" };
             }
             return { valid: true };
         }
@@ -392,7 +398,7 @@ class TemplateManager {
         const normalized = path.normalize(path.resolve(rootPath));
         // Check if directory exists
         if (!(0, fs_1.existsSync)(normalized) || !(0, fs_1.statSync)(normalized).isDirectory()) {
-            throw new Error('Path must be an existing directory');
+            throw new Error("Path must be an existing directory");
         }
         // Add to allowed roots
         if (!this.config.allowedRoots.includes(normalized)) {
@@ -438,10 +444,10 @@ class TemplateManager {
     async saveMetadata() {
         try {
             const content = JSON.stringify(this.metadata, null, 2);
-            await fs.writeFile(this.config.metadataPath, content, 'utf-8');
+            await fs.writeFile(this.config.metadataPath, content, "utf-8");
         }
         catch (error) {
-            console.error('❌ Failed to save metadata:', error);
+            console.error("❌ Failed to save metadata:", error);
             throw error;
         }
     }
@@ -459,7 +465,7 @@ class TemplateManager {
                 }
                 else if (entry.isFile()) {
                     const ext = path.extname(entry.name).toLowerCase();
-                    if (ext === '.html' || ext === '.htm') {
+                    if (ext === ".html" || ext === ".htm") {
                         htmlFiles.push(fullPath);
                     }
                 }

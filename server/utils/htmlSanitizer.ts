@@ -1,6 +1,6 @@
 /**
  * HTML Sanitizer
- * 
+ *
  * Sanitizes HTML content to prevent XSS attacks
  * Uses DOMPurify with email-safe configuration
  */
@@ -18,32 +18,74 @@ const DOMPurify = createDOMPurify(window as any);
 const PURIFY_CONFIG = {
   // Allow common HTML email tags
   ALLOWED_TAGS: [
-    "html", "head", "body", "title", "meta", "style",
-    "table", "tbody", "thead", "tfoot", "tr", "td", "th",
-    "div", "span", "p", "br", "hr",
-    "h1", "h2", "h3", "h4", "h5", "h6",
-    "a", "img",
-    "ul", "ol", "li",
-    "strong", "b", "em", "i", "u", "s",
-    "center", "font",
-    "pre", "code",
+    "html",
+    "head",
+    "body",
+    "title",
+    "meta",
+    "style",
+    "table",
+    "tbody",
+    "thead",
+    "tfoot",
+    "tr",
+    "td",
+    "th",
+    "div",
+    "span",
+    "p",
+    "br",
+    "hr",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "a",
+    "img",
+    "ul",
+    "ol",
+    "li",
+    "strong",
+    "b",
+    "em",
+    "i",
+    "u",
+    "s",
+    "center",
+    "font",
+    "pre",
+    "code",
   ],
 
   // Allow common attributes
   ALLOWED_ATTR: [
-    "href", "src", "alt", "title",
-    "width", "height",
-    "style", "class", "id",
-    "align", "valign",
-    "border", "cellpadding", "cellspacing",
-    "colspan", "rowspan",
-    "bgcolor", "color",
+    "href",
+    "src",
+    "alt",
+    "title",
+    "width",
+    "height",
+    "style",
+    "class",
+    "id",
+    "align",
+    "valign",
+    "border",
+    "cellpadding",
+    "cellspacing",
+    "colspan",
+    "rowspan",
+    "bgcolor",
+    "color",
     "target",
     "role",
   ],
 
   // Allow data URIs for images
-  ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|cid|xmpp|data):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
+  ALLOWED_URI_REGEXP:
+    /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|cid|xmpp|data):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
 
   // Keep relative URLs
   ALLOW_DATA_ATTR: false,
@@ -167,4 +209,3 @@ export function validateHTMLStructure(html: string): {
     errors,
   };
 }
-

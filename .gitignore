@@ -46,6 +46,7 @@ coverage/
 # User data (sensitive)
 server/data/blocks/block-manager-config.json
 server/data/templates/
+server/data/.workspaces.json
 
 # OS files
 Thumbs.db
