@@ -2,6 +2,11 @@
 
 Professional email template builder with drag-and-drop block system.
 
+## 🌐 Live Demo
+
+**Frontend:** https://misha-vynnyk.github.io/email-helper/  
+**Backend API:** https://email-helper-backend.onrender.com
+
 ## 🚀 Features
 
 - **Dynamic Block Library** - Add, edit, and manage email blocks with custom storage locations
