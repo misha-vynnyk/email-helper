@@ -141,16 +141,29 @@ function getCompressionOptions(format, quality, mode) {
 }
 
 // Configure multer for memory storage
+// SECURITY: Strict file size and type limits
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 50 * 1024 * 1024, // 50MB
+    fileSize: 10 * 1024 * 1024, // 10MB (reduced from 50MB for security)
+    files: 20,                   // Max 20 files at once
+    fields: 20,                  // Max 20 form fields
   },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
+    // SECURITY: Only allow specific image types
+    const allowedMimeTypes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+      'image/svg+xml',
+    ];
+
+    if (allowedMimeTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Only image files are allowed'));
+      cb(new Error(`File type ${file.mimetype} not allowed`));
     }
   },
 });

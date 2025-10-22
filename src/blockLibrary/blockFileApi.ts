@@ -5,7 +5,7 @@
 
 import API_URL from "../config/api";
 
-const API_BASE_URL = `${API_URL}/api/block-files`;
+const API_BASE_URL = `${API_URL}/api/blocks`;
 
 export interface BlockFileData {
   id: string;
@@ -63,7 +63,7 @@ export class BlockFileApiClient {
     if (search) params.append("search", search);
     if (category && category !== "All") params.append("category", category);
 
-    const url = `${this.baseUrl}${params.toString() ? `?${params.toString()}` : ""}`;
+    const url = `${this.baseUrl}/list${params.toString() ? `?${params.toString()}` : ""}`;
     const response = await this.fetchWithErrorHandling<{ blocks: BlockFileData[] }>(url);
 
     return response.blocks;

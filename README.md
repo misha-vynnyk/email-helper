@@ -4,7 +4,7 @@ Professional email template builder with drag-and-drop block system.
 
 ## 🌐 Live Demo
 
-**Frontend:** https://misha-vynnyk.github.io/email-helper/  
+**Frontend:** https://misha-vynnyk.github.io/email-helper/
 **Backend API:** https://email-helper-backend.onrender.com
 
 ## 🚀 Features
@@ -19,6 +19,7 @@ Professional email template builder with drag-and-drop block system.
 ## 📦 Tech Stack
 
 ### Frontend
+
 - React 18 + TypeScript
 - Vite
 - Material-UI (MUI)
@@ -27,6 +28,7 @@ Professional email template builder with drag-and-drop block system.
 - Framer Motion (Animations)
 
 ### Backend
+
 - Node.js + Express
 - TypeScript
 - Sharp (Image Processing)
@@ -35,6 +37,7 @@ Professional email template builder with drag-and-drop block system.
 ## 🛠️ Development
 
 ### Prerequisites
+
 - Node.js >= 18.0.0
 - npm or yarn
 
@@ -66,11 +69,13 @@ cd server && npm run build
 ## 🌐 Deployment
 
 ### Frontend (GitHub Pages)
+
 ```bash
 npm run deploy
 ```
 
 ### Backend (Render)
+
 - Auto-deploys from main branch
 - Environment variables configured in Render dashboard
 
@@ -96,6 +101,7 @@ email-helper/
 ## 🔑 Environment Variables
 
 ### Backend (.env)
+
 ```env
 PORT=3001
 SMTP_HOST=smtp.example.com
