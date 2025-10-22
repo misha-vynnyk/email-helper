@@ -22,7 +22,7 @@ const corsOptions = {
   origin:
     process.env.ALLOW_ALL_CORS_DEV === "1"
       ? "*"
-      : ["https://mykhailo-vynnyk.github.io", "http://localhost:5173", "http://localhost:3000"],
+      : ["https://misha-vynnyk.github.io", "http://localhost:5173", "http://localhost:3000"],
   credentials: true,
   optionsSuccessStatus: 200,
 };
