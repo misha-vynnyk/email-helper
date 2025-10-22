@@ -12,8 +12,13 @@ let templateManager = null;
 // Lazy load template manager
 async function getManager() {
   if (!templateManager) {
-    const { getTemplateManager } = require("../dist/templateManager");
-    templateManager = await getTemplateManager();
+    try {
+      const { getTemplateManager } = require("../dist/templateManager");
+      templateManager = await getTemplateManager();
+    } catch (error) {
+      console.error("❌ Failed to initialize TemplateManager in routes:", error);
+      throw new Error(`TemplateManager initialization failed: ${error.message}`);
+    }
   }
   return templateManager;
 }
