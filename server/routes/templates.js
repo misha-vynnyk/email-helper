@@ -328,6 +328,19 @@ router.delete("/settings/allowed-roots", async (req, res) => {
  */
 router.post("/sync-all", async (req, res) => {
   try {
+    // Disable sync in production (paths are local to dev machine)
+    if (process.env.NODE_ENV === "production") {
+      return res.json({
+        success: true,
+        templatesFound: 0,
+        templates: [],
+        removed: 0,
+        errors: [],
+        scannedRoots: 0,
+        message: "Template sync is disabled in production. Use local development mode.",
+      });
+    }
+
     const manager = await getManager();
     const { recursive = true, category = "Other", paths } = req.body;
 
