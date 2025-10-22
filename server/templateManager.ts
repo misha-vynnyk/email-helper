@@ -605,8 +605,13 @@ let templateManagerInstance: TemplateManager | null = null;
  */
 export async function getTemplateManager(): Promise<TemplateManager> {
   if (!templateManagerInstance) {
-    templateManagerInstance = new TemplateManager();
-    await templateManagerInstance.init();
+    try {
+      templateManagerInstance = new TemplateManager();
+      await templateManagerInstance.init();
+    } catch (error) {
+      console.error("❌ Failed to initialize TemplateManager:", error);
+      throw error;
+    }
   }
   return templateManagerInstance;
 }
