@@ -289,7 +289,18 @@ export default ${this.toPascalCase(block.id)};
         // Normalize the path
         const normalizedPath = path.normalize(resolvedPath);
         // SECURITY CHECK: Use WorkspaceManager to validate access
-        const accessCheck = this.workspaceManager.canAccess(normalizedPath, true);
+        let accessCheck = this.workspaceManager.canAccess(normalizedPath, true);
+        // If access denied, try to register this path as a workspace
+        if (!accessCheck.allowed) {
+            const result = await this.workspaceManager.requestWorkspaceAccess(normalizedPath, "Custom Blocks");
+            if (result.success) {
+                // Re-check access after registration
+                accessCheck = this.workspaceManager.canAccess(normalizedPath, true);
+            }
+            else {
+                throw new Error(`Access denied: ${result.error || "Path not in allowed workspace"}`);
+            }
+        }
         if (!accessCheck.allowed) {
             throw new Error(`Access denied: ${accessCheck.reason || "Path not in allowed workspace"}`);
         }

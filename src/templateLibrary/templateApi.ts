@@ -4,7 +4,7 @@
  * Frontend client for interacting with the Template Manager backend
  */
 
-import API_URL from '../config/api';
+import API_URL from "../config/api";
 import {
   AddTemplatePayload,
   AllowedRootPayload,
@@ -12,7 +12,7 @@ import {
   ImportFolderPayload,
   TemplateStats,
   UpdateTemplatePayload,
-} from '../types/template';
+} from "../types/template";
 
 const API_BASE = `${API_URL}/api/templates`;
 
@@ -23,7 +23,7 @@ export async function listTemplates(): Promise<EmailTemplate[]> {
   const response = await fetch(`${API_BASE}/list`);
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || 'Failed to list templates');
+    throw new Error(error.error || "Failed to list templates");
   }
   return response.json();
 }
@@ -33,13 +33,13 @@ export async function listTemplates(): Promise<EmailTemplate[]> {
  */
 export async function addTemplate(payload: AddTemplatePayload): Promise<EmailTemplate> {
   const response = await fetch(`${API_BASE}/add`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || 'Failed to add template');
+    throw new Error(error.error || "Failed to add template");
   }
   return response.json();
 }
@@ -51,7 +51,7 @@ export async function getTemplateContent(id: string): Promise<string> {
   const response = await fetch(`${API_BASE}/${id}/content`);
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || 'Failed to get template content');
+    throw new Error(error.error || "Failed to get template content");
   }
   return response.text();
 }
@@ -59,15 +59,18 @@ export async function getTemplateContent(id: string): Promise<string> {
 /**
  * Update template metadata
  */
-export async function updateTemplate(id: string, payload: UpdateTemplatePayload): Promise<EmailTemplate> {
+export async function updateTemplate(
+  id: string,
+  payload: UpdateTemplatePayload
+): Promise<EmailTemplate> {
   const response = await fetch(`${API_BASE}/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || 'Failed to update template');
+    throw new Error(error.error || "Failed to update template");
   }
   return response.json();
 }
@@ -77,11 +80,11 @@ export async function updateTemplate(id: string, payload: UpdateTemplatePayload)
  */
 export async function removeTemplate(id: string): Promise<void> {
   const response = await fetch(`${API_BASE}/${id}`, {
-    method: 'DELETE',
+    method: "DELETE",
   });
   if (!response.ok && response.status !== 204) {
     const error = await response.json();
-    throw new Error(error.error || 'Failed to remove template');
+    throw new Error(error.error || "Failed to remove template");
   }
 }
 
@@ -90,13 +93,13 @@ export async function removeTemplate(id: string): Promise<void> {
  */
 export async function importFolder(payload: ImportFolderPayload): Promise<EmailTemplate[]> {
   const response = await fetch(`${API_BASE}/import-folder`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || 'Failed to import folder');
+    throw new Error(error.error || "Failed to import folder");
   }
   return response.json();
 }
@@ -106,11 +109,11 @@ export async function importFolder(payload: ImportFolderPayload): Promise<EmailT
  */
 export async function syncTemplate(id: string): Promise<EmailTemplate> {
   const response = await fetch(`${API_BASE}/${id}/sync`, {
-    method: 'POST',
+    method: "POST",
   });
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || 'Failed to sync template');
+    throw new Error(error.error || "Failed to sync template");
   }
   return response.json();
 }
@@ -122,7 +125,7 @@ export async function getStats(): Promise<TemplateStats> {
   const response = await fetch(`${API_BASE}/stats/summary`);
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || 'Failed to get stats');
+    throw new Error(error.error || "Failed to get stats");
   }
   return response.json();
 }
@@ -134,7 +137,7 @@ export async function getAllowedRoots(): Promise<string[]> {
   const response = await fetch(`${API_BASE}/settings/allowed-roots`);
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || 'Failed to get allowed roots');
+    throw new Error(error.error || "Failed to get allowed roots");
   }
   return response.json();
 }
@@ -144,13 +147,13 @@ export async function getAllowedRoots(): Promise<string[]> {
  */
 export async function addAllowedRoot(payload: AllowedRootPayload): Promise<string[]> {
   const response = await fetch(`${API_BASE}/settings/allowed-roots`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || 'Failed to add allowed root');
+    throw new Error(error.error || "Failed to add allowed root");
   }
   // Backend now returns array directly
   return response.json();
@@ -163,13 +166,13 @@ export async function removeAllowedRoot(
   payload: AllowedRootPayload
 ): Promise<{ allowedRoots: string[]; removedTemplates: number; message: string }> {
   const response = await fetch(`${API_BASE}/settings/allowed-roots`, {
-    method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || 'Failed to remove allowed root');
+    throw new Error(error.error || "Failed to remove allowed root");
   }
   return response.json();
 }
@@ -181,6 +184,7 @@ export async function syncAllTemplates(
   options: {
     recursive?: boolean;
     category?: string;
+    paths?: string[]; // NEW: Specific paths to sync
   } = {}
 ): Promise<{
   success: boolean;
@@ -192,13 +196,13 @@ export async function syncAllTemplates(
   message: string;
 }> {
   const response = await fetch(`${API_BASE}/sync-all`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(options),
   });
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error || 'Failed to sync templates');
+    throw new Error(error.error || "Failed to sync templates");
   }
   return response.json();
 }

@@ -20,7 +20,7 @@ export interface EmailTemplate {
     lastModified: number;
     createdAt: number;
 }
-export type TemplateCategory = 'Newsletter' | 'Transactional' | 'Marketing' | 'Internal' | 'Other';
+export type TemplateCategory = "Newsletter" | "Transactional" | "Marketing" | "Internal" | "Other";
 /**
  * Configuration
  */
@@ -35,6 +35,7 @@ interface TemplateManagerConfig {
 export declare class TemplateManager {
     private config;
     private metadata;
+    private workspaceManager;
     constructor(config?: Partial<TemplateManagerConfig>);
     /**
      * Initialize - Load metadata from disk
@@ -55,7 +56,7 @@ export declare class TemplateManager {
     /**
      * Add new template
      */
-    addTemplate(filePath: string, metadata: Partial<Omit<EmailTemplate, 'id' | 'filePath' | 'fileSize' | 'lastModified' | 'createdAt'>>): Promise<EmailTemplate>;
+    addTemplate(filePath: string, metadata: Partial<Omit<EmailTemplate, "id" | "filePath" | "fileSize" | "lastModified" | "createdAt">>): Promise<EmailTemplate>;
     /**
      * Update template metadata
      */
