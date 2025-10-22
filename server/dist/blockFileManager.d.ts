@@ -25,6 +25,7 @@ interface BlockFileManagerConfig {
 export declare class BlockFileManager {
     private config;
     private configFilePath;
+    private workspaceManager;
     constructor(config?: Partial<BlockFileManagerConfig>);
     /**
      * Load persisted configuration (scan directories)
@@ -67,7 +68,9 @@ export declare class BlockFileManager {
      */
     getBlock(blockId: string): Promise<BlockFile | null>;
     /**
-     * Validate and resolve target directory path
+     * Validate and resolve target directory path using WorkspaceManager
+     *
+     * @security Uses WorkspaceManager to ensure path is in allowed workspace
      */
     private validateTargetPath;
     /**

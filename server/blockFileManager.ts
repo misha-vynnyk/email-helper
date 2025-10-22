@@ -3,11 +3,15 @@
  *
  * Handles creation, reading, updating, and deletion of TypeScript block files.
  * Cross-platform support (Windows, macOS, Linux)
+ * 
+ * Security: Uses WorkspaceManager for secure file system access
  */
 import * as fs from "fs/promises";
 import * as path from "path";
 import { existsSync } from "fs";
 import { getStoragePaths } from "./utils/storagePathResolver";
+import { getWorkspaceManager } from "./workspaceManager";
+import { sanitizeHTML } from "./utils/htmlSanitizer";
 
 /**
  * Block file structure
@@ -46,6 +50,7 @@ const DEFAULT_CONFIG: BlockFileManagerConfig = {
 export class BlockFileManager {
   private config: BlockFileManagerConfig;
   private configFilePath: string;
+  private workspaceManager = getWorkspaceManager();
 
   constructor(config?: Partial<BlockFileManagerConfig>) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -301,7 +306,9 @@ export default ${this.toPascalCase(block.id)};
   }
 
   /**
-   * Validate and resolve target directory path
+   * Validate and resolve target directory path using WorkspaceManager
+   * 
+   * @security Uses WorkspaceManager to ensure path is in allowed workspace
    */
   private async validateTargetPath(targetPath: string): Promise<string> {
     const projectRoot = path.resolve(__dirname, "../..");
@@ -317,20 +324,24 @@ export default ${this.toPascalCase(block.id)};
     // Normalize the path
     const normalizedPath = path.normalize(resolvedPath);
 
-    // Security: Prevent directory traversal attacks
-    // Ensure path is within project directory or explicitly allowed paths
-    if (!normalizedPath.startsWith(projectRoot)) {
-      // Check if it's in user's Documents (for external projects)
-      const homeDir = require("os").homedir();
-      const documentsDir = path.join(homeDir, "Documents");
-
-      if (!normalizedPath.startsWith(documentsDir)) {
-        throw new Error("Target path must be within project or Documents directory");
-      }
+    // SECURITY CHECK: Use WorkspaceManager to validate access
+    const accessCheck = this.workspaceManager.canAccess(normalizedPath, true);
+    
+    if (!accessCheck.allowed) {
+      throw new Error(`Access denied: ${accessCheck.reason || "Path not in allowed workspace"}`);
     }
 
-    // Check if directory exists, create if it doesn't
+    // If path doesn't exist, try to add it as a workspace first
     if (!existsSync(normalizedPath)) {
+      // Check if parent directory is in workspace
+      const parentDir = path.dirname(normalizedPath);
+      const parentAccess = this.workspaceManager.canAccess(parentDir, true);
+      
+      if (!parentAccess.allowed) {
+        throw new Error("Cannot create directory: parent path not in workspace");
+      }
+
+      // Create directory
       await fs.mkdir(normalizedPath, { recursive: true });
       console.log(`📁 Created directory: ${normalizedPath}`);
     }
@@ -357,6 +368,9 @@ export default ${this.toPascalCase(block.id)};
     targetPath?: string; // Arbitrary path (relative or absolute)
     targetDir?: "src" | "data"; // Legacy support for hardcoded paths
   }): Promise<BlockFile> {
+    // SECURITY: Sanitize HTML content to prevent XSS
+    const sanitizedHTML = sanitizeHTML(data.html);
+    
     // Sanitize ID
     const blockId = this.toKebabCase(data.id.replace(/[^a-zA-Z0-9-]/g, "-"));
     const fileName = `${blockId}.ts`;
@@ -382,10 +396,11 @@ export default ${this.toPascalCase(block.id)};
       throw new Error(`Block with ID "${blockId}" already exists at ${filePath}`);
     }
 
-    // Generate TypeScript code
+    // Generate TypeScript code with sanitized HTML
     const code = this.generateBlockCode({
       ...data,
       id: blockId,
+      html: sanitizedHTML, // Use sanitized HTML
     });
 
     // Write file
@@ -404,7 +419,7 @@ export default ${this.toPascalCase(block.id)};
       name: data.name,
       category: data.category,
       keywords: data.keywords,
-      html: data.html,
+      html: sanitizedHTML, // Return sanitized HTML
       preview: data.preview || "",
       createdAt: Date.now(),
       fileName,

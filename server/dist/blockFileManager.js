@@ -39,11 +39,15 @@ exports.blockFileManager = exports.BlockFileManager = void 0;
  *
  * Handles creation, reading, updating, and deletion of TypeScript block files.
  * Cross-platform support (Windows, macOS, Linux)
+ *
+ * Security: Uses WorkspaceManager for secure file system access
  */
 const fs = __importStar(require("fs/promises"));
 const path = __importStar(require("path"));
 const fs_1 = require("fs");
 const storagePathResolver_1 = require("./utils/storagePathResolver");
+const workspaceManager_1 = require("./workspaceManager");
+const htmlSanitizer_1 = require("./utils/htmlSanitizer");
 const blocksDir = (0, storagePathResolver_1.getStoragePaths)().blockFiles;
 const srcBlocksDir = path.resolve(__dirname, "../../src/blocks");
 const DEFAULT_CONFIG = {
@@ -55,6 +59,7 @@ const DEFAULT_CONFIG = {
  */
 class BlockFileManager {
     constructor(config) {
+        this.workspaceManager = (0, workspaceManager_1.getWorkspaceManager)();
         this.config = { ...DEFAULT_CONFIG, ...config };
         // Path to persistent config file
         this.configFilePath = path.join(blocksDir, "..", "block-manager-config.json");
@@ -267,7 +272,9 @@ export default ${this.toPascalCase(block.id)};
         return this.parseBlockFile(filePath, fileName);
     }
     /**
-     * Validate and resolve target directory path
+     * Validate and resolve target directory path using WorkspaceManager
+     *
+     * @security Uses WorkspaceManager to ensure path is in allowed workspace
      */
     async validateTargetPath(targetPath) {
         const projectRoot = path.resolve(__dirname, "../..");
@@ -281,18 +288,20 @@ export default ${this.toPascalCase(block.id)};
         }
         // Normalize the path
         const normalizedPath = path.normalize(resolvedPath);
-        // Security: Prevent directory traversal attacks
-        // Ensure path is within project directory or explicitly allowed paths
-        if (!normalizedPath.startsWith(projectRoot)) {
-            // Check if it's in user's Documents (for external projects)
-            const homeDir = require("os").homedir();
-            const documentsDir = path.join(homeDir, "Documents");
-            if (!normalizedPath.startsWith(documentsDir)) {
-                throw new Error("Target path must be within project or Documents directory");
-            }
+        // SECURITY CHECK: Use WorkspaceManager to validate access
+        const accessCheck = this.workspaceManager.canAccess(normalizedPath, true);
+        if (!accessCheck.allowed) {
+            throw new Error(`Access denied: ${accessCheck.reason || "Path not in allowed workspace"}`);
         }
-        // Check if directory exists, create if it doesn't
+        // If path doesn't exist, try to add it as a workspace first
         if (!(0, fs_1.existsSync)(normalizedPath)) {
+            // Check if parent directory is in workspace
+            const parentDir = path.dirname(normalizedPath);
+            const parentAccess = this.workspaceManager.canAccess(parentDir, true);
+            if (!parentAccess.allowed) {
+                throw new Error("Cannot create directory: parent path not in workspace");
+            }
+            // Create directory
             await fs.mkdir(normalizedPath, { recursive: true });
             console.log(`📁 Created directory: ${normalizedPath}`);
         }
@@ -307,6 +316,8 @@ export default ${this.toPascalCase(block.id)};
      * Create a new block file
      */
     async createBlock(data) {
+        // SECURITY: Sanitize HTML content to prevent XSS
+        const sanitizedHTML = (0, htmlSanitizer_1.sanitizeHTML)(data.html);
         // Sanitize ID
         const blockId = this.toKebabCase(data.id.replace(/[^a-zA-Z0-9-]/g, "-"));
         const fileName = `${blockId}.ts`;
@@ -329,10 +340,11 @@ export default ${this.toPascalCase(block.id)};
         if ((0, fs_1.existsSync)(filePath)) {
             throw new Error(`Block with ID "${blockId}" already exists at ${filePath}`);
         }
-        // Generate TypeScript code
+        // Generate TypeScript code with sanitized HTML
         const code = this.generateBlockCode({
             ...data,
             id: blockId,
+            html: sanitizedHTML, // Use sanitized HTML
         });
         // Write file
         await fs.writeFile(filePath, code, "utf8");
@@ -347,7 +359,7 @@ export default ${this.toPascalCase(block.id)};
             name: data.name,
             category: data.category,
             keywords: data.keywords,
-            html: data.html,
+            html: sanitizedHTML, // Return sanitized HTML
             preview: data.preview || "",
             createdAt: Date.now(),
             fileName,
