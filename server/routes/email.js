@@ -51,19 +51,20 @@ router.post("/send-email", async (req, res) => {
 
     console.log(`📬 Using SMTP: ${smtpConfig.host}:${smtpConfig.port}`);
 
-    // Create transporter
+    // Create transporter with timeout
     const transporter = nodemailer.createTransport({
       ...smtpConfig,
       auth: {
         user: senderEmail,
         pass: appPassword,
       },
+      connectionTimeout: 10000, // 10 seconds
+      greetingTimeout: 10000,
+      socketTimeout: 10000,
     });
 
-    // Verify connection
-    console.log("🔐 Verifying SMTP connection...");
-    await transporter.verify();
-    console.log("✅ SMTP connection verified");
+    // Verify connection (skip verification, send directly)
+    console.log("🔐 Skipping SMTP verification (direct send)...");
 
     // Send email
     console.log(`📤 Sending email to ${userEmail}...`);
