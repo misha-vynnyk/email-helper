@@ -88,7 +88,7 @@ router.post("/send-email", async (req, res) => {
       code: error.code,
       command: error.command,
     });
-    
+
     res.status(500).json({
       error: "Failed to send email",
       message: error.message,
@@ -137,4 +137,3 @@ router.post("/verify-smtp", async (req, res) => {
 });
 
 module.exports = router;
-
