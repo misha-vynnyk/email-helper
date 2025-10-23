@@ -17,12 +17,9 @@ const limiter = rateLimit({
 app.use(helmet());
 app.use(limiter);
 
-// CORS configuration
+// CORS configuration - allow local development and GitHub Pages demo
 const corsOptions = {
-  origin:
-    process.env.ALLOW_ALL_CORS_DEV === "1"
-      ? "*"
-      : ["https://misha-vynnyk.github.io", "http://localhost:5173", "http://localhost:3000"],
+  origin: ["http://localhost:5173", "http://localhost:3000", "https://misha-vynnyk.github.io"],
   credentials: true,
   optionsSuccessStatus: 200,
 };

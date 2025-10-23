@@ -1,13 +1,6 @@
 const express = require("express");
 const nodemailer = require("nodemailer");
-const sgMail = require("@sendgrid/mail");
 const router = express.Router();
-
-// Initialize SendGrid if API key is available
-if (process.env.SENDGRID_API_KEY) {
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-  console.log("✅ SendGrid initialized");
-}
 
 /**
  * POST /api/send-email
@@ -26,35 +19,8 @@ router.post("/send-email", async (req, res) => {
       });
     }
 
-    // Try SendGrid first if API key is available (production)
-    if (process.env.SENDGRID_API_KEY) {
-      console.log("📬 Using SendGrid API");
-      try {
-        const msg = {
-          to: userEmail,
-          from: process.env.SENDGRID_VERIFIED_SENDER || senderEmail,
-          subject: subject,
-          html: html,
-        };
-
-        const result = await sgMail.send(msg);
-        console.log("✅ Email sent via SendGrid");
-
-        return res.json({
-          success: true,
-          messageId: result[0].headers["x-message-id"],
-          message: "Email sent successfully via SendGrid",
-          method: "sendgrid",
-        });
-      } catch (sgError) {
-        console.error("❌ SendGrid failed:", sgError.message);
-        // Fall through to SMTP
-      }
-    }
-
-    // Fallback to SMTP (local development)
     if (!senderEmail || !appPassword) {
-      console.log("❌ Missing email credentials for SMTP");
+      console.log("❌ Missing email credentials");
       return res.status(400).json({
         error: "Missing email credentials: senderEmail, appPassword",
       });
@@ -83,7 +49,7 @@ router.post("/send-email", async (req, res) => {
       };
     }
 
-    console.log(`📬 Using SMTP (fallback): ${smtpConfig.host}:${smtpConfig.port}`);
+    console.log(`📬 Using SMTP: ${smtpConfig.host}:${smtpConfig.port}`);
 
     // Create transporter with timeout
     const transporter = nodemailer.createTransport({
@@ -97,8 +63,10 @@ router.post("/send-email", async (req, res) => {
       socketTimeout: 10000,
     });
 
-    // Verify connection (skip verification, send directly)
-    console.log("🔐 Skipping SMTP verification (direct send)...");
+    // Verify connection
+    console.log("🔐 Verifying SMTP connection...");
+    await transporter.verify();
+    console.log("✅ SMTP connection verified");
 
     // Send email
     console.log(`📤 Sending email to ${userEmail}...`);
@@ -109,12 +77,11 @@ router.post("/send-email", async (req, res) => {
       html,
     });
 
-    console.log(`✅ Email sent via SMTP. MessageId: ${info.messageId}`);
+    console.log(`✅ Email sent successfully. MessageId: ${info.messageId}`);
     res.json({
       success: true,
       messageId: info.messageId,
-      message: "Email sent successfully via SMTP",
-      method: "smtp",
+      message: "Email sent successfully",
     });
   } catch (error) {
     console.error("❌ Failed to send email:", error);
