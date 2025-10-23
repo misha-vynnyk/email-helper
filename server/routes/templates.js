@@ -340,22 +340,14 @@ router.post("/sync-all", async (req, res) => {
 
     // Determine which roots to scan
     let rootsToScan;
-    
-    // In production: use backend allowed roots (configured on server)
-    // In development: use frontend paths if provided, otherwise backend roots
-    if (process.env.NODE_ENV === "production") {
-      // Production: always use backend allowed roots
-      rootsToScan = manager.getAllowedRoots();
-      console.log(`📂 Production mode: Syncing ${rootsToScan.length} backend allowed roots`);
+    if (paths && Array.isArray(paths) && paths.length > 0) {
+      // Use provided paths from frontend storage locations
+      rootsToScan = paths;
+      console.log(`📂 Syncing ${paths.length} custom paths from frontend`);
     } else {
-      // Development: use frontend paths if provided, otherwise backend roots
-      if (paths && Array.isArray(paths) && paths.length > 0) {
-        rootsToScan = paths;
-        console.log(`📂 Dev mode: Syncing ${paths.length} custom paths from frontend`);
-      } else {
-        rootsToScan = manager.getAllowedRoots();
-        console.log(`📂 Dev mode: Syncing ${rootsToScan.length} backend allowed roots`);
-      }
+      // Fallback to backend allowed roots
+      rootsToScan = manager.getAllowedRoots();
+      console.log(`📂 Syncing ${rootsToScan.length} backend allowed roots`);
     }
 
     const allTemplates = [];
