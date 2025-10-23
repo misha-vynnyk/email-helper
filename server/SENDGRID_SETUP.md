@@ -65,7 +65,7 @@ After deployment, send a test email from your app. Check Render logs:
 
 If SendGrid is not configured, the backend automatically falls back to SMTP (works locally with your Gmail credentials).
 
-**Local dev:** SMTP works ✅  
+**Local dev:** SMTP works ✅
 **Render production:** SendGrid required ⚠️
 
 ---
@@ -85,4 +85,3 @@ If SendGrid is not configured, the backend automatically falls back to SMTP (wor
 - [SendGrid Docs](https://docs.sendgrid.com/)
 - [Node.js SendGrid Guide](https://docs.sendgrid.com/for-developers/sending-email/quickstart-nodejs)
 - [Sender Verification](https://docs.sendgrid.com/ui/sending-email/sender-verification)
-
