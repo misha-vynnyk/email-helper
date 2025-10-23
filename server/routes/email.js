@@ -39,7 +39,7 @@ router.post("/send-email", async (req, res) => {
 
         const result = await sgMail.send(msg);
         console.log("✅ Email sent via SendGrid");
-        
+
         return res.json({
           success: true,
           messageId: result[0].headers["x-message-id"],
