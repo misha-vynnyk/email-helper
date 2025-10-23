@@ -1,11 +1,12 @@
-# FlexiBuilder Pro - Email Builder
+# Email Helper - Professional Email Builder
 
-Professional email template builder with drag-and-drop block system.
+Professional email template builder with drag-and-drop block system, live preview, and local file management.
 
-## 🌐 Live Demo
+## 🎨 Demo
 
-**Frontend:** https://misha-vynnyk.github.io/email-helper/
-**Backend API:** https://email-helper-backend.onrender.com
+**UI Preview:** https://misha-vynnyk.github.io/email-helper/
+
+> ⚠️ **Note:** The GitHub Pages demo shows only the interface. For full functionality (block/template management, email sending), run the app locally.
 
 ## 🚀 Features
 
@@ -34,50 +35,62 @@ Professional email template builder with drag-and-drop block system.
 - Sharp (Image Processing)
 - Nodemailer (Email Sending)
 
-## 🛠️ Development
+## 🛠️ Local Setup
+
+This app is designed to run **locally** for full functionality. The backend manages local files for blocks and templates.
 
 ### Prerequisites
 
 - Node.js >= 18.0.0
 - npm or yarn
+- Gmail account with App Password (for email sending)
 
-### Installation
+### Quick Start
 
 ```bash
-# Install dependencies
+# 1. Clone repository
+git clone https://github.com/misha-vynnyk/email-helper.git
+cd email-helper
+
+# 2. Install dependencies
 npm install
 cd server && npm install && cd ..
 
-# Start development servers (frontend + backend)
+# 3. Start backend (Terminal 1)
+cd server && npm start
+
+# 4. Start frontend (Terminal 2)
 npm run dev
 
-# Or start separately
-npm run dev-frontend  # Frontend only
-npm run dev-backend   # Backend only
+# 5. Open browser
+# Frontend: http://localhost:5173
+# Backend: http://localhost:3001
 ```
 
-### Build
+### Email Setup
+
+To send test emails, you need a Gmail App Password:
+
+1. Enable 2FA on your Google Account
+2. Go to Google Account → Security → App Passwords
+3. Generate new password for "Mail"
+4. Use this password in the Email Sender panel (not your regular Gmail password)
+
+### Development Commands
 
 ```bash
-# Build frontend for production
+# Build frontend for production (GitHub Pages demo)
 npm run build
+
+# Deploy frontend to GitHub Pages (UI demo only)
+npm run deploy
 
 # Build backend
 cd server && npm run build
+
+# Run backend in production mode
+cd server && npm start
 ```
-
-## 🌐 Deployment
-
-### Frontend (GitHub Pages)
-
-```bash
-npm run deploy
-```
-
-### Backend (Render)
-
-- Auto-deploys from main branch
-- Environment variables configured in Render dashboard
 
 ## 📁 Project Structure
 
@@ -98,17 +111,28 @@ email-helper/
 └── dist/                   # Production build
 ```
 
-## 🔑 Environment Variables
+## 📂 Storage Locations
 
-### Backend (.env)
+The app stores blocks and templates in local directories:
 
-```env
-PORT=3001
-SMTP_HOST=smtp.example.com
-SMTP_PORT=587
-SMTP_USER=your-email@example.com
-SMTP_PASS=your-password
-```
+- **Default Blocks:** `src/blocks/` (built-in examples)
+- **Custom Blocks:** `server/data/blocks/files/` (your creations)
+- **Templates:** Configure custom paths via Storage settings
+
+You can add custom storage locations through the UI:
+1. Click "Storage" icon in Block/Template Library
+2. Add absolute paths to your local directories
+3. Files are synced automatically
+
+## 🔐 Security
+
+The app includes a **Workspace Manager** that:
+- Validates file access permissions
+- Prevents path traversal attacks
+- Sanitizes HTML content (XSS protection)
+- Blocks access to system directories
+
+Only explicitly allowed workspace directories can be accessed.
 
 ## 📝 License
 
