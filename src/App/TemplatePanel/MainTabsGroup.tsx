@@ -9,7 +9,7 @@ const IS_PRODUCTION = import.meta.env.PROD;
 
 export default function MainTabsGroup() {
   const selectedMainTab = useSelectedMainTab();
-  
+
   // On production, if blocks/templates tab is selected, switch to email
   useEffect(() => {
     if (IS_PRODUCTION && (selectedMainTab === "blocks" || selectedMainTab === "templates")) {

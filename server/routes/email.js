@@ -8,16 +8,19 @@ const router = express.Router();
  */
 router.post("/send-email", async (req, res) => {
   try {
+    console.log("📧 Email send request received");
     const { userEmail, subject, html, senderEmail, appPassword } = req.body;
 
     // Validation
     if (!userEmail || !subject || !html) {
+      console.log("❌ Missing required fields");
       return res.status(400).json({
         error: "Missing required fields: userEmail, subject, html",
       });
     }
 
     if (!senderEmail || !appPassword) {
+      console.log("❌ Missing email credentials");
       return res.status(400).json({
         error: "Missing email credentials: senderEmail, appPassword",
       });
@@ -46,6 +49,8 @@ router.post("/send-email", async (req, res) => {
       };
     }
 
+    console.log(`📬 Using SMTP: ${smtpConfig.host}:${smtpConfig.port}`);
+
     // Create transporter
     const transporter = nodemailer.createTransport({
       ...smtpConfig,
@@ -56,9 +61,12 @@ router.post("/send-email", async (req, res) => {
     });
 
     // Verify connection
+    console.log("🔐 Verifying SMTP connection...");
     await transporter.verify();
+    console.log("✅ SMTP connection verified");
 
     // Send email
+    console.log(`📤 Sending email to ${userEmail}...`);
     const info = await transporter.sendMail({
       from: senderEmail,
       to: userEmail,
@@ -66,16 +74,25 @@ router.post("/send-email", async (req, res) => {
       html,
     });
 
+    console.log(`✅ Email sent successfully. MessageId: ${info.messageId}`);
     res.json({
       success: true,
       messageId: info.messageId,
       message: "Email sent successfully",
     });
   } catch (error) {
-    console.error("Failed to send email:", error);
+    console.error("❌ Failed to send email:", error);
+    console.error("Error details:", {
+      name: error.name,
+      message: error.message,
+      code: error.code,
+      command: error.command,
+    });
+    
     res.status(500).json({
       error: "Failed to send email",
       message: error.message,
+      details: error.code || error.name,
     });
   }
 });
