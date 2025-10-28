@@ -7,10 +7,15 @@ const rateLimit = require("express-rate-limit");
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Rate limiting
+// Rate limiting - disabled for local development
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: 1000, // Increased for local dev (lots of template/block previews)
+  skip: (req) => {
+    // Skip rate limiting for localhost
+    const ip = req.ip || req.connection.remoteAddress;
+    return ip === "127.0.0.1" || ip === "::1" || ip === "::ffff:127.0.0.1";
+  },
 });
 
 // Middleware
