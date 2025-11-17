@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useState } from 'react';
+import React, { createContext, useCallback, useContext, useState } from "react";
 
 import {
   DEFAULT_AUTO_CONVERT,
@@ -7,10 +7,10 @@ import {
   DEFAULT_FORMAT,
   DEFAULT_PROCESSING_MODE,
   DEFAULT_QUALITY,
-} from '../constants';
-import { ConversionResult, ConversionSettings, ImageFile, ImageFormat } from '../types';
-import { convertImageClient } from '../utils/clientConverter';
-import { convertImageServer } from '../utils/imageConverterApi';
+} from "../constants";
+import { ConversionResult, ConversionSettings, ImageFile, ImageFormat } from "../types";
+import { convertImageClient } from "../utils/clientConverter";
+import { convertImageServer } from "../utils/imageConverterApi";
 
 interface ImageConverterContextType {
   files: ImageFile[];
@@ -30,7 +30,7 @@ const ImageConverterContext = createContext<ImageConverterContextType | undefine
 export const useImageConverter = () => {
   const context = useContext(ImageConverterContext);
   if (!context) {
-    throw new Error('useImageConverter must be used within ImageConverterProvider');
+    throw new Error("useImageConverter must be used within ImageConverterProvider");
   }
   return context;
 };
@@ -42,7 +42,7 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
     quality: DEFAULT_QUALITY,
     backgroundColor: DEFAULT_BACKGROUND_COLOR,
     resize: {
-      mode: 'original',
+      mode: "original",
       preserveAspectRatio: true,
     },
     processingMode: DEFAULT_PROCESSING_MODE,
@@ -72,20 +72,24 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
       }
 
       // Check if already processing or done
-      if (fileToConvert.status === 'done' || fileToConvert.status === 'processing') {
+      if (fileToConvert.status === "done" || fileToConvert.status === "processing") {
         return;
       }
 
       // Update status to processing
       setFiles((currentFiles) =>
-        currentFiles.map((f) => (f.id === id ? { ...f, status: 'processing' as const, progress: 0 } : f))
+        currentFiles.map((f) =>
+          f.id === id ? { ...f, status: "processing" as const, progress: 0 } : f
+        )
       );
 
       try {
         // Progress callback to update UI
         const onProgress = (progress: number) => {
           setFiles((prev) =>
-            prev.map((f) => (f.id === id ? { ...f, progress: Math.min(Math.max(progress, 0), 100) } : f))
+            prev.map((f) =>
+              f.id === id ? { ...f, progress: Math.min(Math.max(progress, 0), 100) } : f
+            )
           );
         };
 
@@ -94,7 +98,7 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
 
         let result: ConversionResult;
 
-        if (settings.processingMode === 'client') {
+        if (settings.processingMode === "client") {
           onProgress(30);
           result = await convertImageClient(fileToConvert!.file, settings);
           onProgress(90);
@@ -112,7 +116,7 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
             f.id === id
               ? {
                   ...f,
-                  status: 'done' as const,
+                  status: "done" as const,
                   progress: 100,
                   convertedBlob: result.blob,
                   convertedSize: result.size,
@@ -122,14 +126,14 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
           )
         );
       } catch (error) {
-        console.error('Conversion error:', error);
+        console.error("Conversion error:", error);
         setFiles((prev) =>
           prev.map((f) =>
             f.id === id
               ? {
                   ...f,
-                  status: 'error' as const,
-                  error: error instanceof Error ? error.message : 'Conversion failed',
+                  status: "error" as const,
+                  error: error instanceof Error ? error.message : "Conversion failed",
                 }
               : f
           )
@@ -163,7 +167,7 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
         id: `${Date.now()}-${Math.random()}`,
         file,
         originalSize: file.size,
-        status: 'pending',
+        status: "pending",
         progress: 0,
         previewUrl: URL.createObjectURL(file),
       }));
@@ -204,7 +208,7 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
   const convertAll = useCallback(() => {
     // Get pending files and add to queue
     setFiles((currentFiles) => {
-      const pendingIds = currentFiles.filter((f) => f.status === 'pending').map((f) => f.id);
+      const pendingIds = currentFiles.filter((f) => f.status === "pending").map((f) => f.id);
       if (pendingIds.length > 0) {
         // Delay to ensure state is consistent
         setTimeout(() => {
@@ -222,10 +226,10 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
         if (!file?.convertedBlob) return currentFiles;
 
         const extension = getExtensionForFormat(settings.format);
-        const filename = file.file.name.replace(/\.[^/.]+$/, '') + extension;
+        const filename = file.file.name.replace(/\.[^/.]+$/, "") + extension;
 
         const url = URL.createObjectURL(file.convertedBlob);
-        const a = document.createElement('a');
+        const a = document.createElement("a");
         a.href = url;
         a.download = filename;
         document.body.appendChild(a);
@@ -241,7 +245,7 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
 
   const downloadAll = useCallback(() => {
     setFiles((currentFiles) => {
-      const completedFiles = currentFiles.filter((f) => f.status === 'done' && f.convertedBlob);
+      const completedFiles = currentFiles.filter((f) => f.status === "done" && f.convertedBlob);
       completedFiles.forEach((file) => downloadFile(file.id));
       return currentFiles;
     });
@@ -260,20 +264,22 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
     downloadAll,
   };
 
-  return <ImageConverterContext.Provider value={contextValue}>{children}</ImageConverterContext.Provider>;
+  return (
+    <ImageConverterContext.Provider value={contextValue}>{children}</ImageConverterContext.Provider>
+  );
 };
 
 function getExtensionForFormat(format: ImageFormat): string {
   switch (format) {
-    case 'jpeg':
-      return '.jpg';
-    case 'webp':
-      return '.webp';
-    case 'avif':
-      return '.avif';
-    case 'png':
-      return '.png';
+    case "jpeg":
+      return ".jpg";
+    case "webp":
+      return ".webp";
+    case "avif":
+      return ".avif";
+    case "png":
+      return ".png";
     default:
-      return '.jpg';
+      return ".jpg";
   }
 }

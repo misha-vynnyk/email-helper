@@ -5,7 +5,7 @@
  * from the user's file system (restricted to ~/Templates by default)
  */
 
-export type TemplateCategory = 'Newsletter' | 'Transactional' | 'Marketing' | 'Internal' | 'Other';
+export type TemplateCategory = "Newsletter" | "Transactional" | "Marketing" | "Internal" | "Other";
 
 export interface EmailTemplate {
   id: string; // UUID
@@ -58,9 +58,9 @@ export interface AllowedRootPayload {
 }
 
 export const TEMPLATE_CATEGORIES: TemplateCategory[] = [
-  'Newsletter',
-  'Transactional',
-  'Marketing',
-  'Internal',
-  'Other',
+  "Newsletter",
+  "Transactional",
+  "Marketing",
+  "Internal",
+  "Other",
 ];

@@ -5,13 +5,16 @@
  * based on the build environment.
  */
 
+import { logger } from "../utils/logger";
+
 const API_URL = import.meta.env.PROD
   ? import.meta.env.VITE_API_URL || "https://email-helper-backend.onrender.com"
   : "http://localhost:3001";
 
 export default API_URL;
+export { API_URL };
 
-// Helper function for API calls
+// Helper function for API calls (deprecated - use apiClient instead)
 export const apiCall = async (endpoint: string, options?: RequestInit) => {
   const url = `${API_URL}${endpoint}`;
 
@@ -30,8 +33,13 @@ export const apiCall = async (endpoint: string, options?: RequestInit) => {
     }
 
     return response.json();
-  } catch (error) {
-    console.error("API call failed:", error);
-    throw error;
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      logger.error("API call failed:", error.message);
+      throw error;
+    } else {
+      logger.error("API call failed:", String(error));
+      throw new Error(String(error));
+    }
   }
 };

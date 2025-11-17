@@ -1,9 +1,9 @@
 // Common utility functions for email validation rules
 // This file centralizes common validation logic to avoid duplication
 
-import { RegexCache } from './cache';
-import { REGEX_FLAGS, REGEX_PATTERNS } from './regexPatterns';
-import { HTMLNode, ValidationResult } from './types';
+import { RegexCache } from "./cache";
+import { REGEX_FLAGS, REGEX_PATTERNS } from "./regexPatterns";
+import { HTMLNode, ValidationResult } from "./types";
 
 /**
  * Common validation check patterns
@@ -13,7 +13,7 @@ export const ValidationChecks = {
    * Check if HTML is valid string
    */
   isValidHtml: (html: string): boolean => {
-    return Boolean(html && typeof html === 'string');
+    return Boolean(html && typeof html === "string");
   },
 
   /**
@@ -21,10 +21,10 @@ export const ValidationChecks = {
    */
   createValidationResult: (
     rule: string,
-    severity: 'error' | 'warning' | 'info',
+    severity: "error" | "warning" | "info",
     message: string,
     suggestion: string,
-    category: 'structure' | 'accessibility' | 'compatibility' | 'performance' | 'best-practice',
+    category: "structure" | "accessibility" | "compatibility" | "performance" | "best-practice",
     line?: number,
     column?: number
   ): ValidationResult => ({
@@ -41,11 +41,15 @@ export const ValidationChecks = {
   /**
    * Check for pattern existence in HTML - оптимізовано
    */
-  hasPattern: (html: string, pattern: string, flags: string = REGEX_FLAGS.GLOBAL_CASE_INSENSITIVE): boolean => {
+  hasPattern: (
+    html: string,
+    pattern: string,
+    flags: string = REGEX_FLAGS.GLOBAL_CASE_INSENSITIVE
+  ): boolean => {
     if (!ValidationChecks.isValidHtml(html)) return false;
     try {
       // Для простої перевірки існування використовуємо test() без global флага
-      const testFlags = flags.replace('g', '');
+      const testFlags = flags.replace("g", "");
       return RegexCache.get(pattern, testFlags).test(html);
     } catch (error) {
       return false;
@@ -65,7 +69,7 @@ export const ValidationChecks = {
 
     try {
       // Отримуємо regex з кешу з гарантованим global флагом
-      const globalFlags = flags.includes('g') ? flags : `${flags}g`;
+      const globalFlags = flags.includes("g") ? flags : `${flags}g`;
       const regex = RegexCache.get(pattern, globalFlags);
 
       for (const m of html.matchAll(regex)) {
@@ -83,14 +87,14 @@ export const ValidationChecks = {
   checkForbiddenTagsAST: (
     ast: HTMLNode[],
     forbiddenTags: readonly string[],
-    ruleName: string,
+    _ruleName: string,
     callback: (node: HTMLNode, tagName: string) => void
   ): void => {
     if (!ast || !Array.isArray(forbiddenTags)) return;
 
     const traverseNodes = (nodes: HTMLNode[]) => {
       for (const node of nodes) {
-        if (node.type === 'element' && node.tagName && forbiddenTags.includes(node.tagName)) {
+        if (node.type === "element" && node.tagName && forbiddenTags.includes(node.tagName)) {
           callback(node, node.tagName);
         }
         if (node.children && Array.isArray(node.children)) {
@@ -108,7 +112,7 @@ export const ValidationChecks = {
   checkForbiddenTagsRegex: (
     html: string,
     forbiddenTags: readonly string[],
-    ruleName: string,
+    _ruleName: string,
     callback: (tagName: string) => void
   ): void => {
     if (!ValidationChecks.isValidHtml(html) || !Array.isArray(forbiddenTags)) return;
@@ -146,57 +150,60 @@ export const AutofixUtils = {
         const styleAttr = Object.entries(styles)
           .map(([prop, value]) => {
             switch (prop) {
-              case 'fontSize':
+              case "fontSize":
                 return `font-size: ${value}px`;
-              case 'fontWeight':
+              case "fontWeight":
                 return `font-weight: ${value}`;
-              case 'display':
+              case "display":
                 return `display: ${value}`;
               default:
                 return `${prop}: ${value}`;
             }
           })
-          .join('; ');
+          .join("; ");
 
         // Properly handle attributes and style merging
-        fixedHtml = fixedHtml.replace(RegexCache.get(openingPattern, 'gi'), (match, attributes) => {
-          // Check if there are existing styles in attributes
-          const existingStyleMatch = attributes.match(/style\s*=\s*["']([^"']*)["']/i);
-          let finalStyle = styleAttr;
+        fixedHtml = fixedHtml.replace(
+          RegexCache.get(openingPattern, "gi"),
+          (_match, attributes) => {
+            // Check if there are existing styles in attributes
+            const existingStyleMatch = attributes.match(/style\s*=\s*["']([^"']*)["']/i);
+            let finalStyle = styleAttr;
 
-          if (existingStyleMatch) {
-            // Parse existing styles into object to avoid duplicates
-            const existingStylesText = existingStyleMatch[1].replace(/;\s*$/, '');
-            const existingStylesObj: Record<string, string> = {};
+            if (existingStyleMatch) {
+              // Parse existing styles into object to avoid duplicates
+              const existingStylesText = existingStyleMatch[1].replace(/;\s*$/, "");
+              const existingStylesObj: Record<string, string> = {};
 
-            // Parse existing styles
-            existingStylesText.split(';').forEach((style) => {
-              const [prop, value] = style.split(':').map((s) => s.trim());
-              if (prop && value) {
-                existingStylesObj[prop] = value;
-              }
-            });
+              // Parse existing styles
+              existingStylesText.split(";").forEach((style: string) => {
+                const [prop, value] = style.split(":").map((s: string) => s.trim());
+                if (prop && value) {
+                  existingStylesObj[prop] = value;
+                }
+              });
 
-            // Parse new styles and override existing ones
-            styleAttr.split(';').forEach((style) => {
-              const [prop, value] = style.split(':').map((s) => s.trim());
-              if (prop && value) {
-                existingStylesObj[prop] = value;
-              }
-            });
+              // Parse new styles and override existing ones
+              styleAttr.split(";").forEach((style: string) => {
+                const [prop, value] = style.split(":").map((s: string) => s.trim());
+                if (prop && value) {
+                  existingStylesObj[prop] = value;
+                }
+              });
 
-            // Rebuild styles without duplicates
-            finalStyle = Object.entries(existingStylesObj)
-              .map(([prop, value]) => `${prop}: ${value}`)
-              .join('; ');
+              // Rebuild styles without duplicates
+              finalStyle = Object.entries(existingStylesObj)
+                .map(([prop, value]) => `${prop}: ${value}`)
+                .join("; ");
 
-            // Remove existing style attribute
-            attributes = attributes.replace(/\s*style\s*=\s*["'][^"']*["']/gi, '');
+              // Remove existing style attribute
+              attributes = attributes.replace(/\s*style\s*=\s*["'][^"']*["']/gi, "");
+            }
+
+            return `<span${attributes} style="${finalStyle};">`;
           }
-
-          return `<span${attributes} style="${finalStyle};">`;
-        });
-        fixedHtml = fixedHtml.replace(RegexCache.get(closingPattern, 'gi'), '</span>');
+        );
+        fixedHtml = fixedHtml.replace(RegexCache.get(closingPattern, "gi"), "</span>");
       });
     } catch (error) {
       // Return original on error
@@ -221,7 +228,7 @@ export const AutofixUtils = {
             RegexCache.get(openingPattern),
             '<table cellpadding="0" cellspacing="0" border="0"$1><tr><td valign="top">'
           );
-          fixedHtml = fixedHtml.replace(RegexCache.get(closingPattern), '</td></tr></table>');
+          fixedHtml = fixedHtml.replace(RegexCache.get(closingPattern), "</td></tr></table>");
         });
       }
     } catch (error) {
@@ -245,9 +252,9 @@ export const AutofixUtils = {
 
           fixedHtml = fixedHtml.replace(
             RegexCache.get(withContentPattern, REGEX_FLAGS.GLOBAL_CASE_INSENSITIVE_DOTALL),
-            ''
+            ""
           );
-          fixedHtml = fixedHtml.replace(RegexCache.get(selfClosingPattern), '');
+          fixedHtml = fixedHtml.replace(RegexCache.get(selfClosingPattern), "");
         });
       }
     } catch (error) {
@@ -269,16 +276,22 @@ export const AutofixUtils = {
 
       do {
         prevHtml = fixedHtml;
-        fixedHtml = fixedHtml.replace(RegexCache.get(REGEX_PATTERNS.TABLE_NESTED_EXCESSIVE), '<table$1><tr><td$2>');
-        fixedHtml = fixedHtml.replace(RegexCache.get(REGEX_PATTERNS.TABLE_NESTED_CLOSING), '</td></tr></table>');
+        fixedHtml = fixedHtml.replace(
+          RegexCache.get(REGEX_PATTERNS.TABLE_NESTED_EXCESSIVE),
+          "<table$1><tr><td$2>"
+        );
+        fixedHtml = fixedHtml.replace(
+          RegexCache.get(REGEX_PATTERNS.TABLE_NESTED_CLOSING),
+          "</td></tr></table>"
+        );
         iterations++;
       } while (prevHtml !== fixedHtml && iterations < maxIterations);
 
       // Remove empty tables
-      fixedHtml = fixedHtml.replace(RegexCache.get(REGEX_PATTERNS.TABLE_EMPTY), '');
+      fixedHtml = fixedHtml.replace(RegexCache.get(REGEX_PATTERNS.TABLE_EMPTY), "");
 
       // Don't wrap single text spans in tables
-      fixedHtml = fixedHtml.replace(RegexCache.get(REGEX_PATTERNS.TABLE_SINGLE_SPAN_WRAPPER), '$1');
+      fixedHtml = fixedHtml.replace(RegexCache.get(REGEX_PATTERNS.TABLE_SINGLE_SPAN_WRAPPER), "$1");
     } catch (error) {
       // Return original on error
     }
@@ -300,10 +313,10 @@ export const AutofixUtils = {
         prevHtml = fixedHtml;
         fixedHtml = fixedHtml.replace(
           RegexCache.get(REGEX_PATTERNS.ATTRIBUTE_STYLE_DUPLICATE),
-          (match, style1, middle, style2) => {
+          (_match, style1, middle, style2) => {
             // Split styles and merge, removing duplicates
-            const styles1 = style1.split(';').filter((s: string) => s.trim());
-            const styles2 = style2.split(';').filter((s: string) => s.trim());
+            const styles1 = style1.split(";").filter((s: string) => s.trim());
+            const styles2 = style2.split(";").filter((s: string) => s.trim());
             const allStyles = [...styles1, ...styles2];
 
             // Remove duplicates by property name (keep last)
@@ -311,14 +324,14 @@ export const AutofixUtils = {
             const seenProps = new Set();
 
             for (const style of allStyles.reverse()) {
-              const prop = style.split(':')[0]?.trim();
+              const prop = style.split(":")[0]?.trim();
               if (prop && !seenProps.has(prop)) {
                 seenProps.add(prop);
                 uniqueStyles.unshift(style.trim());
               }
             }
 
-            const combinedStyle = uniqueStyles.join('; ');
+            const combinedStyle = uniqueStyles.join("; ");
             return `style="${combinedStyle}"${middle}`;
           }
         );
@@ -338,8 +351,8 @@ export const AutofixUtils = {
 
     let fixedHtml = html;
     try {
-      fixedHtml = fixedHtml.replace(RegexCache.get(REGEX_PATTERNS.EMPTY_SPAN), '');
-      fixedHtml = fixedHtml.replace(RegexCache.get(REGEX_PATTERNS.EMPTY_SPAN_WHITESPACE), '');
+      fixedHtml = fixedHtml.replace(RegexCache.get(REGEX_PATTERNS.EMPTY_SPAN), "");
+      fixedHtml = fixedHtml.replace(RegexCache.get(REGEX_PATTERNS.EMPTY_SPAN_WHITESPACE), "");
     } catch (error) {
       // Return original on error
     }

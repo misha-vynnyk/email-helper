@@ -172,5 +172,5 @@ PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD
 </html>`;
 
 export const wrapInTemplate = (html: string): string => {
-  return EMAIL_TEMPLATE.replace('{{CONTENT}}', html);
+  return EMAIL_TEMPLATE.replace("{{CONTENT}}", html);
 };

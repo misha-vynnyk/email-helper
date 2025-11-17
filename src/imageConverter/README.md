@@ -1,110 +1,210 @@
-# Image Converter & Optimizer
+# Image Converter
 
-Convert and optimize images for web use with support for multiple formats and processing modes.
+Image optimization and CDN upload tool for email templates.
 
 ## Features
 
-### Output Formats
-
-- **JPG** - Best for photos, no transparency
-- **WebP** - Modern format with good compression
-- **AVIF** - Next-gen format with excellent compression
-- **PNG** - Lossless format with transparency support
-
-### Processing Modes
-
-#### Client Mode (Browser)
-
-- Processes images directly in the browser using Canvas API
-- No upload required - faster for small files
-- Maximum file size: 10MB per image
-- Works offline
-
-#### Server Mode
-
-- Processes images on the server using Sharp library
-- Better quality and compression
-- Maximum file size: 50MB per image
-- Supports all features including AVIF
-
-### Image Optimization Options
-
-1. **Quality Control** (1-100%)
-   - Adjust compression level
-   - Default: 85%
-   - Higher = better quality, larger file size
-
-2. **Background Color** (JPG only)
-   - Choose background color for transparent areas
-   - Default: white (#FFFFFF)
-   - Only applies to JPG since it doesn't support transparency
-
-3. **Resize Options**
-   - **Original**: Keep original dimensions
-   - **Preset**: Quick resize to common widths (1920px, 1200px, 800px)
-   - **Custom**: Specify exact width/height with optional aspect ratio preservation
-
-### Batch Processing
-
-- Upload multiple images at once
-- Process them all with the same settings
-- Track individual file status
-- Download all at once or individually
-- See total size savings
+- **Format Conversion** - Convert images to WebP, JPEG, PNG
+- **Compression** - Reduce file size with quality control
+- **Batch Processing** - Process multiple images at once
+- **CDN Upload** - Direct upload to CDN with automatic URL insertion
+- **Auto-Convert** - Automatically convert images when added
+- **Preview** - Live preview of converted images
+- **Drag & Drop** - Easy file upload interface
 
 ## Usage
 
-1. **Select Processing Mode**
-   - Choose Client or Server mode based on your needs
+```typescript
+import { ImageConverterPanel } from '@/imageConverter';
 
-2. **Upload Images**
-   - Drag & drop files into the upload zone
-   - Or click "Browse Files" to select from file picker
-   - Supports: PNG, JPG, JPEG, WebP
+function MyComponent() {
+  return <ImageConverterPanel />;
+}
+```
 
-3. **Configure Settings**
-   - Select output format
-   - Adjust quality slider
-   - Set background color (for JPG)
-   - Choose resize options
+## Components
 
-4. **Convert**
-   - Click "Convert All" to process all images
-   - Or convert individual files
-   - Monitor progress in the queue
+### ImageConverterPanel
 
-5. **Download**
-   - Download individual files
-   - Or "Download All" to get all converted images
+Main container component for the image converter interface.
 
-## Tips
+### FileUploadZone
 
-- Use **WebP** for best balance of quality and file size
-- Use **JPG** at 80-85% quality for photos
-- Use **PNG** for images that need transparency
-- Use **AVIF** for maximum compression (newer browsers only)
-- Server mode provides better quality for complex images
-- Batch process similar images with the same settings for consistency
+Drag-and-drop file upload area.
 
-## Technical Details
+**Props:**
 
-### Client-side Processing
+- `onFilesAdded: (files: File[]) => void` - Callback when files are added
+- `accept?: string` - Accepted file types (default: "image/\*")
+- `multiple?: boolean` - Allow multiple files (default: true)
 
-- Uses HTML5 Canvas API
-- `canvas.toBlob()` for format conversion
-- Limited to formats supported by browser
+### ImageGridItem
 
-### Server-side Processing
+Individual image item in the grid.
 
-- Uses Sharp library (libvips)
-- High-performance image processing
-- Full format support including AVIF
-- Better compression algorithms
+**Props:**
 
-## Browser Compatibility
+- `image: ProcessedImage` - Image data
+- `onRemove: () => void` - Remove callback
+- `onUpdate: (data: Partial<ProcessedImage>) => void` - Update callback
 
-- Client mode: Works in all modern browsers
-- WebP: Chrome, Firefox, Safari 14+, Edge
-- AVIF: Chrome 85+, Firefox 93+, Safari 16+
+### CompressionModeSelector
 
-For maximum compatibility, use JPG or PNG.
+Choose compression level (Lossless, Balanced, High).
+
+**Props:**
+
+- `value: CompressionMode`
+- `onChange: (mode: CompressionMode) => void`
+
+### ConversionSettings
+
+Global conversion settings panel.
+
+### BatchProcessor
+
+Batch operations (convert all, upload all, clear all).
+
+### AutoConvertToggle
+
+Toggle automatic conversion on file add.
+
+### ProcessingModeToggle
+
+Toggle between Manual and Auto-CDN modes.
+
+## Types
+
+```typescript
+interface ProcessedImage {
+  id: string;
+  file: File;
+  preview: string;
+  convertedFile?: File;
+  convertedPreview?: string;
+  cdnUrl?: string;
+  format: "webp" | "jpeg" | "png";
+  quality: number;
+  status: "pending" | "converting" | "converted" | "uploading" | "uploaded" | "error";
+  error?: string;
+}
+
+type CompressionMode = "lossless" | "balanced" | "high";
+type ProcessingMode = "manual" | "auto-cdn";
+```
+
+## Compression Modes
+
+**Lossless** (Quality: 100)
+
+- Best quality, larger file size
+- Suitable for graphics with text
+
+**Balanced** (Quality: 85)
+
+- Good balance between quality and size
+- Recommended for most email images
+
+**High Compression** (Quality: 60)
+
+- Smaller file size, lower quality
+- Suitable for backgrounds and decorative elements
+
+## Processing Modes
+
+**Manual**
+
+- Convert images locally
+- Review before uploading
+- Full control over each image
+
+**Auto-CDN**
+
+- Automatically upload to CDN after conversion
+- Faster workflow
+- Suitable for batch operations
+
+## API
+
+### Image Conversion
+
+```typescript
+POST /api/image-converter/convert
+Content-Type: multipart/form-data
+
+Body:
+- file: File
+- format: 'webp' | 'jpeg' | 'png'
+- quality: number (0-100)
+
+Response:
+{
+  convertedFile: Blob,
+  stats: {
+    originalSize: number,
+    convertedSize: number,
+    compressionRatio: number
+  }
+}
+```
+
+### CDN Upload
+
+```typescript
+POST /api/image-converter/upload-cdn
+Content-Type: multipart/form-data
+
+Body:
+- file: File
+- filename: string
+
+Response:
+{
+  url: string,
+  filename: string,
+  size: number
+}
+```
+
+## State Management
+
+The module uses local React state with hooks. Consider migrating to Zustand for better state management if the module grows.
+
+## Configuration
+
+### Supported Formats
+
+- Input: JPEG, PNG, GIF, WebP, SVG
+- Output: WebP, JPEG, PNG
+
+### File Size Limits
+
+- Maximum file size: 10 MB (configurable on backend)
+- Recommended size: < 500 KB for email images
+
+### Quality Settings
+
+- Default quality: 85
+- Lossless: 100
+- Balanced: 85
+- High compression: 60
+
+## Best Practices
+
+1. **Use WebP** for modern email clients
+2. **Provide fallbacks** (JPEG/PNG) for older clients
+3. **Compress images** before uploading to email service
+4. **Use CDN** for faster email loading
+5. **Test images** in multiple email clients
+6. **Optimize dimensions** (max 600px width for email)
+
+## Future Improvements
+
+- [ ] Bulk resize to specific dimensions
+- [ ] Image cropping/editing
+- [ ] Advanced compression options
+- [ ] Image format recommendations
+- [ ] Auto-detect optimal quality
+- [ ] Local storage caching
+- [ ] Undo/redo support
+- [ ] Export settings profiles

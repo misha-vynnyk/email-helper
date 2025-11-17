@@ -4,6 +4,7 @@
  */
 
 import API_URL from "../config/api";
+import { logger } from "../utils/logger";
 
 const API_BASE_URL = `${API_URL}/api/blocks`;
 
@@ -50,7 +51,7 @@ export class BlockFileApiClient {
 
       return data;
     } catch (error) {
-      console.error("API request failed:", error);
+      logger.error("blockFileApi", "API request failed", error);
       throw error;
     }
   }

@@ -2,10 +2,19 @@
  * Block Library Public API
  */
 
+// Main component
 export { default as BlockLibrary } from "./BlockLibrary";
-export { default as BlockItem } from "./BlockItem";
-export { default as AddBlockModal } from "./AddBlockModal";
 
+// Hooks
+export { useBlocks } from "./hooks/useBlocks";
+
+// Services
+export { blockService, BlockService } from "./services/blockService";
+
+// Types
+export type { EmailBlock, BlockCategory } from "./types";
+
+// Utils (for backward compatibility)
 export {
   loadPredefinedBlocks,
   loadCustomBlocks,
@@ -16,3 +25,11 @@ export {
   searchBlocks,
   getCategories,
 } from "./blockLoader";
+
+export {
+  getStorageLocations,
+  addStorageLocation,
+  removeStorageLocation,
+  setDefaultLocation,
+  getDefaultLocation,
+} from "./blockStorageConfig";

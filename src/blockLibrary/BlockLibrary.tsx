@@ -3,7 +3,7 @@
  * Main component for browsing and managing email blocks
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   Add as AddIcon,
@@ -46,7 +46,8 @@ import BlockStorageModal from "./BlockStorageModal";
 import { getStorageLocations } from "./blockStorageConfig";
 import { GRID, TIMEOUTS } from "./constants";
 import { formatErrorMessage } from "./errorHandling";
-import { useDebounce } from "./useDebounce";
+import { useDebounce } from "../hooks/useDebounce";
+import { logger } from "../utils/logger";
 
 export default function BlockLibrary() {
   const [predefinedBlocks, setPredefinedBlocks] = useState<EmailBlock[]>([]);
@@ -76,20 +77,22 @@ export default function BlockLibrary() {
   const loadFileBlocks = useCallback(async (): Promise<EmailBlock[]> => {
     try {
       const fileBlockData = await blockFileApi.listBlocks();
-      return fileBlockData.map((fb) => ({
-        id: fb.id,
-        name: fb.name,
-        category: fb.category as string,
-        keywords: fb.keywords,
-        html: fb.html,
-        preview: fb.preview,
-        createdAt: fb.createdAt || Date.now(),
-        isCustom: true,
-        source: getBlockSource(fb.filePath), // Determine source from file path
-        filePath: fb.filePath, // Store full file path
-      }));
+      return fileBlockData
+        .filter((fb) => fb.filePath) // Filter out blocks without filePath
+        .map((fb) => ({
+          id: fb.id,
+          name: fb.name,
+          category: fb.category as EmailBlock["category"],
+          keywords: fb.keywords,
+          html: fb.html,
+          preview: fb.preview,
+          createdAt: fb.createdAt || Date.now(),
+          isCustom: true,
+          source: getBlockSource(fb.filePath!), // filePath guaranteed by filter
+          filePath: fb.filePath, // Store full file path
+        }));
     } catch (err) {
-      console.warn("File API unavailable:", err);
+      logger.warn("BlockLibrary", "File API unavailable", err);
       return [];
     }
   }, []);
@@ -123,13 +126,13 @@ export default function BlockLibrary() {
           const filteredFiles = files.filter((block) => {
             if (!block.filePath) return false;
             // Check if block's file path matches any visible configured location
-            return Array.from(allowedPaths).some((path) => block.filePath.includes(path));
+            return Array.from(allowedPaths).some((path) => block.filePath!.includes(path));
           });
           setFileBlocks(filteredFiles);
         }
       } catch (err) {
         const error = err instanceof Error ? err.message : "Unknown error";
-        console.error("Failed to load blocks:", error);
+        logger.error("BlockLibrary", "Failed to load blocks", err);
         setError(`Failed to load blocks: ${error}`);
       } finally {
         setLoading(false);
@@ -190,12 +193,12 @@ export default function BlockLibrary() {
               const allowedPaths = new Set(locations.map((loc) => loc.path));
               const filteredFiles = files.filter((block) => {
                 if (!block.filePath) return false;
-                return Array.from(allowedPaths).some((path) => block.filePath.includes(path));
+                return Array.from(allowedPaths).some((path) => block.filePath!.includes(path));
               });
               setFileBlocks(filteredFiles);
             }
           } catch (error) {
-            console.error("Failed to delete file block:", error);
+            logger.error("BlockLibrary", "Failed to delete file block", error);
             setError(formatErrorMessage(error));
           }
           return;
@@ -246,12 +249,12 @@ export default function BlockLibrary() {
               const allowedPaths = new Set(locations.map((loc) => loc.path));
               const filteredFiles = files.filter((block) => {
                 if (!block.filePath) return false;
-                return Array.from(allowedPaths).some((path) => block.filePath.includes(path));
+                return Array.from(allowedPaths).some((path) => block.filePath!.includes(path));
               });
               setFileBlocks(filteredFiles);
             }
           } catch (error) {
-            console.error("Failed to update file block:", error);
+            logger.error("BlockLibrary", "Failed to update file block", error);
             setError(formatErrorMessage(error));
           }
           return;
@@ -260,27 +263,31 @@ export default function BlockLibrary() {
         // Check if it's a custom block
         const customBlock = customBlocks.find((b) => b.id === updatedBlock.id);
         if (customBlock) {
-          const updatedCustomBlocks = customBlocks.map((b) =>
-            b.id === updatedBlock.id ? { ...updatedBlock, source: "localStorage" } : b
+          const updatedCustomBlocks: EmailBlock[] = customBlocks.map((b) =>
+            b.id === updatedBlock.id ? { ...updatedBlock, source: "localStorage" as const } : b
           );
           try {
             saveCustomBlocks(updatedCustomBlocks);
             setCustomBlocks(updatedCustomBlocks);
           } catch (error) {
-            console.error("Failed to save custom block:", error);
+            logger.error("BlockLibrary", "Failed to save custom block", error);
             setError(formatErrorMessage(error));
           }
           return;
         }
 
         // Predefined block - save as new custom block
-        const newCustomBlock = { ...updatedBlock, isCustom: true, source: "localStorage" };
-        const updatedCustomBlocks = [...customBlocks, newCustomBlock];
+        const newCustomBlock: EmailBlock = {
+          ...updatedBlock,
+          isCustom: true,
+          source: "localStorage" as const,
+        };
+        const updatedCustomBlocks: EmailBlock[] = [...customBlocks, newCustomBlock];
         try {
           saveCustomBlocks(updatedCustomBlocks);
           setCustomBlocks(updatedCustomBlocks);
         } catch (error) {
-          console.error("Failed to save custom block:", error);
+          logger.error("BlockLibrary", "Failed to save custom block", error);
           setError(formatErrorMessage(error));
         }
       } finally {
@@ -310,7 +317,7 @@ export default function BlockLibrary() {
       const allowedPaths = new Set(locations.map((loc) => loc.path));
       const filteredFiles = files.filter((block) => {
         if (!block.filePath) return false;
-        return Array.from(allowedPaths).some((path) => block.filePath.includes(path));
+        return Array.from(allowedPaths).some((path) => block.filePath!.includes(path));
       });
       setFileBlocks(filteredFiles);
     }
@@ -402,9 +409,11 @@ export default function BlockLibrary() {
             onClick={async () => {
               setLoading(true);
               try {
-                const predefined = loadPredefinedBlocks();
-                const files = await loadFileBlocks();
-                const custom = loadCustomBlocks();
+                const [predefined, files, custom] = await Promise.all([
+                  Promise.resolve(loadPredefinedBlocks()),
+                  loadFileBlocks(),
+                  Promise.resolve(loadCustomBlocks()),
+                ]);
 
                 setPredefinedBlocks(predefined);
 
@@ -416,7 +425,7 @@ export default function BlockLibrary() {
                   const allowedPaths = new Set(locations.map((loc) => loc.path));
                   const filteredFiles = files.filter((block) => {
                     if (!block.filePath) return false;
-                    return Array.from(allowedPaths).some((path) => block.filePath.includes(path));
+                    return Array.from(allowedPaths).some((path) => block.filePath!.includes(path));
                   });
                   setFileBlocks(filteredFiles);
                 }
@@ -489,7 +498,9 @@ export default function BlockLibrary() {
                 <InputLabel>Source</InputLabel>
                 <Select
                   value={blockSource}
-                  onChange={(e) => setBlockSource(e.target.value as string)}
+                  onChange={(e) =>
+                    setBlockSource(e.target.value as "all" | "src" | "data" | "localStorage")
+                  }
                   label='Source'
                 >
                   <MenuItem value='all'>

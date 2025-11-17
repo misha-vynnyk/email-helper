@@ -77,7 +77,7 @@ export const useRegistrationStatus = (): RegistrationStatus => {
         registeredAt: null,
       });
     } catch (error) {
-      console.warn("Error checking registration status", error);
+      logger.warn('useRegistrationStatus', 'Error checking registration status', error);
       setStatus({
         isRegistered: false,
         registrationData: null,

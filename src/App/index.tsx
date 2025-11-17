@@ -1,6 +1,6 @@
 import "react-toastify/dist/ReactToastify.css";
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { ErrorBoundary } from "react-error-boundary";
 import { ToastContainer } from "react-toastify";
 
@@ -9,7 +9,7 @@ import { Stack, useTheme } from "@mui/material";
 import { EmailSettingsMenu } from "../components/EmailSettingsMenu";
 import { Header, LandingPage } from "../components/LandingPage";
 import { RegistrationForm } from "../components/RegistrationForm";
-import { useSamplesDrawerOpen } from "../documents/editor/EditorContext";
+import { useSamplesDrawerOpen } from "../contexts/AppState";
 import { useRegistrationStatus } from "../hooks/useRegistrationStatus";
 
 import SamplesDrawer, { SAMPLES_DRAWER_WIDTH } from "./SamplesDrawer";
