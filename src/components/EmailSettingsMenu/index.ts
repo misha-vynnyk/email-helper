@@ -1,2 +1,2 @@
-export { default as EmailSettingsMenu } from './EmailSettingsMenu';
-export { EmailSettingsMenu as EmailSettings } from './EmailSettingsMenu';
+export { default as EmailSettingsMenu } from "./EmailSettingsMenu";
+export { EmailSettingsMenu as EmailSettings } from "./EmailSettingsMenu";

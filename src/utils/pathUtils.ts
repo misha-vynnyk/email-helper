@@ -9,37 +9,37 @@
  * Also handles file:// URLs
  */
 export function normalizePath(inputPath: string): string {
-  if (!inputPath || typeof inputPath !== 'string') {
-    return '';
+  if (!inputPath || typeof inputPath !== "string") {
+    return "";
   }
 
   let normalized = inputPath.trim();
 
   // Handle file:// URLs
-  if (normalized.startsWith('file://')) {
+  if (normalized.startsWith("file://")) {
     try {
       const url = new URL(normalized);
       normalized = decodeURIComponent(url.pathname);
     } catch (e) {
-      console.warn('Failed to parse file:// URL:', normalized);
+      console.warn("Failed to parse file:// URL:", normalized);
       // Fall through to regular processing
     }
   }
 
   // Expand tilde (~) to home directory
-  if (normalized.startsWith('~/') || normalized === '~') {
+  if (normalized.startsWith("~/") || normalized === "~") {
     // In browser, we can't access os.homedir(), so we'll let the backend handle it
     // Just ensure it starts with ~/
-    if (normalized === '~') {
-      normalized = '~/';
+    if (normalized === "~") {
+      normalized = "~/";
     }
   }
 
   // Normalize path separators (convert backslashes to forward slashes)
-  normalized = normalized.replace(/\\/g, '/');
+  normalized = normalized.replace(/\\/g, "/");
 
   // Remove duplicate slashes
-  normalized = normalized.replace(/\/+/g, '/');
+  normalized = normalized.replace(/\/+/g, "/");
 
   return normalized;
 }
@@ -48,29 +48,29 @@ export function normalizePath(inputPath: string): string {
  * Validate path format (basic validation)
  */
 export function validatePathFormat(path: string): { valid: boolean; error?: string } {
-  if (!path || typeof path !== 'string') {
-    return { valid: false, error: 'Path is required' };
+  if (!path || typeof path !== "string") {
+    return { valid: false, error: "Path is required" };
   }
 
   const trimmed = path.trim();
   if (trimmed.length === 0) {
-    return { valid: false, error: 'Path cannot be empty' };
+    return { valid: false, error: "Path cannot be empty" };
   }
 
   // Normalize the path first to handle file:// URLs
   const normalized = normalizePath(trimmed);
 
   // Check for invalid characters (basic check) - but allow file:// URLs
-  if (!trimmed.startsWith('file://')) {
+  if (!trimmed.startsWith("file://")) {
     const invalidChars = /[<>:"|?*]/;
     if (invalidChars.test(normalized)) {
-      return { valid: false, error: 'Path contains invalid characters' };
+      return { valid: false, error: "Path contains invalid characters" };
     }
   }
 
   // Check for reasonable length
   if (trimmed.length > 500) {
-    return { valid: false, error: 'Path is too long' };
+    return { valid: false, error: "Path is too long" };
   }
 
   return { valid: true };
@@ -82,24 +82,28 @@ export function validatePathFormat(path: string): { valid: boolean; error?: stri
 export function getPathExamples(): { platform: string; examples: string[] }[] {
   return [
     {
-      platform: 'macOS',
-      examples: ['~/Documents/EmailTemplates', '/Users/yourname/Templates', '~/Desktop/MyTemplates'],
-    },
-    {
-      platform: 'Windows',
+      platform: "macOS",
       examples: [
-        'C:\\Users\\YourName\\Documents\\EmailTemplates',
-        'C:/Users/YourName/Documents/EmailTemplates',
-        'D:\\Templates',
+        "~/Documents/EmailTemplates",
+        "/Users/yourname/Templates",
+        "~/Desktop/MyTemplates",
       ],
     },
     {
-      platform: 'Linux',
-      examples: ['~/Documents/EmailTemplates', '/home/username/templates', '~/Desktop/MyTemplates'],
+      platform: "Windows",
+      examples: [
+        "C:\\Users\\YourName\\Documents\\EmailTemplates",
+        "C:/Users/YourName/Documents/EmailTemplates",
+        "D:\\Templates",
+      ],
     },
     {
-      platform: 'Universal (Recommended)',
-      examples: ['~/Documents/EmailTemplates', '~/Templates', '~/Desktop/MyTemplates'],
+      platform: "Linux",
+      examples: ["~/Documents/EmailTemplates", "/home/username/templates", "~/Desktop/MyTemplates"],
+    },
+    {
+      platform: "Universal (Recommended)",
+      examples: ["~/Documents/EmailTemplates", "~/Templates", "~/Desktop/MyTemplates"],
     },
   ];
 }
@@ -112,9 +116,9 @@ export function formatPathForDisplay(path: string): string {
 
   // Truncate very long paths for display
   if (normalized.length > 60) {
-    const parts = normalized.split('/');
+    const parts = normalized.split("/");
     if (parts.length > 3) {
-      return `.../${parts.slice(-2).join('/')}`;
+      return `.../${parts.slice(-2).join("/")}`;
     }
   }
 
@@ -126,7 +130,7 @@ export function formatPathForDisplay(path: string): string {
  */
 export function isFolderPath(path: string): boolean {
   const normalized = normalizePath(path);
-  return normalized.endsWith('/') || !normalized.includes('.');
+  return normalized.endsWith("/") || !normalized.includes(".");
 }
 
 /**
@@ -134,7 +138,7 @@ export function isFolderPath(path: string): boolean {
  */
 export function isFilePath(path: string): boolean {
   const normalized = normalizePath(path);
-  return normalized.includes('.') && !normalized.endsWith('/');
+  return normalized.includes(".") && !normalized.endsWith("/");
 }
 
 /**
@@ -142,8 +146,8 @@ export function isFilePath(path: string): boolean {
  */
 export function getFilename(path: string): string {
   const normalized = normalizePath(path);
-  const parts = normalized.split('/');
-  return parts[parts.length - 1] || '';
+  const parts = normalized.split("/");
+  return parts[parts.length - 1] || "";
 }
 
 /**
@@ -151,7 +155,7 @@ export function getFilename(path: string): string {
  */
 export function getDirectory(path: string): string {
   const normalized = normalizePath(path);
-  const parts = normalized.split('/');
+  const parts = normalized.split("/");
   parts.pop(); // Remove filename
-  return parts.join('/') || '/';
+  return parts.join("/") || "/";
 }

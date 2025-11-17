@@ -1,9 +1,7 @@
-import React from 'react';
+import { AutoMode as AutoIcon, PanTool as ManualIcon } from "@mui/icons-material";
+import { Box, FormControlLabel, Paper, Switch, Typography } from "@mui/material";
 
-import { AutoMode as AutoIcon, PanTool as ManualIcon } from '@mui/icons-material';
-import { Box, FormControlLabel, Paper, Switch, Typography } from '@mui/material';
-
-import { useImageConverter } from '../context/ImageConverterContext';
+import { useImageConverter } from "../context/ImageConverterContext";
 
 export default function AutoConvertToggle() {
   const { settings, updateSettings } = useImageConverter();
@@ -22,15 +20,22 @@ export default function AutoConvertToggle() {
           <Switch
             checked={settings.autoConvert}
             onChange={(e) => updateSettings({ autoConvert: e.target.checked })}
-            color="primary"
+            color='primary'
           />
         }
         label={
-          <Box display="flex" alignItems="center" gap={1}>
-            {settings.autoConvert ? <AutoIcon color="primary" /> : <ManualIcon />}
+          <Box
+            display='flex'
+            alignItems='center'
+            gap={1}
+          >
+            {settings.autoConvert ? <AutoIcon color='primary' /> : <ManualIcon />}
             <Box>
-              <Typography variant="body2" fontWeight={500}>
-                {settings.autoConvert ? 'Auto-Convert Mode' : 'Manual Mode'}
+              <Typography
+                variant='body2'
+                fontWeight={500}
+              >
+                {settings.autoConvert ? "Auto-Convert Mode" : "Manual Mode"}
               </Typography>
             </Box>
           </Box>

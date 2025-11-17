@@ -1,9 +1,12 @@
-import { ConversionResult, ConversionSettings } from '../types';
+import { ConversionResult, ConversionSettings } from "../types";
 
 /**
  * Convert image using Canvas API (client-side)
  */
-export async function convertImageClient(file: File, settings: ConversionSettings): Promise<ConversionResult> {
+export async function convertImageClient(
+  file: File,
+  settings: ConversionSettings
+): Promise<ConversionResult> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const reader = new FileReader();
@@ -13,16 +16,16 @@ export async function convertImageClient(file: File, settings: ConversionSetting
     };
 
     reader.onerror = () => {
-      reject(new Error('Failed to read file'));
+      reject(new Error("Failed to read file"));
     };
 
     img.onload = () => {
       try {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
 
         if (!ctx) {
-          reject(new Error('Failed to get canvas context'));
+          reject(new Error("Failed to get canvas context"));
           return;
         }
 
@@ -30,7 +33,7 @@ export async function convertImageClient(file: File, settings: ConversionSetting
         let width = img.width;
         let height = img.height;
 
-        if (settings.resize.mode === 'preset' && settings.resize.preset) {
+        if (settings.resize.mode === "preset" && settings.resize.preset) {
           const maxDimension = settings.resize.preset;
           if (width > height) {
             if (width > maxDimension) {
@@ -43,10 +46,13 @@ export async function convertImageClient(file: File, settings: ConversionSetting
               height = maxDimension;
             }
           }
-        } else if (settings.resize.mode === 'custom') {
+        } else if (settings.resize.mode === "custom") {
           if (settings.resize.width && settings.resize.height) {
             if (settings.resize.preserveAspectRatio) {
-              const ratio = Math.min(settings.resize.width / width, settings.resize.height / height);
+              const ratio = Math.min(
+                settings.resize.width / width,
+                settings.resize.height / height
+              );
               width = width * ratio;
               height = height * ratio;
             } else {
@@ -66,7 +72,7 @@ export async function convertImageClient(file: File, settings: ConversionSetting
         canvas.height = height;
 
         // Fill background for formats that don't support transparency
-        if (settings.format === 'jpeg') {
+        if (settings.format === "jpeg") {
           ctx.fillStyle = settings.backgroundColor;
           ctx.fillRect(0, 0, width, height);
         }
@@ -83,7 +89,7 @@ export async function convertImageClient(file: File, settings: ConversionSetting
                 size: blob.size,
               });
             } else {
-              reject(new Error('Failed to create blob'));
+              reject(new Error("Failed to create blob"));
             }
           },
           `image/${settings.format}`,
@@ -95,7 +101,7 @@ export async function convertImageClient(file: File, settings: ConversionSetting
     };
 
     img.onerror = () => {
-      reject(new Error('Failed to load image'));
+      reject(new Error("Failed to load image"));
     };
 
     reader.readAsDataURL(file);
@@ -106,7 +112,7 @@ export async function convertImageClient(file: File, settings: ConversionSetting
  * Check if format is supported by browser
  */
 export function isFormatSupported(format: string): boolean {
-  const canvas = document.createElement('canvas');
+  const canvas = document.createElement("canvas");
   const mimeType = `image/${format}`;
   return canvas.toDataURL(mimeType).startsWith(`data:${mimeType}`);
 }
@@ -115,11 +121,11 @@ export function isFormatSupported(format: string): boolean {
  * Format file size for display
  */
 export function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '0 Bytes';
+  if (bytes === 0) return "0 Bytes";
   const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const sizes = ["Bytes", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
 }
 
 /**

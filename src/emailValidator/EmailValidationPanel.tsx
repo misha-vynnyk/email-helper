@@ -457,30 +457,17 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
 
     setIsFixing(true);
     try {
-      console.log("Starting auto-fix for all issues", {}, "EmailValidationPanel");
-
       const { html: fixedHtml, fixed } = validator.autoFix(html);
 
       if (fixed.length > 0) {
         onHtmlChange(fixedHtml);
-        console.log(
-          `Auto-fixed ${fixed.length} issues: ${fixed.join(", ")}`,
-          fixed,
-          "EmailValidationPanel"
-        );
-
-        // Show success message
-        alert(`✅ Successfully fixed ${fixed.length} issues:\n${fixed.join("\n")}`);
+        alert(`Successfully fixed ${fixed.length} issues:\n${fixed.join("\n")}`);
       } else {
-        console.log("No issues were auto-fixed", {}, "EmailValidationPanel");
-        alert(
-          "ℹ️ No issues were auto-fixed. All issues may already be resolved or not auto-fixable."
-        );
+        alert("No issues were auto-fixed. All issues may already be resolved or not auto-fixable.");
       }
     } catch (error: unknown) {
-      console.error("Auto-fix error", error, "EmailValidationPanel");
       alert(
-        `❌ Error during auto-fix: ${error && typeof error === "object" && "message" in error ? (error as Error).message : "Unknown error"}`
+        `Error during auto-fix: ${error && typeof error === "object" && "message" in error ? (error as Error).message : "Unknown error"}`
       );
     } finally {
       setIsFixing(false);
@@ -489,32 +476,22 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
 
   const handleSingleIssueFix = async (ruleName: string) => {
     if (!onHtmlChange) {
-      console.warn("No onHtmlChange callback for single issue fix", {}, "EmailValidationPanel");
       return;
     }
 
     setIsFixing(true);
     try {
-      console.log(`Starting single issue fix for rule: ${ruleName}`, {}, "EmailValidationPanel");
-
       const { html: fixedHtml, fixed } = validator.autoFixSpecificIssue(html, ruleName);
 
       if (fixed) {
         onHtmlChange(fixedHtml);
-        console.log(`Fixed single issue with rule ${ruleName}`, {}, "EmailValidationPanel");
-        alert(`✅ Successfully fixed issue with rule: ${ruleName}`);
+        alert(`Successfully fixed issue with rule: ${ruleName}`);
       } else {
-        console.warn(`No changes made for rule ${ruleName}`, {}, "EmailValidationPanel");
-        alert(`ℹ️ No changes made for rule: ${ruleName}. Issue may already be resolved.`);
+        alert(`No changes made for rule: ${ruleName}. Issue may already be resolved.`);
       }
     } catch (error: unknown) {
-      console.error(
-        `Error fixing single issue with rule ${ruleName}`,
-        error,
-        "EmailValidationPanel"
-      );
       alert(
-        `❌ Error fixing issue: ${error && typeof error === "object" && "message" in error ? (error as Error).message : "Unknown error"}`
+        `Error fixing issue: ${error && typeof error === "object" && "message" in error ? (error as Error).message : "Unknown error"}`
       );
     } finally {
       setIsFixing(false);
@@ -523,34 +500,24 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
 
   const handleFixAllIssues = async (severity: ValidationSeverity) => {
     if (!onHtmlChange) {
-      console.warn("No onHtmlChange callback for fix all issues", {}, "EmailValidationPanel");
       return;
     }
 
     setIsFixing(true);
     try {
-      console.log(`Starting fix all issues for severity: ${severity}`, {}, "EmailValidationPanel");
-
       const { html: fixedHtml, fixed } = validator.autoFixAllIssues(html, severity);
 
       if (fixed.length > 0) {
         onHtmlChange(fixedHtml);
-        console.log(
-          `Fixed ${fixed.length} issues of severity ${severity}`,
-          fixed,
-          "EmailValidationPanel"
-        );
-        alert(`✅ Successfully fixed ${fixed.length} ${severity} issues:\n${fixed.join("\n")}`);
+        alert(`Successfully fixed ${fixed.length} ${severity} issues:\n${fixed.join("\n")}`);
       } else {
-        console.log(`No ${severity} issues were fixed`, {}, "EmailValidationPanel");
         alert(
-          `ℹ️ No ${severity} issues were fixed. All issues may already be resolved or not auto-fixable.`
+          `No ${severity} issues were fixed. All issues may already be resolved or not auto-fixable.`
         );
       }
     } catch (error: unknown) {
-      console.error(`Error fixing all ${severity} issues`, error, "EmailValidationPanel");
       alert(
-        `❌ Error fixing ${severity} issues: ${error && typeof error === "object" && "message" in error ? (error as Error).message : "Unknown error"}`
+        `Error fixing ${severity} issues: ${error && typeof error === "object" && "message" in error ? (error as Error).message : "Unknown error"}`
       );
     } finally {
       setIsFixing(false);
@@ -559,36 +526,26 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
 
   const handleFixCategory = async (category: string) => {
     if (!onHtmlChange) {
-      console.warn("No onHtmlChange callback for fix category", {}, "EmailValidationPanel");
       return;
     }
 
     setIsFixing(true);
     try {
-      console.log(`Starting fix all issues for category: ${category}`, {}, "EmailValidationPanel");
-
       const { html: fixedHtml, fixed } = validator.autoFixCategory(html, category);
 
       if (fixed.length > 0) {
         onHtmlChange(fixedHtml);
-        console.log(
-          `Fixed ${fixed.length} issues in category ${category}`,
-          fixed,
-          "EmailValidationPanel"
-        );
         alert(
-          `✅ Successfully fixed ${fixed.length} issues in category ${category}:\n${fixed.join("\n")}`
+          `Successfully fixed ${fixed.length} issues in category ${category}:\n${fixed.join("\n")}`
         );
       } else {
-        console.log(`No issues in category ${category} were fixed`, {}, "EmailValidationPanel");
         alert(
-          `ℹ️ No issues in category ${category} were fixed. All issues may already be resolved or not auto-fixable.`
+          `No issues in category ${category} were fixed. All issues may already be resolved or not auto-fixable.`
         );
       }
     } catch (error: unknown) {
-      console.error(`Error fixing category ${category} issues`, error, "EmailValidationPanel");
       alert(
-        `❌ Error fixing category ${category} issues: ${error && typeof error === "object" && "message" in error ? (error as Error).message : "Unknown error"}`
+        `Error fixing category ${category} issues: ${error && typeof error === "object" && "message" in error ? (error as Error).message : "Unknown error"}`
       );
     } finally {
       setIsFixing(false);

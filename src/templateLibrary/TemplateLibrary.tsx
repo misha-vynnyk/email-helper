@@ -31,11 +31,13 @@ import {
 import { EmailTemplate, TemplateCategory } from "../types/template";
 
 import PreviewSettings, { loadPreviewConfig, PreviewConfig } from "./PreviewSettings";
-import { listTemplates, syncAllTemplates } from "./templateApi";
+import { listTemplates, syncAllTemplates, getTemplateContent } from "./templateApi";
 import { getCategoryIcon } from "./templateCategoryIcons";
 import TemplateItem from "./TemplateItem";
 import TemplateStorageModal from "./TemplateStorageModal";
 import { getTemplateStorageLocations } from "./templateStorageConfig";
+import { templateContentCache } from "./templateContentCache";
+import { logger } from "../utils/logger";
 
 const CATEGORY_OPTIONS: Array<TemplateCategory | "All"> = [
   "All",
@@ -60,6 +62,8 @@ export default function TemplateLibrary() {
   const [sortBy, setSortBy] = useState<SortOption>("date-newest");
   const [storageModalOpen, setStorageModalOpen] = useState(false);
   const [previewConfig, setPreviewConfig] = useState<PreviewConfig>(loadPreviewConfig());
+  const [openTemplateId, setOpenTemplateId] = useState<string | null>(null);
+  const savedScrollPositionRef = React.useRef<number>(0);
   const loadingRef = React.useRef(false);
 
   useEffect(() => {
@@ -113,12 +117,12 @@ export default function TemplateLibrary() {
           setTemplates(filteredTemplates);
         }
       } else {
-        console.error("API returned non-array data:", data);
+        logger.error("TemplateLibrary", "API returned non-array data", data);
         setTemplates([]);
         setError("Invalid data format from server");
       }
     } catch (err) {
-      console.error("Failed to load templates:", err);
+      logger.error("TemplateLibrary", "Failed to load templates", err);
       setTemplates([]); // Ensure templates is always an array
       setError(err instanceof Error ? err.message : "Failed to load templates");
     } finally {
@@ -156,7 +160,7 @@ export default function TemplateLibrary() {
           totalFound += result.templatesFound;
         } catch (err) {
           const errorMsg = `Failed to sync ${location.name}: ${err instanceof Error ? err.message : "Unknown error"}`;
-          console.error(errorMsg);
+          logger.error("TemplateLibrary", errorMsg, err);
           errors.push(errorMsg);
         }
       }
@@ -170,7 +174,6 @@ export default function TemplateLibrary() {
       // Reload templates after sync
       await loadTemplates();
     } catch (err) {
-      console.error("❌ Sync failed:", err);
       setError(err instanceof Error ? err.message : "Failed to sync templates");
     } finally {
       setSyncing(false);
@@ -193,6 +196,53 @@ export default function TemplateLibrary() {
 
   const handleTemplateUpdated = (updated: EmailTemplate) => {
     setTemplates((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+  };
+
+  const handleOpenTemplate = (templateId: string) => {
+    setOpenTemplateId(templateId);
+  };
+
+  const handleCloseTemplate = () => {
+    setOpenTemplateId(null);
+  };
+
+  const handleNavigateTemplate = (direction: "prev" | "next", savedScrollPos?: number) => {
+    if (!openTemplateId || filteredTemplates.length === 0) return;
+
+    // Save scroll position if provided and enabled
+    if (previewConfig.saveScrollPosition && savedScrollPos !== undefined) {
+      savedScrollPositionRef.current = savedScrollPos;
+    } else {
+      // Reset scroll position if disabled
+      savedScrollPositionRef.current = 0;
+    }
+
+    const currentIndex = filteredTemplates.findIndex((t) => t.id === openTemplateId);
+    if (currentIndex === -1) return;
+
+    let newIndex: number;
+    if (direction === "prev") {
+      newIndex = currentIndex > 0 ? currentIndex - 1 : filteredTemplates.length - 1;
+    } else {
+      newIndex = currentIndex < filteredTemplates.length - 1 ? currentIndex + 1 : 0;
+    }
+
+    const newTemplate = filteredTemplates[newIndex];
+
+    // Preload next templates in background for faster navigation
+    const preloadIds = [
+      filteredTemplates[newIndex - 1]?.id,
+      filteredTemplates[newIndex + 1]?.id,
+      filteredTemplates[newIndex - 2]?.id,
+      filteredTemplates[newIndex + 2]?.id,
+    ].filter(Boolean) as string[];
+
+    if (preloadIds.length > 0) {
+      // Preload in background - don't wait
+      templateContentCache.preload(preloadIds, getTemplateContent);
+    }
+
+    setOpenTemplateId(newTemplate.id);
   };
 
   // Extract unique root folders from templates (memoized)
@@ -393,6 +443,10 @@ export default function TemplateLibrary() {
         </Box>
       </Box>
     );
+  }
+
+  function setAddModalOpen(arg0: boolean): void {
+    throw new Error("Function not implemented.");
   }
 
   return (
@@ -777,7 +831,7 @@ export default function TemplateLibrary() {
             container
             spacing={2}
           >
-            {filteredTemplates.map((template) => (
+            {filteredTemplates.map((template, index) => (
               <Grid
                 item
                 xs={12}
@@ -793,6 +847,13 @@ export default function TemplateLibrary() {
                   onLoadTemplate={(html, tmpl) => {
                     // TODO: Integrate with editor
                   }}
+                  isOpen={openTemplateId === template.id}
+                  onOpen={() => handleOpenTemplate(template.id)}
+                  onClose={handleCloseTemplate}
+                  allTemplates={filteredTemplates}
+                  currentIndex={index}
+                  onNavigate={handleNavigateTemplate}
+                  savedScrollPosition={savedScrollPositionRef.current}
                 />
               </Grid>
             ))}

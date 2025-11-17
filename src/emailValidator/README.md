@@ -1,481 +1,216 @@
-# 📧 Email HTML Validator v3.1
+# Email Validator
 
-Потужна система валідації HTML для email-сумісності з підтримкою автоматичних виправлень, категорій та красивим дизайном.
+HTML email validation and auto-fix tool with comprehensive rule checking.
 
-## 🚀 Особливості
+## Features
 
-- ✅ **Email-safe HTML валідація** - перевірка сумісності з email-клієнтами
-- 🔧 **Автоматичні виправлення** - auto-fix для поширених помилок
-- ⚙️ **Гнучкі налаштування** - конфігурація правил та severity
-- 🎯 **Сумісність з клієнтами** - Outlook, Gmail, Apple Mail, Mobile
-- 📱 **Responsive UI** - зручний інтерфейс з детальними звітами
-- 🔌 **Розширюваність** - можливість додавання кастомних правил
-- 🎯 **Гнучкість виправлення** - поодиноке або групове виправлення помилок
-- 📊 **Категорії валідації** - структура, доступність, сумісність, продуктивність
-- 🎨 **Красивий дизайн** - сучасний UI з прогресс-барами та картками
-- 📈 **Система оцінки** - 0-100 балів за якість HTML
-- 🏗️ **Архітектурна розділення** - окремі двигуни для валідації та автоправлення
+- **HTML Validation** - Check email HTML for common issues
+- **Auto-Fix** - Automatically fix many validation issues
+- **Rule Categories** - Grouped by severity and type
+- **Live Preview** - See issues highlighted in real-time
+- **Detailed Reports** - Line numbers and fix suggestions
+- **Batch Fixing** - Fix all issues of a category or severity
 
-## 🏗️ Архітектура
-
-### ValidationEngine
-
-Окремий клас, що відповідає за валідацію HTML:
-
-- Перевірка HTML на відповідність email-правилам
-- Парсинг AST та кешування
-- Запуск валідаційних правил
-- Розрахунок оцінки та категорій
-- Звіти про сумісність з email-клієнтами
-
-### AutofixEngine
-
-Окремий клас, що відповідає за автоматичні виправлення:
-
-- Застосування правил автоправлення в правильному порядку
-- Обробка конкретних помилок
-- Групове виправлення за типом або категорією
-- Управління кастомними правилами автоправлення
-
-### EmailHTMLValidator
-
-Головний клас, що координує роботу двигунів:
-
-- Ініціалізація та конфігурація двигунів
-- Публічний API для валідації та автоправлення
-- Управління життєвим циклом
-
-## 🛠️ Використання
-
-### Базове використання
+## Usage
 
 ```typescript
-import { EmailHTMLValidator, ValidationEngine, AutofixEngine } from '../emailValidator';
+import { EmailValidationPanel } from '@/emailValidator';
 
-// Створення валідатора
-const validator = new EmailHTMLValidator({
-  strictMode: false,
-  targetClients: {
-    outlook: true,
-    gmail: true,
-    mobile: true,
-  },
-  checkAccessibility: true,
-  checkPerformance: true,
-  checkBestPractices: true,
-  maxFileSize: 102,
-  requireAltText: true,
-  requireFallbacks: true,
-});
+function MyEditor() {
+  const [html, setHtml] = useState('<html>...</html>');
 
-// Валідація HTML
-const report = validator.validate(htmlString);
-console.log('Is valid:', report.isValid);
-console.log('Score:', report.score);
-console.log('Categories:', report.categories);
-
-// Автоматичне виправлення всіх помилок
-const { html: fixedHtml, fixed } = validator.autoFix(htmlString);
-
-// Виправлення конкретної помилки
-const { html: singleFixed, fixed } = validator.autoFixSpecificIssue(htmlString, 'forbidden-tags');
-
-// Виправлення всіх помилок конкретного типу
-const { html: severityFixed, fixed } = validator.autoFixAllIssues(htmlString, 'error');
-
-// Виправлення всіх помилок конкретної категорії
-const { html: categoryFixed, fixed } = validator.autoFixCategory(htmlString, 'accessibility');
-
-// Cleanup при завершенні роботи
-validator.dispose();
+  return (
+    <EmailValidationPanel
+      html={html}
+      onHtmlChange={setHtml}
+    />
+  );
+}
 ```
 
-### Пряме використання двигунів
-
-```typescript
-import { ValidationEngine, AutofixEngine } from '../emailValidator';
-
-// Окреме використання ValidationEngine
-const validationEngine = new ValidationEngine(config);
-const report = validationEngine.validate(html);
-
-// Окреме використання AutofixEngine
-const autofixEngine = new AutofixEngine(config);
-const { html: fixedHtml, fixed } = autofixEngine.autoFix(html);
-```
-
-### React компонент
-
-```tsx
-import { EmailValidationPanel } from '../emailValidator';
-
-const MyComponent = () => {
-  const [html, setHtml] = useState('<div>Test</div>');
-
-  return <EmailValidationPanel html={html} onHtmlChange={setHtml} showCompactView={false} />;
-};
-```
-
-## 📋 Правила валідації
-
-### 🏗️ **Structure (Структура)**
-
-- `forbidden-tags` - заміна div/p/h1-h6 на table структуру
-- `email-safe-tags` - виправлення `<br></br>`, `<img></img>`
-- `table-attributes` - додавання cellpadding, cellspacing, border
-
-### ♿ **Accessibility (Доступність)**
-
-- `accessibility` - перевірка alt текстів та fallback'ів
-- Обов'язкові атрибути для зображень та посилань
-- Підтримка темної теми та fallback кольорів
-
-### 🔄 **Compatibility (Сумісність)**
-
-- `outlook-compatibility` - перевірка сумісності з Outlook
-- `font-safety` - безпечні шрифти для email-клієнтів
-- Перевірка CSS властивостей та значень
-
-### ⚡ **Performance (Продуктивність)**
-
-- `performance` - розмір файлу, зовнішні CSS, вкладеність таблиць
-- Рекомендації по оптимізації
-- Ліміти по розміру (102KB)
-
-### 🛡️ **Best Practice (Найкращі практики)**
-
-- Правильне форматування HTML
-- Email-специфічні атрибути
-- Безпечні теги та структура
-
-### 🚫 Заборонені теги
-
-- `div`, `p`, `h1-h6` - замінити на table-структуру
-- `section`, `article`, `nav` - не підтримуються email-клієнтами
-- `script`, `style`, `link` - заборонені з міркувань безпеки
-
-### ✅ Дозволені теги
-
-- `table`, `tr`, `td`, `th` - основа email-верстки
-- `img`, `a`, `span`, `strong`, `b`, `em`, `i`
-- `br`, `hr` - відкриті теги: `<br>`, `<hr>`
-- `img` - self-closing: `<img />`
-
-### 🔧 Обов'язкові атрибути
-
-```html
-<!-- Таблиці -->
-<table cellpadding="0" cellspacing="0" border="0">
-  <tr>
-    <td valign="top">Content</td>
-  </tr>
-</table>
-
-<!-- Зображення -->
-<img src="image.jpg" alt="Description" width="300" height="200" style="display:block;" />
-
-<!-- Посилання -->
-<a href="https://example.com" target="_blank">Link</a>
-```
-
-### ⚠️ Outlook несумісність
-
-- Flexbox, CSS Grid
-- `position: fixed/absolute`
-- `transform`, `animation`
-- `box-shadow`, `border-radius`
-- `opacity`, `rgba()`, `calc()`
-- CSS градієнти
-
-## ⚙️ Конфігурація
-
-```typescript
-const config: EmailValidatorConfig = {
-  rules: {
-    'forbidden-tags': {
-      enabled: true,
-      severity: 'error',
-    },
-    'email-safe-tags': {
-      enabled: true,
-      severity: 'error',
-    },
-    'table-attributes': {
-      enabled: true,
-      severity: 'error',
-    },
-    'outlook-compatibility': {
-      enabled: true,
-      severity: 'warning',
-    },
-    'font-safety': {
-      enabled: true,
-      severity: 'warning',
-    },
-    accessibility: {
-      enabled: true,
-      severity: 'warning',
-    },
-    performance: {
-      enabled: true,
-      severity: 'info',
-    },
-  },
-  targetClients: {
-    outlook: true, // Microsoft Outlook
-    gmail: true, // Gmail web/mobile
-    applemail: true, // Apple Mail
-    thunderbird: false,
-    mobile: true, // Mobile email clients
-  },
-  strictMode: false, // Warnings as errors
-  allowModernCSS: false,
-  maxTableNesting: 5,
-  checkAccessibility: true,
-  checkPerformance: true,
-  checkBestPractices: true,
-  maxFileSize: 102, // KB
-  maxHtmlSize: 133120, // 130KB in bytes - validation/autofix size limit
-  requireAltText: true,
-  requireFallbacks: true,
-};
-```
-
-## 🔧 Автоматичні виправлення
-
-### Заміна тегів
-
-```html
-<!-- Було -->
-<div class="header">
-  <h1>Title</h1>
-  <p>Description</p>
-  <section>Content</section>
-</div>
-
-<!-- Стало -->
-<table cellpadding="0" cellspacing="0" border="0" class="header">
-  <tr>
-    <td>
-      <span style="font-weight:bold; font-size:32px;">Title</span>
-      <table cellpadding="0" cellspacing="0" border="0">
-        <tr>
-          <td>Description</td>
-        </tr>
-      </table>
-      <table cellpadding="0" cellspacing="0" border="0">
-        <tr>
-          <td>Content</td>
-        </tr>
-      </table>
-    </td>
-  </tr>
-</table>
-```
-
-### Виправлення атрибутів
-
-```html
-<!-- Було -->
-<table>
-  <tr>
-    <td>Content</td>
-  </tr>
-</table>
-<img src="image.jpg" />
-<a href="#">Link</a>
-
-<!-- Стало -->
-<table cellpadding="0" cellspacing="0" border="0">
-  <tr>
-    <td valign="top">Content</td>
-  </tr>
-</table>
-<img src="image.jpg" alt="" style="display:block;" />
-<a href="#" target="_blank">Link</a>
-```
-
-### Виправлення шрифтів
-
-```css
-/* Було */
-font-family: Helvetica, sans-serif;
-
-/* Стало */
-font-family: Arial, sans-serif;
-```
-
-## 🎨 UI Компоненти
+## Components
 
 ### EmailValidationPanel
 
-```tsx
-<EmailValidationPanel
-  html={htmlString}
-  onHtmlChange={(html) => setHtmlString(html)}
-  validator={customValidator}
-  showCompactView={false}
-/>
-```
+Main validation UI component.
 
 **Props:**
 
-- `html: string` - HTML для валідації
-- `onHtmlChange?: (html: string) => void` - callback для auto-fix
-- `validator?: EmailHTMLValidator` - кастомний валідатор
-- `showCompactView?: boolean` - компактний вигляд
+- `html: string` - HTML to validate
+- `onHtmlChange?: (html: string) => void` - Callback for HTML changes (required for auto-fix)
+- `autoValidate?: boolean` - Auto-validate on HTML change (default: true)
+- `debounceMs?: number` - Debounce delay for auto-validation (default: 500ms)
 
-### Функціональність UI
+## Validation Rules
 
-- 📊 **Real-time валідація** з debounce
-- 🔧 **Auto-fix кнопки** для швидких виправлень
-- 🎯 **Поодиноке виправлення** - кнопка біля кожної помилки
-- 📋 **Групове виправлення** - виправлення всіх помилок конкретного типу
-- 🏷️ **Категорійне виправлення** - виправлення всіх помилок категорії
-- ⚙️ **Налаштування правил** через діалог
-- 📱 **Звіт сумісності** для різних клієнтів
-- 🎯 **Детальні повідомлення** з suggestions
-- 📈 **Прогрес-бар** з оцінкою 0-100
-- 🎨 **Красиві картки** для кожної категорії
+### Structure Issues (Critical)
 
-## 🔌 Розширення
+- Missing DOCTYPE
+- Missing HTML, HEAD, or BODY tags
+- Missing meta viewport
+- Missing charset declaration
 
-### Кастомні правила
+### Accessibility (High)
+
+- Images without alt text
+- Links without meaningful text
+- Low contrast text
+- Missing ARIA labels
+
+### Email Client Compatibility (High)
+
+- Unsupported CSS properties
+- JavaScript usage (not allowed)
+- External fonts without fallbacks
+- Fixed positioning (unsupported)
+
+### Performance (Medium)
+
+- Large images (> 100 KB)
+- Too many HTTP requests
+- Inline styles too large
+
+### Best Practices (Low)
+
+- Semantic HTML usage
+- Proper heading hierarchy
+- Table layout recommendations
+- Readable text size
+
+## Auto-Fix Capabilities
+
+The validator can automatically fix:
+
+- Add missing DOCTYPE
+- Insert meta viewport tag
+- Add charset declaration
+- Generate alt text for images
+- Convert deprecated tags
+- Fix malformed HTML
+- Add ARIA labels
+
+## API
+
+### Validation
 
 ```typescript
-const customRule: ValidationRule = {
-  name: 'custom-branding',
-  displayName: 'Brand Guidelines',
-  description: 'Checks brand-specific requirements',
-  severity: 'warning',
-  enabled: true,
-  configurable: true,
-  category: 'best-practice',
-  check: (html, config) => {
-    const results: ValidationResult[] = [];
+interface ValidationIssue {
+  rule: string;
+  severity: "error" | "warning" | "info";
+  message: string;
+  line?: number;
+  column?: number;
+  fixable: boolean;
+  category: string;
+}
 
-    if (!html.includes('company-logo')) {
-      results.push({
-        rule: 'custom-branding',
-        severity: 'warning',
-        message: 'Missing company logo',
-        suggestion: 'Add <img class="company-logo"> element',
-        category: 'best-practice',
-      });
-    }
+interface ValidationResult {
+  valid: boolean;
+  issues: ValidationIssue[];
+  summary: {
+    total: number;
+    errors: number;
+    warnings: number;
+    info: number;
+  };
+}
+```
 
-    return results;
-  },
-  autofix: (html, config) => {
-    return html.replace('<table', '<img class="company-logo" src="logo.png" alt="Logo" /><table');
-  },
+### Usage
+
+```typescript
+import { validateEmailHtml } from "@/emailValidator/validator";
+
+const result = validateEmailHtml(html);
+
+if (!result.valid) {
+  console.log(`Found ${result.summary.errors} errors`);
+  result.issues.forEach((issue) => {
+    console.log(`${issue.severity}: ${issue.message}`);
+  });
+}
+```
+
+## Categories
+
+- **Structure** - HTML structure and required tags
+- **Accessibility** - A11y compliance
+- **Compatibility** - Email client support
+- **Performance** - Loading and size optimization
+- **Best Practices** - General HTML best practices
+- **Security** - XSS and injection prevention
+
+## Severity Levels
+
+- **Error** (🔴) - Must fix, will cause rendering issues
+- **Warning** (🟡) - Should fix, may cause problems
+- **Info** (🔵) - Optional improvements
+
+## Integration
+
+### With Email Builder
+
+```typescript
+import { EmailBuilder } from '@/documents';
+import { EmailValidationPanel } from '@/emailValidator';
+
+function EditorWithValidation() {
+  const [html, setHtml] = useState('');
+
+  return (
+    <>
+      <EmailBuilder value={html} onChange={setHtml} />
+      <EmailValidationPanel html={html} onHtmlChange={setHtml} />
+    </>
+  );
+}
+```
+
+### Standalone Validation
+
+```typescript
+import { validateEmailHtml, autoFixIssues } from "@/emailValidator";
+
+async function validateAndFix(html: string) {
+  const result = validateEmailHtml(html);
+
+  if (!result.valid) {
+    const fixed = await autoFixIssues(html, result.issues);
+    return fixed;
+  }
+
+  return html;
+}
+```
+
+## Configuration
+
+```typescript
+const validatorConfig = {
+  maxImageSize: 100 * 1024, // 100 KB
+  maxLineLength: 120,
+  requiredMeta: ['viewport', 'charset'],
+  allowedCssProperties: [...],
+  disallowedTags: ['script', 'iframe'],
 };
-
-validator.addRule(customRule);
 ```
 
-## 📊 Email Client Compatibility
+## Best Practices
 
-| Feature       | Outlook | Gmail | Apple Mail | Mobile |
-| ------------- | ------- | ----- | ---------- | ------ |
-| Table Layout  | ✅      | ✅    | ✅         | ✅     |
-| Inline Styles | ✅      | ✅    | ✅         | ✅     |
-| Flexbox       | ❌      | ⚠️    | ✅         | ⚠️     |
-| CSS Grid      | ❌      | ❌    | ✅         | ❌     |
-| Border Radius | ❌      | ✅    | ✅         | ✅     |
-| Box Shadow    | ❌      | ✅    | ✅         | ✅     |
-| Transforms    | ❌      | ❌    | ✅         | ❌     |
-| CSS Gradients | ❌      | ✅    | ✅         | ✅     |
+1. **Validate early** - Check HTML during editing
+2. **Fix critical issues** - Always fix errors
+3. **Test in clients** - Validation doesn't replace testing
+4. **Use semantic HTML** - Better for accessibility
+5. **Keep styles inline** - Email client compatibility
+6. **Optimize images** - Reduce file size
+7. **Test responsiveness** - Check on mobile devices
 
-## 🎯 Рекомендації
+## Future Improvements
 
-### ✅ Кращі практики
-
-- Використовуйте table-based лейаут
-- Всі стилі inline
-- Додавайте `alt` до зображень
-- Використовуйте `target="_blank"` для посилань
-- Тестуйте в різних клієнтах
-- Додавайте fallback кольори (bgcolor)
-- Використовуйте безпечні шрифти
-- Обмежуйте розмір файлу до 102KB
-
-### ❌ Уникайте
-
-- Modern CSS (flexbox, grid)
-- External stylesheets
-- JavaScript
-- Complex positioning
-- Heavy animations
-- Небезпечні шрифти
-- Відсутність fallback'ів
-
-## 🔍 Приклади помилок
-
-### Типові помилки та виправлення:
-
-```html
-❌ <div style="display: flex;">
-✅ <table cellpadding="0" cellspacing="0" border="0">
-
-❌ <br></br>
-⚠️ <br/> (auto-converted to <br> by formatter)
-✅ <br>
-
-⚠️ <hr/> (auto-converted to <hr> by formatter)
-✅ <hr>
-
-❌ <img src="logo.jpg">
-✅ <img src="logo.jpg" alt="Logo" width="300" height="100" style="display:block;" />
-
-❌ <h1>Title</h1>
-✅ <span style="font-weight:bold; font-size:32px;">Title</span>
-
-❌ font-family: Helvetica, sans-serif;
-✅ font-family: Arial, sans-serif;
-```
-
-## 🚀 Інтеграція
-
-Валідатор автоматично інтегрований в EmailHtmlEditor і відображається під полем subject. Підтримує:
-
-- Real-time валідацію під час набору
-- Автоматичні виправлення одним кліком
-- Поодиноке виправлення конкретних помилок
-- Групове виправлення помилок за типом
-- Категорійне виправлення помилок
-- Збереження налаштувань в localStorage
-- Сумісність з існуючою системою форматування
-- Красивий дизайн з прогресс-барами та картками
-
-## 🏗️ Архітектурні переваги
-
-### Розділення відповідальності
-
-- **ValidationEngine** - тільки валідація
-- **AutofixEngine** - тільки автоправлення
-- **EmailHTMLValidator** - координація та публічний API
-
-### Легкість тестування
-
-- Кожен двигун можна тестувати окремо
-- Можна створювати моки для ізольованого тестування
-- Простіше писати unit тести
-
-### Розширюваність
-
-- Можна додавати нові двигуни без зміни основного класу
-- Легше додавати нові типи валідації або автоправлення
-- Модульна архітектура
-
-### Обслуговування
-
-- Чіткі межі відповідальності
-- Легше знаходити та виправляти помилки
-- Простіше додавати нові функції
-
----
-
-**Email HTML Validator v3.1** - ваш надійний помічник для створення email-сумісного HTML з архітектурою, що розділяє відповідальність! 📧✨
-
-**Останнє оновлення:** Розділено валідацію та автоправлення на окремі двигуни для кращої архітектури та обслуговування.
+- [ ] Custom validation rules
+- [ ] Rule configuration UI
+- [ ] Export validation reports
+- [ ] Integration with testing tools
+- [ ] Accessibility score
+- [ ] Client-specific validation
+- [ ] Historical validation tracking

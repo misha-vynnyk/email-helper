@@ -17,7 +17,23 @@ console.error = (...args) => {
     message.includes("_controlUniqueID") ||
     message.includes("FormMetadata") ||
     message.includes("content_script.js") ||
-    message.includes("extension://")
+    message.includes("extension://") ||
+    message.includes("chrome-extension://") ||
+    message.includes("pejdijmoenmkgeppbflobdenhhabjlaj") ||
+    message.includes("ERR_FILE_NOT_FOUND") ||
+    message.includes("FrameDoesNotExistError") ||
+    message.includes("FrameIsBrowserFrameError") ||
+    message.includes("background.js") ||
+    message.includes("extensionState.js") ||
+    message.includes("heuristicsRedefinitions.js") ||
+    message.includes("utils.js") ||
+    message.includes("Could not establish connection") ||
+    message.includes("The message port closed") ||
+    message.includes("Receiving end does not exist") ||
+    message.includes("about:srcdoc") ||
+    message.includes("sandboxed") ||
+    message.includes("allow-scripts") ||
+    message.includes("Blocked script execution")
   ) {
     return; // Don't log browser extension errors
   }
@@ -31,7 +47,15 @@ console.warn = (...args) => {
     message.includes("_controlUniqueID") ||
     message.includes("FormMetadata") ||
     message.includes("content_script.js") ||
-    message.includes("extension://")
+    message.includes("extension://") ||
+    message.includes("FrameDoesNotExistError") ||
+    message.includes("FrameIsBrowserFrameError") ||
+    message.includes("background.js") ||
+    message.includes("Could not establish connection") ||
+    message.includes("The message port closed") ||
+    message.includes("about:srcdoc") ||
+    message.includes("sandboxed") ||
+    message.includes("Blocked script execution")
   ) {
     return; // Don't log browser extension warnings
   }
@@ -44,8 +68,21 @@ window.addEventListener("error", (event) => {
   if (
     event.filename?.includes("content_script.js") ||
     event.filename?.includes("extension://") ||
+    event.filename?.includes("chrome-extension://") ||
+    event.filename?.includes("pejdijmoenmkgeppbflobdenhhabjlaj") ||
+    event.filename?.includes("background.js") ||
+    event.filename?.includes("extensionState.js") ||
+    event.filename?.includes("heuristicsRedefinitions.js") ||
+    event.filename?.includes("utils.js") ||
     event.message?.includes("_controlUniqueID") ||
-    event.message?.includes("FormMetadata")
+    event.message?.includes("FormMetadata") ||
+    event.message?.includes("ERR_FILE_NOT_FOUND") ||
+    event.message?.includes("FrameDoesNotExistError") ||
+    event.message?.includes("FrameIsBrowserFrameError") ||
+    event.message?.includes("about:srcdoc") ||
+    event.message?.includes("sandboxed") ||
+    event.message?.includes("Blocked script execution") ||
+    event.filename?.includes("about:srcdoc")
   ) {
     event.preventDefault();
     return false;
@@ -55,9 +92,18 @@ window.addEventListener("error", (event) => {
 // Global unhandled promise rejection handler
 window.addEventListener("unhandledrejection", (event) => {
   // Ignore promise rejections from browser extensions
+  const message = event.reason?.message || String(event.reason);
   if (
-    event.reason?.message?.includes("_controlUniqueID") ||
-    event.reason?.message?.includes("FormMetadata")
+    message.includes("_controlUniqueID") ||
+    message.includes("FormMetadata") ||
+    message.includes("FrameDoesNotExistError") ||
+    message.includes("FrameIsBrowserFrameError") ||
+    message.includes("Could not establish connection") ||
+    message.includes("The message port closed") ||
+    message.includes("Receiving end does not exist") ||
+    message.includes("about:srcdoc") ||
+    message.includes("sandboxed") ||
+    message.includes("Blocked script execution")
   ) {
     event.preventDefault();
     return false;

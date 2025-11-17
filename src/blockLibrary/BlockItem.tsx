@@ -3,7 +3,7 @@
  * Displays a single block card with preview and actions
  */
 
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   Add as AddIcon,
@@ -36,6 +36,7 @@ import {
   Typography,
 } from "@mui/material";
 
+import { logger } from "../utils/logger";
 import { EmailBlock } from "../types/block";
 
 import { blockFileApi } from "./blockFileApi";
@@ -200,7 +201,7 @@ export default function BlockItem({
       setCopySuccess(true);
     } catch (err) {
       const error = err instanceof Error ? err.message : "Unknown error";
-      console.error("Failed to copy block HTML:", error);
+      logger.error("BlockItem", "Failed to copy block HTML", err);
       setSnackbar({
         open: true,
         message: `Copy failed: ${error}. Check clipboard permissions.`,
@@ -266,7 +267,7 @@ export default function BlockItem({
       }
     } catch (err) {
       const error = err instanceof Error ? err.message : "Unknown error";
-      console.error("Failed to save block:", error);
+      logger.error("BlockItem", "Failed to save block", err);
 
       if (error.includes("network") || error.includes("fetch")) {
         setSaveError("Network error. Check your connection.");
@@ -300,7 +301,7 @@ export default function BlockItem({
       });
     } catch (err) {
       const error = err instanceof Error ? err.message : "Unknown error";
-      console.error("Failed to delete block:", error);
+      logger.error("BlockItem", "Failed to delete block", err);
 
       setSnackbar({
         open: true,

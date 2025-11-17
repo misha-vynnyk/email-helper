@@ -120,6 +120,7 @@ The app stores blocks and templates in local directories:
 - **Templates:** Configure custom paths via Storage settings
 
 You can add custom storage locations through the UI:
+
 1. Click "Storage" icon in Block/Template Library
 2. Add absolute paths to your local directories
 3. Files are synced automatically
@@ -127,6 +128,7 @@ You can add custom storage locations through the UI:
 ## 🔐 Security
 
 The app includes a **Workspace Manager** that:
+
 - Validates file access permissions
 - Prevents path traversal attacks
 - Sanitizes HTML content (XSS protection)

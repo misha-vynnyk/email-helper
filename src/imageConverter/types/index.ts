@@ -1,8 +1,8 @@
-export type ImageFormat = 'jpeg' | 'webp' | 'avif' | 'png';
+export type ImageFormat = "jpeg" | "webp" | "avif" | "png";
 
-export type ProcessingMode = 'client' | 'server';
+export type ProcessingMode = "client" | "server";
 
-export type ResizeMode = 'original' | 'preset' | 'custom';
+export type ResizeMode = "original" | "preset" | "custom";
 
 export interface ResizeOptions {
   mode: ResizeMode;
@@ -12,7 +12,7 @@ export interface ResizeOptions {
   preserveAspectRatio: boolean;
 }
 
-export type CompressionMode = 'balanced' | 'maximum-quality' | 'maximum-compression' | 'lossless';
+export type CompressionMode = "balanced" | "maximum-quality" | "maximum-compression" | "lossless";
 
 export interface ConversionSettings {
   format: ImageFormat;
@@ -24,7 +24,7 @@ export interface ConversionSettings {
   autoConvert: boolean; // Auto-convert on file upload
 }
 
-export type ConversionStatus = 'pending' | 'processing' | 'done' | 'error';
+export type ConversionStatus = "pending" | "processing" | "done" | "error";
 
 export interface ImageFile {
   id: string;

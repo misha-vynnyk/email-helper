@@ -1,9 +1,9 @@
 export const MAX_FILE_SIZE_CLIENT = 10 * 1024 * 1024; // 10MB
 export const MAX_FILE_SIZE_SERVER = 50 * 1024 * 1024; // 50MB
-export const SUPPORTED_FORMATS = ['jpeg', 'webp', 'avif', 'png'] as const;
+export const SUPPORTED_FORMATS = ["jpeg", "webp", "avif", "png"] as const;
 export const DEFAULT_QUALITY = 90;
-export const DEFAULT_BACKGROUND_COLOR = '#FFFFFF';
-export const DEFAULT_PROCESSING_MODE = 'server';
-export const DEFAULT_COMPRESSION_MODE = 'maximum-compression';
-export const DEFAULT_FORMAT = 'jpeg';
+export const DEFAULT_BACKGROUND_COLOR = "#FFFFFF";
+export const DEFAULT_PROCESSING_MODE = "server";
+export const DEFAULT_COMPRESSION_MODE = "balanced";
+export const DEFAULT_FORMAT = "jpeg";
 export const DEFAULT_AUTO_CONVERT = true;

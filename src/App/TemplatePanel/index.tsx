@@ -8,7 +8,7 @@ import {
   setSelectedScreenSize,
   useSelectedMainTab,
   useSelectedScreenSize,
-} from "../../documents/editor/EditorContext";
+} from "../../contexts/AppState";
 import { EmailSenderProvider } from "../../emailSender/EmailSenderContext";
 import { ImageConverterPanel } from "../../imageConverter";
 import { TemplateLibrary } from "../../templateLibrary";

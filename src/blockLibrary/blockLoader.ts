@@ -5,8 +5,10 @@
 
 import { EmailBlock } from "../types/block";
 import { handleStorageError } from "./errorHandling";
+import { STORAGE_KEYS } from "../utils/storageKeys";
+import { logger } from "../utils/logger";
 
-const CUSTOM_BLOCKS_KEY = "email-builder-custom-blocks";
+const CUSTOM_BLOCKS_KEY = STORAGE_KEYS.CUSTOM_BLOCKS;
 
 /**
  * Load all predefined blocks from /blocks directory
@@ -35,7 +37,7 @@ export function loadCustomBlocks(): EmailBlock[] {
       return JSON.parse(stored);
     }
   } catch (error) {
-    console.error("Failed to load custom blocks:", error);
+    logger.error("blockLoader", "Failed to load custom blocks", error);
   }
   return [];
 }
@@ -48,7 +50,7 @@ export function saveCustomBlocks(blocks: EmailBlock[]): void {
     localStorage.setItem(CUSTOM_BLOCKS_KEY, JSON.stringify(blocks));
   } catch (error) {
     const storageError = handleStorageError(error);
-    console.error("Failed to save custom blocks:", storageError);
+    logger.error("blockLoader", "Failed to save custom blocks", storageError);
     throw storageError;
   }
 }

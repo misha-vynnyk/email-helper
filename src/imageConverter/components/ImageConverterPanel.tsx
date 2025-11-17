@@ -1,31 +1,47 @@
-import React from 'react';
+import React from "react";
 
-import { Box, Container, Paper, Typography } from '@mui/material';
+import { Box, Container, Paper, Typography } from "@mui/material";
 
-import { ImageConverterProvider } from '../context/ImageConverterContext';
+import { ImageConverterProvider } from "../context/ImageConverterContext";
 
-import AutoConvertToggle from './AutoConvertToggle';
-import BatchProcessor from './BatchProcessor';
-import ConversionSettings from './ConversionSettings';
-import FileUploadZone from './FileUploadZone';
-import ProcessingModeToggle from './ProcessingModeToggle';
+import AutoConvertToggle from "./AutoConvertToggle";
+import BatchProcessor from "./BatchProcessor";
+import ConversionSettings from "./ConversionSettings";
+import FileUploadZone from "./FileUploadZone";
+import ProcessingModeToggle from "./ProcessingModeToggle";
 
 function ImageConverterContent() {
   return (
-    <Container maxWidth="lg" sx={{ py: 3, height: '100%', overflow: 'auto' }}>
-      <Box mb={2} display="flex" flexDirection="row" alignItems="center" justifyContent="space-between" gap={3}>
-        <Typography variant="h4" gutterBottom>
-          Image Converter &amp; Optimizer
-        </Typography>
-        {/* Processing Mode */}
-        <Paper elevation={2} sx={{ p: 2, borderRadius: 5 }}>
-          <ProcessingModeToggle />
-        </Paper>
+    <Container
+      maxWidth='lg'
+      sx={{ py: 3, height: "100%", overflow: "auto" }}
+    >
+      <Box
+        mb={2}
+        sx={{
+          display: "flex",
+          flexDirection: { xs: "column", md: "row" },
+          alignItems: { xs: "stretch", md: "center" },
+          justifyContent: { xs: "stretch", md: "space-between" },
+          gap: 3,
+        }}
+      >
         {/* Auto-Convert Toggle */}
         <AutoConvertToggle />
+        {/* Processing Mode */}
+        <Paper
+          elevation={2}
+          sx={{ p: 2, borderRadius: 5 }}
+        >
+          <ProcessingModeToggle />
+        </Paper>
       </Box>
 
-      <Box display="flex" flexDirection="column" gap={3}>
+      <Box
+        display='flex'
+        flexDirection='column'
+        gap={3}
+      >
         {/* Upload Zone */}
         <FileUploadZone />
 
