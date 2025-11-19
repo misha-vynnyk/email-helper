@@ -5,6 +5,7 @@
 
 import React, { useEffect, useLayoutEffect, useState } from "react";
 
+import { html } from "@codemirror/lang-html";
 import {
   Add as AddIcon,
   ArrowBack as ArrowBackIcon,
@@ -38,6 +39,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import CodeMirror from "@uiw/react-codemirror";
 
 import { useEmailSender } from "../emailSender/EmailSenderContext";
 import { EmailTemplate, TEMPLATE_CATEGORIES, TemplateCategory } from "../types/template";
@@ -46,6 +48,7 @@ import { PreviewConfig } from "./PreviewSettings";
 import { getTemplateContent, removeTemplate, syncTemplate, updateTemplate } from "./templateApi";
 import { getCategoryIcon } from "./templateCategoryIcons";
 import { templateContentCache } from "./templateContentCache";
+import { filterMarkedSections } from "./utils/htmlSectionFilter";
 
 interface TemplateItemProps {
   template: EmailTemplate;
@@ -83,6 +86,8 @@ export default function TemplateItem({
   const previousTemplateIdRef = React.useRef<string | null>(null);
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [codeDialogOpen, setCodeDialogOpen] = useState(false);
+  const [codeContent, setCodeContent] = useState<string>("");
+  const [codeLoading, setCodeLoading] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -114,18 +119,12 @@ export default function TemplateItem({
   });
 
   const [zoom, setZoom] = useState(1);
+  const [renderKey, setRenderKey] = useState(0);
 
   // Синхронізувати локальний стан з prop
   useEffect(() => {
     setPreviewDialogOpen(isOpen);
   }, [isOpen]);
-
-  // Helper function to save scroll position before navigation
-  const saveScrollPosition = () => {
-    if (previewConfig.saveScrollPosition && scrollContainerRef.current) {
-      savedScrollPosition.current = scrollContainerRef.current.scrollTop;
-    }
-  };
 
   // Helper function to handle navigation
   const handleNavigation = (direction: "prev" | "next") => {
@@ -364,6 +363,45 @@ export default function TemplateItem({
     savedScrollPositionProp,
     previewConfig.saveScrollPosition,
   ]);
+
+  // Load code content when code dialog opens
+  useEffect(() => {
+    if (codeDialogOpen) {
+      // Load content if not already loaded
+      if (!previewHtml) {
+        const cachedContent = templateContentCache.get(template.id);
+        if (cachedContent) {
+          setCodeContent(cachedContent);
+        } else {
+          setCodeLoading(true);
+          getTemplateContent(template.id)
+            .then((content) => {
+              setCodeContent(content);
+              templateContentCache.set(template.id, content);
+            })
+            .catch(() => {
+              setCodeContent("Failed to load content");
+            })
+            .finally(() => {
+              setCodeLoading(false);
+            });
+        }
+      } else {
+        setCodeContent(previewHtml);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [codeDialogOpen, template.id]);
+
+  // Force preview update when hiddenSections config changes
+  // This ensures that preview reflects the new filtering settings
+  useEffect(() => {
+    if (previewHtml && isVisible) {
+      // Increment renderKey to force iframe re-render with new filtered content
+      setRenderKey((prev) => prev + 1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previewConfig.hiddenSections]);
 
   const loadContent = async () => {
     // Check cache first
@@ -612,9 +650,15 @@ export default function TemplateItem({
 
   // Remove script tags and inline event handlers from HTML for safe preview
   // This prevents sandbox console errors and security issues
+  // Also filters marked sections if configured (PREVIEW ONLY - code remains unchanged)
   const sanitizePreviewHtml = (html: string): string => {
     if (!html) return html;
     let sanitized = html;
+
+    // First, filter marked sections if configured (PREVIEW ONLY)
+    if (previewConfig.hiddenSections && previewConfig.hiddenSections.length > 0) {
+      sanitized = filterMarkedSections(sanitized, previewConfig.hiddenSections);
+    }
 
     // Remove all script tags and their content
     sanitized = sanitized.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
@@ -675,6 +719,7 @@ export default function TemplateItem({
             </Box>
           ) : previewHtml ? (
             <iframe
+              key={`preview-${template.id}-${renderKey}`}
               srcDoc={sanitizePreviewHtml(previewHtml)}
               title={`Preview of ${template.name}`}
               style={{
@@ -1068,6 +1113,7 @@ export default function TemplateItem({
               }}
             >
               <Box
+                key={`dialog-preview-${template.id}-${renderKey}`}
                 sx={{
                   transform: `scale(${zoom})`,
                   transformOrigin: "top center",
@@ -1109,30 +1155,100 @@ export default function TemplateItem({
       {/* Code Dialog */}
       <Dialog
         open={codeDialogOpen}
-        onClose={() => setCodeDialogOpen(false)}
-        maxWidth='md'
+        onClose={() => {
+          setCodeDialogOpen(false);
+          setCodeContent("");
+        }}
+        maxWidth='lg'
         fullWidth
         disableRestoreFocus
       >
         <DialogTitle>HTML Code - {template.name}</DialogTitle>
         <DialogContent>
-          <TextField
-            multiline
-            fullWidth
-            rows={15}
-            value={previewHtml || "Loading..."}
-            InputProps={{ readOnly: true, sx: { fontFamily: "monospace", fontSize: "0.875rem" } }}
-            sx={{ mt: 1 }}
-          />
+          <Box
+            sx={{
+              mt: 2,
+              border: "1px solid",
+              borderColor: "divider",
+              borderRadius: 1,
+              overflow: "hidden",
+              "& .cm-editor": {
+                fontSize: "14px",
+              },
+              "& .cm-focused": {
+                outline: "none",
+              },
+              "& .cm-editor .cm-scroller": {
+                fontFamily: "monospace",
+              },
+            }}
+          >
+            <CodeMirror
+              value={codeLoading ? "Loading..." : codeContent || "No content available"}
+              height='60vh'
+              extensions={[html()]}
+              theme={undefined}
+              editable={false}
+              basicSetup={{
+                lineNumbers: true,
+                foldGutter: true,
+                dropCursor: false,
+                allowMultipleSelections: false,
+                indentOnInput: true,
+                bracketMatching: true,
+                closeBrackets: true,
+                autocompletion: false,
+                highlightSelectionMatches: true,
+                searchKeymap: true,
+              }}
+            />
+          </Box>
+          <Typography
+            variant='caption'
+            color='text.secondary'
+            sx={{ mt: 1, display: "block" }}
+          >
+            💡 Tip: Use <strong>Ctrl+F</strong> / <strong>Cmd+F</strong> to search,{" "}
+            <strong>Ctrl+Shift+[</strong> / <strong>Cmd+Shift+[</strong> to fold code blocks
+          </Typography>
         </DialogContent>
         <DialogActions>
           <Button
-            onClick={handleCopyCode}
+            onClick={async () => {
+              try {
+                const contentToCopy = codeContent || previewHtml || "";
+                if (
+                  contentToCopy &&
+                  contentToCopy !== "Loading..." &&
+                  contentToCopy !== "Failed to load content"
+                ) {
+                  await navigator.clipboard.writeText(contentToCopy);
+                  setSnackbar({
+                    open: true,
+                    message: `"${template.name}" HTML copied to clipboard`,
+                    severity: "success",
+                  });
+                }
+              } catch (error) {
+                setSnackbar({
+                  open: true,
+                  message: `Copy failed: ${error instanceof Error ? error.message : String(error)}`,
+                  severity: "error",
+                });
+              }
+            }}
             startIcon={<CopyIcon />}
           >
             Copy
           </Button>
-          <Button onClick={() => setCodeDialogOpen(false)}>Close</Button>
+          <Button
+            onClick={() => {
+              setCodeDialogOpen(false);
+              setCodeContent("");
+            }}
+          >
+            Close
+          </Button>
         </DialogActions>
       </Dialog>
 

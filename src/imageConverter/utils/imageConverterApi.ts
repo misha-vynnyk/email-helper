@@ -1,5 +1,16 @@
 import API_URL from "../../config/api";
-import { ConversionSettings } from "../types";
+import { ConversionSettings, ImageFormat } from "../types";
+import { detectImageFormat } from "./imageFormatDetector";
+
+/**
+ * Get format to use for conversion (original or specified)
+ */
+function getConversionFormat(file: File, settings: ConversionSettings): ImageFormat {
+  if (settings.preserveFormat) {
+    return detectImageFormat(file);
+  }
+  return settings.format;
+}
 
 export interface ServerConversionResponse {
   success: boolean;
@@ -14,7 +25,11 @@ export interface ServerConversionResponse {
 export async function convertImageServer(file: File, settings: ConversionSettings): Promise<Blob> {
   const formData = new FormData();
   formData.append("image", file);
-  formData.append("format", settings.format);
+
+  // Get format to use (original or specified)
+  const outputFormat = getConversionFormat(file, settings);
+  formData.append("format", outputFormat);
+
   formData.append("quality", settings.quality.toString());
   formData.append("backgroundColor", settings.backgroundColor);
   formData.append("resizeMode", settings.resize.mode);
@@ -54,7 +69,12 @@ export async function convertImagesServerBatch(
     formData.append("images", file);
   });
 
-  formData.append("format", settings.format);
+  // For batch, use the first file's format if preserveFormat is enabled
+  // Otherwise use settings.format
+  const batchFormat = settings.preserveFormat && files.length > 0
+    ? detectImageFormat(files[0])
+    : settings.format;
+  formData.append("format", batchFormat);
   formData.append("quality", settings.quality.toString());
   formData.append("backgroundColor", settings.backgroundColor);
   formData.append("resizeMode", settings.resize.mode);

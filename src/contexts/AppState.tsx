@@ -19,7 +19,7 @@ const appStateStore = create<AppState>(() => ({
   selectedMainTab: "email",
   selectedScreenSize: "desktop",
 
-  samplesDrawerOpen: true,
+  samplesDrawerOpen: false, // Hidden by default
 }));
 
 export function useDocument() {

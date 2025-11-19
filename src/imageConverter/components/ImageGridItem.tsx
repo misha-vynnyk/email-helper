@@ -1,7 +1,15 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
+import {
+  ReactCompareSlider,
+  ReactCompareSliderImage,
+} from "react-compare-slider";
 
 import {
+  CheckBox as CheckedIcon,
+  CheckBoxOutlineBlank as UncheckedIcon,
   CheckCircle as DoneIcon,
+  CompareArrows as CompareIcon,
   Delete as DeleteIcon,
   Download as DownloadIcon,
   Error as ErrorIcon,
@@ -12,8 +20,10 @@ import {
   Box,
   Card,
   CardMedia,
+  Checkbox,
   Chip,
   CircularProgress,
+  Dialog,
   IconButton,
   LinearProgress,
   Tooltip,
@@ -27,10 +37,14 @@ interface ImageGridItemProps {
   file: ImageFile;
   onDownload: () => void;
   onRemove: () => void;
+  onToggleSelection: () => void;
   index: number;
+  dragListeners?: any; // Drag-and-drop listeners from @dnd-kit
 }
 
-export default function ImageGridItem({ file, onDownload, onRemove, index }: ImageGridItemProps) {
+export default function ImageGridItem({ file, onDownload, onRemove, onToggleSelection, index, dragListeners }: ImageGridItemProps) {
+  const [compareOpen, setCompareOpen] = useState(false);
+
   const compression =
     file.convertedSize && file.status === "done"
       ? calculateCompressionRatio(file.originalSize, file.convertedSize)
@@ -94,12 +108,41 @@ export default function ImageGridItem({ file, onDownload, onRemove, index }: Ima
         borderRadius: 5,
       }}
     >
-      {/* Status Badge */}
+      {/* Selection Checkbox */}
       <Box
         sx={{
           position: "absolute",
           top: 10,
           left: 10,
+          zIndex: 3,
+        }}
+      >
+        <Checkbox
+          checked={file.selected || false}
+          onChange={(e) => {
+            e.stopPropagation();
+            onToggleSelection();
+          }}
+          icon={<UncheckedIcon />}
+          checkedIcon={<CheckedIcon />}
+          sx={{
+            color: "white",
+            backgroundColor: "rgba(0,0,0,0.5)",
+            borderRadius: 1,
+            p: 0.5,
+            "&:hover": {
+              backgroundColor: "rgba(0,0,0,0.7)",
+            },
+          }}
+        />
+      </Box>
+
+      {/* Status Badge */}
+      <Box
+        sx={{
+          position: "absolute",
+          top: 10,
+          left: 50,
           zIndex: 2,
         }}
       >
@@ -124,26 +167,48 @@ export default function ImageGridItem({ file, onDownload, onRemove, index }: Ima
         }}
       >
         {file.status === "done" && (
-          <motion.div
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-          >
-            <Tooltip title='Download'>
-              <IconButton
-                size='small'
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDownload();
-                }}
-                sx={{
-                  backgroundColor: "rgba(255,255,255,0.9)",
-                  "&:hover": { backgroundColor: "rgba(255,255,255,1)" },
-                }}
-              >
-                <DownloadIcon fontSize='small' />
-              </IconButton>
-            </Tooltip>
-          </motion.div>
+          <>
+            <motion.div
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+            >
+              <Tooltip title='Download'>
+                <IconButton
+                  size='small'
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDownload();
+                  }}
+                  sx={{
+                    backgroundColor: "rgba(255,255,255,0.9)",
+                    "&:hover": { backgroundColor: "rgba(255,255,255,1)" },
+                  }}
+                >
+                  <DownloadIcon fontSize='small' />
+                </IconButton>
+              </Tooltip>
+            </motion.div>
+            <motion.div
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+            >
+              <Tooltip title='Compare Before/After'>
+                <IconButton
+                  size='small'
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCompareOpen(true);
+                  }}
+                  sx={{
+                    backgroundColor: "rgba(255,255,255,0.9)",
+                    "&:hover": { backgroundColor: "rgba(255,255,255,1)" },
+                  }}
+                >
+                  <CompareIcon fontSize='small' />
+                </IconButton>
+              </Tooltip>
+            </motion.div>
+          </>
         )}
         <motion.div
           whileHover={{ scale: 1.1 }}
@@ -169,11 +234,16 @@ export default function ImageGridItem({ file, onDownload, onRemove, index }: Ima
 
       {/* Image Preview */}
       <Box
+        {...dragListeners}
         sx={{
           position: "relative",
           paddingTop: "100%", // Square aspect ratio
           backgroundColor: "#dedede",
           overflow: "hidden",
+          cursor: dragListeners ? "grab" : "default",
+          "&:active": {
+            cursor: dragListeners ? "grabbing" : "default",
+          },
         }}
       >
         {file.previewUrl ? (
@@ -301,6 +371,55 @@ export default function ImageGridItem({ file, onDownload, onRemove, index }: Ima
           )}
         </Box>
       </Box>
+
+      {/* Comparison Dialog */}
+      <Dialog
+        open={compareOpen}
+        onClose={() => setCompareOpen(false)}
+        maxWidth="lg"
+        fullWidth
+      >
+        <Box sx={{ p: 2, bgcolor: 'background.paper' }}>
+          <Typography variant="h6" gutterBottom>
+            Before / After Comparison
+          </Typography>
+          <Box sx={{ height: 500, position: 'relative' }}>
+            {file.previewUrl && file.convertedUrl && (
+              <ReactCompareSlider
+                itemOne={
+                  <ReactCompareSliderImage
+                    src={file.previewUrl}
+                    alt="Original"
+                    style={{ objectFit: 'contain' }}
+                  />
+                }
+                itemTwo={
+                  <ReactCompareSliderImage
+                    src={file.convertedUrl}
+                    alt="Converted"
+                    style={{ objectFit: 'contain' }}
+                  />
+                }
+                style={{
+                  height: '100%',
+                  width: '100%',
+                }}
+              />
+            )}
+          </Box>
+          <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between' }}>
+            <Typography variant="body2" color="text.secondary">
+              Original: {formatFileSize(file.originalSize)}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Converted: {file.convertedSize ? formatFileSize(file.convertedSize) : 'N/A'}
+            </Typography>
+            <Typography variant="body2" color="success.main">
+              Saved: {compression}%
+            </Typography>
+          </Box>
+        </Box>
+      </Dialog>
     </Card>
   );
 }

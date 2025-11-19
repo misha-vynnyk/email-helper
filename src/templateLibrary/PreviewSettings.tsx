@@ -5,12 +5,12 @@
 
 import { useState } from "react";
 
-import { Settings as SettingsIcon } from "@mui/icons-material";
-import { STORAGE_KEYS } from "../utils/storageKeys";
+import { Add as AddIcon, Settings as SettingsIcon } from "@mui/icons-material";
 import {
   Box,
   Button,
   Checkbox,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -21,7 +21,9 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+
 import { logger } from "../utils/logger";
+import { STORAGE_KEYS } from "../utils/storageKeys";
 
 export interface PreviewConfig {
   cardWidth: number;
@@ -29,6 +31,7 @@ export interface PreviewConfig {
   containerHeight: number; // Fixed container height for preview cards
   dialogMaxWidth: "xs" | "sm" | "md" | "lg" | "xl";
   saveScrollPosition: boolean; // Whether to save scroll position when navigating between templates
+  hiddenSections: string[]; // Section names to hide in preview (marked with <!--=== SectionName ===--> comments)
 }
 
 const DEFAULT_CONFIG: PreviewConfig = {
@@ -37,6 +40,7 @@ const DEFAULT_CONFIG: PreviewConfig = {
   containerHeight: 300, // Preview card container height
   dialogMaxWidth: "lg",
   saveScrollPosition: true, // Save scroll position by default
+  hiddenSections: [], // No sections hidden by default
 };
 
 export function loadPreviewConfig(): PreviewConfig {
@@ -67,6 +71,7 @@ interface PreviewSettingsProps {
 export default function PreviewSettings({ config, onChange }: PreviewSettingsProps) {
   const [open, setOpen] = useState(false);
   const [tempConfig, setTempConfig] = useState<PreviewConfig>(config);
+  const [newSectionName, setNewSectionName] = useState("");
 
   // Track string values for inputs to allow temporary empty values during editing
   const [containerHeightStr, setContainerHeightStr] = useState<string>(
@@ -80,6 +85,7 @@ export default function PreviewSettings({ config, onChange }: PreviewSettingsPro
     setContainerHeightStr(String(config.containerHeight));
     setCardWidthStr(String(config.cardWidth));
     setCardHeightStr(String(config.cardHeight));
+    setNewSectionName("");
     setOpen(true);
   };
 
@@ -376,6 +382,95 @@ export default function PreviewSettings({ config, onChange }: PreviewSettingsPro
                   </Box>
                 }
               />
+            </Box>
+
+            {/* Hidden Sections */}
+            <Box mt={3}>
+              <Typography
+                variant='subtitle2'
+                gutterBottom
+                fontWeight={600}
+              >
+                Hidden Sections (Preview Only)
+              </Typography>
+              <Typography
+                variant='caption'
+                color='text.secondary'
+                gutterBottom
+                display='block'
+                mb={2}
+              >
+                Sections marked with comment markers will be hidden in preview only. Code remains
+                unchanged.
+                <br />
+                <strong>HTML format:</strong>{" "}
+                <code>{"<!-- SectionName --> ... <!-- SectionName-end -->"}</code>
+                <br />
+                <strong>Also supports:</strong>{" "}
+                <code>{"<!--=== SectionName ===--> ... <!-- SectionName-end -->"}</code>
+                <br />
+                <strong>Enter only:</strong> <code>SectionName</code> (without comment markers!)
+              </Typography>
+
+              {tempConfig.hiddenSections.length > 0 && (
+                <Box mb={2}>
+                  {tempConfig.hiddenSections.map((section, index) => (
+                    <Chip
+                      key={index}
+                      label={section}
+                      onDelete={() => {
+                        const newSections = tempConfig.hiddenSections.filter((_, i) => i !== index);
+                        setTempConfig({ ...tempConfig, hiddenSections: newSections });
+                      }}
+                      size='small'
+                      sx={{ mr: 1, mb: 1 }}
+                    />
+                  ))}
+                </Box>
+              )}
+
+              <Box
+                display='flex'
+                gap={1}
+              >
+                <TextField
+                  size='small'
+                  placeholder='Section name (e.g., Promo-content)'
+                  value={newSectionName}
+                  onChange={(e) => setNewSectionName(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter" && newSectionName.trim()) {
+                      const trimmed = newSectionName.trim();
+                      if (!tempConfig.hiddenSections.includes(trimmed)) {
+                        setTempConfig({
+                          ...tempConfig,
+                          hiddenSections: [...tempConfig.hiddenSections, trimmed],
+                        });
+                        setNewSectionName("");
+                      }
+                    }
+                  }}
+                  sx={{ flexGrow: 1 }}
+                />
+                <Button
+                  size='small'
+                  variant='outlined'
+                  startIcon={<AddIcon />}
+                  onClick={() => {
+                    const trimmed = newSectionName.trim();
+                    if (trimmed && !tempConfig.hiddenSections.includes(trimmed)) {
+                      setTempConfig({
+                        ...tempConfig,
+                        hiddenSections: [...tempConfig.hiddenSections, trimmed],
+                      });
+                      setNewSectionName("");
+                    }
+                  }}
+                  disabled={!newSectionName.trim()}
+                >
+                  Add
+                </Button>
+              </Box>
             </Box>
           </Box>
         </DialogContent>

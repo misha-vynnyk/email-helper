@@ -79,7 +79,9 @@ export default function TemplatePanel() {
         justifyContent='space-between'
         alignItems='center'
       >
-        <ToggleSamplesPanelButton />
+        <Box sx={{ minWidth: 40 }}>
+          <ToggleSamplesPanelButton />
+        </Box>
         <Stack
           px={2}
           direction='row'
