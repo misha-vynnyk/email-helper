@@ -1,4 +1,15 @@
-import { ConversionResult, ConversionSettings } from "../types";
+import { ConversionResult, ConversionSettings, ImageFormat } from "../types";
+import { detectImageFormat } from "./imageFormatDetector";
+
+/**
+ * Get format to use for conversion (original or specified)
+ */
+function getConversionFormat(file: File, settings: ConversionSettings): ImageFormat {
+  if (settings.preserveFormat) {
+    return detectImageFormat(file);
+  }
+  return settings.format;
+}
 
 /**
  * Convert image using Canvas API (client-side)
@@ -71,8 +82,11 @@ export async function convertImageClient(
         canvas.width = width;
         canvas.height = height;
 
+        // Get format to use (original or specified)
+        const outputFormat = getConversionFormat(file, settings);
+
         // Fill background for formats that don't support transparency
-        if (settings.format === "jpeg") {
+        if (outputFormat === "jpeg") {
           ctx.fillStyle = settings.backgroundColor;
           ctx.fillRect(0, 0, width, height);
         }
@@ -92,7 +106,7 @@ export async function convertImageClient(
               reject(new Error("Failed to create blob"));
             }
           },
-          `image/${settings.format}`,
+          `image/${outputFormat}`,
           settings.quality / 100
         );
       } catch (error) {

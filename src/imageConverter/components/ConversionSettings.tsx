@@ -1,8 +1,9 @@
 import { useState } from "react";
 
-import { ExpandLess, ExpandMore, Settings as SettingsIcon } from "@mui/icons-material";
+import { DownloadOutlined, ExpandLess, ExpandMore, Settings as SettingsIcon, UploadOutlined } from "@mui/icons-material";
 import {
   Box,
+  Button,
   Checkbox,
   Collapse,
   FormControlLabel,
@@ -11,16 +12,20 @@ import {
   Paper,
   Select,
   Slider,
+  Stack,
   TextField,
   ToggleButton,
   ToggleButtonGroup,
   Typography,
 } from "@mui/material";
 
+import { PRESETS, PRESET_ORDER } from "../constants/presets";
 import { useImageConverter } from "../context/ImageConverterContext";
 import { ImageFormat, ResizeMode } from "../types";
+import { exportSettings, importSettings } from "../utils/settingsManager";
 
 import CompressionModeSelector from "./CompressionModeSelector";
+import DimensionOptimizer from "./DimensionOptimizer";
 
 export default function ConversionSettings() {
   const { settings, updateSettings } = useImageConverter();
@@ -28,6 +33,44 @@ export default function ConversionSettings() {
 
   const qualityLabel = settings.compressionMode;
   const outputFormatLabel = settings.format;
+
+  const handlePresetChange = (presetId: string) => {
+    const preset = PRESETS[presetId];
+    if (!preset) return;
+
+    updateSettings({
+      selectedPreset: presetId,
+      format: preset.format,
+      quality: preset.quality,
+      compressionMode: preset.compressionMode,
+      preserveFormat: preset.preserveFormat || false,
+      resize: {
+        ...settings.resize,
+        mode: preset.maxWidth ? "preset" : "original",
+        preset: preset.maxWidth,
+      },
+    });
+  };
+
+  const handleExport = () => {
+    exportSettings(settings, settings.selectedPreset || 'custom');
+  };
+
+  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const importedSettings = await importSettings(file);
+      updateSettings(importedSettings);
+      alert('Settings imported successfully!');
+    } catch (error) {
+      alert(`Failed to import settings: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+
+    // Reset input
+    event.target.value = '';
+  };
   return (
     <Paper
       elevation={2}
@@ -73,33 +116,145 @@ export default function ConversionSettings() {
           flexDirection='column'
           gap={3}
         >
-          {/* Compression Mode */}
-          <CompressionModeSelector />
-
-          {/* Output Format */}
+          {/* Preset Profiles */}
           <Box>
             <Typography
               variant='subtitle2'
               gutterBottom
             >
-              Output Format
+              Presets
             </Typography>
-            <ToggleButtonGroup
-              value={settings.format}
-              exclusive
-              onChange={(_, value) => value && updateSettings({ format: value as ImageFormat })}
+            <Select
+              value={settings.selectedPreset || ""}
+              onChange={(e) => handlePresetChange(e.target.value)}
+              displayEmpty
               fullWidth
               size='small'
+              sx={{ borderRadius: 5 }}
             >
-              <ToggleButton value='jpeg'>JPG</ToggleButton>
-              <ToggleButton value='webp'>WebP</ToggleButton>
-              <ToggleButton value='avif'>AVIF</ToggleButton>
-              <ToggleButton value='png'>PNG</ToggleButton>
-            </ToggleButtonGroup>
+              <MenuItem value=''>
+                <em>Custom Settings</em>
+              </MenuItem>
+              {PRESET_ORDER.map((presetId) => {
+                const preset = PRESETS[presetId];
+                return (
+                  <MenuItem
+                    key={presetId}
+                    value={presetId}
+                  >
+                    <Box>
+                      <Typography variant='body2'>{preset.name}</Typography>
+                      <Typography
+                        variant='caption'
+                        color='text.secondary'
+                      >
+                        {preset.description}
+                      </Typography>
+                    </Box>
+                  </MenuItem>
+                );
+              })}
+            </Select>
           </Box>
 
-          {/* Quality Slider - Only for Balanced mode */}
-          {settings.compressionMode === "balanced" && (
+          {/* Compression Mode */}
+          <CompressionModeSelector />
+
+          {/* Preserve Format Toggle */}
+          <Box>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={settings.preserveFormat}
+                  onChange={(e) => updateSettings({ preserveFormat: e.target.checked })}
+                />
+              }
+              label={
+                <Box>
+                  <Typography variant='body2'>Preserve original format</Typography>
+                  <Typography
+                    variant='caption'
+                    color='text.secondary'
+                  >
+                    Keep the original image format (PNG stays PNG, JPEG stays JPEG)
+                  </Typography>
+                </Box>
+              }
+            />
+          </Box>
+
+          {/* Output Format - Only show if preserveFormat is disabled */}
+          {!settings.preserveFormat && (
+            <Box>
+              <Typography
+                variant='subtitle2'
+                gutterBottom
+              >
+                Output Format
+              </Typography>
+              <ToggleButtonGroup
+                value={settings.format}
+                exclusive
+                onChange={(_, value) => value && updateSettings({ format: value as ImageFormat })}
+                fullWidth
+                size='small'
+              >
+                <ToggleButton value='jpeg'>JPG</ToggleButton>
+                <ToggleButton value='webp'>WebP</ToggleButton>
+                <ToggleButton value='avif'>AVIF</ToggleButton>
+                <ToggleButton value='png'>PNG</ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
+          )}
+
+          {/* Auto Quality Toggle */}
+          <Box>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={settings.autoQuality}
+                  onChange={(e) => updateSettings({ autoQuality: e.target.checked })}
+                />
+              }
+              label={
+                <Box>
+                  <Typography variant='body2'>Auto Quality</Typography>
+                  <Typography
+                    variant='caption'
+                    color='text.secondary'
+                  >
+                    Automatically calculate optimal quality based on image properties
+                  </Typography>
+                </Box>
+              }
+            />
+          </Box>
+
+          {/* Preserve EXIF Toggle */}
+          <Box>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={settings.preserveExif}
+                  onChange={(e) => updateSettings({ preserveExif: e.target.checked })}
+                />
+              }
+              label={
+                <Box>
+                  <Typography variant='body2'>Preserve EXIF Metadata</Typography>
+                  <Typography
+                    variant='caption'
+                    color='text.secondary'
+                  >
+                    Keep camera info, location, and other metadata (may increase file size)
+                  </Typography>
+                </Box>
+              }
+            />
+          </Box>
+
+          {/* Quality Slider - Only for Balanced mode and when auto quality is off */}
+          {settings.compressionMode === "balanced" && !settings.autoQuality && (
             <Box sx={{ margin: "10px" }}>
               <Typography
                 variant='subtitle2'
@@ -276,6 +431,39 @@ export default function ConversionSettings() {
                 </Box>
               )}
             </Box>
+          </Box>
+
+          {/* Export/Import Settings */}
+          <Box sx={{ borderTop: '1px solid', borderColor: 'divider', pt: 2, mt: 2 }}>
+            <Typography variant='subtitle2' gutterBottom>
+              Settings Profiles
+            </Typography>
+            <Stack direction='row' spacing={1}>
+              <Button
+                variant='outlined'
+                size='small'
+                startIcon={<DownloadOutlined />}
+                onClick={handleExport}
+                fullWidth
+              >
+                Export
+              </Button>
+              <Button
+                variant='outlined'
+                size='small'
+                component='label'
+                startIcon={<UploadOutlined />}
+                fullWidth
+              >
+                Import
+                <input
+                  type='file'
+                  accept='.json'
+                  hidden
+                  onChange={handleImport}
+                />
+              </Button>
+            </Stack>
           </Box>
         </Box>
       </Collapse>

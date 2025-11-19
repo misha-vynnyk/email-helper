@@ -7,3 +7,6 @@ export const DEFAULT_PROCESSING_MODE = "server";
 export const DEFAULT_COMPRESSION_MODE = "balanced";
 export const DEFAULT_FORMAT = "jpeg";
 export const DEFAULT_AUTO_CONVERT = true;
+export const DEFAULT_PRESERVE_FORMAT = false; // Convert to specified format by default
+export const DEFAULT_AUTO_QUALITY = false; // Manual quality by default
+export const DEFAULT_PRESERVE_EXIF = false; // Don't preserve EXIF by default (privacy)

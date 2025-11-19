@@ -22,6 +22,10 @@ export interface ConversionSettings {
   processingMode: ProcessingMode;
   compressionMode: CompressionMode;
   autoConvert: boolean; // Auto-convert on file upload
+  preserveFormat: boolean; // Keep original image format instead of converting
+  autoQuality: boolean; // Automatically calculate optimal quality
+  selectedPreset?: string; // Currently selected preset ID
+  preserveExif: boolean; // Preserve EXIF metadata during conversion
 }
 
 export type ConversionStatus = "pending" | "processing" | "done" | "error";
@@ -37,6 +41,10 @@ export interface ImageFile {
   error?: string;
   previewUrl?: string;
   convertedUrl?: string;
+  retryCount?: number; // Number of retry attempts
+  startTime?: number; // When conversion started
+  eta?: number; // Estimated time remaining (seconds)
+  selected?: boolean; // For bulk selection
 }
 
 export interface ConversionResult {

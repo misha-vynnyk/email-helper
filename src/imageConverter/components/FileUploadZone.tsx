@@ -1,6 +1,22 @@
 import { AnimatePresence, motion } from "framer-motion";
 import React, { useCallback, useRef, useState } from "react";
 
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+} from '@dnd-kit/sortable';
+
 import { CloudUpload as UploadIcon } from "@mui/icons-material";
 import { Box, Button, Grid, IconButton, Typography } from "@mui/material";
 
@@ -8,13 +24,34 @@ import { MAX_FILE_SIZE_CLIENT, MAX_FILE_SIZE_SERVER } from "../constants";
 import { useImageConverter } from "../context/ImageConverterContext";
 import { validateImageFiles } from "../utils/validators";
 
-import ImageGridItem from "./ImageGridItem";
+import BulkActions from "./BulkActions";
+import SortableImageItem from "./SortableImageItem";
 
 export default function FileUploadZone() {
-  const { addFiles, settings, files, removeFile, downloadFile } = useImageConverter();
+  const { addFiles, settings, files, removeFile, downloadFile, reorderFiles, toggleSelection } = useImageConverter();
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = files.findIndex((f) => f.id === active.id);
+      const newIndex = files.findIndex((f) => f.id === over.id);
+      
+      if (oldIndex !== -1 && newIndex !== -1) {
+        reorderFiles(oldIndex, newIndex);
+      }
+    }
+  };
 
   const maxFileSize =
     settings.processingMode === "client" ? MAX_FILE_SIZE_CLIENT : MAX_FILE_SIZE_SERVER;
@@ -139,6 +176,9 @@ export default function FileUploadZone() {
         {/* Grid with Images - shows when there are files */}
         {hasFiles && (
           <Box>
+            {/* Bulk Actions */}
+            <BulkActions />
+
             {/* Compact header */}
             <Box
               display='flex'
@@ -164,30 +204,33 @@ export default function FileUploadZone() {
               </Button>
             </Box>
 
-            {/* Image Grid */}
-            <Grid
-              container
-              spacing={2}
+            {/* Image Grid with Drag & Drop */}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
             >
-              <AnimatePresence mode='popLayout'>
-                {files.map((file, index) => (
-                  <Grid
-                    item
-                    xs={6}
-                    sm={4}
-                    md={3}
-                    key={file.id}
-                  >
-                    <ImageGridItem
+              <SortableContext
+                items={files.map(f => f.id)}
+                strategy={rectSortingStrategy}
+              >
+                <Grid
+                  container
+                  spacing={2}
+                >
+                  {files.map((file, index) => (
+                    <SortableImageItem
+                      key={file.id}
                       file={file}
+                      index={index}
                       onDownload={() => downloadFile(file.id)}
                       onRemove={() => removeFile(file.id)}
-                      index={index}
+                      onToggleSelection={() => toggleSelection(file.id)}
                     />
-                  </Grid>
-                ))}
-              </AnimatePresence>
-            </Grid>
+                  ))}
+                </Grid>
+              </SortableContext>
+            </DndContext>
           </Box>
         )}
 
