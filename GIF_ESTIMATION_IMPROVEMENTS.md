@@ -22,7 +22,7 @@
    // OLD (wrong):
    if (isOriginalGif) baseRatio = 0.7;  // Expected 30% reduction
    else baseRatio = 0.85;
-   
+
    // Reality: 25 MB → 7.5 MB is only 70% reduction
    // Our estimate: 25 MB → 1.5 MB would be 94% reduction (impossible!)
    ```
@@ -139,7 +139,7 @@ if (settings.format === "gif" && settings.gifFrameResize?.enabled) {
 ```typescript
 {isGif && isLikelyAnimated && !hasTargetSize ? (
   <Typography>
-    ⚠️ <strong>Animated GIF:</strong> Compression varies greatly (±20-40% variance). 
+    ⚠️ <strong>Animated GIF:</strong> Compression varies greatly (±20-40% variance).
     Use "Target File Size" for more predictable results.
   </Typography>
 ) : (
@@ -284,11 +284,10 @@ Lossy 150-200: Heavy loss, 40-50% reduction
 
 ---
 
-**Key Takeaway:** 
+**Key Takeaway:**
 Animated GIF compression is complex and unpredictable. Our new approach prioritizes **realistic estimates** over **optimistic promises**, and guides users toward **Target File Size** feature for guaranteed results.
 
 🎯 **For 25 MB animated GIF → 7.5 MB output:**
 - New estimate: ~18.75 MB (with quality 85)
 - Recommendation: Use Target File Size: 7.5 MB for exact results
 - Actual: 7.5 MB exactly ✅
-

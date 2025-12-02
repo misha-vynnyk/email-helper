@@ -17,16 +17,15 @@ export function estimateOutputSize(
   }
 
   let estimatedRatio = 1.0;
-  
-  // Detect if source is an animated GIF (heuristic: large GIF is likely animated)
-  const isOriginalGif = originalFormat.includes("gif");
-  const isLikelyAnimated = isOriginalGif && originalSize > 1024 * 1024; // > 1MB
 
   // Detect original format for better estimation
   const isOriginalJpeg = originalFormat.includes("jpeg") || originalFormat.includes("jpg");
   const isOriginalPng = originalFormat.includes("png");
   const isOriginalWebp = originalFormat.includes("webp");
   const isOriginalGif = originalFormat.includes("gif");
+  
+  // Detect if source is an animated GIF (heuristic: large GIF is likely animated)
+  const isLikelyAnimated = isOriginalGif && originalSize > 1024 * 1024; // > 1MB
 
   // Base compression ratios - adjusted based on source format
   let baseRatio = 1.0;
@@ -58,7 +57,7 @@ export function estimateOutputSize(
       // - Number of frames (more frames = less compressible)
       // - Color palette complexity
       // - Existing optimization level
-      
+
       if (isLikelyAnimated) {
         // Animated GIFs are especially hard to compress
         // Realistic expectations for 25MB animated GIF:
@@ -81,7 +80,7 @@ export function estimateOutputSize(
   // Quality impact (for lossy formats)
   if (settings.format !== "png" && !settings.autoQuality) {
     const qualityFactor = settings.quality / 100;
-    
+
     if (settings.format === "gif") {
       // GIF quality has less impact than other formats
       // Lossy compression on GIF is aggressive but unpredictable
