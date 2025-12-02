@@ -236,4 +236,3 @@ const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = ({
 };
 
 export default AdvancedSettingsSection;
-

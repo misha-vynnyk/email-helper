@@ -132,4 +132,3 @@ const QualityControl: React.FC<QualityControlProps> = ({
 };
 
 export default QualityControl;
-

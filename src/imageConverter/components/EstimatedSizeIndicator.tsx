@@ -26,18 +26,28 @@ const EstimatedSizeIndicator: React.FC<EstimatedSizeIndicatorProps> = ({
   const estimatedSize = estimateOutputSize(originalSize, originalFormat, settings);
   const compressionRatio = calculateCompressionRatio(originalSize, estimatedSize);
   const isSmaller = estimatedSize < originalSize;
+  const sizeDiff = Math.abs(originalSize - estimatedSize);
+
+  // Determine background gradient based on compression quality
+  const getGradient = () => {
+    if (compressionRatio > 50) return "linear-gradient(135deg, #10b981 0%, #059669 100%)"; // Excellent
+    if (compressionRatio > 30) return "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"; // Good
+    if (compressionRatio > 0) return "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)"; // Moderate
+    return "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)"; // Warning (larger)
+  };
 
   return (
     <Box
       sx={{
         p: 2,
         borderRadius: 2,
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        background: getGradient(),
         color: "white",
+        transition: "all 0.3s ease",
       }}
     >
       <Typography variant="caption" sx={{ opacity: 0.9, display: "block", mb: 1 }}>
-        💡 Estimated Output
+        💡 Estimated Output Size
       </Typography>
 
       <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
@@ -56,9 +66,10 @@ const EstimatedSizeIndicator: React.FC<EstimatedSizeIndicatorProps> = ({
             label={`-${compressionRatio}%`}
             size="small"
             sx={{
-              backgroundColor: "rgba(255, 255, 255, 0.2)",
+              backgroundColor: "rgba(255, 255, 255, 0.25)",
               color: "white",
-              fontWeight: 600,
+              fontWeight: 700,
+              fontSize: "0.875rem",
             }}
           />
         ) : (
@@ -67,33 +78,42 @@ const EstimatedSizeIndicator: React.FC<EstimatedSizeIndicatorProps> = ({
             label={`+${Math.abs(compressionRatio)}%`}
             size="small"
             sx={{
-              backgroundColor: "rgba(255, 255, 255, 0.2)",
+              backgroundColor: "rgba(255, 255, 255, 0.25)",
               color: "white",
-              fontWeight: 600,
+              fontWeight: 700,
+              fontSize: "0.875rem",
             }}
           />
         )}
       </Box>
 
-      <LinearProgress
-        variant="determinate"
-        value={Math.min(100, (estimatedSize / originalSize) * 100)}
-        sx={{
-          height: 6,
-          borderRadius: 3,
-          backgroundColor: "rgba(255, 255, 255, 0.2)",
-          "& .MuiLinearProgress-bar": {
+      {/* Visual size comparison bar */}
+      <Box sx={{ position: "relative", height: 8, backgroundColor: "rgba(255, 255, 255, 0.2)", borderRadius: 2, overflow: "hidden" }}>
+        <Box
+          sx={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            height: "100%",
+            width: `${Math.min(100, (estimatedSize / originalSize) * 100)}%`,
             backgroundColor: "white",
-          },
-        }}
-      />
+            borderRadius: 2,
+            transition: "width 0.5s ease",
+          }}
+        />
+      </Box>
 
-      <Typography variant="caption" sx={{ opacity: 0.7, mt: 1, display: "block" }}>
-        ⚠️ This is an estimate. Actual size may vary.
+      <Box display="flex" justifyContent="space-between" mt={1}>
+        <Typography variant="caption" sx={{ opacity: 0.8 }}>
+          {isSmaller ? `You'll save ${formatFileSize(sizeDiff)}` : `Size increases by ${formatFileSize(sizeDiff)}`}
+        </Typography>
+      </Box>
+
+      <Typography variant="caption" sx={{ opacity: 0.7, mt: 1, display: "block", fontStyle: "italic" }}>
+        ⚠️ Estimate based on format, quality & settings. Actual may vary ±10-20%.
       </Typography>
     </Box>
   );
 };
 
 export default EstimatedSizeIndicator;
-
