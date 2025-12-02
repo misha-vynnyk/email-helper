@@ -73,6 +73,10 @@ export function estimateOutputSize(
       // Converting other formats to GIF usually increases size
       baseRatio = 1.2; // GIF is typically larger
     }
+  } else {
+    // Unknown format - use conservative estimate
+    console.warn(`[estimatedSizeCalculator] Unknown format: ${settings.format}, using default estimate`);
+    baseRatio = 0.8; // Default conservative estimate
   }
 
   estimatedRatio *= baseRatio;

@@ -8,6 +8,7 @@ import {
   PhotoSizeSelectLarge as ThumbnailIcon,
   HighQuality as LosslessIcon,
   Animation as GifIcon,
+  Settings as SettingsIcon,
 } from "@mui/icons-material";
 import { PRESETS, PRESET_ORDER } from "../constants/presets";
 
@@ -26,6 +27,9 @@ const PRESET_ICONS: Record<string, React.ReactNode> = {
   lossless: <LosslessIcon fontSize="small" />,
   gif: <GifIcon fontSize="small" />,
 };
+
+// Fallback icon for missing presets
+const getFallbackIcon = () => <SettingsIcon fontSize="small" />;
 
 const QuickPresetsBar: React.FC<QuickPresetsBarProps> = ({ selectedPreset, onPresetSelect }) => {
   return (
@@ -47,7 +51,7 @@ const QuickPresetsBar: React.FC<QuickPresetsBarProps> = ({ selectedPreset, onPre
           return (
             <Tooltip key={presetId} title={preset.description} placement="top" arrow>
               <Chip
-                icon={PRESET_ICONS[presetId]}
+                icon={PRESET_ICONS[presetId] || getFallbackIcon()}
                 label={preset.name}
                 onClick={() => onPresetSelect(presetId)}
                 color={isSelected ? "primary" : "default"}

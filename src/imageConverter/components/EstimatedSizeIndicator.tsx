@@ -24,12 +24,14 @@ const EstimatedSizeIndicator: React.FC<EstimatedSizeIndicatorProps> = ({
     return null;
   }
 
-  if (!originalFormat || originalFormat.length === 0) {
-    console.warn("[EstimatedSizeIndicator] Missing originalFormat, using fallback");
-    // Fallback to settings format
+  // Handle missing originalFormat with fallback
+  let effectiveFormat = originalFormat;
+  if (!effectiveFormat || effectiveFormat.length === 0) {
+    console.warn("[EstimatedSizeIndicator] Missing originalFormat, using fallback to settings format");
+    effectiveFormat = `image/${settings.format}`; // e.g., "image/jpeg"
   }
 
-  const estimatedSize = estimateOutputSize(originalSize, originalFormat, settings);
+  const estimatedSize = estimateOutputSize(originalSize, effectiveFormat, settings);
 
   // Validate estimation result
   if (!estimatedSize || estimatedSize === 0 || isNaN(estimatedSize)) {
