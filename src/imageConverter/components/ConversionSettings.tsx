@@ -38,9 +38,9 @@ export default function ConversionSettings() {
   const [expanded, setExpanded] = useState(false);
 
   // Get first file for size estimation
-  const firstFile = files[0];
+  const firstFile = files && files.length > 0 ? files[0] : null;
   const originalSize = firstFile?.originalSize || 0;
-  const originalFormat = firstFile?.file.type || "";
+  const originalFormat = firstFile?.file?.type || "";
 
   const qualityLabel = settings.compressionMode;
   const outputFormatLabel = settings.format;

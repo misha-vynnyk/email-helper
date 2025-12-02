@@ -19,11 +19,29 @@ const EstimatedSizeIndicator: React.FC<EstimatedSizeIndicatorProps> = ({
   originalFormat,
   settings,
 }) => {
+  // Validate inputs
   if (!originalSize || originalSize === 0) {
     return null;
   }
+  
+  if (!originalFormat || originalFormat.length === 0) {
+    console.warn("[EstimatedSizeIndicator] Missing originalFormat, using fallback");
+    // Fallback to settings format
+  }
 
   const estimatedSize = estimateOutputSize(originalSize, originalFormat, settings);
+  
+  // Validate estimation result
+  if (!estimatedSize || estimatedSize === 0 || isNaN(estimatedSize)) {
+    console.error("[EstimatedSizeIndicator] Invalid estimation result:", {
+      originalSize,
+      originalFormat,
+      estimatedSize,
+      settings: { format: settings.format, quality: settings.quality }
+    });
+    return null;
+  }
+  
   const compressionRatio = calculateCompressionRatio(originalSize, estimatedSize);
   const isSmaller = estimatedSize < originalSize;
   const sizeDiff = Math.abs(originalSize - estimatedSize);
