@@ -103,4 +103,3 @@ const FormatTabsSelector: React.FC<FormatTabsSelectorProps> = ({ value, onChange
 };
 
 export default FormatTabsSelector;
-

@@ -1,6 +1,6 @@
 import React from "react";
 import { Box, Chip, Typography, Tooltip } from "@mui/material";
-import { 
+import {
   Email as EmailIcon,
   Language as WebIcon,
   Share as SocialIcon,
@@ -70,4 +70,3 @@ const QuickPresetsBar: React.FC<QuickPresetsBarProps> = ({ selectedPreset, onPre
 };
 
 export default QuickPresetsBar;
-

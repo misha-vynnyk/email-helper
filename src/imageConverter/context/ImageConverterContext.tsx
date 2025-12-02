@@ -241,7 +241,12 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
           performanceMonitor.recordCacheHit();
           usedCache = true;
           result = { blob: cachedBlob, size: cachedBlob.size };
-          onProgress(100);
+          
+          // Smooth progress animation for cached results
+          for (let p = 10; p <= 100; p += 10) {
+            onProgress(p);
+            await new Promise(resolve => setTimeout(resolve, 30));
+          }
         } else {
           performanceMonitor.recordCacheMiss();
           // Not in cache, convert
@@ -251,35 +256,54 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
             // Use Web Workers if available and supported
             if (USE_WORKERS && workerPool.current) {
               try {
-                onProgress(20);
+                onProgress(15);
                 const blob = await workerPool.current.process(
                   fileToConvert!.file,
                   effectiveSettings,
                   onProgress
                 );
                 result = { blob, size: blob.size };
+                onProgress(85);
                   } catch (error) {
                     // Fallback to main thread if worker fails
                     logger.warn('ImageConverter', 'Worker failed, falling back to main thread', error);
                     onProgress(30);
                     result = await convertImageClient(fileToConvert!.file, effectiveSettings);
-                    onProgress(90);
+                    onProgress(85);
                   }
             } else {
               // Fallback to main thread conversion
-              onProgress(30);
+              onProgress(25);
               result = await convertImageClient(fileToConvert!.file, effectiveSettings);
-              onProgress(90);
+              onProgress(85);
             }
           } else {
-            // Server-side processing
-            onProgress(20);
-            const blob = await convertImageServer(fileToConvert!.file, effectiveSettings);
-            onProgress(80);
-            result = { blob, size: blob.size };
+            // Server-side processing with simulated progress
+            onProgress(15);
+            
+            // Simulate smooth progress during server processing
+            const progressInterval = setInterval(() => {
+              setFiles((prev) =>
+                prev.map((f) => {
+                  if (f.id !== id || f.progress >= 75) return f;
+                  return { ...f, progress: Math.min(f.progress + 5, 75) };
+                })
+              );
+            }, 200);
+
+            try {
+              const blob = await convertImageServer(fileToConvert!.file, effectiveSettings);
+              clearInterval(progressInterval);
+              onProgress(85);
+              result = { blob, size: blob.size };
+            } catch (error) {
+              clearInterval(progressInterval);
+              throw error;
+            }
           }
 
           // Re-insert EXIF if it was preserved
+          onProgress(90);
           if (exifData.hasExif && exifData.data && effectiveSettings.preserveExif) {
             try {
               result.blob = await insertExif(result.blob, exifData.data);
@@ -290,6 +314,7 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
           }
 
           // Cache the result
+          onProgress(95);
           await imageCache.cache(cacheKey, result.blob, {
             fileName: fileToConvert.file.name,
             originalSize: fileToConvert.originalSize,
