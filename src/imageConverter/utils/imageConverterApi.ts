@@ -43,6 +43,15 @@ export async function convertImageServer(file: File, settings: ConversionSetting
     formData.append("preserveAspectRatio", settings.resize.preserveAspectRatio.toString());
   }
 
+  // GIF-specific parameters
+  if (settings.targetFileSize) {
+    formData.append("targetFileSize", settings.targetFileSize.toString());
+  }
+
+  if (settings.gifFrameResize) {
+    formData.append("gifFrameResize", JSON.stringify(settings.gifFrameResize));
+  }
+
   const response = await fetch(`${API_URL}/api/image-converter/convert`, {
     method: "POST",
     body: formData,
@@ -86,6 +95,15 @@ export async function convertImagesServerBatch(
     if (settings.resize.width) formData.append("width", settings.resize.width.toString());
     if (settings.resize.height) formData.append("height", settings.resize.height.toString());
     formData.append("preserveAspectRatio", settings.resize.preserveAspectRatio.toString());
+  }
+
+  // GIF-specific parameters
+  if (settings.targetFileSize) {
+    formData.append("targetFileSize", settings.targetFileSize.toString());
+  }
+
+  if (settings.gifFrameResize) {
+    formData.append("gifFrameResize", JSON.stringify(settings.gifFrameResize));
   }
 
   const response = await fetch(`${API_URL}/api/image-converter/convert-batch`, {

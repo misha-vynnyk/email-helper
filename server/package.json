@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "concurrently \"tsc --watch\" \"nodemon -w . -w dist index.js\"",
     "build": "tsc",
-    "start": "node index.js"
+    "start": "node index.js",
+    "test": "jest",
+    "postinstall": "node -e \"try { require('gifsicle'); console.log('✅ Gifsicle installed'); } catch(e) { console.warn('⚠️ Gifsicle not found. Run: npm install gifsicle'); }\""
   },
   "dependencies": {
     "@squoosh/lib": "^0.3.1",
@@ -20,6 +22,7 @@
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "express-rate-limit": "^7.1.5",
+    "gifsicle": "^5.3.0",
     "helmet": "^7.1.0",
     "isomorphic-dompurify": "^2.30.1",
     "multer": "^1.4.5-lts.1",
@@ -31,6 +34,7 @@
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
+    "jest": "^29.7.0",
     "nodemon": "^3.0.2"
   }
 }

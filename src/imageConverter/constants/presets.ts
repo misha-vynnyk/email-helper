@@ -65,7 +65,15 @@ export const PRESETS: Record<string, PresetProfile> = {
     compressionMode: "lossless",
     preserveFormat: true,
   },
+  gif: {
+    id: "gif",
+    name: "GIF Animation",
+    description: "Optimized animated GIF with quality preservation",
+    format: "gif",
+    quality: 85,
+    compressionMode: "balanced",
+    preserveFormat: true,
+  },
 };
 
-export const PRESET_ORDER = ["email", "web", "social", "print", "thumbnail", "lossless"];
-
+export const PRESET_ORDER = ["email", "web", "social", "print", "thumbnail", "gif", "lossless"];

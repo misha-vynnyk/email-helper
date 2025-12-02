@@ -145,7 +145,7 @@ function getCompressionOptions(format, quality, mode) {
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB (reduced from 50MB for security)
+    fileSize: 50 * 1024 * 1024, // 50MB (needed for GIF optimization)
     files: 20,                   // Max 20 files at once
     fields: 20,                  // Max 20 form fields
   },
@@ -187,7 +187,47 @@ router.post('/convert', upload.single('image'), async (req, res) => {
       height,
       preserveAspectRatio = 'true',
       compressionMode = 'balanced',
+      targetFileSize,
+      gifFrameResize,
     } = req.body;
+
+    // Handle GIF optimization with Gifsicle
+    if (req.file.mimetype === 'image/gif' || format === 'gif') {
+      const { optimizeGifToTargetSize, optimizeGifWithQuality } = require('../utils/gifOptimizer');
+
+      try {
+        const targetSize = targetFileSize ? parseInt(targetFileSize) : null;
+        const frameResize = gifFrameResize ? JSON.parse(gifFrameResize) : null;
+
+        let result;
+        if (targetSize) {
+          result = await optimizeGifToTargetSize(req.file.buffer, targetSize, frameResize);
+        } else {
+          result = await optimizeGifWithQuality(req.file.buffer, parseInt(quality), frameResize);
+        }
+
+        // Set response headers with metrics
+        res.set('Content-Type', 'image/gif');
+        res.set('X-Original-Size', req.file.size.toString());
+        res.set('X-Optimized-Size', result.size.toString());
+        res.set('X-Compression-Ratio', (req.file.size / result.size).toFixed(2));
+        if (result.lossy) {
+          res.set('X-GIF-Lossy', result.lossy.toString());
+        }
+        if (result.iterations) {
+          res.set('X-GIF-Iterations', result.iterations.toString());
+        }
+        if (result.warning) {
+          res.set('X-Warning', result.warning);
+        }
+
+        res.send(result.buffer);
+        return;
+      } catch (error) {
+        console.error('GIF optimization error:', error);
+        return res.status(500).json({ error: error.message || 'Failed to optimize GIF' });
+      }
+    }
 
     let pipeline = sharp(req.file.buffer);
 
@@ -252,12 +292,38 @@ router.post('/convert-batch', upload.array('images', 50), async (req, res) => {
       height,
       preserveAspectRatio = 'true',
       compressionMode = 'balanced',
+      targetFileSize,
+      gifFrameResize,
     } = req.body;
 
     const results = [];
 
     for (const file of req.files) {
       try {
+        // Handle GIF optimization with Gifsicle
+        if (file.mimetype === 'image/gif' || format === 'gif') {
+          const { optimizeGifToTargetSize, optimizeGifWithQuality } = require('../utils/gifOptimizer');
+
+          try {
+            const targetSize = targetFileSize ? parseInt(targetFileSize) : null;
+            const frameResize = gifFrameResize ? JSON.parse(gifFrameResize) : null;
+
+            let result;
+            if (targetSize) {
+              result = await optimizeGifToTargetSize(file.buffer, targetSize, frameResize);
+            } else {
+              result = await optimizeGifWithQuality(file.buffer, parseInt(quality), frameResize);
+            }
+
+            const base64 = `data:image/gif;base64,${result.buffer.toString('base64')}`;
+            results.push(base64);
+            continue;
+          } catch (error) {
+            console.error(`GIF optimization failed for ${file.originalname}:`, error);
+            results.push(null);
+            continue;
+          }
+        }
         let pipeline = sharp(file.buffer);
 
         // Handle resize

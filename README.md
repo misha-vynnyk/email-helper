@@ -13,7 +13,7 @@ Professional email template builder with drag-and-drop block system, live previe
 - **Dynamic Block Library** - Add, edit, and manage email blocks with custom storage locations
 - **Live Preview** - Real-time email rendering with responsive design preview
 - **Template Management** - Save and reuse email templates
-- **Image Converter** - Convert images to base64 or upload to CDN
+- **Image Converter** - Convert and optimize images (JPEG, WebP, AVIF, PNG, GIF) with advanced compression
 - **Email Validation** - Built-in HTML validator for email compatibility
 - **Email Sender** - Send test emails directly from the editor
 
@@ -33,6 +33,7 @@ Professional email template builder with drag-and-drop block system, live previe
 - Node.js + Express
 - TypeScript
 - Sharp (Image Processing)
+- Gifsicle (GIF Optimization)
 - Nodemailer (Email Sending)
 
 ## 🛠️ Local Setup
@@ -75,6 +76,30 @@ To send test emails, you need a Gmail App Password:
 2. Go to Google Account → Security → App Passwords
 3. Generate new password for "Mail"
 4. Use this password in the Email Sender panel (not your regular Gmail password)
+
+### GIF Optimization Setup
+
+For GIF optimization features, Gifsicle is automatically installed as a dependency. If you encounter issues:
+
+**macOS/Linux:**
+```bash
+cd server
+npm install gifsicle
+```
+
+**Windows:**
+```bash
+cd server
+npm install gifsicle
+```
+
+**Features:**
+- Optimize GIFs to specific target file size (e.g., 1.5 MB)
+- Adjust compression quality
+- Resize GIF frames while maintaining animation
+- Adaptive compression using binary search
+
+See [GIF Optimization Documentation](src/imageConverter/GIF_OPTIMIZATION.md) for details.
 
 ### Development Commands
 
