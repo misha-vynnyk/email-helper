@@ -38,8 +38,13 @@ export default function ConversionSettings() {
   const [expanded, setExpanded] = useState(false);
 
   // Get selected file for estimation (only ONE file should be selected)
+  // Need to include files.length and selected states in dependency
+  const selectedFilesIds = files.filter(f => f.selected).map(f => f.id).join(',');
+  
   const { originalSize, originalFormat, isMultipleSelected, hasSelection } = React.useMemo(() => {
     const selectedFiles = files.filter(f => f.selected);
+
+    console.log('[ConversionSettings] Selected files:', selectedFiles.length, selectedFiles.map(f => ({ id: f.id, name: f.file.name, size: f.originalSize })));
 
     if (selectedFiles.length === 0) {
       // No selection - show nothing
@@ -53,13 +58,19 @@ export default function ConversionSettings() {
 
     // Exactly one file selected - show its info
     const selectedFile = selectedFiles[0];
+    console.log('[ConversionSettings] Using file:', { 
+      name: selectedFile.file.name, 
+      size: selectedFile.originalSize,
+      format: selectedFile.file?.type 
+    });
+    
     return {
       originalSize: selectedFile.originalSize || 0,
       originalFormat: selectedFile.file?.type || "",
       isMultipleSelected: false,
       hasSelection: true
     };
-  }, [files]);
+  }, [files, selectedFilesIds]);
 
   const qualityLabel = settings.compressionMode;
   const outputFormatLabel = settings.format;
