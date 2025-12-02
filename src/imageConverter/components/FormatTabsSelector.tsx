@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Tab, Tabs, Chip, Tooltip } from "@mui/material";
+import { Box, ToggleButton, ToggleButtonGroup, Chip, Tooltip } from "@mui/material";
 import { ImageFormat } from "../types";
 
 interface FormatTabsSelectorProps {
@@ -45,28 +45,31 @@ const FormatTabsSelector: React.FC<FormatTabsSelectorProps> = ({ value, onChange
   };
 
   return (
-    <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
-      <Tabs
+    <Box sx={{ mb: 2 }}>
+      <ToggleButtonGroup
         value={value}
-        onChange={handleChange}
-        variant="fullWidth"
-        // Add this to prevent MUI from treating values as indices
-        TabIndicatorProps={{
-          style: { transition: "all 0.3s ease" }
-        }}
+        exclusive
+        onChange={(_, newValue) => newValue && handleChange(null as any, newValue)}
+        fullWidth
         sx={{
-          minHeight: 48,
-          "& .MuiTab-root": {
-            minHeight: 48,
+          "& .MuiToggleButton-root": {
             textTransform: "none",
             fontWeight: 500,
             fontSize: "0.875rem",
+            py: 1.5,
             transition: "all 0.2s",
+            border: "1px solid",
+            borderColor: "divider",
             "&:hover": {
               backgroundColor: "action.hover",
             },
             "&.Mui-selected": {
               fontWeight: 600,
+              backgroundColor: "primary.main",
+              color: "primary.contrastText",
+              "&:hover": {
+                backgroundColor: "primary.dark",
+              },
             },
           },
         }}
@@ -81,35 +84,32 @@ const FormatTabsSelector: React.FC<FormatTabsSelectorProps> = ({ value, onChange
               arrow
               enterDelay={300}
             >
-              <Tab
-                label={
-                  <Box display="flex" alignItems="center" gap={0.5}>
-                    {info.label}
-                    {info.recommended && (
-                      <Chip
-                        label="Best"
-                        size="small"
-                        color="success"
-                        sx={{
-                          height: 16,
-                          fontSize: "0.625rem",
-                          "& .MuiChip-label": {
-                            px: 0.5,
-                          },
-                        }}
-                      />
-                    )}
-                  </Box>
-                }
+              <ToggleButton
                 value={format}
                 disabled={disabled}
-                // Explicitly set wrapped to false to avoid issues
-                wrapped={false}
-              />
+              >
+                <Box display="flex" alignItems="center" gap={0.5}>
+                  {info.label}
+                  {info.recommended && (
+                    <Chip
+                      label="Best"
+                      size="small"
+                      color="success"
+                      sx={{
+                        height: 16,
+                        fontSize: "0.625rem",
+                        "& .MuiChip-label": {
+                          px: 0.5,
+                        },
+                      }}
+                    />
+                  )}
+                </Box>
+              </ToggleButton>
             </Tooltip>
           );
         })}
-      </Tabs>
+      </ToggleButtonGroup>
     </Box>
   );
 };
