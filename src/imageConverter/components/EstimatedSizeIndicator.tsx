@@ -44,7 +44,7 @@ const EstimatedSizeIndicator: React.FC<EstimatedSizeIndicatorProps> = ({
       </Box>
     );
   }
-  
+
   // Validate inputs
   if (!originalSize || originalSize === 0) {
     return (
