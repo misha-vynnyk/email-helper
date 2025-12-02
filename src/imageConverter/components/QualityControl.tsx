@@ -99,7 +99,12 @@ const QualityControl: React.FC<QualityControlProps> = ({
           </Box>
           <Slider
             value={quality}
-            onChange={(_, value) => onQualityChange(value as number)}
+            onChange={(_, value) => {
+              // Handle array values and clamp to bounds
+              const numValue = Array.isArray(value) ? value[0] : value;
+              const clampedValue = Math.max(1, Math.min(100, numValue));
+              onQualityChange(clampedValue);
+            }}
             min={1}
             max={100}
             disabled={disabled}

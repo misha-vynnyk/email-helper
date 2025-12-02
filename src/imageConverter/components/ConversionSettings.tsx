@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 
 import { DownloadOutlined, ExpandLess, ExpandMore, Settings as SettingsIcon, UploadOutlined } from "@mui/icons-material";
 import {
@@ -37,29 +37,45 @@ export default function ConversionSettings() {
   const { settings, updateSettings, files } = useImageConverter();
   const [expanded, setExpanded] = useState(false);
 
-  // Calculate average size for estimation
-  // Use first file's format as reference, or most common format
-  const totalOriginalSize = files.reduce((sum, f) => sum + f.originalSize, 0);
-  const averageOriginalSize = files.length > 0 ? totalOriginalSize / files.length : 0;
-  
-  // Get most common format or first file format
-  const getRepresentativeFormat = () => {
-    if (files.length === 0) return "";
+  // Calculate average size for estimation (memoized for performance)
+  const { originalSize, originalFormat } = React.useMemo(() => {
+    if (files.length === 0) {
+      return { originalSize: 0, originalFormat: "" };
+    }
     
-    // Count formats
-    const formatCounts = files.reduce((acc, f) => {
+    // Only count files with valid size
+    const filesWithSize = files.filter(f => f.originalSize > 0);
+    if (filesWithSize.length === 0) {
+      return { originalSize: 0, originalFormat: "" };
+    }
+    
+    // Calculate average size
+    const totalSize = filesWithSize.reduce((sum, f) => sum + f.originalSize, 0);
+    const avgSize = totalSize / filesWithSize.length;
+    
+    // Find most common format (O(n) instead of O(n log n))
+    const formatCounts = new Map<string, number>();
+    filesWithSize.forEach(f => {
       const type = f.file?.type || "";
-      acc[type] = (acc[type] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+      if (type) {
+        formatCounts.set(type, (formatCounts.get(type) || 0) + 1);
+      }
+    });
     
-    // Get most common
-    const mostCommon = Object.entries(formatCounts).sort(([,a], [,b]) => b - a)[0];
-    return mostCommon ? mostCommon[0] : files[0]?.file?.type || "";
-  };
-  
-  const originalSize = averageOriginalSize;
-  const originalFormat = getRepresentativeFormat();
+    let maxCount = 0;
+    let mostCommonFormat = "";
+    formatCounts.forEach((count, format) => {
+      if (count > maxCount) {
+        maxCount = count;
+        mostCommonFormat = format;
+      }
+    });
+    
+    return {
+      originalSize: avgSize,
+      originalFormat: mostCommonFormat || filesWithSize[0]?.file?.type || ""
+    };
+  }, [files]);
 
   const qualityLabel = settings.compressionMode;
   const outputFormatLabel = settings.format;
