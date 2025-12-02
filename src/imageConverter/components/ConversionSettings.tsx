@@ -24,13 +24,23 @@ import { useImageConverter } from "../context/ImageConverterContext";
 import { ImageFormat, ResizeMode } from "../types";
 import { exportSettings, importSettings } from "../utils/settingsManager";
 
+import AdvancedSettingsSection from "./AdvancedSettingsSection";
 import CompressionModeSelector from "./CompressionModeSelector";
 import DimensionOptimizer from "./DimensionOptimizer";
+import EstimatedSizeIndicator from "./EstimatedSizeIndicator";
+import FormatTabsSelector from "./FormatTabsSelector";
 import GifOptimizationSettings from "./GifOptimizationSettings";
+import QualityControl from "./QualityControl";
+import QuickPresetsBar from "./QuickPresetsBar";
 
 export default function ConversionSettings() {
-  const { settings, updateSettings } = useImageConverter();
+  const { settings, updateSettings, files } = useImageConverter();
   const [expanded, setExpanded] = useState(false);
+
+  // Get first file for size estimation
+  const firstFile = files[0];
+  const originalSize = firstFile?.originalSize || 0;
+  const originalFormat = firstFile?.file.type || "";
 
   const qualityLabel = settings.compressionMode;
   const outputFormatLabel = settings.format;
@@ -117,52 +127,25 @@ export default function ConversionSettings() {
           flexDirection='column'
           gap={3}
         >
-          {/* Preset Profiles */}
+          {/* Quick Presets Bar */}
+          <QuickPresetsBar
+            selectedPreset={settings.selectedPreset}
+            onPresetSelect={handlePresetChange}
+          />
+
+          {/* Compression Mode Section */}
           <Box>
-            <Typography
-              variant='subtitle2'
-              gutterBottom
-            >
-              Presets
+            <Typography variant='subtitle2' fontWeight={600} mb={1}>
+              📊 Compression Mode
             </Typography>
-            <Select
-              value={settings.selectedPreset || ""}
-              onChange={(e) => handlePresetChange(e.target.value)}
-              displayEmpty
-              fullWidth
-              size='small'
-              sx={{ borderRadius: 5 }}
-            >
-              <MenuItem value=''>
-                <em>Custom Settings</em>
-              </MenuItem>
-              {PRESET_ORDER.map((presetId) => {
-                const preset = PRESETS[presetId];
-                return (
-                  <MenuItem
-                    key={presetId}
-                    value={presetId}
-                  >
-                    <Box>
-                      <Typography variant='body2'>{preset.name}</Typography>
-                      <Typography
-                        variant='caption'
-                        color='text.secondary'
-                      >
-                        {preset.description}
-                      </Typography>
-                    </Box>
-                  </MenuItem>
-                );
-              })}
-            </Select>
+            <CompressionModeSelector />
           </Box>
 
-          {/* Compression Mode */}
-          <CompressionModeSelector />
-
-          {/* Preserve Format Toggle */}
+          {/* Format Options Section */}
           <Box>
+            <Typography variant='subtitle2' fontWeight={600} mb={1}>
+              🎨 Format Options
+            </Typography>
             <FormControlLabel
               control={
                 <Checkbox
@@ -184,7 +167,7 @@ export default function ConversionSettings() {
             />
           </Box>
 
-          {/* Output Format - Only show if preserveFormat is disabled */}
+          {/* Output Format - Modern Tabs Design */}
           {!settings.preserveFormat && (
             <Box>
               <Typography
@@ -193,250 +176,32 @@ export default function ConversionSettings() {
               >
                 Output Format
               </Typography>
-              <ToggleButtonGroup
+              <FormatTabsSelector
                 value={settings.format}
-                exclusive
-                onChange={(_, value) => value && updateSettings({ format: value as ImageFormat })}
-                fullWidth
-                size='small'
-              >
-                <ToggleButton value='jpeg'>JPG</ToggleButton>
-                <ToggleButton value='webp'>WebP</ToggleButton>
-                <ToggleButton value='avif'>AVIF</ToggleButton>
-                <ToggleButton value='png'>PNG</ToggleButton>
-                <ToggleButton value='gif'>GIF</ToggleButton>
-              </ToggleButtonGroup>
-            </Box>
-          )}
-
-          {/* Auto Quality Toggle */}
-          <Box>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={settings.autoQuality}
-                  onChange={(e) => updateSettings({ autoQuality: e.target.checked })}
-                />
-              }
-              label={
-                <Box>
-                  <Typography variant='body2'>Auto Quality</Typography>
-                  <Typography
-                    variant='caption'
-                    color='text.secondary'
-                  >
-                    Automatically calculate optimal quality based on image properties
-                  </Typography>
-                </Box>
-              }
-            />
-          </Box>
-
-          {/* Preserve EXIF Toggle */}
-          <Box>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={settings.preserveExif}
-                  onChange={(e) => updateSettings({ preserveExif: e.target.checked })}
-                />
-              }
-              label={
-                <Box>
-                  <Typography variant='body2'>Preserve EXIF Metadata</Typography>
-                  <Typography
-                    variant='caption'
-                    color='text.secondary'
-                  >
-                    Keep camera info, location, and other metadata (may increase file size)
-                  </Typography>
-                </Box>
-              }
-            />
-          </Box>
-
-          {/* Quality Slider - Only for Balanced mode and when auto quality is off */}
-          {settings.compressionMode === "balanced" && !settings.autoQuality && (
-            <Box sx={{ margin: "10px" }}>
-              <Typography
-                variant='subtitle2'
-                gutterBottom
-              >
-                Quality: {settings.quality}%
-              </Typography>
-              <Slider
-                value={settings.quality}
-                onChange={(_, value) => updateSettings({ quality: value as number })}
-                min={1}
-                max={100}
-                marks={[
-                  { value: 1, label: "1%" },
-                  { value: 50, label: "50%" },
-                  { value: 100, label: "100%" },
-                ]}
+                onChange={(format) => updateSettings({ format })}
               />
             </Box>
           )}
 
-          <Box
-            sx={{
-              borderRadius: 5,
-              display: "flex",
-              gap: 2,
-              justifyContent: "space-between",
-              flexDirection: "row",
-            }}
-          >
-            {/* Background Color (for formats without transparency) */}
-            {settings.format === "jpeg" && (
-              <Box>
-                <Typography
-                  variant='subtitle2'
-                  gutterBottom
-                >
-                  Background Color (for transparency)
-                </Typography>
-                <Box
-                  display='flex'
-                  alignItems='center'
-                  gap={1}
-                  sx={{
-                    borderRadius: 5,
-                    border: "1px solid #e0e0e0",
-                    padding: 1,
-                  }}
-                >
-                  <input
-                    type='color'
-                    value={settings.backgroundColor}
-                    onChange={(e) => updateSettings({ backgroundColor: e.target.value })}
-                    style={{
-                      width: 50,
-                      height: 40,
-                      border: "none",
-                      cursor: "pointer",
-                      borderRadius: 5,
-                    }}
-                  />
-                  <TextField
-                    value={settings.backgroundColor}
-                    onChange={(e) => updateSettings({ backgroundColor: e.target.value })}
-                    size='small'
-                    placeholder='#FFFFFF'
-                    sx={{ borderRadius: 5 }}
-                  />
-                </Box>
-              </Box>
-            )}
+          {/* Quality Control - Modern Radio Design */}
+          <QualityControl
+            autoQuality={settings.autoQuality}
+            quality={settings.quality}
+            onAutoQualityChange={(auto) => updateSettings({ autoQuality: auto })}
+            onQualityChange={(quality) => updateSettings({ quality })}
+          />
 
-            {/* Resize Options */}
-            <Box>
-              <Typography
-                variant='subtitle2'
-                gutterBottom
-              >
-                Resize
-              </Typography>
-              <Select
-                value={settings.resize.mode}
-                onChange={(e) =>
-                  updateSettings({
-                    resize: { ...settings.resize, mode: e.target.value as ResizeMode },
-                  })
-                }
-                sx={{ borderRadius: 5 }}
-                fullWidth
-                size='small'
-              >
-                <MenuItem value='original'>Original Size</MenuItem>
-                <MenuItem value='preset'>Preset Size</MenuItem>
-                <MenuItem value='custom'>Custom Size</MenuItem>
-              </Select>
+          {/* Estimated Size Indicator */}
+          {originalSize > 0 && (
+            <EstimatedSizeIndicator
+              originalSize={originalSize}
+              originalFormat={originalFormat}
+              settings={settings}
+            />
+          )}
 
-              {settings.resize.mode === "preset" && (
-                <Box mt={1}>
-                  <ToggleButtonGroup
-                    value={settings.resize.preset}
-                    exclusive
-                    onChange={(_, value) =>
-                      value &&
-                      updateSettings({
-                        resize: { ...settings.resize, preset: value as number },
-                      })
-                    }
-                    fullWidth
-                    size='small'
-                  >
-                    <ToggleButton value={1920}>1920px</ToggleButton>
-                    <ToggleButton value={1200}>1200px</ToggleButton>
-                    <ToggleButton value={800}>800px</ToggleButton>
-                  </ToggleButtonGroup>
-                </Box>
-              )}
-
-              {settings.resize.mode === "custom" && (
-                <Box
-                  mt={1}
-                  display='flex'
-                  flexDirection='column'
-                  gap={1}
-                >
-                  <Box
-                    display='flex'
-                    gap={1}
-                  >
-                    <TextField
-                      label='Width (px)'
-                      type='number'
-                      value={settings.resize.width || ""}
-                      onChange={(e) =>
-                        updateSettings({
-                          resize: {
-                            ...settings.resize,
-                            width: Number(e.target.value) || undefined,
-                          },
-                        })
-                      }
-                      size='small'
-                      fullWidth
-                    />
-                    <TextField
-                      label='Height (px)'
-                      type='number'
-                      value={settings.resize.height || ""}
-                      onChange={(e) =>
-                        updateSettings({
-                          resize: {
-                            ...settings.resize,
-                            height: Number(e.target.value) || undefined,
-                          },
-                        })
-                      }
-                      size='small'
-                      fullWidth
-                    />
-                  </Box>
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={settings.resize.preserveAspectRatio}
-                        onChange={(e) =>
-                          updateSettings({
-                            resize: { ...settings.resize, preserveAspectRatio: e.target.checked },
-                          })
-                        }
-                        size='small'
-                      />
-                    }
-                    label='Preserve aspect ratio'
-                  />
-                </Box>
-              )}
-            </Box>
-          </Box>
-
-          {/* GIF Optimization Settings */}
-          <GifOptimizationSettings settings={settings} onUpdate={updateSettings} />
+          {/* Advanced Settings - Collapsible Section */}
+          <AdvancedSettingsSection settings={settings} updateSettings={updateSettings} />
 
           {/* Export/Import Settings */}
           <Box sx={{ borderTop: '1px solid', borderColor: 'divider', pt: 2, mt: 2 }}>
