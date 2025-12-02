@@ -12,16 +12,60 @@ interface EstimatedSizeIndicatorProps {
   originalSize: number;
   originalFormat: string;
   settings: ConversionSettings;
+  disabled?: boolean; // True if multiple files selected
 }
 
 const EstimatedSizeIndicator: React.FC<EstimatedSizeIndicatorProps> = ({
   originalSize,
   originalFormat,
   settings,
+  disabled = false,
 }) => {
+  // If disabled (multiple files selected), show disabled state
+  if (disabled) {
+    return (
+      <Box
+        sx={{
+          p: 2,
+          borderRadius: 2,
+          background: "linear-gradient(135deg, #9ca3af 0%, #6b7280 100%)",
+          color: "white",
+          opacity: 0.5,
+          filter: "grayscale(100%)",
+          transition: "all 0.3s ease",
+        }}
+      >
+        <Typography variant="caption" sx={{ opacity: 0.9, display: "block", mb: 1 }}>
+          💡 Estimated Output Size
+        </Typography>
+        <Typography variant="body2" sx={{ mt: 1 }}>
+          ℹ️ Select only ONE file to see size estimation
+        </Typography>
+      </Box>
+    );
+  }
+  
   // Validate inputs
   if (!originalSize || originalSize === 0) {
-    return null;
+    return (
+      <Box
+        sx={{
+          p: 2,
+          borderRadius: 2,
+          background: "linear-gradient(135deg, #9ca3af 0%, #6b7280 100%)",
+          color: "white",
+          opacity: 0.5,
+          transition: "all 0.3s ease",
+        }}
+      >
+        <Typography variant="caption" sx={{ opacity: 0.9, display: "block", mb: 1 }}>
+          💡 Estimated Output Size
+        </Typography>
+        <Typography variant="body2" sx={{ mt: 1 }}>
+          ℹ️ Select a file to see size estimation
+        </Typography>
+      </Box>
+    );
   }
 
   // Handle missing originalFormat with fallback
@@ -72,7 +116,7 @@ const EstimatedSizeIndicator: React.FC<EstimatedSizeIndicatorProps> = ({
       }}
     >
       <Typography variant="caption" sx={{ opacity: 0.9, display: "block", mb: 1 }}>
-        💡 Estimated Output Size (per file average)
+        💡 Estimated Output Size
       </Typography>
 
       <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>

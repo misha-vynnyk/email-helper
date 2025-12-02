@@ -37,43 +37,27 @@ export default function ConversionSettings() {
   const { settings, updateSettings, files } = useImageConverter();
   const [expanded, setExpanded] = useState(false);
 
-  // Calculate average size for estimation (memoized for performance)
-  const { originalSize, originalFormat } = React.useMemo(() => {
-    if (files.length === 0) {
-      return { originalSize: 0, originalFormat: "" };
+  // Get selected file for estimation (only ONE file should be selected)
+  const { originalSize, originalFormat, isMultipleSelected, hasSelection } = React.useMemo(() => {
+    const selectedFiles = files.filter(f => f.selected);
+    
+    if (selectedFiles.length === 0) {
+      // No selection - show nothing
+      return { originalSize: 0, originalFormat: "", isMultipleSelected: false, hasSelection: false };
     }
     
-    // Only count files with valid size
-    const filesWithSize = files.filter(f => f.originalSize > 0);
-    if (filesWithSize.length === 0) {
-      return { originalSize: 0, originalFormat: "" };
+    if (selectedFiles.length > 1) {
+      // Multiple files selected - disable
+      return { originalSize: 0, originalFormat: "", isMultipleSelected: true, hasSelection: true };
     }
     
-    // Calculate average size
-    const totalSize = filesWithSize.reduce((sum, f) => sum + f.originalSize, 0);
-    const avgSize = totalSize / filesWithSize.length;
-    
-    // Find most common format (O(n) instead of O(n log n))
-    const formatCounts = new Map<string, number>();
-    filesWithSize.forEach(f => {
-      const type = f.file?.type || "";
-      if (type) {
-        formatCounts.set(type, (formatCounts.get(type) || 0) + 1);
-      }
-    });
-    
-    let maxCount = 0;
-    let mostCommonFormat = "";
-    formatCounts.forEach((count, format) => {
-      if (count > maxCount) {
-        maxCount = count;
-        mostCommonFormat = format;
-      }
-    });
-    
+    // Exactly one file selected - show its info
+    const selectedFile = selectedFiles[0];
     return {
-      originalSize: avgSize,
-      originalFormat: mostCommonFormat || filesWithSize[0]?.file?.type || ""
+      originalSize: selectedFile.originalSize || 0,
+      originalFormat: selectedFile.file?.type || "",
+      isMultipleSelected: false,
+      hasSelection: true
     };
   }, [files]);
 
@@ -227,11 +211,12 @@ export default function ConversionSettings() {
           />
 
           {/* Estimated Size Indicator */}
-          {originalSize > 0 && (
+          {hasSelection && (
             <EstimatedSizeIndicator
               originalSize={originalSize}
               originalFormat={originalFormat}
               settings={settings}
+              disabled={isMultipleSelected}
             />
           )}
 

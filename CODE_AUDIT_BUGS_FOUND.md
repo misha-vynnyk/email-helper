@@ -14,7 +14,7 @@ if (!originalFormat || originalFormat.length === 0) {
 }
 ```
 
-**Impact**: 
+**Impact**:
 - Якщо `originalFormat` пустий, код продовжує з пустим string
 - `estimateOutputSize` отримує `""` і всі `.includes()` перевірки fallback до `else`
 - Неточні розрахунки
@@ -42,8 +42,8 @@ if (settings.format === "jpeg") {
   // ...
 } else if (settings.format === "webp") {
   // ...
-} 
-// ... 
+}
+// ...
 else if (settings.format === "gif") {
   // ...
 }
@@ -98,14 +98,14 @@ const averageOriginalSize = filesWithSize.length > 0 ? totalOriginalSize / files
 ```typescript
 const getRepresentativeFormat = () => {
   if (files.length === 0) return "";
-  
+
   // Count formats
   const formatCounts = files.reduce((acc, f) => {
     const type = f.file?.type || "";
     acc[type] = (acc[type] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
-  
+
   // Get most common
   const mostCommon = Object.entries(formatCounts).sort(([,a], [,b]) => b - a)[0];
   return mostCommon ? mostCommon[0] : files[0]?.file?.type || "";
@@ -123,14 +123,14 @@ import { useMemo } from "react";
 
 const representativeFormat = useMemo(() => {
   if (files.length === 0) return "";
-  
+
   // Count formats
   const formatCounts = new Map<string, number>();
   files.forEach(f => {
     const type = f.file?.type || "";
     formatCounts.set(type, (formatCounts.get(type) || 0) + 1);
   });
-  
+
   // Find most common (O(n) instead of O(n log n))
   let maxCount = 0;
   let mostCommon = "";
@@ -140,7 +140,7 @@ const representativeFormat = useMemo(() => {
       mostCommon = format;
     }
   });
-  
+
   return mostCommon || files[0]?.file?.type || "";
 }, [files]);
 ```
@@ -161,8 +161,8 @@ const assumedOriginalWidth = 800;       // Line 154
 - Resize calculations based on wrong assumptions can be way off
 - 800px assumption for GIF is especially problematic
 
-**Fix**: 
-Could accept optional `originalDimensions` parameter, but це потребує refactoring. 
+**Fix**:
+Could accept optional `originalDimensions` parameter, but це потребує refactoring.
 For now - OK as rough estimate, but documented limitation.
 
 ---
@@ -289,7 +289,7 @@ icon={PRESET_ICONS[presetId] || <SettingsIcon fontSize="small" />}
 
 ### 12. **No unit tests for new components**
 
-**Files**: 
+**Files**:
 - `FormatTabsSelector.tsx`
 - `QuickPresetsBar.tsx`
 - `QualityControl.tsx`
@@ -351,4 +351,3 @@ icon={PRESET_ICONS[presetId] || <SettingsIcon fontSize="small" />}
 ---
 
 **Найбільш критичні для фіксу зараз**: #1, #2, #4
-
