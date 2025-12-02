@@ -37,10 +37,29 @@ export default function ConversionSettings() {
   const { settings, updateSettings, files } = useImageConverter();
   const [expanded, setExpanded] = useState(false);
 
-  // Get first file for size estimation
-  const firstFile = files && files.length > 0 ? files[0] : null;
-  const originalSize = firstFile?.originalSize || 0;
-  const originalFormat = firstFile?.file?.type || "";
+  // Calculate average size for estimation
+  // Use first file's format as reference, or most common format
+  const totalOriginalSize = files.reduce((sum, f) => sum + f.originalSize, 0);
+  const averageOriginalSize = files.length > 0 ? totalOriginalSize / files.length : 0;
+  
+  // Get most common format or first file format
+  const getRepresentativeFormat = () => {
+    if (files.length === 0) return "";
+    
+    // Count formats
+    const formatCounts = files.reduce((acc, f) => {
+      const type = f.file?.type || "";
+      acc[type] = (acc[type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    // Get most common
+    const mostCommon = Object.entries(formatCounts).sort(([,a], [,b]) => b - a)[0];
+    return mostCommon ? mostCommon[0] : files[0]?.file?.type || "";
+  };
+  
+  const originalSize = averageOriginalSize;
+  const originalFormat = getRepresentativeFormat();
 
   const qualityLabel = settings.compressionMode;
   const outputFormatLabel = settings.format;

@@ -23,14 +23,14 @@ const EstimatedSizeIndicator: React.FC<EstimatedSizeIndicatorProps> = ({
   if (!originalSize || originalSize === 0) {
     return null;
   }
-  
+
   if (!originalFormat || originalFormat.length === 0) {
     console.warn("[EstimatedSizeIndicator] Missing originalFormat, using fallback");
     // Fallback to settings format
   }
 
   const estimatedSize = estimateOutputSize(originalSize, originalFormat, settings);
-  
+
   // Validate estimation result
   if (!estimatedSize || estimatedSize === 0 || isNaN(estimatedSize)) {
     console.error("[EstimatedSizeIndicator] Invalid estimation result:", {
@@ -41,7 +41,7 @@ const EstimatedSizeIndicator: React.FC<EstimatedSizeIndicatorProps> = ({
     });
     return null;
   }
-  
+
   const compressionRatio = calculateCompressionRatio(originalSize, estimatedSize);
   const isSmaller = estimatedSize < originalSize;
   const sizeDiff = Math.abs(originalSize - estimatedSize);
@@ -70,7 +70,7 @@ const EstimatedSizeIndicator: React.FC<EstimatedSizeIndicatorProps> = ({
       }}
     >
       <Typography variant="caption" sx={{ opacity: 0.9, display: "block", mb: 1 }}>
-        💡 Estimated Output Size
+        💡 Estimated Output Size (per file average)
       </Typography>
 
       <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
