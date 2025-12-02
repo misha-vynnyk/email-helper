@@ -21,7 +21,6 @@ import {
   Palette as ColorIcon,
 } from "@mui/icons-material";
 import { ConversionSettings, ResizeMode } from "../types";
-import GifOptimizationSettings from "./GifOptimizationSettings";
 
 interface AdvancedSettingsSectionProps {
   settings: ConversionSettings;
@@ -181,11 +180,10 @@ const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = ({
             />
           </Box>
 
-          <Divider />
-
           {/* Background Color (for JPEG) */}
           {settings.format === "jpeg" && (
             <>
+              <Divider />
               <Box>
                 <Box display="flex" alignItems="center" gap={1} mb={1}>
                   <ColorIcon fontSize="small" color="action" />
@@ -223,12 +221,8 @@ const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = ({
                   />
                 </Box>
               </Box>
-              <Divider />
             </>
           )}
-
-          {/* GIF Optimization */}
-          <GifOptimizationSettings settings={settings} onUpdate={updateSettings} />
         </Box>
       </Collapse>
     </Box>

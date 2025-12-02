@@ -40,17 +40,17 @@ export default function ConversionSettings() {
   // Get selected file for estimation (only ONE file should be selected)
   const { originalSize, originalFormat, isMultipleSelected, hasSelection } = React.useMemo(() => {
     const selectedFiles = files.filter(f => f.selected);
-    
+
     if (selectedFiles.length === 0) {
       // No selection - show nothing
       return { originalSize: 0, originalFormat: "", isMultipleSelected: false, hasSelection: false };
     }
-    
+
     if (selectedFiles.length > 1) {
       // Multiple files selected - disable
       return { originalSize: 0, originalFormat: "", isMultipleSelected: true, hasSelection: true };
     }
-    
+
     // Exactly one file selected - show its info
     const selectedFile = selectedFiles[0];
     return {
