@@ -34,8 +34,13 @@ const FORMAT_INFO: Record<ImageFormat, { label: string; description: string; rec
 };
 
 const FormatTabsSelector: React.FC<FormatTabsSelectorProps> = ({ value, onChange, disabled = false }) => {
-  const handleChange = (_event: React.SyntheticEvent, newValue: ImageFormat) => {
-    onChange(newValue);
+  const formats = Object.keys(FORMAT_INFO) as ImageFormat[];
+  
+  const handleChange = (_event: React.SyntheticEvent, newValue: string) => {
+    // Ensure newValue is a valid ImageFormat
+    if (formats.includes(newValue as ImageFormat)) {
+      onChange(newValue as ImageFormat);
+    }
   };
 
   return (
@@ -44,6 +49,10 @@ const FormatTabsSelector: React.FC<FormatTabsSelectorProps> = ({ value, onChange
         value={value}
         onChange={handleChange}
         variant="fullWidth"
+        // Add this to prevent MUI from treating values as indices
+        TabIndicatorProps={{
+          style: { transition: "all 0.3s ease" }
+        }}
         sx={{
           minHeight: 48,
           "& .MuiTab-root": {
@@ -61,7 +70,7 @@ const FormatTabsSelector: React.FC<FormatTabsSelectorProps> = ({ value, onChange
           },
         }}
       >
-        {(Object.keys(FORMAT_INFO) as ImageFormat[]).map((format) => {
+        {formats.map((format) => {
           const info = FORMAT_INFO[format];
           return (
             <Tooltip
@@ -93,6 +102,8 @@ const FormatTabsSelector: React.FC<FormatTabsSelectorProps> = ({ value, onChange
                 }
                 value={format}
                 disabled={disabled}
+                // Explicitly set wrapped to false to avoid issues
+                wrapped={false}
               />
             </Tooltip>
           );

@@ -23,7 +23,7 @@ export function estimateOutputSize(
   const isOriginalPng = originalFormat.includes("png");
   const isOriginalWebp = originalFormat.includes("webp");
   const isOriginalGif = originalFormat.includes("gif");
-  
+
   // Detect if source is an animated GIF (heuristic: large GIF is likely animated)
   const isLikelyAnimated = isOriginalGif && originalSize > 1024 * 1024; // > 1MB
 
