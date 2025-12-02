@@ -75,7 +75,21 @@ const EstimatedSizeIndicator: React.FC<EstimatedSizeIndicatorProps> = ({
     effectiveFormat = `image/${settings.format}`; // e.g., "image/jpeg"
   }
 
+  console.log('[EstimatedSizeIndicator] Calculating estimation:', {
+    originalSize,
+    originalFormat: effectiveFormat,
+    outputFormat: settings.format,
+    quality: settings.quality,
+    compressionMode: settings.compressionMode
+  });
+
   const estimatedSize = estimateOutputSize(originalSize, effectiveFormat, settings);
+
+  console.log('[EstimatedSizeIndicator] Result:', {
+    originalSize,
+    estimatedSize,
+    reduction: ((originalSize - estimatedSize) / originalSize * 100).toFixed(1) + '%'
+  });
 
   // Validate estimation result
   if (!estimatedSize || estimatedSize === 0 || isNaN(estimatedSize)) {
