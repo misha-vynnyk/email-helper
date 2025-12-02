@@ -165,8 +165,8 @@ const getGradient = () => {
 
 #### C. **Savings Information**
 ```typescript
-{isSmaller 
-  ? `You'll save ${formatFileSize(sizeDiff)}` 
+{isSmaller
+  ? `You'll save ${formatFileSize(sizeDiff)}`
   : `Size increases by ${formatFileSize(sizeDiff)}`
 }
 ```
@@ -292,4 +292,3 @@ Estimation: 0.98 MB (baseRatio 0.45 * quality 0.92 * resize 0.23)
 ---
 
 **Готово до production!** ✨
-

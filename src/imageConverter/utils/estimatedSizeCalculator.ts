@@ -17,6 +17,10 @@ export function estimateOutputSize(
   }
 
   let estimatedRatio = 1.0;
+  
+  // Detect if source is an animated GIF (heuristic: large GIF is likely animated)
+  const isOriginalGif = originalFormat.includes("gif");
+  const isLikelyAnimated = isOriginalGif && originalSize > 1024 * 1024; // > 1MB
 
   // Detect original format for better estimation
   const isOriginalJpeg = originalFormat.includes("jpeg") || originalFormat.includes("jpg");
@@ -26,7 +30,7 @@ export function estimateOutputSize(
 
   // Base compression ratios - adjusted based on source format
   let baseRatio = 1.0;
-  
+
   if (settings.format === "jpeg") {
     if (isOriginalJpeg) baseRatio = 0.8; // JPEG to JPEG
     else if (isOriginalPng) baseRatio = 0.4; // PNG to JPEG (significant compression)
@@ -47,8 +51,29 @@ export function estimateOutputSize(
     else if (isOriginalJpeg) baseRatio = 1.5; // JPEG to PNG (may increase significantly)
     else baseRatio = 1.3;
   } else if (settings.format === "gif") {
-    if (isOriginalGif) baseRatio = 0.7; // GIF to GIF (optimization)
-    else baseRatio = 0.85;
+    // GIF is VERY hard to compress without quality loss
+    // Animated GIFs especially resist compression
+    if (isOriginalGif) {
+      // GIF to GIF optimization depends heavily on:
+      // - Number of frames (more frames = less compressible)
+      // - Color palette complexity
+      // - Existing optimization level
+      
+      if (isLikelyAnimated) {
+        // Animated GIFs are especially hard to compress
+        // Realistic expectations for 25MB animated GIF:
+        // - With quality 85: expect 15-20 MB (60-80% of original)
+        // - With quality 50: expect 10-15 MB (40-60% of original)
+        // - With aggressive optimization + resize: 5-10 MB (20-40%)
+        baseRatio = 0.75; // Conservative for animations
+      } else {
+        // Static GIFs compress better
+        baseRatio = 0.5;
+      }
+    } else {
+      // Converting other formats to GIF usually increases size
+      baseRatio = 1.2; // GIF is typically larger
+    }
   }
 
   estimatedRatio *= baseRatio;
@@ -57,28 +82,48 @@ export function estimateOutputSize(
   if (settings.format !== "png" && !settings.autoQuality) {
     const qualityFactor = settings.quality / 100;
     
-    // More accurate quality-to-size mapping
-    // Quality 100: ratio ~1.0
-    // Quality 85: ratio ~0.85
-    // Quality 50: ratio ~0.5
-    // Quality 1: ratio ~0.2
-    const qualityImpact = 0.2 + (qualityFactor * 0.8);
-    estimatedRatio *= qualityImpact;
+    if (settings.format === "gif") {
+      // GIF quality has less impact than other formats
+      // Lossy compression on GIF is aggressive but unpredictable
+      // Quality 100: minimal compression
+      // Quality 50: moderate compression (maybe 20-30% reduction)
+      // Quality 1: maximum compression (maybe 40-50% reduction)
+      const qualityImpact = 0.5 + (qualityFactor * 0.5);
+      estimatedRatio *= qualityImpact;
+    } else {
+      // More accurate quality-to-size mapping for JPEG/WebP/AVIF
+      // Quality 100: ratio ~1.0
+      // Quality 85: ratio ~0.85
+      // Quality 50: ratio ~0.5
+      // Quality 1: ratio ~0.2
+      const qualityImpact = 0.2 + (qualityFactor * 0.8);
+      estimatedRatio *= qualityImpact;
+    }
   }
 
   // Compression mode adjustments
   switch (settings.compressionMode) {
     case "maximum-quality":
-      estimatedRatio *= 1.15; // Larger files for quality
+      if (settings.format === "gif" && isLikelyAnimated) {
+        estimatedRatio *= 1.05; // Less impact on GIF
+      } else {
+        estimatedRatio *= 1.15; // Larger files for quality
+      }
       break;
     case "maximum-compression":
-      estimatedRatio *= 0.75; // Aggressive compression
+      if (settings.format === "gif" && isLikelyAnimated) {
+        estimatedRatio *= 0.85; // GIF doesn't compress as much
+      } else {
+        estimatedRatio *= 0.75; // Aggressive compression
+      }
       break;
     case "lossless":
       if (settings.format === "png") {
         estimatedRatio *= 1.2;
       } else if (settings.format === "webp") {
         estimatedRatio *= 1.4; // Lossless WebP is larger
+      } else if (settings.format === "gif") {
+        estimatedRatio *= 1.1; // Lossless GIF is barely larger
       }
       break;
     case "balanced":
@@ -104,18 +149,25 @@ export function estimateOutputSize(
   // GIF frame resize impact
   if (settings.format === "gif" && settings.gifFrameResize?.enabled) {
     if (settings.gifFrameResize.width || settings.gifFrameResize.height) {
-      estimatedRatio *= 0.6; // Frame resizing can significantly reduce size
+      // Frame resizing reduces GIF size proportionally to area
+      // But GIF's per-frame overhead means it's not perfectly proportional
+      const resizeWidth = settings.gifFrameResize.width || 800;
+      const assumedOriginalWidth = 800; // Conservative assumption
+      const dimensionRatio = resizeWidth / assumedOriginalWidth;
+      const areaRatio = dimensionRatio * dimensionRatio;
+      // Use area ratio but with some overhead factor
+      estimatedRatio *= Math.max(0.3, areaRatio * 1.2);
     }
   }
 
   // Ensure reasonable bounds
   const estimated = Math.round(originalSize * estimatedRatio);
-  
+
   // Minimum size (can't be less than 1KB realistically)
   const minSize = 1024;
   // Maximum size (shouldn't exceed original by more than 2x)
   const maxSize = originalSize * 2;
-  
+
   return Math.max(minSize, Math.min(maxSize, estimated));
 }
 

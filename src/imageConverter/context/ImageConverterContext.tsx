@@ -241,7 +241,7 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
           performanceMonitor.recordCacheHit();
           usedCache = true;
           result = { blob: cachedBlob, size: cachedBlob.size };
-          
+
           // Smooth progress animation for cached results
           for (let p = 10; p <= 100; p += 10) {
             onProgress(p);
@@ -280,7 +280,7 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
           } else {
             // Server-side processing with simulated progress
             onProgress(15);
-            
+
             // Simulate smooth progress during server processing
             const progressInterval = setInterval(() => {
               setFiles((prev) =>

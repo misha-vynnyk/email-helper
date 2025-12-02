@@ -27,6 +27,11 @@ const EstimatedSizeIndicator: React.FC<EstimatedSizeIndicatorProps> = ({
   const compressionRatio = calculateCompressionRatio(originalSize, estimatedSize);
   const isSmaller = estimatedSize < originalSize;
   const sizeDiff = Math.abs(originalSize - estimatedSize);
+  
+  // Detect if likely animated GIF
+  const isGif = settings.format === "gif";
+  const isLikelyAnimated = originalFormat.includes("gif") && originalSize > 1024 * 1024;
+  const hasTargetSize = settings.targetFileSize !== undefined;
 
   // Determine background gradient based on compression quality
   const getGradient = () => {
@@ -109,9 +114,16 @@ const EstimatedSizeIndicator: React.FC<EstimatedSizeIndicatorProps> = ({
         </Typography>
       </Box>
 
-      <Typography variant="caption" sx={{ opacity: 0.7, mt: 1, display: "block", fontStyle: "italic" }}>
-        ⚠️ Estimate based on format, quality & settings. Actual may vary ±10-20%.
-      </Typography>
+      {isGif && isLikelyAnimated && !hasTargetSize ? (
+        <Typography variant="caption" sx={{ opacity: 0.8, mt: 1, display: "block", fontStyle: "italic" }}>
+          ⚠️ <strong>Animated GIF:</strong> Compression varies greatly (±20-40% variance). 
+          Use "Target File Size" for more predictable results.
+        </Typography>
+      ) : (
+        <Typography variant="caption" sx={{ opacity: 0.7, mt: 1, display: "block", fontStyle: "italic" }}>
+          ⚠️ Estimate based on format, quality & settings. Actual may vary ±10-20%.
+        </Typography>
+      )}
     </Box>
   );
 };
