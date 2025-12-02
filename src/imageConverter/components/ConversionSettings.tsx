@@ -26,6 +26,7 @@ import { exportSettings, importSettings } from "../utils/settingsManager";
 
 import CompressionModeSelector from "./CompressionModeSelector";
 import DimensionOptimizer from "./DimensionOptimizer";
+import GifOptimizationSettings from "./GifOptimizationSettings";
 
 export default function ConversionSettings() {
   const { settings, updateSettings } = useImageConverter();
@@ -203,6 +204,7 @@ export default function ConversionSettings() {
                 <ToggleButton value='webp'>WebP</ToggleButton>
                 <ToggleButton value='avif'>AVIF</ToggleButton>
                 <ToggleButton value='png'>PNG</ToggleButton>
+                <ToggleButton value='gif'>GIF</ToggleButton>
               </ToggleButtonGroup>
             </Box>
           )}
@@ -432,6 +434,9 @@ export default function ConversionSettings() {
               )}
             </Box>
           </Box>
+
+          {/* GIF Optimization Settings */}
+          <GifOptimizationSettings settings={settings} onUpdate={updateSettings} />
 
           {/* Export/Import Settings */}
           <Box sx={{ borderTop: '1px solid', borderColor: 'divider', pt: 2, mt: 2 }}>

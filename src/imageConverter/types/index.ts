@@ -1,4 +1,4 @@
-export type ImageFormat = "jpeg" | "webp" | "avif" | "png";
+export type ImageFormat = "jpeg" | "webp" | "avif" | "png" | "gif";
 
 export type ProcessingMode = "client" | "server";
 
@@ -26,6 +26,13 @@ export interface ConversionSettings {
   autoQuality: boolean; // Automatically calculate optimal quality
   selectedPreset?: string; // Currently selected preset ID
   preserveExif: boolean; // Preserve EXIF metadata during conversion
+  targetFileSize?: number; // Target file size in bytes (e.g., 1.5 MB = 1572864)
+  gifFrameResize?: {
+    enabled: boolean;
+    width?: number;
+    height?: number;
+    preserveAspectRatio: boolean;
+  };
 }
 
 export type ConversionStatus = "pending" | "processing" | "done" | "error";

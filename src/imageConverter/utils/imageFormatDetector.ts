@@ -17,6 +17,7 @@ export function detectImageFormat(file: File): ImageFormat {
   if (mimeType.includes("png")) return "png";
   if (mimeType.includes("webp")) return "webp";
   if (mimeType.includes("avif")) return "avif";
+  if (mimeType.includes("gif")) return "gif";
 
   // Fallback to file extension
   const extension = fileName.split(".").pop()?.toLowerCase();
@@ -24,6 +25,7 @@ export function detectImageFormat(file: File): ImageFormat {
   if (extension === "png") return "png";
   if (extension === "webp") return "webp";
   if (extension === "avif") return "avif";
+  if (extension === "gif") return "gif";
 
   // Default to jpeg if unknown
   return "jpeg";
@@ -42,8 +44,9 @@ export function getExtensionForFormat(format: ImageFormat): string {
       return ".webp";
     case "avif":
       return ".avif";
+    case "gif":
+      return ".gif";
     default:
       return ".jpg";
   }
 }
-
