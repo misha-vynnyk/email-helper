@@ -35,7 +35,7 @@ const FORMAT_INFO: Record<ImageFormat, { label: string; description: string; rec
 
 const FormatTabsSelector: React.FC<FormatTabsSelectorProps> = ({ value, onChange, disabled = false }) => {
   const formats = Object.keys(FORMAT_INFO) as ImageFormat[];
-  
+
   const handleChange = (_event: React.SyntheticEvent, newValue: string) => {
     // Ensure newValue is a valid ImageFormat
     if (formats.includes(newValue as ImageFormat)) {
