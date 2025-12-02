@@ -40,7 +40,7 @@ export default function ConversionSettings() {
   // Get selected file for estimation (only ONE file should be selected)
   // Need to include files.length and selected states in dependency
   const selectedFilesIds = files.filter(f => f.selected).map(f => f.id).join(',');
-  
+
   const { originalSize, originalFormat, isMultipleSelected, hasSelection } = React.useMemo(() => {
     const selectedFiles = files.filter(f => f.selected);
 
@@ -58,12 +58,12 @@ export default function ConversionSettings() {
 
     // Exactly one file selected - show its info
     const selectedFile = selectedFiles[0];
-    console.log('[ConversionSettings] Using file:', { 
-      name: selectedFile.file.name, 
+    console.log('[ConversionSettings] Using file:', {
+      name: selectedFile.file.name,
       size: selectedFile.originalSize,
-      format: selectedFile.file?.type 
+      format: selectedFile.file?.type
     });
-    
+
     return {
       originalSize: selectedFile.originalSize || 0,
       originalFormat: selectedFile.file?.type || "",

@@ -11,10 +11,11 @@ export function estimateOutputSize(
 ): number {
   if (!originalSize || originalSize === 0) return 0;
 
-  // GIF target file size - exact value if specified
-  if (settings.format === "gif" && settings.targetFileSize) {
-    return settings.targetFileSize;
-  }
+  // Note: We removed GIF target file size from UI, so ignore it in estimation
+  // If you re-enable GIF optimization UI, uncomment this:
+  // if (settings.format === "gif" && settings.targetFileSize) {
+  //   return settings.targetFileSize;
+  // }
 
   let estimatedRatio = 1.0;
 
