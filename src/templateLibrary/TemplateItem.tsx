@@ -45,6 +45,8 @@ import { useEmailSender } from "../emailSender/EmailSenderContext";
 import { EmailTemplate, TEMPLATE_CATEGORIES, TemplateCategory } from "../types/template";
 
 import { PreviewConfig } from "./PreviewSettings";
+import ResizablePreview from "./ResizablePreview";
+import ResponsiveToolbar from "./ResponsiveToolbar";
 import { getTemplateContent, removeTemplate, syncTemplate, updateTemplate } from "./templateApi";
 import { getCategoryIcon } from "./templateCategoryIcons";
 import { templateContentCache } from "./templateContentCache";
@@ -120,6 +122,10 @@ export default function TemplateItem({
 
   const [zoom, setZoom] = useState(1);
   const [renderKey, setRenderKey] = useState(0);
+  const [viewportWidth, setViewportWidth] = useState<number | "responsive">(600);
+  const [viewportOrientation, setViewportOrientation] = useState<"portrait" | "landscape">(
+    "portrait"
+  );
 
   // Синхронізувати локальний стан з prop
   useEffect(() => {
@@ -1089,6 +1095,20 @@ export default function TemplateItem({
               </ButtonGroup>
             </Box>
           </Box>
+
+          {/* Responsive Toolbar */}
+          <Box
+            display='flex'
+            justifyContent='center'
+            mt={2}
+          >
+            <ResponsiveToolbar
+              width={viewportWidth}
+              onWidthChange={setViewportWidth}
+              orientation={viewportOrientation}
+              onOrientationChange={setViewportOrientation}
+            />
+          </Box>
         </DialogTitle>
         <DialogContent ref={dialogContentRef}>
           {loading && !previewHtml ? (
@@ -1112,22 +1132,28 @@ export default function TemplateItem({
                 bgcolor: "#f5f5f5",
               }}
             >
-              <Box
-                key={`dialog-preview-${template.id}-${renderKey}`}
-                sx={{
-                  transform: `scale(${zoom})`,
-                  transformOrigin: "top center",
-                  transition: "transform 0.2s ease",
-                  border: "1px solid",
-                  borderColor: "divider",
-                  borderRadius: 1,
-                  backgroundColor: "#fff",
-                  minHeight: 200,
-                  p: 2,
-                  boxShadow: 2,
-                }}
-                dangerouslySetInnerHTML={{ __html: sanitizePreviewHtml(previewHtml) }}
-              />
+              <ResizablePreview
+                width={viewportWidth}
+                onWidthChange={setViewportWidth}
+                zoom={zoom}
+              >
+                <Box
+                  key={`dialog-preview-${template.id}-${renderKey}`}
+                  sx={{
+                    transform: `scale(${zoom})`,
+                    transformOrigin: "top center",
+                    transition: "transform 0.2s ease",
+                    border: "1px solid",
+                    borderColor: "divider",
+                    borderRadius: 1,
+                    backgroundColor: "#fff",
+                    minHeight: 200,
+                    p: 2,
+                    boxShadow: 2,
+                  }}
+                  dangerouslySetInnerHTML={{ __html: sanitizePreviewHtml(previewHtml) }}
+                />
+              </ResizablePreview>
             </Box>
           ) : null}
         </DialogContent>
