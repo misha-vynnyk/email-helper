@@ -48,6 +48,7 @@ import { GRID, TIMEOUTS } from "./constants";
 import { formatErrorMessage } from "./errorHandling";
 import { useDebounce } from "../hooks/useDebounce";
 import { logger } from "../utils/logger";
+import { preloadBlocksImages } from "../utils/blockImagePreloader";
 
 export default function BlockLibrary() {
   const [predefinedBlocks, setPredefinedBlocks] = useState<EmailBlock[]>([]);
@@ -130,6 +131,16 @@ export default function BlockLibrary() {
           });
           setFileBlocks(filteredFiles);
         }
+
+        // Preload зображень з усіх блоків в кеш (в фоні, не блокує UI)
+        const allBlocksForPreload = [
+          ...custom.map((b) => ({ ...b, source: "localStorage" })),
+          ...files,
+        ];
+        preloadBlocksImages(allBlocksForPreload).catch((error) => {
+          // Ігноруємо помилки preloading - це не критично
+          logger.warn("BlockLibrary", "Failed to preload block images", error);
+        });
       } catch (err) {
         const error = err instanceof Error ? err.message : "Unknown error";
         logger.error("BlockLibrary", "Failed to load blocks", err);
