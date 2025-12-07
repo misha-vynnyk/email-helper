@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { toast } from "react-toastify";
 
 import API_URL from "../config/api";
+import { preloadImages } from "../utils/imageUrlReplacer";
 
 interface EmailSenderContextType {
   editorHtml: string;
@@ -25,7 +26,7 @@ interface EmailSenderContextType {
   setUseStorageToggle: (toggle: "localStorage" | "env" | "state") => void;
 }
 
-const EmailSenderContext = createContext<EmailSenderContextType | undefined>(undefined);
+export const EmailSenderContext = createContext<EmailSenderContextType | undefined>(undefined);
 
 export const useEmailSender = () => {
   const context = useContext(EmailSenderContext);
@@ -82,6 +83,17 @@ export const EmailSenderProvider: React.FC<{ children: React.ReactNode }> = ({ c
   // Автоматичне збереження HTML та subject в sessionStorage
   useEffect(() => {
     sessionStorage.setItem("emailEditorHtml", editorHtml);
+  }, [editorHtml]);
+
+  // Preload зображень з HTML в кеш при зміні HTML
+  useEffect(() => {
+    if (editorHtml) {
+      // Завантажуємо зображення в фоні, не блокуємо UI
+      preloadImages(editorHtml).catch(error => {
+        // Ігноруємо помилки - це не критично
+        console.warn('[EmailSender] Failed to preload images:', error);
+      });
+    }
   }, [editorHtml]);
 
   useEffect(() => {

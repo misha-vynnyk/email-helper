@@ -41,6 +41,7 @@ import TemplateStorageModal from "./TemplateStorageModal";
 import { getTemplateStorageLocations } from "./templateStorageConfig";
 import { templateContentCache } from "./templateContentCache";
 import { logger } from "../utils/logger";
+import { preloadImages } from "../utils/imageUrlReplacer";
 
 const CATEGORY_OPTIONS: Array<TemplateCategory | "All"> = [
   "All",
@@ -119,6 +120,15 @@ export default function TemplateLibrary() {
             return Array.from(allowedPaths).some((path) => template.filePath.startsWith(path));
           });
           setTemplates(filteredTemplates);
+        }
+
+        // Preload зображень з preview шаблонів (якщо вони є) в кеш (в фоні)
+        const templatesWithPreview = data.filter((t) => t.preview);
+        if (templatesWithPreview.length > 0) {
+          preloadImages(templatesWithPreview.map((t) => t.preview!).join(' ')).catch((error) => {
+            // Ігноруємо помилки preloading - це не критично
+            logger.warn("TemplateLibrary", "Failed to preload template preview images", error);
+          });
         }
       } else {
         logger.error("TemplateLibrary", "API returned non-array data", data);

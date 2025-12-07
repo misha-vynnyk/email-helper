@@ -3,7 +3,7 @@
  * Displays a single template card with preview and actions
  */
 
-import React, { useEffect, useLayoutEffect, useState } from "react";
+import React, { useContext, useEffect, useLayoutEffect, useState } from "react";
 
 import { html } from "@codemirror/lang-html";
 import {
@@ -41,8 +41,9 @@ import {
 } from "@mui/material";
 import CodeMirror from "@uiw/react-codemirror";
 
-import { useEmailSender } from "../emailSender/EmailSenderContext";
+import { EmailSenderContext } from "../emailSender/EmailSenderContext";
 import { EmailTemplate, TEMPLATE_CATEGORIES, TemplateCategory } from "../types/template";
+import { preloadImages } from "../utils/imageUrlReplacer";
 
 import { PreviewConfig } from "./PreviewSettings";
 import ResizablePreview from "./ResizablePreview";
@@ -101,8 +102,10 @@ export default function TemplateItem({
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const savedScrollPosition = React.useRef<number>(0);
 
-  // Email Sender context
-  const { sendEmailDirect, areCredentialsValid } = useEmailSender();
+  // Email Sender context (опціонально - може бути недоступний)
+  const emailSenderContext = useContext(EmailSenderContext);
+  const sendEmailDirect = emailSenderContext?.sendEmailDirect ?? null;
+  const areCredentialsValid = emailSenderContext?.areCredentialsValid ?? false;
 
   // Edit state
   const [editedName, setEditedName] = useState(template.name);
@@ -464,6 +467,12 @@ export default function TemplateItem({
       // Cache the content
       templateContentCache.set(template.id, content);
       setPreviewHtml(content);
+
+      // Preload зображень з контенту шаблону в кеш (в фоні)
+      preloadImages(content).catch((error) => {
+        // Ігноруємо помилки preloading - це не критично
+        console.warn('[TemplateItem] Failed to preload images:', error);
+      });
 
       // Preload more adjacent templates in background (2 in each direction)
       if (allTemplates.length > 1) {
@@ -886,7 +895,13 @@ export default function TemplateItem({
               </Button>
             </Tooltip>
             <Tooltip
-              title={areCredentialsValid ? "Send as email" : "Configure email credentials first"}
+              title={
+                !sendEmailDirect
+                  ? "Email sender not available"
+                  : areCredentialsValid
+                  ? "Send as email"
+                  : "Configure email credentials first"
+              }
             >
               <span>
                 <Button
@@ -894,8 +909,10 @@ export default function TemplateItem({
                   variant='outlined'
                   color='primary'
                   startIcon={<SendIcon />}
-                  disabled={!areCredentialsValid || sending}
+                  disabled={!sendEmailDirect || !areCredentialsValid || sending}
                   onClick={async () => {
+                    if (!sendEmailDirect) return;
+
                     try {
                       setSending(true);
 
