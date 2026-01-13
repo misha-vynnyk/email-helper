@@ -27,7 +27,7 @@ interface ImageCacheDB extends DBSchema {
 }
 
 const DB_NAME = 'image-converter-cache';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Bumped - key format changed to use content hash
 const STORE_NAME = 'images';
 const MAX_CACHE_SIZE = 100 * 1024 * 1024; // 100MB
 
@@ -41,7 +41,11 @@ export class ImageCache {
     if (this.db) return;
 
     this.db = await openDB<ImageCacheDB>(DB_NAME, DB_VERSION, {
-      upgrade(db) {
+      upgrade(db, oldVersion) {
+        // Clear old cache when upgrading (key format changed)
+        if (oldVersion > 0 && db.objectStoreNames.contains(STORE_NAME)) {
+          db.deleteObjectStore(STORE_NAME);
+        }
         const store = db.createObjectStore(STORE_NAME, { keyPath: 'key' });
         store.createIndex('by-timestamp', 'metadata.timestamp');
       },
@@ -49,8 +53,28 @@ export class ImageCache {
   }
 
   /**
+   * Generate a fast hash from file content (first 64KB)
+   * This ensures truly unique keys for different files with same metadata
+   */
+  async generateContentHash(file: File): Promise<string> {
+    const SAMPLE_SIZE = 65536; // 64KB sample for speed
+    const slice = file.slice(0, Math.min(SAMPLE_SIZE, file.size));
+    const buffer = await slice.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    
+    // Simple but effective hash (djb2 algorithm)
+    let hash = 5381;
+    for (let i = 0; i < bytes.length; i++) {
+      hash = ((hash << 5) + hash) ^ bytes[i];
+    }
+    
+    // Return as hex string
+    return (hash >>> 0).toString(16);
+  }
+
+  /**
    * Generate cache key from conversion parameters
-   * Includes file size and lastModified to ensure uniqueness for different files with same name
+   * Uses content hash to ensure uniqueness for different files
    */
   generateKey(
     fileName: string,
@@ -58,12 +82,10 @@ export class ImageCache {
     quality: number,
     dimensions: { width?: number; height?: number },
     compressionMode: string,
-    fileSize?: number,
-    lastModified?: number
+    contentHash: string
   ): string {
     const dimStr = `${dimensions.width || 'auto'}x${dimensions.height || 'auto'}`;
-    const uniqueId = `${fileSize || 0}-${lastModified || 0}`;
-    return `${fileName}-${uniqueId}-${format}-q${quality}-${dimStr}-${compressionMode}`;
+    return `${fileName}-${contentHash}-${format}-q${quality}-${dimStr}-${compressionMode}`;
   }
 
   /**
