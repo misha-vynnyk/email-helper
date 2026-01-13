@@ -12,9 +12,9 @@ const BRAND_BLUE = "#0079CC";
 const BRAND_NAVY = "#212443";
 const BG_COLOR = "#f2f5f7";
 
-const SplashLoader: React.FC<SplashLoaderProps> = ({ 
-  onComplete, 
-  duration = 2500 
+const SplashLoader: React.FC<SplashLoaderProps> = ({
+  onComplete,
+  duration = 2500
 }) => {
   const [isVisible, setIsVisible] = useState(true);
 
