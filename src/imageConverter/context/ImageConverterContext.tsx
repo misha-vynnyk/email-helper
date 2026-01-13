@@ -18,7 +18,6 @@ import { ConversionResult, ConversionSettings, ImageFile, ImageFormat } from "..
 import { convertImageClient } from "../utils/clientConverter";
 import { extractExif, insertExif } from "../utils/exifPreserver";
 import { detectImageFormat, getExtensionForFormat } from "../utils/imageFormatDetector";
-import { HistoryManager } from "../utils/historyManager";
 import { imageCache } from "../utils/imageCache";
 import { convertImageServer } from "../utils/imageConverterApi";
 import { performanceMonitor } from "../utils/performanceMonitor";
@@ -44,10 +43,6 @@ interface ImageConverterContextType {
   downloadSelected: () => void;
   convertSelected: () => void;
   selectedCount: number;
-  undo: () => void;
-  redo: () => void;
-  canUndo: boolean;
-  canRedo: boolean;
 }
 
 const ImageConverterContext = createContext<ImageConverterContextType | undefined>(undefined);
@@ -113,9 +108,6 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
   const filesRef = React.useRef<ImageFile[]>([]);
   const workerPool = React.useRef<WorkerPool | null>(null);
-  const historyManager = React.useRef<HistoryManager>(new HistoryManager());
-  const [canUndo, setCanUndo] = useState(false);
-  const [canRedo, setCanRedo] = useState(false);
 
   const USE_WORKERS = typeof Worker !== 'undefined' && typeof OffscreenCanvas !== 'undefined';
 
@@ -469,13 +461,7 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
       }));
 
       setFiles((prev) => {
-        // Save current state before adding (for undo)
-        if (prev.length === 0) {
-          // First time adding files - save empty state as initial
-          historyManager.current.push([], 'Initial state');
-        }
         const newState = [...prev, ...imageFiles];
-        historyManager.current.push(newState, `Added ${imageFiles.length} file(s)`);
         return newState;
       });
 
@@ -496,9 +482,7 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
       const file = prev.find((f) => f.id === id);
       if (file?.previewUrl) URL.revokeObjectURL(file.previewUrl);
       if (file?.convertedUrl) URL.revokeObjectURL(file.convertedUrl);
-      const newState = prev.filter((f) => f.id !== id);
-      historyManager.current.push(newState, 'Removed file');
-      return newState;
+      return prev.filter((f) => f.id !== id);
     });
   }, []);
 
@@ -517,40 +501,9 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
       const newFiles = [...currentFiles];
       const [removed] = newFiles.splice(oldIndex, 1);
       newFiles.splice(newIndex, 0, removed);
-      historyManager.current.push(newFiles, 'Reordered files');
       return newFiles;
     });
   }, []);
-
-  const undo = useCallback(() => {
-    setFiles((currentFiles) => {
-      const previousState = historyManager.current.undo(currentFiles);
-      if (previousState) {
-        setCanUndo(historyManager.current.canUndo());
-        setCanRedo(historyManager.current.canRedo());
-        return previousState;
-      }
-      return currentFiles;
-    });
-  }, []);
-
-  const redo = useCallback(() => {
-    setFiles((currentFiles) => {
-      const nextState = historyManager.current.redo(currentFiles);
-      if (nextState) {
-        setCanUndo(historyManager.current.canUndo());
-        setCanRedo(historyManager.current.canRedo());
-        return nextState;
-      }
-      return currentFiles;
-    });
-  }, []);
-
-  // Update undo/redo state when files change
-  React.useEffect(() => {
-    setCanUndo(historyManager.current.canUndo());
-    setCanRedo(historyManager.current.canRedo());
-  }, [files]);
 
   const toggleSelection = useCallback((id: string) => {
     setFiles((prev) =>
@@ -675,10 +628,6 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
     downloadSelected,
     convertSelected,
     selectedCount,
-    undo,
-    redo,
-    canUndo,
-    canRedo,
   };
 
   return (

@@ -1,6 +1,6 @@
 import React from "react";
 
-import { Box, Container, Paper, Typography } from "@mui/material";
+import { Box, Container, Paper } from "@mui/material";
 
 import { ImageConverterProvider } from "../context/ImageConverterContext";
 
@@ -9,7 +9,6 @@ import BatchProcessor from "./BatchProcessor";
 import ConversionSettings from "./ConversionSettings";
 import FileUploadZone from "./FileUploadZone";
 import ProcessingModeToggle from "./ProcessingModeToggle";
-import UndoRedoControls from "./UndoRedoControls";
 
 function ImageConverterContent() {
   return (
@@ -29,9 +28,6 @@ function ImageConverterContent() {
       >
         {/* Auto-Convert Toggle */}
         <AutoConvertToggle />
-        
-        {/* Undo/Redo Controls */}
-        <UndoRedoControls />
         
         {/* Processing Mode */}
         <Paper
