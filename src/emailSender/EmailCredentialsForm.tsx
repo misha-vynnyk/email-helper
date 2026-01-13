@@ -142,10 +142,10 @@ const EmailCredentialsForm: React.FC = () => {
 
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <TextField
-              label='Your Email (Gmail)'
+              label='Gmail Sender'
               type='email'
-              value={userEmail}
-              onChange={(e) => setUserEmail(e.target.value)}
+              value={senderEmail}
+              onChange={(e) => setSenderEmail(e.target.value)}
               placeholder='your-email@gmail.com'
               fullWidth
               InputProps={{
@@ -161,8 +161,8 @@ const EmailCredentialsForm: React.FC = () => {
             <TextField
               label='Recipient Email'
               type='email'
-              value={senderEmail}
-              onChange={(e) => setSenderEmail(e.target.value)}
+              value={userEmail}
+              onChange={(e) => setUserEmail(e.target.value)}
               placeholder='recipient@example.com'
               fullWidth
               InputProps={{

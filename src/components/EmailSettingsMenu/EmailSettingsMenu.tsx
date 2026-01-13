@@ -57,7 +57,6 @@ export const EmailSettingsMenu: React.FC<EmailSettingsMenuProps> = ({
   const handleDeleteCredentials = () => {
     try {
       localStorage.removeItem("emailSenderCredentials");
-      localStorage.removeItem("emailSenderForm");
       localStorage.removeItem("emailSenderUseStorageToggle");
 
       toast.success("Email credentials deleted successfully");
