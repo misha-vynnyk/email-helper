@@ -5,16 +5,10 @@
 // Main component
 export { default as BlockLibrary } from "./BlockLibrary";
 
-// Hooks
-export { useBlocks } from "./hooks/useBlocks";
+// Types (from main types)
+export type { EmailBlock, BlockCategory } from "../types/block";
 
-// Services
-export { blockService, BlockService } from "./services/blockService";
-
-// Types
-export type { EmailBlock, BlockCategory } from "./types";
-
-// Utils (for backward compatibility)
+// Utils
 export {
   loadPredefinedBlocks,
   loadCustomBlocks,
