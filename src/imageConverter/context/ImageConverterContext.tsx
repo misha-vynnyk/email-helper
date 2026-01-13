@@ -194,7 +194,7 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
           ? await extractExif(fileToConvert.file)
           : { data: null, hasExif: false };
 
-        // Generate cache key
+        // Generate cache key (includes file size and lastModified for uniqueness)
         const cacheKey = imageCache.generateKey(
           fileToConvert.file.name,
           effectiveSettings.format,
@@ -203,7 +203,9 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
             width: effectiveSettings.resize.mode === 'preset' ? effectiveSettings.resize.preset : effectiveSettings.resize.width,
             height: effectiveSettings.resize.height,
           },
-          effectiveSettings.compressionMode
+          effectiveSettings.compressionMode,
+          fileToConvert.file.size,
+          fileToConvert.file.lastModified
         );
 
         // Progress callback to update UI with ETA
