@@ -7,9 +7,9 @@ interface SplashLoaderProps {
   duration?: number;
 }
 
-const SplashLoader: React.FC<SplashLoaderProps> = ({ 
-  onComplete, 
-  duration = 2500 
+const SplashLoader: React.FC<SplashLoaderProps> = ({
+  onComplete,
+  duration = 2500
 }) => {
   const [isVisible, setIsVisible] = useState(true);
 

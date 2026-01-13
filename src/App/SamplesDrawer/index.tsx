@@ -1,27 +1,10 @@
-import { useState } from "react";
+import { Box, Drawer, IconButton, Stack, Tooltip, Typography } from "@mui/material";
+import { Settings, Email } from "@mui/icons-material";
 
-import { Email, Settings } from "@mui/icons-material";
-import {
-  Box,
-  Button,
-  Divider,
-  Drawer,
-  IconButton,
-  Link,
-  Stack,
-  Tooltip,
-  Typography,
-} from "@mui/material";
-
-import { EmailSettingsMenu } from "../../components/EmailSettingsMenu";
-import { RegistrationForm } from "../../components/RegistrationForm";
 import { useSamplesDrawerOpen } from "../../contexts/AppState";
 import { useRegistrationStatus } from "../../hooks/useRegistrationStatus";
 
-import SidebarButton from "./SidebarButton";
-import logo from "./waypoint.svg";
-
-export const SAMPLES_DRAWER_WIDTH = 240;
+export const SAMPLES_DRAWER_WIDTH = 200;
 
 interface SamplesDrawerProps {
   onSettingsOpen?: () => void;
@@ -33,209 +16,124 @@ export default function SamplesDrawer({
   onRegistrationOpen,
 }: SamplesDrawerProps = {}) {
   const samplesDrawerOpen = useSamplesDrawerOpen();
-  const [localSettingsOpen, setLocalSettingsOpen] = useState(false);
-  const [localRegistrationOpen, setLocalRegistrationOpen] = useState(false);
-  const { isRegistered, registrationData, hasValidCredentials } = useRegistrationStatus();
+  const { isRegistered, hasValidCredentials } = useRegistrationStatus();
 
   const handleEmailSettingsClick = () => {
     if (isRegistered) {
-      if (onSettingsOpen) {
-        onSettingsOpen();
-      } else {
-        setLocalSettingsOpen(true);
-      }
+      onSettingsOpen?.();
     } else {
-      if (onRegistrationOpen) {
-        onRegistrationOpen();
-      } else {
-        setLocalRegistrationOpen(true);
-      }
-    }
-  };
-
-  const handleEditCredentials = () => {
-    setLocalSettingsOpen(false);
-    if (onRegistrationOpen) {
-      onRegistrationOpen();
-    } else {
-      setLocalRegistrationOpen(true);
+      onRegistrationOpen?.();
     }
   };
 
   return (
-    <>
-      <Drawer
-        variant='persistent'
-        anchor='left'
-        open={samplesDrawerOpen}
-        sx={{
-          width: samplesDrawerOpen ? SAMPLES_DRAWER_WIDTH : 0,
-        }}
+    <Drawer
+      variant='persistent'
+      anchor='left'
+      open={samplesDrawerOpen}
+      sx={{
+        width: samplesDrawerOpen ? SAMPLES_DRAWER_WIDTH : 0,
+        "& .MuiDrawer-paper": {
+          width: SAMPLES_DRAWER_WIDTH,
+          background: "linear-gradient(180deg, #0f172a 0%, #1e293b 100%)",
+          borderRight: "1px solid rgba(255,255,255,0.08)",
+        },
+      }}
+    >
+      <Stack
+        height="100%"
+        justifyContent="space-between"
+        py={2}
+        px={2}
       >
-        <Stack
-          spacing={3}
-          py={1}
-          px={2}
-          width={SAMPLES_DRAWER_WIDTH}
-          justifyContent='space-between'
-          height='100%'
-        >
+        {/* Logo Section */}
+        <Box>
           <Stack
-            spacing={2}
-            sx={{ "& .MuiButtonBase-root": { width: "100%", justifyContent: "flex-start" } }}
+            direction="row"
+            alignItems="center"
+            spacing={1.5}
+            sx={{ mb: 3 }}
           >
+            {/* Logo Icon */}
             <Box
               sx={{
+                width: 36,
+                height: 36,
+                background: "linear-gradient(135deg, #3b82f6, #8b5cf6)",
+                borderRadius: "10px",
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "space-between",
-                px: 0.75,
+                justifyContent: "center",
+                boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)",
               }}
             >
-              <Typography
-                variant='h6'
-                component='h1'
-                sx={{
-                  cursor: "pointer",
-                  "&:hover": {
-                    color: "primary.main",
-                  },
-                }}
-                onClick={() => {
-                  window.location.hash = "#landing";
-                }}
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="white"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                EmailBuilder.js
-              </Typography>
-
-              <Tooltip title={isRegistered ? "Email Settings" : "Setup Email"}>
-                <IconButton
-                  size='small'
-                  onClick={handleEmailSettingsClick}
-                  color={!hasValidCredentials && isRegistered ? "warning" : "primary"}
-                >
-                  {isRegistered ? <Settings /> : <Email />}
-                </IconButton>
-              </Tooltip>
+                <rect x="2" y="4" width="20" height="16" rx="2" />
+                <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+              </svg>
             </Box>
-
-            <Stack alignItems='flex-start'>
-              <SidebarButton href='#empty'>Empty</SidebarButton>
-              <SidebarButton href='#sample/welcome'>Welcome email</SidebarButton>
-              <SidebarButton href='#sample/one-time-password'>
-                One-time passcode (OTP)
-              </SidebarButton>
-              <SidebarButton href='#sample/reset-password'>Reset password</SidebarButton>
-              <SidebarButton href='#sample/order-ecomerce'>E-commerce receipt</SidebarButton>
-              <SidebarButton href='#sample/subscription-receipt'>
-                Subscription receipt
-              </SidebarButton>
-              <SidebarButton href='#sample/reservation-reminder'>
-                Reservation reminder
-              </SidebarButton>
-              <SidebarButton href='#sample/post-metrics-report'>Post metrics</SidebarButton>
-              <SidebarButton href='#sample/respond-to-message'>Respond to inquiry</SidebarButton>
-            </Stack>
-
-            <Divider />
-
-            <Stack>
-              <Button
-                size='small'
-                onClick={() => {
-                  window.location.hash = "#landing";
-                }}
-                sx={{ mb: 1 }}
-              >
-                ← Back to Home
-              </Button>
-              <Button
-                size='small'
-                href='https://www.usewaypoint.com/open-source/emailbuilderjs'
-                target='_blank'
-              >
-                Learn more
-              </Button>
-              <Button
-                size='small'
-                href='https://github.com/usewaypoint/email-builder-js'
-                target='_blank'
-              >
-                View on GitHub
-              </Button>
-            </Stack>
-          </Stack>
-          <Stack
-            spacing={2}
-            px={0.75}
-            py={3}
-          >
-            <Link
-              href='https://usewaypoint.com?utm_source=emailbuilderjs'
-              target='_blank'
-              sx={{ lineHeight: 1 }}
-            >
-              <Box
-                component='img'
-                src={logo}
-                width={32}
-              />
-            </Link>
+            
+            {/* Logo Text */}
             <Box>
               <Typography
-                variant='overline'
-                gutterBottom
+                variant="subtitle1"
+                sx={{
+                  fontFamily: '"JetBrains Mono", monospace',
+                  fontWeight: 700,
+                  color: "#fff",
+                  fontSize: "0.95rem",
+                  lineHeight: 1.2,
+                  letterSpacing: "-0.02em",
+                }}
               >
-                Looking to send emails?
+                FlexiBuilder
               </Typography>
               <Typography
-                variant='body2'
-                color='text.secondary'
-                paragraph
+                variant="caption"
+                sx={{
+                  color: "#64748b",
+                  fontSize: "0.65rem",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.1em",
+                }}
               >
-                Waypoint is an end-to-end email API with a &apos;pro&apos; version of this template
-                builder with dynamic variables, loops, conditionals, drag and drop, layouts, and
-                more.
+                Email Tools
               </Typography>
             </Box>
-            <Button
-              variant='contained'
-              color='primary'
-              sx={{ justifyContent: "center" }}
-              href='https://usewaypoint.com?utm_source=emailbuilderjs'
-              target='_blank'
-            >
-              Learn more
-            </Button>
           </Stack>
+        </Box>
+
+        {/* Bottom Section - Settings */}
+        <Stack spacing={1}>
+          <Tooltip title={isRegistered ? "Email Settings" : "Setup Email"} placement="right">
+            <IconButton
+              onClick={handleEmailSettingsClick}
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: "10px",
+                color: !hasValidCredentials && isRegistered ? "#f59e0b" : "#64748b",
+                backgroundColor: "rgba(255,255,255,0.05)",
+                "&:hover": {
+                  backgroundColor: "rgba(255,255,255,0.1)",
+                  color: "#fff",
+                },
+              }}
+            >
+              {isRegistered ? <Settings fontSize="small" /> : <Email fontSize="small" />}
+            </IconButton>
+          </Tooltip>
         </Stack>
-      </Drawer>
-
-      {/* Modals rendered outside Drawer to avoid aria-hidden conflicts */}
-      {!onSettingsOpen && !onRegistrationOpen && (
-        <>
-          <EmailSettingsMenu
-            open={localSettingsOpen}
-            onClose={() => setLocalSettingsOpen(false)}
-            onEditCredentials={handleEditCredentials}
-          />
-
-          <RegistrationForm
-            open={localRegistrationOpen}
-            onClose={() => setLocalRegistrationOpen(false)}
-            editMode={isRegistered}
-            initialData={
-              registrationData
-                ? {
-                    userEmail: registrationData.userEmail,
-                    senderEmail: registrationData.senderEmail,
-                    appPassword: registrationData.appPassword,
-                  }
-                : undefined
-            }
-          />
-        </>
-      )}
-    </>
+      </Stack>
+    </Drawer>
   );
 }
