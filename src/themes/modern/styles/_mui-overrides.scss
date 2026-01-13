@@ -1,0 +1,549 @@
+@import './variables';
+
+// ============================================
+// Global MUI Component Overrides for Modern Theme
+// Використовуємо специфічні селектори замість !important
+// Застосовується тільки коли body має клас .modern-theme-active
+// ============================================
+
+body.modern-theme-active {
+  // Box Component
+  .MuiBox-root {
+    color: var(--text-primary);
+  }
+
+  // Typography - використовуємо підвищену специфічність через вкладеність
+  .MuiTypography-root {
+    color: var(--text-primary);
+  }
+
+  .MuiTypography-h1.MuiTypography-h1 {
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+  }
+
+  .MuiTypography-h2.MuiTypography-h2 {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.3;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+  }
+
+  .MuiTypography-h3.MuiTypography-h3 {
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1.4;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+  }
+
+  .MuiTypography-h4.MuiTypography-h4,
+  .MuiTypography-h5.MuiTypography-h5,
+  .MuiTypography-h6.MuiTypography-h6 {
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--text-primary);
+  }
+
+  .MuiTypography-body1.MuiTypography-body1 {
+    color: var(--text-primary);
+    font-size: 14px;
+  }
+
+  .MuiTypography-body2.MuiTypography-body2,
+  .MuiTypography-caption.MuiTypography-caption {
+    color: var(--text-secondary);
+    font-size: 13px;
+  }
+
+  // Button - підвищена специфічність через подвійний клас
+  .MuiButton-root.MuiButton-root {
+    border-radius: 8px;
+    text-transform: none;
+    font-weight: 500;
+    padding: 10px 20px;
+    font-size: 14px;
+    min-height: 40px;
+    transition: all 0.2s ease;
+  }
+
+  .MuiButton-contained.MuiButton-contained {
+    background-color: var(--purple-primary);
+    color: #FFFFFF;
+    box-shadow: var(--shadow-sm);
+
+    &:hover {
+      background-color: var(--purple-dark);
+      box-shadow: var(--shadow-md);
+      transform: translateY(-1px);
+    }
+
+    &.Mui-disabled.Mui-disabled {
+      background-color: var(--bg-tertiary);
+      color: var(--text-tertiary);
+      opacity: 0.6;
+    }
+  }
+
+  .MuiButton-outlined.MuiButton-outlined {
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 9px 19px;
+
+    &:hover {
+      background-color: var(--interactive-hover);
+      border-color: var(--divider-color);
+      transform: translateY(-1px);
+    }
+  }
+
+  .MuiButton-text.MuiButton-text {
+    color: var(--text-primary);
+
+    &:hover {
+      background-color: var(--interactive-hover);
+    }
+  }
+
+  .MuiButton-sizeSmall.MuiButton-sizeSmall {
+    padding: 8px 16px;
+    min-height: 36px;
+    font-size: 13px;
+  }
+
+  // TextField
+  .MuiTextField-root {
+    margin-bottom: 12px;
+  }
+
+  .MuiOutlinedInput-root.MuiOutlinedInput-root {
+    background-color: var(--input-bg, var(--bg-primary));
+    color: var(--text-primary);
+    border-radius: 8px;
+    font-size: 14px;
+
+    fieldset {
+      border-width: 1px;
+      border-color: var(--input-border, var(--border-color));
+    }
+
+    &:hover fieldset {
+      border-color: var(--divider-color);
+    }
+
+    &.Mui-focused.Mui-focused fieldset {
+      border-color: var(--purple-primary);
+      border-width: 1px;
+      box-shadow: 0 0 0 3px var(--focus-ring);
+    }
+
+    &.Mui-disabled.Mui-disabled {
+      background-color: var(--bg-tertiary);
+      opacity: 0.6;
+    }
+  }
+
+  .MuiInputLabel-root.MuiInputLabel-root {
+    color: var(--text-secondary);
+    font-size: 14px;
+
+    &.Mui-focused.Mui-focused {
+      color: var(--purple-primary);
+    }
+
+    &.Mui-disabled.Mui-disabled {
+      color: var(--text-tertiary);
+    }
+  }
+
+  .MuiInputBase-input.MuiInputBase-input {
+    color: var(--text-primary);
+    padding: 10px 14px;
+
+    &::placeholder {
+      color: var(--text-tertiary);
+      opacity: 0.7;
+    }
+  }
+
+  .MuiFormHelperText-root.MuiFormHelperText-root {
+    color: var(--text-secondary);
+    font-size: 12px;
+    margin-top: 6px;
+  }
+
+  // Card
+  .MuiCard-root.MuiCard-root {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 12px;
+    transition: all 0.2s ease;
+
+    &:hover {
+      box-shadow: var(--shadow-md);
+      border-color: var(--divider-color);
+    }
+  }
+
+  .MuiCardContent-root.MuiCardContent-root {
+    padding: 16px;
+    color: var(--text-primary);
+  }
+
+  // Paper
+  .MuiPaper-root.MuiPaper-root {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: var(--shadow-sm);
+    color: var(--text-primary);
+  }
+
+  // Dialog
+  .MuiDialog-paper.MuiDialog-paper {
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: var(--shadow-xl);
+    max-width: 600px;
+  }
+
+  .MuiDialogTitle-root.MuiDialogTitle-root {
+    background-color: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 12px 16px;
+    font-size: 16px;
+    font-weight: 600;
+
+    .MuiTypography-root {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+  }
+
+  .MuiDialogContent-root.MuiDialogContent-root {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    padding: 16px;
+    overflow-y: auto;
+  }
+
+  .MuiDialogContent-dividers.MuiDialogContent-dividers {
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .MuiDialogActions-root.MuiDialogActions-root {
+    background-color: var(--bg-secondary);
+    border-top: 1px solid var(--border-color);
+    padding: 12px 16px;
+    gap: 8px;
+
+    .MuiButton-root {
+      margin: 0;
+    }
+  }
+
+  .MuiBackdrop-root.MuiBackdrop-root {
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+  }
+
+  // Alert
+  .MuiAlert-root.MuiAlert-root {
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    font-size: 13px;
+  }
+
+  .MuiAlert-standardSuccess.MuiAlert-standardSuccess {
+    background-color: rgba(16, 185, 129, 0.1);
+    color: var(--status-success);
+    border-left: 3px solid var(--status-success);
+  }
+
+  .MuiAlert-standardError.MuiAlert-standardError {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: var(--status-error);
+    border-left: 3px solid var(--status-error);
+  }
+
+  .MuiAlert-standardWarning.MuiAlert-standardWarning {
+    background-color: rgba(245, 158, 11, 0.1);
+    color: var(--status-warning);
+    border-left: 3px solid var(--status-warning);
+  }
+
+  .MuiAlert-standardInfo.MuiAlert-standardInfo {
+    background-color: rgba(59, 130, 246, 0.1);
+    color: var(--status-info);
+    border-left: 3px solid var(--status-info);
+  }
+
+  // Tabs
+  .MuiTabs-root.MuiTabs-root {
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 12px;
+  }
+
+  .MuiTab-root.MuiTab-root {
+    color: var(--text-secondary);
+    text-transform: none;
+    font-weight: 500;
+    font-size: 14px;
+    padding: 8px 16px;
+    min-height: 40px;
+
+    &.Mui-selected.Mui-selected {
+      color: var(--purple-primary);
+      font-weight: 600;
+    }
+  }
+
+  .MuiTabs-indicator.MuiTabs-indicator {
+    background-color: var(--purple-primary);
+    height: 3px;
+  }
+
+  // Chip
+  .MuiChip-root.MuiChip-root {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-radius: 6px;
+    font-size: 12px;
+    height: 24px;
+  }
+
+  .MuiChip-colorSuccess.MuiChip-colorSuccess {
+    background-color: rgba(16, 185, 129, 0.2);
+    color: var(--status-success);
+  }
+
+  .MuiChip-colorError.MuiChip-colorError {
+    background-color: rgba(239, 68, 68, 0.2);
+    color: var(--status-error);
+  }
+
+  .MuiChip-colorWarning.MuiChip-colorWarning {
+    background-color: rgba(245, 158, 11, 0.2);
+    color: var(--status-warning);
+  }
+
+  // Grid
+  .MuiGrid-container.MuiGrid-container {
+    margin: -6px;
+  }
+
+  .MuiGrid-item.MuiGrid-item {
+    padding: 6px;
+  }
+
+  // Stack
+  .MuiStack-root.MuiStack-root {
+    gap: 12px;
+  }
+
+  .MuiStack-spacing-2 > :not(style) ~ :not(style) {
+    margin-top: 8px;
+    margin-left: 0;
+  }
+
+  .MuiStack-spacing-3 > :not(style) ~ :not(style) {
+    margin-top: 12px;
+    margin-left: 0;
+  }
+
+  // IconButton
+  .MuiIconButton-root.MuiIconButton-root {
+    color: var(--text-primary);
+    padding: 8px;
+
+    &:hover {
+      background-color: var(--interactive-hover);
+    }
+  }
+
+  // Container
+  .MuiContainer-root.MuiContainer-root {
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  // Accordion
+  .MuiAccordion-root.MuiAccordion-root {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    box-shadow: none;
+
+    &:before {
+      display: none;
+    }
+  }
+
+  .MuiAccordionSummary-root.MuiAccordionSummary-root {
+    padding: 12px 16px;
+    color: var(--text-primary);
+
+    &:hover {
+      background-color: var(--interactive-hover);
+    }
+  }
+
+  .MuiAccordionDetails-root.MuiAccordionDetails-root {
+    padding: 16px;
+    color: var(--text-primary);
+  }
+
+  // List
+  .MuiList-root.MuiList-root {
+    background-color: var(--bg-secondary);
+    border-radius: 8px;
+    padding: 8px;
+  }
+
+  .MuiListItem-root.MuiListItem-root {
+    color: var(--text-primary);
+    border-radius: 6px;
+    margin-bottom: 4px;
+
+    &:hover {
+      background-color: var(--interactive-hover);
+    }
+  }
+
+  .MuiListItemText-primary.MuiListItemText-primary {
+    color: var(--text-primary);
+    font-size: 14px;
+  }
+
+  .MuiListItemText-secondary.MuiListItemText-secondary {
+    color: var(--text-secondary);
+    font-size: 12px;
+  }
+
+  // Switch
+  .MuiSwitch-root .MuiSwitch-switchBase {
+    color: var(--border-color);
+
+    &.Mui-checked.Mui-checked {
+      color: var(--purple-primary);
+    }
+  }
+
+  .MuiSwitch-root .MuiSwitch-track {
+    background-color: var(--bg-tertiary);
+  }
+
+  .MuiSwitch-root .MuiSwitch-switchBase.Mui-checked.Mui-checked + .MuiSwitch-track {
+    background-color: var(--purple-primary);
+  }
+
+  // Select
+  .MuiSelect-root.MuiSelect-root {
+    color: var(--text-primary);
+    font-size: 14px;
+    padding: 10px 14px;
+  }
+
+  .MuiSelect-icon.MuiSelect-icon {
+    color: var(--text-secondary);
+  }
+
+  .MuiMenuItem-root.MuiMenuItem-root {
+    color: var(--text-primary);
+    font-size: 14px;
+    padding: 10px 16px;
+
+    &:hover {
+      background-color: var(--interactive-hover);
+    }
+
+    &.Mui-selected.Mui-selected {
+      background-color: var(--purple-primary);
+      color: #FFFFFF;
+
+      &:hover {
+        background-color: var(--purple-dark);
+      }
+    }
+  }
+
+  // FormControl
+  .MuiFormControl-root.MuiFormControl-root {
+    margin-bottom: 12px;
+  }
+
+  // Divider
+  .MuiDivider-root.MuiDivider-root {
+    border-color: var(--border-color);
+    margin: 8px 0;
+  }
+
+  // LinearProgress
+  .MuiLinearProgress-root.MuiLinearProgress-root {
+    background-color: var(--bg-tertiary);
+    border-radius: 4px;
+    height: 6px;
+  }
+
+  .MuiLinearProgress-bar.MuiLinearProgress-bar {
+    background-color: var(--purple-primary);
+  }
+
+  // Tooltip
+  .MuiTooltip-tooltip.MuiTooltip-tooltip {
+    background-color: rgba(0, 0, 0, 0.9);
+    color: #FFFFFF;
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 6px;
+  }
+
+  // Badge
+  .MuiBadge-badge.MuiBadge-badge {
+    background-color: var(--purple-primary);
+    color: #FFFFFF;
+    font-size: 10px;
+  }
+
+  // Collapse
+  .MuiCollapse-root .MuiCollapse-entered.MuiCollapse-entered {
+    margin-top: 8px;
+  }
+
+  // Special: File Upload Zone (when using MUI Box)
+  .file-upload-zone-mui.file-upload-zone-mui {
+    border: 2px dashed var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    background-color: var(--bg-secondary);
+    transition: all 0.2s ease;
+    cursor: pointer;
+    color: var(--text-primary);
+    min-height: 200px;
+
+    &:hover {
+      border-color: var(--purple-primary);
+      background-color: var(--interactive-hover);
+    }
+
+    &.dragging.dragging {
+      border-color: var(--purple-primary);
+      background-color: var(--focus-ring);
+      box-shadow: 0 0 0 3px var(--focus-ring);
+    }
+  }
+}

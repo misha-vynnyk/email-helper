@@ -1,0 +1,365 @@
+@import './variables';
+
+// ============================================
+// Modern UI Components
+// Всі стилі автоматично обгорнуті в body.modern-theme-active через index.scss
+// ============================================
+
+// Button Component
+body.modern-theme-active .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 24px;
+  border-radius: $radius-md;
+  font-family: $font-family-base;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  line-height: $line-height-normal;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  outline: none;
+  gap: $spacing-2;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  &.btn-primary {
+    background-color: var(--purple-primary);
+    color: #FFFFFF;
+
+    &:hover:not(:disabled) {
+      background-color: var(--purple-dark);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-md);
+    }
+
+    &:active:not(:disabled) {
+      transform: translateY(0);
+    }
+  }
+
+  &.btn-secondary {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+
+    &:hover:not(:disabled) {
+      background-color: var(--interactive-hover);
+      border-color: var(--divider-color);
+    }
+  }
+
+  &.btn-outline {
+    background-color: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+
+    &:hover:not(:disabled) {
+      background-color: var(--interactive-hover);
+    }
+  }
+
+  &.btn-text {
+    background-color: transparent;
+    color: var(--text-primary);
+    padding: $spacing-1 $spacing-2;
+
+    &:hover:not(:disabled) {
+      background-color: var(--interactive-hover);
+    }
+  }
+
+  &.btn-sm {
+    padding: $spacing-1.5 $spacing-3;
+    font-size: $font-size-xs;
+  }
+
+  &.btn-lg {
+    padding: $spacing-3 $spacing-6;
+    font-size: $font-size-base;
+  }
+}
+
+// Card Component
+body.modern-theme-active .card {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+
+  &:hover {
+    box-shadow: var(--shadow-md);
+    border-color: var(--divider-color);
+  }
+
+  &.card-interactive {
+    cursor: pointer;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+      border-color: var(--purple-primary);
+    }
+  }
+
+  &.card-compact {
+    padding: 12px;
+  }
+}
+
+// Sidebar Component
+body.modern-theme-active .sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 240px;
+  background-color: var(--sidebar-bg);
+  color: var(--sidebar-text);
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+  transition: transform 0.3s ease;
+  box-shadow: var(--shadow-lg);
+
+  &.sidebar-hidden {
+    transform: translateX(-100%);
+  }
+
+  .sidebar-header {
+    padding: $spacing-4;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .sidebar-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: $spacing-2;
+  }
+
+  .sidebar-footer {
+    padding: $spacing-4;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    padding: $spacing-2 $spacing-3;
+    border-radius: $radius-md;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    color: var(--sidebar-text);
+    text-decoration: none;
+    margin-bottom: $spacing-1;
+
+    &:hover {
+      background-color: var(--sidebar-active);
+    }
+
+    &.active {
+      background-color: var(--sidebar-active);
+      font-weight: $font-weight-semibold;
+    }
+  }
+}
+
+// Layout Components
+body.modern-theme-active .layout {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+body.modern-theme-active .main-content {
+  flex: 1;
+  margin-left: 240px;
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: var(--bg-primary);
+
+  &.sidebar-hidden {
+    margin-left: 0;
+  }
+}
+
+// Header Component
+body.modern-theme-active .header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background-color: var(--bg-primary);
+  border-bottom: 1px solid var(--border-color);
+  padding: 16px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: var(--shadow-sm);
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: $spacing-4;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: $spacing-2;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: $spacing-2;
+    cursor: pointer;
+    text-decoration: none;
+    color: var(--text-primary);
+    font-size: $font-size-lg;
+    font-weight: $font-weight-bold;
+
+    &:hover {
+      opacity: 0.8;
+    }
+  }
+}
+
+// Tabs Component
+body.modern-theme-active .tabs {
+  display: flex;
+  gap: $spacing-1;
+  border-bottom: 1px solid var(--border-color);
+
+  .tab {
+    padding: $spacing-2 $spacing-4;
+    background-color: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    transition: all 0.2s ease;
+
+    &:hover {
+      color: var(--text-primary);
+      background-color: var(--interactive-hover);
+    }
+
+    &.active {
+      color: var(--purple-primary);
+      border-bottom-color: var(--purple-primary);
+      background-color: transparent;
+    }
+  }
+}
+
+// Badge Component
+body.modern-theme-active .badge {
+  display: inline-flex;
+  align-items: center;
+  padding: $spacing-1 $spacing-2;
+  border-radius: $radius-full;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+  line-height: 1;
+
+  &.badge-success {
+    background-color: var(--status-success);
+    color: #FFFFFF;
+  }
+
+  &.badge-warning {
+    background-color: var(--status-warning);
+    color: #FFFFFF;
+  }
+
+  &.badge-error {
+    background-color: var(--status-error);
+    color: #FFFFFF;
+  }
+
+  &.badge-info {
+    background-color: var(--status-info);
+    color: #FFFFFF;
+  }
+
+  &.badge-neutral {
+    background-color: var(--status-neutral);
+    color: #FFFFFF;
+  }
+}
+
+// Input Component
+body.modern-theme-active .input {
+  width: 100%;
+  padding: $spacing-2 $spacing-3;
+  border: 1px solid var(--border-color);
+  border-radius: $radius-md;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: $font-size-sm;
+  font-family: $font-family-base;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
+  &:focus {
+    outline: none;
+    border-color: var(--purple-primary);
+    box-shadow: 0 0 0 3px var(--focus-ring);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+// Container
+body.modern-theme-active .container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 $spacing-4;
+}
+
+// Utility classes
+body.modern-theme-active {
+  .text-primary { color: var(--text-primary); }
+  .text-secondary { color: var(--text-secondary); }
+  .text-tertiary { color: var(--text-tertiary); }
+
+  .bg-primary { background-color: var(--bg-primary); }
+  .bg-secondary { background-color: var(--bg-secondary); }
+  .bg-tertiary { background-color: var(--bg-tertiary); }
+
+  .flex { display: flex; }
+  .flex-col { flex-direction: column; }
+  .items-center { align-items: center; }
+  .justify-between { justify-content: space-between; }
+  .gap-1 { gap: $spacing-1; }
+  .gap-2 { gap: $spacing-2; }
+  .gap-3 { gap: $spacing-3; }
+  .gap-4 { gap: $spacing-4; }
+
+  .p-1 { padding: $spacing-1; }
+  .p-2 { padding: $spacing-2; }
+  .p-3 { padding: $spacing-3; }
+  .p-4 { padding: $spacing-4; }
+
+  .m-1 { margin: $spacing-1; }
+  .m-2 { margin: $spacing-2; }
+  .m-3 { margin: $spacing-3; }
+  .m-4 { margin: $spacing-4; }
+}
