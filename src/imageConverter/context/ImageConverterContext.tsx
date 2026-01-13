@@ -468,7 +468,16 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
         previewUrl: URL.createObjectURL(file),
       }));
 
-      setFiles((prev) => [...prev, ...imageFiles]);
+      setFiles((prev) => {
+        // Save current state before adding (for undo)
+        if (prev.length === 0) {
+          // First time adding files - save empty state as initial
+          historyManager.current.push([], 'Initial state');
+        }
+        const newState = [...prev, ...imageFiles];
+        historyManager.current.push(newState, `Added ${imageFiles.length} file(s)`);
+        return newState;
+      });
 
       // Auto-convert if enabled - add to queue after state update
       if (settings.autoConvert) {
