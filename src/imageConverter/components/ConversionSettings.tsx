@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-import { DownloadOutlined, ExpandLess, ExpandMore, Settings as SettingsIcon, UploadOutlined } from "@mui/icons-material";
+import { DeleteOutline, DownloadOutlined, ExpandLess, ExpandMore, Settings as SettingsIcon, UploadOutlined } from "@mui/icons-material";
 import {
   Box,
   Button,
@@ -8,20 +8,15 @@ import {
   Collapse,
   FormControlLabel,
   IconButton,
-  MenuItem,
   Paper,
-  Select,
-  Slider,
   Stack,
-  TextField,
-  ToggleButton,
-  ToggleButtonGroup,
+  Tooltip,
   Typography,
 } from "@mui/material";
 
-import { PRESETS, PRESET_ORDER } from "../constants/presets";
+import { PRESETS } from "../constants/presets";
 import { useImageConverter } from "../context/ImageConverterContext";
-import { ImageFormat, ResizeMode } from "../types";
+import { imageCache } from "../utils/imageCache";
 import { exportSettings, importSettings } from "../utils/settingsManager";
 
 import AdvancedSettingsSection from "./AdvancedSettingsSection";
@@ -36,34 +31,35 @@ import QuickPresetsBar from "./QuickPresetsBar";
 export default function ConversionSettings() {
   const { settings, updateSettings, files } = useImageConverter();
   const [expanded, setExpanded] = useState(false);
+  const [cacheStats, setCacheStats] = useState<{ count: number; sizeFormatted: string } | null>(null);
+
+  // Load cache stats when settings expand
+  React.useEffect(() => {
+    if (expanded) {
+      imageCache.getStats().then(setCacheStats);
+    }
+  }, [expanded]);
+
+  const handleClearCache = async () => {
+    await imageCache.clear();
+    setCacheStats({ count: 0, sizeFormatted: '0 B' });
+  };
 
   // Get selected file for estimation (only ONE file should be selected)
-  // Need to include files.length and selected states in dependency
   const selectedFilesIds = files.filter(f => f.selected).map(f => f.id).join(',');
 
   const { originalSize, originalFormat, isMultipleSelected, hasSelection } = React.useMemo(() => {
     const selectedFiles = files.filter(f => f.selected);
 
-    console.log('[ConversionSettings] Selected files:', selectedFiles.length, selectedFiles.map(f => ({ id: f.id, name: f.file.name, size: f.originalSize })));
-
     if (selectedFiles.length === 0) {
-      // No selection - show nothing
       return { originalSize: 0, originalFormat: "", isMultipleSelected: false, hasSelection: false };
     }
 
     if (selectedFiles.length > 1) {
-      // Multiple files selected - disable
       return { originalSize: 0, originalFormat: "", isMultipleSelected: true, hasSelection: true };
     }
 
-    // Exactly one file selected - show its info
     const selectedFile = selectedFiles[0];
-    console.log('[ConversionSettings] Using file:', {
-      name: selectedFile.file.name,
-      size: selectedFile.originalSize,
-      format: selectedFile.file?.type
-    });
-
     return {
       originalSize: selectedFile.originalSize || 0,
       originalFormat: selectedFile.file?.type || "",
@@ -264,6 +260,30 @@ export default function ConversionSettings() {
                   onChange={handleImport}
                 />
               </Button>
+            </Stack>
+          </Box>
+
+          {/* Cache Management */}
+          <Box sx={{ borderTop: '1px solid', borderColor: 'divider', pt: 2 }}>
+            <Typography variant='subtitle2' gutterBottom>
+              🗄️ Conversion Cache
+            </Typography>
+            <Stack direction='row' spacing={1} alignItems='center'>
+              <Typography variant='body2' color='text.secondary' sx={{ flex: 1 }}>
+                {cacheStats ? `${cacheStats.count} items (${cacheStats.sizeFormatted})` : 'Loading...'}
+              </Typography>
+              <Tooltip title='Clear all cached conversions'>
+                <Button
+                  variant='outlined'
+                  size='small'
+                  color='warning'
+                  startIcon={<DeleteOutline />}
+                  onClick={handleClearCache}
+                  disabled={!cacheStats || cacheStats.count === 0}
+                >
+                  Clear Cache
+                </Button>
+              </Tooltip>
             </Stack>
           </Box>
         </Box>

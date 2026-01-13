@@ -50,16 +50,20 @@ export class ImageCache {
 
   /**
    * Generate cache key from conversion parameters
+   * Includes file size and lastModified to ensure uniqueness for different files with same name
    */
   generateKey(
     fileName: string,
     format: string,
     quality: number,
     dimensions: { width?: number; height?: number },
-    compressionMode: string
+    compressionMode: string,
+    fileSize?: number,
+    lastModified?: number
   ): string {
     const dimStr = `${dimensions.width || 'auto'}x${dimensions.height || 'auto'}`;
-    return `${fileName}-${format}-q${quality}-${dimStr}-${compressionMode}`;
+    const uniqueId = `${fileSize || 0}-${lastModified || 0}`;
+    return `${fileName}-${uniqueId}-${format}-q${quality}-${dimStr}-${compressionMode}`;
   }
 
   /**
