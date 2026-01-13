@@ -7,9 +7,14 @@ interface SplashLoaderProps {
   duration?: number;
 }
 
-const SplashLoader: React.FC<SplashLoaderProps> = ({
-  onComplete,
-  duration = 2500
+// Theme colors from theme.ts
+const BRAND_BLUE = "#0079CC";
+const BRAND_NAVY = "#212443";
+const BG_COLOR = "#f2f5f7";
+
+const SplashLoader: React.FC<SplashLoaderProps> = ({ 
+  onComplete, 
+  duration = 2500 
 }) => {
   const [isVisible, setIsVisible] = useState(true);
 
@@ -30,8 +35,8 @@ const SplashLoader: React.FC<SplashLoaderProps> = ({
       {isVisible && (
         <motion.div
           initial={{ opacity: 1 }}
-          exit={{ opacity: 0, scale: 1.1 }}
-          transition={{ duration: 0.5, ease: "easeInOut" }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
           style={{
             position: "fixed",
             inset: 0,
@@ -39,45 +44,17 @@ const SplashLoader: React.FC<SplashLoaderProps> = ({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            background: "linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)",
-            overflow: "hidden",
+            backgroundColor: BG_COLOR,
           }}
         >
-          {/* Animated background particles */}
+          {/* Subtle background pattern */}
           <Box
             sx={{
               position: "absolute",
               inset: 0,
-              overflow: "hidden",
-              "&::before, &::after": {
-                content: '""',
-                position: "absolute",
-                width: "300px",
-                height: "300px",
-                borderRadius: "50%",
-                filter: "blur(80px)",
-                opacity: 0.4,
-              },
-              "&::before": {
-                background: "linear-gradient(135deg, #3b82f6, #8b5cf6)",
-                top: "-100px",
-                left: "-100px",
-                animation: "float1 6s ease-in-out infinite",
-              },
-              "&::after": {
-                background: "linear-gradient(135deg, #06b6d4, #3b82f6)",
-                bottom: "-100px",
-                right: "-100px",
-                animation: "float2 6s ease-in-out infinite",
-              },
-              "@keyframes float1": {
-                "0%, 100%": { transform: "translate(0, 0) scale(1)" },
-                "50%": { transform: "translate(50px, 50px) scale(1.1)" },
-              },
-              "@keyframes float2": {
-                "0%, 100%": { transform: "translate(0, 0) scale(1)" },
-                "50%": { transform: "translate(-50px, -50px) scale(1.1)" },
-              },
+              opacity: 0.5,
+              background: `radial-gradient(circle at 20% 30%, rgba(0, 121, 204, 0.08) 0%, transparent 50%),
+                           radial-gradient(circle at 80% 70%, rgba(0, 121, 204, 0.06) 0%, transparent 50%)`,
             }}
           />
 
@@ -85,42 +62,31 @@ const SplashLoader: React.FC<SplashLoaderProps> = ({
           <Box sx={{ position: "relative", textAlign: "center" }}>
             {/* Logo icon */}
             <motion.div
-              initial={{ scale: 0, rotate: -180 }}
-              animate={{ scale: 1, rotate: 0 }}
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
               transition={{
                 type: "spring",
-                stiffness: 200,
-                damping: 15,
+                stiffness: 300,
+                damping: 20,
                 delay: 0.1,
               }}
             >
               <Box
                 sx={{
-                  width: 100,
-                  height: 100,
-                  margin: "0 auto 32px",
-                  background: "linear-gradient(135deg, #3b82f6, #8b5cf6)",
-                  borderRadius: "24px",
+                  width: 80,
+                  height: 80,
+                  margin: "0 auto 24px",
+                  background: `linear-gradient(135deg, ${BRAND_BLUE} 0%, ${BRAND_NAVY} 100%)`,
+                  borderRadius: "20px",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  boxShadow: "0 20px 60px rgba(59, 130, 246, 0.4)",
-                  position: "relative",
-                  "&::after": {
-                    content: '""',
-                    position: "absolute",
-                    inset: -3,
-                    borderRadius: "27px",
-                    background: "linear-gradient(135deg, #3b82f6, #8b5cf6, #06b6d4)",
-                    zIndex: -1,
-                    opacity: 0.5,
-                    filter: "blur(10px)",
-                  },
+                  boxShadow: `0 12px 40px rgba(0, 121, 204, 0.25)`,
                 }}
               >
                 <svg
-                  width="50"
-                  height="50"
+                  width="40"
+                  height="40"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="white"
@@ -136,21 +102,17 @@ const SplashLoader: React.FC<SplashLoaderProps> = ({
 
             {/* Title */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4, duration: 0.6 }}
+              transition={{ delay: 0.3, duration: 0.5 }}
             >
               <Typography
-                variant="h3"
+                variant="h4"
                 sx={{
-                  fontFamily: '"JetBrains Mono", "Fira Code", monospace',
-                  fontWeight: 700,
-                  background: "linear-gradient(135deg, #fff 0%, #94a3b8 100%)",
-                  backgroundClip: "text",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
+                  fontWeight: 600,
+                  color: BRAND_NAVY,
                   letterSpacing: "-0.02em",
-                  mb: 1,
+                  mb: 0.5,
                 }}
               >
                 FlexiBuilder
@@ -159,37 +121,36 @@ const SplashLoader: React.FC<SplashLoaderProps> = ({
 
             {/* Subtitle */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6, duration: 0.6 }}
+              transition={{ delay: 0.45, duration: 0.5 }}
             >
               <Typography
-                variant="body1"
+                variant="body2"
                 sx={{
-                  color: "#64748b",
-                  fontFamily: '"Inter", sans-serif',
-                  fontWeight: 400,
-                  letterSpacing: "0.1em",
+                  color: "#6A8BA4",
+                  fontWeight: 500,
+                  letterSpacing: "0.05em",
                   textTransform: "uppercase",
-                  fontSize: "0.75rem",
+                  fontSize: "0.7rem",
                 }}
               >
                 Email Template Builder
               </Typography>
             </motion.div>
 
-            {/* Loading bar */}
+            {/* Loading indicator */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.8 }}
-              style={{ marginTop: 48 }}
+              transition={{ delay: 0.6 }}
+              style={{ marginTop: 40 }}
             >
               <Box
                 sx={{
-                  width: 200,
+                  width: 160,
                   height: 3,
-                  background: "rgba(255,255,255,0.1)",
+                  backgroundColor: "rgba(0, 121, 204, 0.15)",
                   borderRadius: 2,
                   margin: "0 auto",
                   overflow: "hidden",
@@ -200,13 +161,13 @@ const SplashLoader: React.FC<SplashLoaderProps> = ({
                   animate={{ x: "100%" }}
                   transition={{
                     repeat: Infinity,
-                    duration: 1.2,
+                    duration: 1,
                     ease: "easeInOut",
                   }}
                   style={{
-                    width: "50%",
+                    width: "40%",
                     height: "100%",
-                    background: "linear-gradient(90deg, transparent, #3b82f6, #8b5cf6, transparent)",
+                    background: `linear-gradient(90deg, transparent, ${BRAND_BLUE}, transparent)`,
                     borderRadius: 2,
                   }}
                 />
