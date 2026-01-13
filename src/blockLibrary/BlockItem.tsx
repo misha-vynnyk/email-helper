@@ -82,14 +82,12 @@ export default function BlockItem({
           let displayPath = dirPath;
 
           // Remove common prefixes for cleaner display
-          const pathsToTrim = [
-            "/Users/mykhailo.vynnyk/Documents/projects/email-helper/",
-            "/Users/mykhailo.vynnyk/Documents/",
-          ];
-
-          for (const prefix of pathsToTrim) {
-            if (prefix && dirPath.startsWith(prefix)) {
-              displayPath = dirPath.substring(prefix.length);
+          // Try to extract meaningful path segments instead of hardcoded paths
+          const commonPrefixes = ["server/data/blocks/", "data/blocks/", "blocks/"];
+          for (const prefix of commonPrefixes) {
+            const prefixIndex = dirPath.indexOf(prefix);
+            if (prefixIndex !== -1) {
+              displayPath = dirPath.substring(prefixIndex);
               break;
             }
           }
