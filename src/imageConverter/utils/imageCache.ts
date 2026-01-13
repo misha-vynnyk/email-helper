@@ -116,7 +116,7 @@ export class ImageCache {
     if (!this.db) return;
 
     const currentSize = await this.getCurrentCacheSize();
-    
+
     if (currentSize + newBlobSize <= MAX_CACHE_SIZE) {
       return; // Within limit
     }
@@ -124,7 +124,7 @@ export class ImageCache {
     // Need to evict old entries
     const tx = this.db.transaction(STORE_NAME, 'readwrite');
     const index = tx.store.index('by-timestamp');
-    
+
     let sizeToFree = currentSize + newBlobSize - MAX_CACHE_SIZE;
     let cursor = await index.openCursor();
 
@@ -190,7 +190,7 @@ export class ImageCache {
     const cutoffTime = Date.now() - days * 24 * 60 * 60 * 1000;
     const tx = this.db.transaction(STORE_NAME, 'readwrite');
     const index = tx.store.index('by-timestamp');
-    
+
     let deletedCount = 0;
     let cursor = await index.openCursor();
 
@@ -231,4 +231,3 @@ export class ImageCache {
 
 // Export singleton instance
 export const imageCache = new ImageCache();
-

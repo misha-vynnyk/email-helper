@@ -273,16 +273,18 @@ export default function ConversionSettings() {
                 {cacheStats ? `${cacheStats.count} items (${cacheStats.sizeFormatted})` : 'Loading...'}
               </Typography>
               <Tooltip title='Clear all cached conversions'>
-                <Button
-                  variant='outlined'
-                  size='small'
-                  color='warning'
-                  startIcon={<DeleteOutline />}
-                  onClick={handleClearCache}
-                  disabled={!cacheStats || cacheStats.count === 0}
-                >
-                  Clear Cache
-                </Button>
+                <span>
+                  <Button
+                    variant='outlined'
+                    size='small'
+                    color='warning'
+                    startIcon={<DeleteOutline />}
+                    onClick={handleClearCache}
+                    disabled={!cacheStats || cacheStats.count === 0}
+                  >
+                    Clear Cache
+                  </Button>
+                </span>
               </Tooltip>
             </Stack>
           </Box>
