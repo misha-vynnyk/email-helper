@@ -61,13 +61,13 @@ export class ImageCache {
     const slice = file.slice(0, Math.min(SAMPLE_SIZE, file.size));
     const buffer = await slice.arrayBuffer();
     const bytes = new Uint8Array(buffer);
-    
+
     // Simple but effective hash (djb2 algorithm)
     let hash = 5381;
     for (let i = 0; i < bytes.length; i++) {
       hash = ((hash << 5) + hash) ^ bytes[i];
     }
-    
+
     // Return as hex string
     return (hash >>> 0).toString(16);
   }

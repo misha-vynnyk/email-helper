@@ -12,6 +12,22 @@ export interface HistoryState {
   action: string; // Description of what changed
 }
 
+/**
+ * Clone ImageFile array preserving File and Blob objects
+ * and recreating blob URLs
+ */
+function cloneFiles(files: ImageFile[]): ImageFile[] {
+  return files.map(f => ({
+    ...f,
+    // Keep File and Blob references (they're immutable)
+    file: f.file,
+    convertedBlob: f.convertedBlob,
+    // Recreate blob URLs from original objects
+    previewUrl: f.file ? URL.createObjectURL(f.file) : undefined,
+    convertedUrl: f.convertedBlob ? URL.createObjectURL(f.convertedBlob) : undefined,
+  }));
+}
+
 export class HistoryManager {
   private history: HistoryState[] = [];
   private currentIndex: number = -1;
@@ -24,9 +40,16 @@ export class HistoryManager {
     // Remove any states after current index (when undoing then making new change)
     this.history = this.history.slice(0, this.currentIndex + 1);
 
-    // Add new state
+    // Store files with references to File/Blob objects (not JSON clone)
     this.history.push({
-      files: JSON.parse(JSON.stringify(files)), // Deep clone
+      files: files.map(f => ({
+        ...f,
+        file: f.file,
+        convertedBlob: f.convertedBlob,
+        // Don't store blob URLs - we'll recreate them on restore
+        previewUrl: undefined,
+        convertedUrl: undefined,
+      })),
       timestamp: Date.now(),
       action,
     });
@@ -46,7 +69,7 @@ export class HistoryManager {
     if (!this.canUndo()) return null;
 
     this.currentIndex--;
-    return JSON.parse(JSON.stringify(this.history[this.currentIndex].files));
+    return cloneFiles(this.history[this.currentIndex].files);
   }
 
   /**
@@ -56,7 +79,7 @@ export class HistoryManager {
     if (!this.canRedo()) return null;
 
     this.currentIndex++;
-    return JSON.parse(JSON.stringify(this.history[this.currentIndex].files));
+    return cloneFiles(this.history[this.currentIndex].files);
   }
 
   /**
