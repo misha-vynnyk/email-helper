@@ -1,0 +1,71 @@
+@import './variables';
+
+// ============================================
+// Reset styles when switching to legacy theme
+// Це гарантує що modern стилі не залишаються активними
+// ============================================
+
+// Коли modern-theme-active клас відсутній, скидаємо всі modern стилі
+body:not(.modern-theme-active) {
+  // Приховуємо modern компоненти
+  .modern-email-sender-panel,
+  .modern-form-section,
+  .modern-editor-section,
+  .modern-panel-wrapper,
+  .modern-theme,
+  [class*="modern-"],
+  .layout,
+  .main-content,
+  .sidebar {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  // Скидаємо inline стилі з motion.div якщо вони є
+  > div.modern-theme {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  // Скидаємо всі стилі з body які могли бути застосовані modern theme
+  background-color: initial !important;
+  color: initial !important;
+  font-family: initial !important;
+}
+
+// Скидаємо CSS змінні на :root коли legacy theme активна (коли немає класів theme)
+// Використовуємо специфічніший селектор щоб перебити стилі modern теми
+html:not(.theme-light):not(.theme-dark),
+:root:not(.theme-light):not(.theme-dark) {
+  // Видаляємо всі CSS змінні modern теми через initial
+  // Це поверне значення до значень за замовчуванням браузера
+  --purple-primary: initial;
+  --purple-dark: initial;
+  --purple-light: initial;
+  --bg-primary: initial;
+  --bg-secondary: initial;
+  --bg-tertiary: initial;
+  --bg-primary-rgb: initial;
+  --sidebar-bg: initial;
+  --sidebar-text: initial;
+  --sidebar-active: initial;
+  --text-primary: initial;
+  --text-secondary: initial;
+  --text-tertiary: initial;
+  --input-bg: initial;
+  --input-border: initial;
+  --border-color: initial;
+  --divider-color: initial;
+  --status-success: initial;
+  --status-warning: initial;
+  --status-error: initial;
+  --status-info: initial;
+  --status-neutral: initial;
+  --interactive-hover: initial;
+  --interactive-active: initial;
+  --focus-ring: initial;
+  --shadow-sm: initial;
+  --shadow-md: initial;
+  --shadow-lg: initial;
+  --shadow-xl: initial;
+}

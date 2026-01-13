@@ -1,0 +1,333 @@
+@import './variables';
+
+// ============================================
+// Responsive Styles for Modern Theme
+// ============================================
+
+// Breakpoints
+$breakpoint-xs: 480px;
+$breakpoint-sm: 768px;
+$breakpoint-md: 1024px;
+$breakpoint-lg: 1280px;
+
+// Mobile First Approach
+@media (max-width: $breakpoint-sm) {
+  // Email Sender Panel
+  body.modern-theme-active .modern-email-sender-panel {
+    .email-sender-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px;
+
+      .email-sender-header-content {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+
+      h1 {
+        font-size: 20px;
+      }
+
+      .header-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 20px;
+      }
+    }
+
+    .email-sender-content {
+      padding: 12px;
+      gap: 12px;
+    }
+  }
+
+  // Form Section
+  body.modern-theme-active .modern-form-section {
+    .card {
+      margin-top: 12px;
+    }
+
+    .collapsible-header {
+      padding: 10px 12px;
+      margin: -16px -16px 0 -16px;
+      flex-wrap: wrap;
+      gap: 8px;
+
+      .collapsible-header-left,
+      .collapsible-header-right {
+        flex-wrap: wrap;
+        gap: 8px;
+        flex: 1;
+        min-width: 0;
+      }
+
+      .collapsible-header-right {
+        justify-content: flex-end;
+      }
+
+      h3 {
+        font-size: 16px;
+      }
+
+      // Make badge smaller on mobile
+      .badge {
+        font-size: 11px;
+        padding: 4px 8px;
+      }
+    }
+
+    // Override inline margin-top
+    .card[style*="margin-top"] {
+      margin-top: 12px;
+    }
+
+    // Make labels and icons smaller on mobile
+    .form-label {
+      font-size: 13px;
+
+      svg {
+        width: 18px;
+        height: 18px;
+      }
+    }
+
+    .form-grid {
+      gap: 12px;
+    }
+
+    .form-group {
+      margin-bottom: 12px;
+    }
+  }
+
+  // Editor Section
+  body.modern-theme-active .modern-editor-section {
+    padding: 0 12px 12px 12px;
+
+    .modern-editor-content {
+      padding-right: 4px;
+    }
+
+    .editor-header {
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      flex-wrap: wrap;
+
+      h2 {
+        font-size: 18px;
+      }
+    }
+
+    // Override inline styles for alerts on mobile
+    .alert[style*="margin-bottom"] {
+      margin-bottom: 12px;
+    }
+
+    .editor-action-bar {
+      padding: 12px;
+      margin: 12px -12px -12px -12px;
+      flex-direction: column;
+      gap: 12px;
+
+      .action-bar-left,
+      .action-bar-right {
+        width: 100%;
+        justify-content: space-between;
+        flex-wrap: wrap;
+      }
+
+      button {
+        flex: 1;
+        min-width: auto;
+      }
+
+      .btn {
+        width: 100%;
+        min-width: auto;
+        height: 44px;
+      }
+
+      // Override inline styles with higher specificity
+      button[style*="minWidth"],
+      .btn[style*="minWidth"] {
+        min-width: auto;
+        width: 100%;
+      }
+
+      // Hide credentials warning on mobile to save space
+      .credentials-warning {
+        display: none;
+      }
+    }
+
+    // CodeMirror height adjustment for mobile
+    .code-editor-wrapper {
+      .cm-editor {
+        height: 300px;
+      }
+    }
+  }
+
+  // Storage Toggle
+  body.modern-theme-active .storage-toggle-grid {
+    grid-template-columns: 1fr;
+    gap: 6px;
+
+    button {
+      width: 100%;
+      padding: 10px;
+    }
+  }
+
+  // Cards
+  body.modern-theme-active .card {
+    padding: 12px;
+    border-radius: 6px;
+  }
+
+  // Inputs - важливо для iOS щоб не було zoom
+  body.modern-theme-active .form-input,
+  body.modern-theme-active .MuiOutlinedInput-root.MuiOutlinedInput-root {
+    font-size: 16px; // Prevent zoom on iOS
+    padding: 10px 12px;
+  }
+
+  body.modern-theme-active .input-wrapper {
+    .input-icon {
+      left: 12px;
+    }
+
+    .form-input {
+      padding-left: 40px;
+    }
+  }
+
+  // Buttons
+  body.modern-theme-active .btn,
+  body.modern-theme-active .MuiButton-root.MuiButton-root {
+    padding: 10px 16px;
+    min-height: 44px; // Touch target size
+    font-size: 14px;
+  }
+
+  // Alerts
+  body.modern-theme-active .alert,
+  body.modern-theme-active .MuiAlert-root.MuiAlert-root {
+    padding: 10px 12px;
+    font-size: 13px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+
+    > span {
+      align-self: flex-start;
+    }
+  }
+
+  // Typography adjustments
+  body.modern-theme-active .MuiTypography-h1.MuiTypography-h1 {
+    font-size: 20px;
+    margin-bottom: 8px;
+  }
+
+  body.modern-theme-active .MuiTypography-h2.MuiTypography-h2 {
+    font-size: 18px;
+    margin-bottom: 8px;
+  }
+
+  body.modern-theme-active .MuiTypography-h3.MuiTypography-h3 {
+    font-size: 16px;
+    margin-bottom: 6px;
+  }
+}
+
+// Tablet adjustments
+@media (min-width: $breakpoint-sm) and (max-width: $breakpoint-md) {
+  body.modern-theme-active .modern-email-sender-panel {
+    .email-sender-header {
+      padding: 12px 16px;
+    }
+
+    .email-sender-content {
+      padding: 16px;
+    }
+  }
+
+  body.modern-theme-active .storage-toggle-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+// Tablet and Desktop adjustments
+@media (min-width: $breakpoint-sm) {
+  body.modern-theme-active .modern-editor-section {
+    .editor-action-bar {
+      flex-direction: row;
+
+      .action-bar-left,
+      .action-bar-right {
+        width: auto;
+        flex-wrap: nowrap;
+      }
+
+      .btn {
+        width: auto;
+        min-width: 120px;
+      }
+
+      // Override inline minWidth for larger screens
+      button[style*="minWidth"],
+      .btn[style*="minWidth"] {
+        min-width: 120px;
+        width: auto;
+      }
+
+      // Show alert on larger screens
+      .credentials-warning {
+        display: flex;
+      }
+    }
+  }
+}
+
+// Desktop adjustments
+@media (min-width: $breakpoint-md) {
+  body.modern-theme-active .modern-editor-section {
+    .code-editor-wrapper {
+      .cm-editor {
+        height: 500px;
+      }
+    }
+  }
+}
+
+// Very small screens
+@media (max-width: $breakpoint-xs) {
+  body.modern-theme-active .modern-form-section {
+    .collapsible-header {
+      padding: 8px 10px;
+      margin: -12px -12px 0 -12px;
+
+      h3 {
+        font-size: 14px;
+      }
+    }
+  }
+
+  body.modern-theme-active .card {
+    padding: 10px;
+  }
+
+  body.modern-theme-active .form-input {
+    padding: 8px 10px;
+  }
+
+  body.modern-theme-active .modern-editor-section {
+    .editor-action-bar {
+      padding: 10px;
+      margin: 10px -10px -10px -10px;
+    }
+  }
+}

@@ -1,0 +1,108 @@
+@import './variables';
+
+// ============================================
+// Component Styles (for non-MUI components)
+// ============================================
+
+// Modern theme specific component classes
+body.modern-theme-active .modern-theme {
+  // Card component
+  .card {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: $radius-lg;
+    padding: $spacing-4;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+
+    &:hover {
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+    }
+  }
+
+  // Button variants
+  .btn {
+    padding: $spacing-2 $spacing-4;
+    border-radius: $radius-md;
+    font-weight: $font-weight-medium;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: none;
+
+    &.btn-primary {
+      background-color: var(--purple-primary);
+      color: #FFFFFF;
+
+      &:hover {
+        background-color: var(--purple-dark);
+      }
+    }
+
+    &.btn-secondary {
+      background-color: var(--bg-secondary);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+
+      &:hover {
+        background-color: var(--interactive-hover);
+      }
+    }
+  }
+
+  // Sidebar
+  .sidebar {
+    background-color: var(--sidebar-bg);
+    color: var(--sidebar-text);
+
+    .sidebar-item {
+      padding: $spacing-3 $spacing-4;
+      border-radius: $radius-md;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+
+      &:hover {
+        background-color: var(--sidebar-active);
+      }
+
+      &.active {
+        background-color: var(--sidebar-active);
+      }
+    }
+  }
+
+  // Status badges
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: $spacing-1 $spacing-2;
+    border-radius: $radius-full;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-medium;
+
+    &.success {
+      background-color: var(--status-success);
+      color: #FFFFFF;
+    }
+
+    &.warning {
+      background-color: var(--status-warning);
+      color: #FFFFFF;
+    }
+
+    &.error {
+      background-color: var(--status-error);
+      color: #FFFFFF;
+    }
+
+    &.info {
+      background-color: var(--status-info);
+      color: #FFFFFF;
+    }
+
+    &.neutral {
+      background-color: var(--status-neutral);
+      color: #FFFFFF;
+    }
+  }
+}

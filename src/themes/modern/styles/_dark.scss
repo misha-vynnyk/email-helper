@@ -1,0 +1,55 @@
+@import './variables';
+
+// ============================================
+// Dark Theme
+// CSS змінні застосовуються тільки коли є клас theme-dark на html
+// ============================================
+
+:root.theme-dark {
+  // Primary Colors
+  --purple-primary: #{$purple-primary};
+  --purple-dark: #{$purple-light}; // Inverted for dark theme
+  --purple-light: #{$purple-dark}; // Inverted for dark theme
+
+  // Background - трохи світліше для кращої читабельності
+  --bg-primary: #0F172A;
+  --bg-secondary: #1E293B;
+  --bg-tertiary: #334155;
+  --bg-primary-rgb: 15, 23, 42;
+
+  // Додаткові кольори для кращого контрасту
+  --input-bg: #1E293B;
+  --input-border: #475569;
+
+  // Sidebar
+  --sidebar-bg: #0A0E1A;
+  --sidebar-text: #E2E8F0;
+  --sidebar-active: rgba(108, 14, 124, 0.3);
+
+  // Text - покращена контрастність
+  --text-primary: #F8FAFC;
+  --text-secondary: #E2E8F0;
+  --text-tertiary: #CBD5E1;
+
+  // Borders & Dividers
+  --border-color: #334155;
+  --divider-color: #475569;
+
+  // Status Colors
+  --status-success: #22C55E;
+  --status-warning: #FBBF24;
+  --status-error: #F87171;
+  --status-info: #60A5FA;
+  --status-neutral: #94A3B8;
+
+  // Interactive
+  --interactive-hover: #1E293B;
+  --interactive-active: #334155;
+  --focus-ring: rgba(108, 14, 124, 0.5);
+
+  // Shadows
+  --shadow-sm: #{$shadow-sm-dark};
+  --shadow-md: #{$shadow-md-dark};
+  --shadow-lg: #{$shadow-lg-dark};
+  --shadow-xl: #{$shadow-xl-dark};
+}

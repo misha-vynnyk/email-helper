@@ -1,0 +1,139 @@
+@import './variables';
+
+// ============================================
+// Table Components
+// ============================================
+
+body.modern-theme-active {
+  .table-container {
+    overflow-x: auto;
+    border-radius: $radius-lg;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-secondary);
+  }
+
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: var(--bg-secondary);
+
+    thead {
+      background-color: var(--bg-tertiary);
+      border-bottom: 2px solid var(--border-color);
+
+      th {
+        padding: $spacing-3 $spacing-4;
+        text-align: left;
+        font-size: $font-size-xs;
+        font-weight: $font-weight-semibold;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-secondary);
+
+        &:first-child {
+          border-top-left-radius: $radius-lg;
+        }
+
+        &:last-child {
+          border-top-right-radius: $radius-lg;
+        }
+      }
+    }
+
+    tbody {
+      tr {
+        border-bottom: 1px solid var(--border-color);
+        transition: background-color 0.2s ease;
+
+        &:hover {
+          background-color: var(--interactive-hover);
+        }
+
+        &:last-child {
+          border-bottom: none;
+        }
+      }
+
+      td {
+        padding: $spacing-3 $spacing-4;
+        color: var(--text-primary);
+        font-size: $font-size-sm;
+      }
+    }
+  }
+
+  // List Component
+  .list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    background-color: var(--bg-secondary);
+    border-radius: $radius-lg;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+
+    .list-item {
+      padding: $spacing-3 $spacing-4;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      gap: $spacing-3;
+      transition: background-color 0.2s ease;
+
+      &:hover {
+        background-color: var(--interactive-hover);
+      }
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      &.active {
+        background-color: var(--sidebar-active);
+        border-left: 3px solid var(--purple-primary);
+        padding-left: calc($spacing-4 - 3px);
+      }
+    }
+  }
+
+  // Grid Component
+  .grid {
+    display: grid;
+    gap: $spacing-4;
+
+    &.grid-1 { grid-template-columns: repeat(1, 1fr); }
+    &.grid-2 { grid-template-columns: repeat(2, 1fr); }
+    &.grid-3 { grid-template-columns: repeat(3, 1fr); }
+    &.grid-4 { grid-template-columns: repeat(4, 1fr); }
+
+    @media (max-width: 1024px) {
+      &.grid-3,
+      &.grid-4 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 768px) {
+      &.grid-2,
+      &.grid-3,
+      &.grid-4 {
+        grid-template-columns: repeat(1, 1fr);
+      }
+    }
+  }
+
+  // Card Grid Item
+  .card-grid-item {
+    @extend .card;
+
+    &.card-hover {
+      cursor: pointer;
+      transition: all 0.2s ease;
+
+      &:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-lg);
+      }
+    }
+  }
+}
