@@ -3,6 +3,6 @@
  */
 
 export { EmailSettingsMenu } from "./EmailSettingsMenu";
-export { Header, LandingPage } from "./LandingPage";
 export { RegistrationForm } from "./RegistrationForm";
 export { SectionErrorBoundary } from "./ErrorBoundary";
+export { SplashLoader } from "./SplashLoader";
