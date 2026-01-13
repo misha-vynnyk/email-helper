@@ -466,10 +466,6 @@ export default function TemplateLibrary() {
     );
   }
 
-  function setAddModalOpen(arg0: boolean): void {
-    throw new Error("Function not implemented.");
-  }
-
   return (
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
       {/* Header */}
@@ -873,19 +869,20 @@ export default function TemplateLibrary() {
               >
                 <Button
                   variant='contained'
-                  startIcon={<AddIcon />}
-                  onClick={() => setAddModalOpen(true)}
+                  startIcon={<SettingsIcon />}
+                  onClick={() => setStorageModalOpen(true)}
                   size='large'
                 >
-                  Add First Template
+                  Configure Storage
                 </Button>
                 <Button
                   variant='outlined'
-                  startIcon={<FolderOpenIcon />}
-                  onClick={() => setAddModalOpen(true)}
+                  startIcon={<RefreshIcon />}
+                  onClick={syncTemplates}
                   size='large'
+                  disabled={syncing}
                 >
-                  Import Folder
+                  {syncing ? "Syncing..." : "Sync Templates"}
                 </Button>
               </Box>
             )}
