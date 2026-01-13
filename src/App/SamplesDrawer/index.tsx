@@ -6,6 +6,10 @@ import { useRegistrationStatus } from "../../hooks/useRegistrationStatus";
 
 export const SAMPLES_DRAWER_WIDTH = 200;
 
+// Theme colors
+const BRAND_BLUE = "#0079CC";
+const BRAND_NAVY = "#212443";
+
 interface SamplesDrawerProps {
   onSettingsOpen?: () => void;
   onRegistrationOpen?: () => void;
@@ -35,8 +39,8 @@ export default function SamplesDrawer({
         width: samplesDrawerOpen ? SAMPLES_DRAWER_WIDTH : 0,
         "& .MuiDrawer-paper": {
           width: SAMPLES_DRAWER_WIDTH,
-          background: "linear-gradient(180deg, #0f172a 0%, #1e293b 100%)",
-          borderRight: "1px solid rgba(255,255,255,0.08)",
+          backgroundColor: "#fff",
+          borderRight: "1px solid #DCE4EA",
         },
       }}
     >
@@ -52,19 +56,18 @@ export default function SamplesDrawer({
             direction="row"
             alignItems="center"
             spacing={1.5}
-            sx={{ mb: 3 }}
           >
             {/* Logo Icon */}
             <Box
               sx={{
                 width: 36,
                 height: 36,
-                background: "linear-gradient(135deg, #3b82f6, #8b5cf6)",
+                background: `linear-gradient(135deg, ${BRAND_BLUE} 0%, ${BRAND_NAVY} 100%)`,
                 borderRadius: "10px",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)",
+                boxShadow: "0 2px 8px rgba(0, 121, 204, 0.2)",
               }}
             >
               <svg
@@ -87,12 +90,11 @@ export default function SamplesDrawer({
               <Typography
                 variant="subtitle1"
                 sx={{
-                  fontFamily: '"JetBrains Mono", monospace',
-                  fontWeight: 700,
-                  color: "#fff",
+                  fontWeight: 600,
+                  color: BRAND_NAVY,
                   fontSize: "0.95rem",
                   lineHeight: 1.2,
-                  letterSpacing: "-0.02em",
+                  letterSpacing: "-0.01em",
                 }}
               >
                 FlexiBuilder
@@ -100,10 +102,10 @@ export default function SamplesDrawer({
               <Typography
                 variant="caption"
                 sx={{
-                  color: "#64748b",
-                  fontSize: "0.65rem",
+                  color: "#6A8BA4",
+                  fontSize: "0.6rem",
                   textTransform: "uppercase",
-                  letterSpacing: "0.1em",
+                  letterSpacing: "0.08em",
                 }}
               >
                 Email Tools
@@ -117,15 +119,17 @@ export default function SamplesDrawer({
           <Tooltip title={isRegistered ? "Email Settings" : "Setup Email"} placement="right">
             <IconButton
               onClick={handleEmailSettingsClick}
+              size="small"
               sx={{
-                width: 40,
-                height: 40,
-                borderRadius: "10px",
-                color: !hasValidCredentials && isRegistered ? "#f59e0b" : "#64748b",
-                backgroundColor: "rgba(255,255,255,0.05)",
+                width: 36,
+                height: 36,
+                borderRadius: "8px",
+                color: !hasValidCredentials && isRegistered ? "#E81212" : "#6A8BA4",
+                backgroundColor: "#F2F5F7",
+                border: "1px solid #DCE4EA",
                 "&:hover": {
-                  backgroundColor: "rgba(255,255,255,0.1)",
-                  color: "#fff",
+                  backgroundColor: "#DCE4EA",
+                  color: BRAND_BLUE,
                 },
               }}
             >
