@@ -14,18 +14,33 @@ export interface HistoryState {
 
 /**
  * Clone ImageFile array preserving File and Blob objects
- * and recreating blob URLs
+ * and recreating blob URLs.
+ * Merges conversion results from currentFiles to preserve completed conversions.
  */
-function cloneFiles(files: ImageFile[]): ImageFile[] {
-  return files.map(f => ({
-    ...f,
-    // Keep File and Blob references (they're immutable)
-    file: f.file,
-    convertedBlob: f.convertedBlob,
-    // Recreate blob URLs from original objects
-    previewUrl: f.file ? URL.createObjectURL(f.file) : undefined,
-    convertedUrl: f.convertedBlob ? URL.createObjectURL(f.convertedBlob) : undefined,
-  }));
+function cloneFiles(historyFiles: ImageFile[], currentFiles: ImageFile[]): ImageFile[] {
+  // Create a map of current files by ID for quick lookup
+  const currentFilesMap = new Map(currentFiles.map(f => [f.id, f]));
+  
+  return historyFiles.map(historyFile => {
+    // Check if this file exists in current state with conversion results
+    const currentFile = currentFilesMap.get(historyFile.id);
+    
+    // Use conversion results from current state if available
+    const convertedBlob = currentFile?.convertedBlob || historyFile.convertedBlob;
+    const status = currentFile?.status === 'done' ? 'done' : historyFile.status;
+    const convertedSize = currentFile?.convertedSize || historyFile.convertedSize;
+    
+    return {
+      ...historyFile,
+      file: historyFile.file,
+      convertedBlob,
+      status,
+      convertedSize,
+      // Recreate blob URLs from original objects
+      previewUrl: historyFile.file ? URL.createObjectURL(historyFile.file) : undefined,
+      convertedUrl: convertedBlob ? URL.createObjectURL(convertedBlob) : undefined,
+    };
+  });
 }
 
 export class HistoryManager {
@@ -64,22 +79,24 @@ export class HistoryManager {
 
   /**
    * Undo to previous state
+   * @param currentFiles - Current files to merge conversion results from
    */
-  undo(): ImageFile[] | null {
+  undo(currentFiles: ImageFile[]): ImageFile[] | null {
     if (!this.canUndo()) return null;
 
     this.currentIndex--;
-    return cloneFiles(this.history[this.currentIndex].files);
+    return cloneFiles(this.history[this.currentIndex].files, currentFiles);
   }
 
   /**
    * Redo to next state
+   * @param currentFiles - Current files to merge conversion results from
    */
-  redo(): ImageFile[] | null {
+  redo(currentFiles: ImageFile[]): ImageFile[] | null {
     if (!this.canRedo()) return null;
 
     this.currentIndex++;
-    return cloneFiles(this.history[this.currentIndex].files);
+    return cloneFiles(this.history[this.currentIndex].files, currentFiles);
   }
 
   /**

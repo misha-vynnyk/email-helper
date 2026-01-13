@@ -523,21 +523,27 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
   }, []);
 
   const undo = useCallback(() => {
-    const previousState = historyManager.current.undo();
-    if (previousState) {
-      setFiles(previousState);
-      setCanUndo(historyManager.current.canUndo());
-      setCanRedo(historyManager.current.canRedo());
-    }
+    setFiles((currentFiles) => {
+      const previousState = historyManager.current.undo(currentFiles);
+      if (previousState) {
+        setCanUndo(historyManager.current.canUndo());
+        setCanRedo(historyManager.current.canRedo());
+        return previousState;
+      }
+      return currentFiles;
+    });
   }, []);
 
   const redo = useCallback(() => {
-    const nextState = historyManager.current.redo();
-    if (nextState) {
-      setFiles(nextState);
-      setCanUndo(historyManager.current.canUndo());
-      setCanRedo(historyManager.current.canRedo());
-    }
+    setFiles((currentFiles) => {
+      const nextState = historyManager.current.redo(currentFiles);
+      if (nextState) {
+        setCanUndo(historyManager.current.canUndo());
+        setCanRedo(historyManager.current.canRedo());
+        return nextState;
+      }
+      return currentFiles;
+    });
   }, []);
 
   // Update undo/redo state when files change
