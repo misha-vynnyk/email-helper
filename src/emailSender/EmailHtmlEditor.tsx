@@ -2,14 +2,16 @@ import React from "react";
 
 import { html } from "@codemirror/lang-html";
 import { Clear, Code, Send } from "@mui/icons-material";
-import { Alert, Box, Button, Stack, TextField, Typography } from "@mui/material";
+import { alpha, Alert, Box, Button, Stack, TextField, Typography, useTheme } from "@mui/material";
 import CodeMirror from "@uiw/react-codemirror";
 
 import EmailValidationPanel from "../emailValidator/EmailValidationPanel";
+import { useThemeMode } from "../theme";
 
 import { useEmailSender } from "./EmailSenderContext";
 
 const EmailHtmlEditor: React.FC = () => {
+  const theme = useTheme();
   const {
     editorHtml,
     setEditorHtml,
@@ -90,15 +92,51 @@ const EmailHtmlEditor: React.FC = () => {
                 borderColor: "divider",
                 borderRadius: 2,
                 overflow: "hidden",
-                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+                boxShadow: theme.shadows[2],
                 "& .cm-editor": {
                   fontSize: "14px",
+                  backgroundColor: `${theme.palette.background.paper} !important`,
+                  color: `${theme.palette.text.primary} !important`,
+                },
+                "& .cm-scroller": {
+                  fontFamily: "monospace",
+                  backgroundColor: `${theme.palette.background.paper} !important`,
+                },
+                "& .cm-content": {
+                  color: `${theme.palette.text.primary} !important`,
+                  backgroundColor: `${theme.palette.background.paper} !important`,
+                },
+                "& .cm-gutters": {
+                  backgroundColor: `${theme.palette.background.default} !important`,
+                  borderRight: `1px solid ${theme.palette.divider} !important`,
+                  color: `${theme.palette.text.secondary} !important`,
+                },
+                "& .cm-lineNumbers": {
+                  color: `${theme.palette.text.secondary} !important`,
+                },
+                "& .cm-lineNumbers .cm-gutterElement": {
+                  color: `${theme.palette.text.secondary} !important`,
+                },
+                "& .cm-gutterElement": {
+                  color: `${theme.palette.text.secondary} !important`,
+                },
+                "& .cm-lineNumber": {
+                  color: `${theme.palette.text.secondary} !important`,
+                },
+                "& .cm-activeLineGutter": {
+                  backgroundColor: `${alpha(theme.palette.primary.main, 0.08)} !important`,
+                },
+                "& .cm-activeLine": {
+                  backgroundColor: `${alpha(theme.palette.primary.main, 0.04)} !important`,
+                },
+                "& .cm-selectionBackground": {
+                  backgroundColor: `${alpha(theme.palette.primary.main, 0.2)} !important`,
+                },
+                "& .cm-cursor": {
+                  borderLeftColor: `${theme.palette.text.primary} !important`,
                 },
                 "& .cm-focused": {
                   outline: "none",
-                },
-                "& .cm-editor .cm-scroller": {
-                  fontFamily: "monospace",
                 },
               }}
             >
@@ -136,7 +174,7 @@ const EmailHtmlEditor: React.FC = () => {
           p: 2,
           mx: -2,
           mt: 2,
-          boxShadow: "0px -2px 8px rgba(0, 0, 0, 0.1)",
+          boxShadow: theme.shadows[2],
           zIndex: 10,
         }}
       >
@@ -190,7 +228,7 @@ const EmailHtmlEditor: React.FC = () => {
                 "&:hover": {
                   bgcolor: isDisabled ? undefined : "success.dark",
                   transform: "translateY(-1px)",
-                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+                  boxShadow: theme.shadows[4],
                 },
                 "&:disabled": {
                   opacity: 0.6,

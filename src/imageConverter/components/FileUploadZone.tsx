@@ -9,16 +9,16 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
-} from '@dnd-kit/core';
+} from "@dnd-kit/core";
 import {
   arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   rectSortingStrategy,
-} from '@dnd-kit/sortable';
+} from "@dnd-kit/sortable";
 
 import { CloudUpload as UploadIcon } from "@mui/icons-material";
-import { Box, Button, Grid, IconButton, Typography } from "@mui/material";
+import { alpha, Box, Button, Grid, IconButton, Typography, useTheme } from "@mui/material";
 
 import { MAX_FILE_SIZE_CLIENT, MAX_FILE_SIZE_SERVER } from "../constants";
 import { useImageConverter } from "../context/ImageConverterContext";
@@ -28,7 +28,9 @@ import BulkActions from "./BulkActions";
 import SortableImageItem from "./SortableImageItem";
 
 export default function FileUploadZone() {
-  const { addFiles, settings, files, removeFile, downloadFile, reorderFiles, toggleSelection } = useImageConverter();
+  const theme = useTheme();
+  const { addFiles, settings, files, removeFile, downloadFile, reorderFiles, toggleSelection } =
+    useImageConverter();
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -46,7 +48,7 @@ export default function FileUploadZone() {
     if (over && active.id !== over.id) {
       const oldIndex = files.findIndex((f) => f.id === active.id);
       const newIndex = files.findIndex((f) => f.id === over.id);
-      
+
       if (oldIndex !== -1 && newIndex !== -1) {
         reorderFiles(oldIndex, newIndex);
       }
@@ -125,18 +127,24 @@ export default function FileUploadZone() {
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         sx={{
-          border: isDragging ? "3px dashed #1976d2" : "2px dashed #ccc",
-          boxShadow: isDragging ? "0 0 10px 0 rgba(25, 118, 210, 0.5)" : "none",
-          borderRadius: 5,
+          border: isDragging
+            ? `3px dashed ${theme.palette.primary.main}`
+            : `2px dashed ${theme.palette.divider}`,
+          boxShadow: isDragging ? `0 0 10px 0 ${alpha(theme.palette.primary.main, 0.5)}` : "none",
+          borderRadius: theme.spacing(1.25), // 5px
           padding: 3,
-          backgroundColor: isDragging ? "#e3f2fd" : "#fafafa",
+          backgroundColor: isDragging
+            ? alpha(theme.palette.primary.main, 0.08)
+            : theme.palette.background.default,
           cursor: hasFiles ? "default" : "pointer",
           transition: "all 0.3s ease",
           minHeight: hasFiles ? 300 : 200,
           position: "relative",
           "&:hover": {
-            borderColor: "#1976d2",
-            backgroundColor: hasFiles ? "#fafafa" : "#f5f5f5",
+            borderColor: theme.palette.primary.main,
+            backgroundColor: hasFiles
+              ? theme.palette.background.default
+              : theme.palette.action.hover,
           },
         }}
         onClick={!hasFiles ? handleBrowseClick : undefined}
@@ -158,7 +166,13 @@ export default function FileUploadZone() {
             style={{ textAlign: "center" }}
           >
             <IconButton onClick={handleBrowseClick}>
-              <UploadIcon sx={{ fontSize: 64, color: isDragging ? "#1976d2" : "#bbb", mb: 1 }} />
+              <UploadIcon
+                sx={{
+                  fontSize: 64,
+                  color: isDragging ? theme.palette.primary.main : theme.palette.text.disabled,
+                  mb: 1,
+                }}
+              />
             </IconButton>
 
             <Typography
@@ -211,7 +225,7 @@ export default function FileUploadZone() {
               onDragEnd={handleDragEnd}
             >
               <SortableContext
-                items={files.map(f => f.id)}
+                items={files.map((f) => f.id)}
                 strategy={rectSortingStrategy}
               >
                 <Grid
@@ -245,8 +259,8 @@ export default function FileUploadZone() {
               left: 0,
               right: 0,
               bottom: 0,
-              backgroundColor: "rgba(25, 118, 210, 0.1)",
-              borderRadius: "8px",
+              backgroundColor: alpha(theme.palette.primary.main, 0.1),
+              borderRadius: theme.spacing(1), // 8px
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -254,7 +268,7 @@ export default function FileUploadZone() {
             }}
           >
             <Box textAlign='center'>
-              <UploadIcon sx={{ fontSize: 64, color: "#1976d2" }} />
+              <UploadIcon sx={{ fontSize: 64, color: theme.palette.primary.main }} />
               <Typography
                 variant='h6'
                 color='primary'
