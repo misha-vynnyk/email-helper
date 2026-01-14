@@ -28,7 +28,7 @@ function ImageConverterContent() {
       >
         {/* Auto-Convert Toggle */}
         <AutoConvertToggle />
-        
+
         {/* Processing Mode */}
         <Paper
           elevation={2}
