@@ -6,7 +6,7 @@
 import { motion } from "framer-motion";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
-import { Box } from "@mui/material";
+import { alpha, Box, useTheme } from "@mui/material";
 
 interface ResizablePreviewProps {
   children: React.ReactNode;
@@ -21,6 +21,7 @@ export default function ResizablePreview({
   onWidthChange,
   zoom,
 }: ResizablePreviewProps) {
+  const theme = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [currentWidth, setCurrentWidth] = useState<number>(typeof width === "number" ? width : 600);
@@ -99,15 +100,15 @@ export default function ResizablePreview({
             sx={{
               width: `${displayWidth * zoom}px`,
               height: 20,
-              backgroundColor: "#e3f2fd",
-              border: "1px solid #1976d2",
+              backgroundColor: alpha(theme.palette.primary.main, 0.08),
+              border: `1px solid ${theme.palette.primary.main}`,
               borderRadius: "4px 4px 0 0",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               fontSize: "11px",
               fontWeight: 600,
-              color: "#1976d2",
+              color: theme.palette.primary.main,
               fontFamily: "monospace",
               transition: isDragging ? "none" : "width 0.3s ease",
             }}
@@ -136,15 +137,17 @@ export default function ResizablePreview({
               bottom: 0,
               width: 12,
               cursor: "ew-resize",
-              backgroundColor: isDragging ? "#1976d2" : "rgba(25, 118, 210, 0.5)",
-              borderRadius: "4px",
+              backgroundColor: isDragging
+                ? theme.palette.primary.main
+                : alpha(theme.palette.primary.main, 0.5),
+              borderRadius: theme.spacing(0.5), // 4px
               boxShadow: isDragging
-                ? "0 0 8px rgba(25, 118, 210, 0.6)"
-                : "0 2px 4px rgba(0, 0, 0, 0.1)",
+                ? `0 0 8px ${alpha(theme.palette.primary.main, 0.6)}`
+                : theme.shadows[2],
               transition: isDragging ? "none" : "all 0.2s ease",
               "&:hover": {
-                backgroundColor: "#1976d2",
-                boxShadow: "0 0 8px rgba(25, 118, 210, 0.6)",
+                backgroundColor: theme.palette.primary.main,
+                boxShadow: `0 0 8px ${alpha(theme.palette.primary.main, 0.6)}`,
               },
               "&::before": {
                 content: '""',
@@ -154,9 +157,9 @@ export default function ResizablePreview({
                 transform: "translate(-50%, -50%)",
                 width: 3,
                 height: 40,
-                backgroundColor: "#fff",
+                backgroundColor: theme.palette.common.white,
                 borderRadius: 2,
-                boxShadow: "0 1px 2px rgba(0, 0, 0, 0.2)",
+                boxShadow: theme.shadows[1],
               },
               "&::after": {
                 content: '""',
@@ -166,7 +169,7 @@ export default function ResizablePreview({
                 transform: "translate(-50%, -50%)",
                 width: 20,
                 height: 3,
-                backgroundColor: "rgba(255, 255, 255, 0.3)",
+                backgroundColor: alpha(theme.palette.common.white, 0.3),
                 borderRadius: 2,
               },
             }}
@@ -194,15 +197,17 @@ export default function ResizablePreview({
               bottom: 0,
               width: 12,
               cursor: "ew-resize",
-              backgroundColor: isDragging ? "#1976d2" : "rgba(25, 118, 210, 0.5)",
-              borderRadius: "4px",
+              backgroundColor: isDragging
+                ? theme.palette.primary.main
+                : alpha(theme.palette.primary.main, 0.5),
+              borderRadius: theme.spacing(0.5), // 4px
               boxShadow: isDragging
-                ? "0 0 8px rgba(25, 118, 210, 0.6)"
-                : "0 2px 4px rgba(0, 0, 0, 0.1)",
+                ? `0 0 8px ${alpha(theme.palette.primary.main, 0.6)}`
+                : theme.shadows[2],
               transition: isDragging ? "none" : "all 0.2s ease",
               "&:hover": {
-                backgroundColor: "#1976d2",
-                boxShadow: "0 0 8px rgba(25, 118, 210, 0.6)",
+                backgroundColor: theme.palette.primary.main,
+                boxShadow: `0 0 8px ${alpha(theme.palette.primary.main, 0.6)}`,
               },
               "&::before": {
                 content: '""',
@@ -212,9 +217,9 @@ export default function ResizablePreview({
                 transform: "translate(-50%, -50%)",
                 width: 3,
                 height: 40,
-                backgroundColor: "#fff",
+                backgroundColor: theme.palette.common.white,
                 borderRadius: 2,
-                boxShadow: "0 1px 2px rgba(0, 0, 0, 0.2)",
+                boxShadow: theme.shadows[1],
               },
               "&::after": {
                 content: '""',
@@ -224,7 +229,7 @@ export default function ResizablePreview({
                 transform: "translate(-50%, -50%)",
                 width: 20,
                 height: 3,
-                backgroundColor: "rgba(255, 255, 255, 0.3)",
+                backgroundColor: alpha(theme.palette.common.white, 0.3),
                 borderRadius: 2,
               },
             }}
@@ -242,16 +247,16 @@ export default function ResizablePreview({
             top: "50%",
             left: "50%",
             transform: "translate(-50%, -50%)",
-            backgroundColor: "rgba(25, 118, 210, 0.95)",
-            color: "white",
+            backgroundColor: alpha(theme.palette.primary.main, 0.95),
+            color: theme.palette.primary.contrastText,
             padding: "8px 16px",
-            borderRadius: "4px",
+            borderRadius: theme.spacing(0.5), // 4px
             fontSize: "14px",
             fontWeight: 600,
             fontFamily: "monospace",
             pointerEvents: "none",
             zIndex: 10000,
-            boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+            boxShadow: theme.shadows[4],
           }}
         >
           {currentWidth}px

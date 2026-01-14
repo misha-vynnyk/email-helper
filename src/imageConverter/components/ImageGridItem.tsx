@@ -17,6 +17,7 @@ import {
   Image as ImageIcon,
 } from "@mui/icons-material";
 import {
+  alpha,
   Box,
   Card,
   CardMedia,
@@ -28,6 +29,7 @@ import {
   LinearProgress,
   Tooltip,
   Typography,
+  useTheme,
 } from "@mui/material";
 
 import { ImageFile } from "../types";
@@ -43,6 +45,7 @@ interface ImageGridItemProps {
 }
 
 export default function ImageGridItem({ file, onDownload, onRemove, onToggleSelection, index, dragListeners }: ImageGridItemProps) {
+  const theme = useTheme();
   const [compareOpen, setCompareOpen] = useState(false);
 
   const compression =
@@ -96,7 +99,7 @@ export default function ImageGridItem({ file, onDownload, onRemove, onToggleSele
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.8, y: -20 }}
       transition={{ duration: 0.3, delay: index * 0.05 }}
-      whileHover={{ y: -4, boxShadow: "0 8px 24px rgba(0,0,0,0.15)" }}
+      whileHover={{ y: -4, boxShadow: theme.shadows.hover }}
       sx={{
         position: "relative",
         height: "100%",
@@ -105,7 +108,7 @@ export default function ImageGridItem({ file, onDownload, onRemove, onToggleSele
         overflow: "hidden",
         cursor: "pointer",
         transition: "box-shadow 0.3s ease",
-        borderRadius: 5,
+        borderRadius: theme.spacing(1.25), // 5px
       }}
     >
       {/* Selection Checkbox */}

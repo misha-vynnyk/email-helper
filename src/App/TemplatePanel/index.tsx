@@ -1,18 +1,20 @@
 import React from "react";
 
-import { Box, Stack } from "@mui/material";
+import { Box, Stack, useTheme } from "@mui/material";
 
 import { BlockLibrary } from "../../blockLibrary";
 import { useSelectedMainTab } from "../../contexts/AppState";
 import { EmailSenderProvider } from "../../emailSender/EmailSenderContext";
 import { ImageConverterPanel } from "../../imageConverter";
 import { TemplateLibrary } from "../../templateLibrary";
+import { ThemeToggle } from "../../theme";
 import ToggleSamplesPanelButton from "../SamplesDrawer/ToggleSamplesPanelButton";
 
 import EmailSenderPanel from "./EmailSenderPanel";
 import MainTabsGroup from "./MainTabsGroup";
 
 export default function TemplatePanel() {
+  const theme = useTheme();
   const selectedMainTab = useSelectedMainTab();
 
   const renderMainPanel = () => {
@@ -41,7 +43,7 @@ export default function TemplatePanel() {
           height: 49,
           borderBottom: 1,
           borderColor: "divider",
-          backgroundColor: "white",
+          backgroundColor: "background.paper",
           position: "sticky",
           top: 0,
           zIndex: "appBar",
@@ -63,7 +65,9 @@ export default function TemplatePanel() {
         >
           <MainTabsGroup />
         </Stack>
-        <Box sx={{ minWidth: 40 }} />
+        <Box sx={{ minWidth: 40, display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
+          <ThemeToggle />
+        </Box>
       </Stack>
       <Box sx={{ height: "calc(100vh - 49px)", overflow: "hidden", minWidth: 370 }}>
         {renderMainPanel()}

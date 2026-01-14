@@ -1,14 +1,11 @@
-import { Box, Drawer, IconButton, Stack, Tooltip, Typography } from "@mui/material";
+import { alpha, Box, Drawer, IconButton, Stack, Tooltip, Typography, useTheme } from "@mui/material";
 import { Settings, Email } from "@mui/icons-material";
 
 import { useSamplesDrawerOpen } from "../../contexts/AppState";
 import { useRegistrationStatus } from "../../hooks/useRegistrationStatus";
+import { brandColors } from "../../theme/tokens";
 
 export const SAMPLES_DRAWER_WIDTH = 200;
-
-// Theme colors
-const BRAND_BLUE = "#0079CC";
-const BRAND_NAVY = "#212443";
 
 interface SamplesDrawerProps {
   onSettingsOpen?: () => void;
@@ -19,6 +16,7 @@ export default function SamplesDrawer({
   onSettingsOpen,
   onRegistrationOpen,
 }: SamplesDrawerProps = {}) {
+  const theme = useTheme();
   const samplesDrawerOpen = useSamplesDrawerOpen();
   const { isRegistered, hasValidCredentials } = useRegistrationStatus();
 
@@ -39,8 +37,9 @@ export default function SamplesDrawer({
         width: samplesDrawerOpen ? SAMPLES_DRAWER_WIDTH : 0,
         "& .MuiDrawer-paper": {
           width: SAMPLES_DRAWER_WIDTH,
-          backgroundColor: "#fff",
-          borderRight: "1px solid #DCE4EA",
+          backgroundColor: "background.paper",
+          borderRight: 1,
+          borderColor: "divider",
         },
       }}
     >
@@ -62,12 +61,12 @@ export default function SamplesDrawer({
               sx={{
                 width: 36,
                 height: 36,
-                background: `linear-gradient(135deg, ${BRAND_BLUE} 0%, ${BRAND_NAVY} 100%)`,
+                background: `linear-gradient(135deg, ${brandColors.blue} 0%, ${brandColors.navy} 100%)`,
                 borderRadius: "10px",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                boxShadow: "0 2px 8px rgba(0, 121, 204, 0.2)",
+                boxShadow: theme.shadows[2],
               }}
             >
               <svg
@@ -91,7 +90,7 @@ export default function SamplesDrawer({
                 variant="subtitle1"
                 sx={{
                   fontWeight: 600,
-                  color: BRAND_NAVY,
+                  color: "text.primary",
                   fontSize: "0.95rem",
                   lineHeight: 1.2,
                   letterSpacing: "-0.01em",
@@ -102,7 +101,7 @@ export default function SamplesDrawer({
               <Typography
                 variant="caption"
                 sx={{
-                  color: "#6A8BA4",
+                  color: "text.secondary",
                   fontSize: "0.6rem",
                   textTransform: "uppercase",
                   letterSpacing: "0.08em",
@@ -123,13 +122,14 @@ export default function SamplesDrawer({
               sx={{
                 width: 36,
                 height: 36,
-                borderRadius: "8px",
-                color: !hasValidCredentials && isRegistered ? "#E81212" : "#6A8BA4",
-                backgroundColor: "#F2F5F7",
-                border: "1px solid #DCE4EA",
+                borderRadius: 1,
+                color: !hasValidCredentials && isRegistered ? "error.main" : "text.secondary",
+                backgroundColor: "background.default",
+                border: 1,
+                borderColor: "divider",
                 "&:hover": {
-                  backgroundColor: "#DCE4EA",
-                  color: BRAND_BLUE,
+                  backgroundColor: "action.hover",
+                  color: "primary.main",
                 },
               }}
             >
