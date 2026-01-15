@@ -24,7 +24,6 @@ export interface ConversionSettings {
   autoConvert: boolean; // Auto-convert on file upload
   preserveFormat: boolean; // Keep original image format instead of converting
   autoQuality: boolean; // Automatically calculate optimal quality
-  selectedPreset?: string; // Currently selected preset ID
   preserveExif: boolean; // Preserve EXIF metadata during conversion
   targetFileSize?: number; // Target file size in bytes (e.g., 1.5 MB = 1572864)
   gifFrameResize?: {

@@ -418,6 +418,7 @@ export default function TemplateLibrary() {
 
         {/* Templates skeleton */}
         <Box
+          data-app-scroll="true"
           flex={1}
           overflow='auto'
           p={2}
@@ -780,6 +781,7 @@ export default function TemplateLibrary() {
 
       {/* Content Area */}
       <Box
+        data-app-scroll="true"
         flex={1}
         overflow='auto'
         p={2}

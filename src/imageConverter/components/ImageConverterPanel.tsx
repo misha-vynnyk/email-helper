@@ -1,58 +1,108 @@
 import React from "react";
 
-import { Box, Container, Paper } from "@mui/material";
+import { Box, useTheme, useMediaQuery } from "@mui/material";
 
+import { useThemeMode } from "../../theme";
 import { ImageConverterProvider } from "../context/ImageConverterContext";
 
-import AutoConvertToggle from "./AutoConvertToggle";
+import AnimatedBackground from "./AnimatedBackground";
 import BatchProcessor from "./BatchProcessor";
-import ConversionSettings from "./ConversionSettings";
 import FileUploadZone from "./FileUploadZone";
-import ProcessingModeToggle from "./ProcessingModeToggle";
+import SettingsSidebar from "./SettingsSidebar";
+
+const SIDEBAR_WIDTH = 340;
 
 function ImageConverterContent() {
+  const theme = useTheme();
+  const { style } = useThemeMode();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const showAnimatedBackground = style !== "default";
+
+  if (isMobile) {
+    // Mobile: Stack layout
+    return (
+      <Box sx={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
+        {/* Animated Background - only for non-default styles */}
+        {showAnimatedBackground && <AnimatedBackground />}
+
+        {/* Main Content */}
+        <Box
+          data-app-scroll="true"
+          sx={{ flex: 1, overflow: "auto", p: 2, position: "relative", zIndex: 1 }}
+        >
+          <FileUploadZone />
+        </Box>
+
+        {/* Settings Drawer for mobile - can be added later */}
+
+        {/* Sticky Footer */}
+        <Box
+          sx={{
+            borderTop: `1px solid ${theme.palette.divider}`,
+            backgroundColor: theme.palette.background.paper,
+          }}
+        >
+          <BatchProcessor />
+        </Box>
+      </Box>
+    );
+  }
+
+  // Desktop: Two-panel layout
   return (
-    <Container
-      maxWidth='lg'
-      sx={{ py: 3, height: "100%", overflow: "auto" }}
-    >
+    <Box sx={{ height: "100%", display: "flex", overflow: "hidden" }}>
+      {/* Left Panel: Settings Sidebar */}
       <Box
-        mb={2}
         sx={{
-          display: "flex",
-          flexDirection: { xs: "column", md: "row" },
-          alignItems: { xs: "stretch", md: "center" },
-          justifyContent: { xs: "stretch", md: "space-between" },
-          gap: 3,
+          width: SIDEBAR_WIDTH,
+          minWidth: SIDEBAR_WIDTH,
+          height: "100%",
+          flexShrink: 0,
         }}
       >
-        {/* Auto-Convert Toggle */}
-        <AutoConvertToggle />
-
-        {/* Processing Mode */}
-        <Paper
-          elevation={2}
-          sx={{ p: 2, borderRadius: 5 }}
-        >
-          <ProcessingModeToggle />
-        </Paper>
+        <SettingsSidebar />
       </Box>
 
+      {/* Right Panel: Upload Zone + Grid + Footer */}
       <Box
-        display='flex'
-        flexDirection='column'
-        gap={3}
+        sx={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          backgroundColor: theme.palette.background.default,
+          position: "relative",
+        }}
       >
-        {/* Upload Zone */}
-        <FileUploadZone />
+        {/* Animated Background - only for non-default styles */}
+        {showAnimatedBackground && <AnimatedBackground />}
 
-        {/* Batch Processor - Under upload zone */}
-        <BatchProcessor />
+        {/* Main Content Area */}
+        <Box
+          data-app-scroll="true"
+          sx={{
+            flex: 1,
+            overflow: "auto",
+            p: 3,
+            position: "relative",
+            zIndex: 1,
+          }}
+        >
+          <FileUploadZone />
+        </Box>
 
-        {/* Settings */}
-        <ConversionSettings />
+        {/* Sticky Footer: Batch Actions */}
+        <Box
+          sx={{
+            borderTop: `1px solid ${theme.palette.divider}`,
+            backgroundColor: theme.palette.background.paper,
+            boxShadow: `0 -2px 10px ${theme.palette.mode === "dark" ? "rgba(0,0,0,0.3)" : "rgba(0,0,0,0.05)"}`,
+          }}
+        >
+          <BatchProcessor />
+        </Box>
       </Box>
-    </Container>
+    </Box>
   );
 }
 

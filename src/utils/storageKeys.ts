@@ -21,6 +21,7 @@ export const STORAGE_KEYS = {
 
   // Theme
   THEME_MODE: "themeMode",
+  THEME_STYLE: "themeStyle",
 } as const;
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];
