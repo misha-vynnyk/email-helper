@@ -1,21 +1,30 @@
 import React from "react";
 
-import { Box, Stack, useTheme } from "@mui/material";
+import { Box, Stack } from "@mui/material";
 
 import { BlockLibrary } from "../../blockLibrary";
 import { useSelectedMainTab } from "../../contexts/AppState";
 import { EmailSenderProvider } from "../../emailSender/EmailSenderContext";
 import { ImageConverterPanel } from "../../imageConverter";
+import AnimatedBackground from "../../imageConverter/components/AnimatedBackground";
 import { TemplateLibrary } from "../../templateLibrary";
-import { ThemeToggle } from "../../theme";
+import { ThemeToggle, ThemeStyleSelector, useThemeMode } from "../../theme";
 import ToggleSamplesPanelButton from "../SamplesDrawer/ToggleSamplesPanelButton";
 
 import EmailSenderPanel from "./EmailSenderPanel";
 import MainTabsGroup from "./MainTabsGroup";
 
 export default function TemplatePanel() {
-  const theme = useTheme();
+  const { style } = useThemeMode();
   const selectedMainTab = useSelectedMainTab();
+  const showAnimatedBackground = style !== "default";
+  const handleFixedWheel = React.useCallback((event: React.WheelEvent) => {
+    const scrollTarget = document.querySelector("[data-app-scroll='true']") as HTMLElement | null;
+    if (!scrollTarget) {
+      return;
+    }
+    scrollTarget.scrollBy({ top: event.deltaY });
+  }, []);
 
   const renderMainPanel = () => {
     switch (selectedMainTab) {
@@ -52,20 +61,49 @@ export default function TemplatePanel() {
         direction='row'
         justifyContent='space-between'
         alignItems='center'
+        onWheel={handleFixedWheel}
       >
-        <Box sx={{ minWidth: 40 }}>
+        {/* Animated Background - only for non-default styles */}
+        {showAnimatedBackground && (
+          <Box
+            sx={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 0,
+              pointerEvents: "none",
+            }}
+          >
+            <AnimatedBackground />
+          </Box>
+        )}
+        <Box sx={{ position: "relative", zIndex: 1, minWidth: 40 }}>
           <ToggleSamplesPanelButton />
         </Box>
         <Stack
           px={2}
           direction='row'
-          width='100%'
+          flex={1}
           justifyContent='center'
           alignItems='center'
+          sx={{ position: "relative", zIndex: 1 }}
         >
           <MainTabsGroup />
         </Stack>
-        <Box sx={{ minWidth: 40, display: "flex", justifyContent: "flex-end", alignItems: "center" }}>
+        <Box
+          sx={{
+            position: "relative",
+            zIndex: 1,
+            minWidth: 40,
+            display: "flex",
+            justifyContent: "flex-end",
+            alignItems: "center",
+            gap: 0.5,
+          }}
+        >
+          <ThemeStyleSelector />
           <ThemeToggle />
         </Box>
       </Stack>

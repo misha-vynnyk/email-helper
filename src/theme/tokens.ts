@@ -354,6 +354,20 @@ export const opacity = {
 } as const;
 
 // ============================================
+// Backdrop Filter (Blur values for glassmorphism)
+// ============================================
+export const backdropFilter = {
+  sm: "blur(4px) saturate(180%)",
+  md: "blur(8px) saturate(180%)",
+  base: "blur(12px) saturate(180%)",
+  lg: "blur(16px) saturate(180%)",
+  xl: "blur(20px) saturate(180%)",
+  "2xl": "blur(24px) saturate(180%)",
+  "3xl": "blur(28px) saturate(180%)",
+  full: "blur(32px) saturate(180%)",
+} as const;
+
+// ============================================
 // Z-Index
 // ============================================
 export const zIndex = {
@@ -582,6 +596,7 @@ export const shadowsDark = {
 // ============================================
 
 export type ThemeMode = "light" | "dark";
+export type ThemeStyle = "default" | "floating" | "glassmorphism" | "neomorphic";
 
 export function getPaletteColors(mode: ThemeMode) {
   return mode === "dark" ? paletteColorsDark : paletteColors;

@@ -1,9 +1,13 @@
-import { alpha, Box, Drawer, IconButton, Stack, Tooltip, Typography, useTheme } from "@mui/material";
+import React from "react";
+
+import { alpha, Box, Divider, Drawer, IconButton, Stack, Tooltip, Typography, useTheme } from "@mui/material";
 import { Settings, Email } from "@mui/icons-material";
 
 import { useSamplesDrawerOpen } from "../../contexts/AppState";
 import { useRegistrationStatus } from "../../hooks/useRegistrationStatus";
-import { brandColors } from "../../theme/tokens";
+import AnimatedBackground from "../../imageConverter/components/AnimatedBackground";
+import { getComponentStyles, useThemeMode } from "../../theme";
+import { getGradients } from "../../theme/tokens";
 
 export const SAMPLES_DRAWER_WIDTH = 200;
 
@@ -17,8 +21,19 @@ export default function SamplesDrawer({
   onRegistrationOpen,
 }: SamplesDrawerProps = {}) {
   const theme = useTheme();
+  const { mode, style } = useThemeMode();
+  const componentStyles = getComponentStyles(mode, style);
+  const gradients = getGradients(mode);
   const samplesDrawerOpen = useSamplesDrawerOpen();
   const { isRegistered, hasValidCredentials } = useRegistrationStatus();
+  const showAnimatedBackground = style !== "default";
+  const handleFixedWheel = React.useCallback((event: React.WheelEvent) => {
+    const scrollTarget = document.querySelector("[data-app-scroll='true']") as HTMLElement | null;
+    if (!scrollTarget) {
+      return;
+    }
+    scrollTarget.scrollBy({ top: event.deltaY });
+  }, []);
 
   const handleEmailSettingsClick = () => {
     if (isRegistered) {
@@ -40,14 +55,25 @@ export default function SamplesDrawer({
           backgroundColor: "background.paper",
           borderRight: 1,
           borderColor: "divider",
+          paddingTop: "10px",
+          boxSizing: "border-box",
         },
       }}
     >
+      {/* Animated Background - only for non-default styles */}
+      {showAnimatedBackground && (
+        <Box sx={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 }}>
+          <AnimatedBackground />
+        </Box>
+      )}
       <Stack
         height="100%"
         justifyContent="space-between"
-        py={2}
+        pt={0}
+        pb={2}
         px={2}
+        sx={{ position: "relative", zIndex: 1 }}
+        onWheel={handleFixedWheel}
       >
         {/* Logo Section */}
         <Box>
@@ -55,27 +81,48 @@ export default function SamplesDrawer({
             direction="row"
             alignItems="center"
             spacing={1.5}
+            sx={{
+              p: 1.5,
+              borderRadius: componentStyles.card.borderRadius,
+              backgroundColor: componentStyles.card.background || alpha(theme.palette.primary.main, 0.05),
+              backdropFilter: componentStyles.card.backdropFilter,
+              WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
+              border: componentStyles.card.border,
+              boxShadow: componentStyles.card.boxShadow,
+              transition: "all 0.3s ease",
+              cursor: "default",
+              "&:hover": {
+                transform: componentStyles.card.hover?.transform,
+                boxShadow: componentStyles.card.hover?.boxShadow || componentStyles.card.boxShadow,
+              },
+            }}
           >
             {/* Logo Icon */}
             <Box
               sx={{
-                width: 36,
-                height: 36,
-                background: `linear-gradient(135deg, ${brandColors.blue} 0%, ${brandColors.navy} 100%)`,
-                borderRadius: "10px",
+                width: 40,
+                height: 40,
+                background: gradients.primary,
+                borderRadius: componentStyles.card.borderRadius,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                boxShadow: theme.shadows[2],
+                boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.3)}`,
+                transition: "all 0.3s ease",
+                "&:hover": {
+                  transform: "scale(1.05) rotate(2deg)",
+                  boxShadow: `0 6px 16px ${alpha(theme.palette.primary.main, 0.4)}`,
+                  background: gradients.primaryHover,
+                },
               }}
             >
               <svg
-                width="20"
-                height="20"
+                width="22"
+                height="22"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="white"
-                strokeWidth="2"
+                strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >
@@ -85,15 +132,18 @@ export default function SamplesDrawer({
             </Box>
 
             {/* Logo Text */}
-            <Box>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography
                 variant="subtitle1"
                 sx={{
-                  fontWeight: 600,
-                  color: "text.primary",
-                  fontSize: "0.95rem",
+                  fontWeight: 700,
+                  background: gradients.primary,
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                  fontSize: "1rem",
                   lineHeight: 1.2,
-                  letterSpacing: "-0.01em",
+                  letterSpacing: "-0.02em",
                 }}
               >
                 FlexiBuilder
@@ -102,9 +152,12 @@ export default function SamplesDrawer({
                 variant="caption"
                 sx={{
                   color: "text.secondary",
-                  fontSize: "0.6rem",
+                  fontSize: "0.65rem",
                   textTransform: "uppercase",
-                  letterSpacing: "0.08em",
+                  letterSpacing: "0.1em",
+                  fontWeight: 600,
+                  display: "block",
+                  mt: 0.25,
                 }}
               >
                 Email Tools
@@ -114,22 +167,37 @@ export default function SamplesDrawer({
         </Box>
 
         {/* Bottom Section - Settings */}
-        <Stack spacing={1}>
-          <Tooltip title={isRegistered ? "Email Settings" : "Setup Email"} placement="right">
+        <Stack spacing={1.5}>
+          <Divider
+            sx={{
+              my: 1,
+              borderColor: alpha(theme.palette.divider, 0.5),
+            }}
+          />
+          <Tooltip title={isRegistered ? "Email Settings" : "Setup Email"} placement="right" arrow>
             <IconButton
               onClick={handleEmailSettingsClick}
-              size="small"
+              size="medium"
               sx={{
-                width: 36,
-                height: 36,
-                borderRadius: 1,
-                color: !hasValidCredentials && isRegistered ? "error.main" : "text.secondary",
-                backgroundColor: "background.default",
-                border: 1,
-                borderColor: "divider",
+                width: 44,
+                height: 44,
+                borderRadius: componentStyles.card.borderRadius,
+                color: !hasValidCredentials && isRegistered ? "error.main" : theme.palette.primary.main,
+                backgroundColor: !hasValidCredentials && isRegistered
+                  ? alpha(theme.palette.error.main, 0.1)
+                  : componentStyles.card.background || alpha(theme.palette.primary.main, 0.08),
+                backdropFilter: componentStyles.card.backdropFilter,
+                WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
+                border: componentStyles.card.border,
+                boxShadow: componentStyles.card.boxShadow,
+                transition: "all 0.3s ease",
                 "&:hover": {
-                  backgroundColor: "action.hover",
-                  color: "primary.main",
+                  transform: componentStyles.card.hover?.transform || "translateY(-2px)",
+                  boxShadow: componentStyles.card.hover?.boxShadow || theme.shadows[4],
+                  backgroundColor: !hasValidCredentials && isRegistered
+                    ? alpha(theme.palette.error.main, 0.15)
+                    : alpha(theme.palette.primary.main, 0.15),
+                  color: !hasValidCredentials && isRegistered ? "error.dark" : theme.palette.primary.dark,
                 },
               }}
             >

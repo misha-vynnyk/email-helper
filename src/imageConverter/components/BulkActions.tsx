@@ -22,6 +22,8 @@ import {
   Typography,
 } from "@mui/material";
 
+import { useThemeMode } from "../../theme";
+import { getComponentStyles } from "../../theme/componentStyles";
 import { useImageConverter } from "../context/ImageConverterContext";
 
 export default function BulkActions() {
@@ -34,6 +36,8 @@ export default function BulkActions() {
     downloadSelected,
     convertSelected,
   } = useImageConverter();
+  const { mode, style } = useThemeMode();
+  const componentStyles = getComponentStyles(mode, style);
 
   const allSelected = files.length > 0 && selectedCount === files.length;
   const someSelected = selectedCount > 0 && !allSelected;
@@ -42,13 +46,17 @@ export default function BulkActions() {
 
   return (
     <Paper
-      elevation={2}
+      elevation={0}
       sx={{
         p: 2,
-        borderRadius: 5,
+        borderRadius: componentStyles.card.borderRadius,
         mb: 2,
-        bgcolor: selectedCount > 0 ? "primary.50" : "background.paper",
-        transition: "background-color 0.3s ease",
+        backgroundColor: componentStyles.card.background,
+        backdropFilter: componentStyles.card.backdropFilter,
+        WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
+        border: componentStyles.card.border,
+        boxShadow: componentStyles.card.boxShadow,
+        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
       }}
     >
       <Stack

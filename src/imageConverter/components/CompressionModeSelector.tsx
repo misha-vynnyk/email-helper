@@ -7,6 +7,8 @@ import {
 } from "@mui/icons-material";
 import { Box, MenuItem, Select, Tooltip, Typography } from "@mui/material";
 
+import { useThemeMode } from "../../theme";
+import { getComponentStyles } from "../../theme/componentStyles";
 import { useImageConverter } from "../context/ImageConverterContext";
 import { CompressionMode } from "../types";
 
@@ -43,6 +45,8 @@ const compressionModes = [
 ];
 
 export default function CompressionModeSelector() {
+  const { mode, style } = useThemeMode();
+  const componentStyles = getComponentStyles(mode, style);
   const { settings, updateSettings } = useImageConverter();
 
   const currentMode = compressionModes.find((m) => m.value === settings.compressionMode);
@@ -51,18 +55,12 @@ export default function CompressionModeSelector() {
 
   return (
     <Box>
-      <Typography
-        variant='subtitle2'
-        gutterBottom
-      >
-        Compression Mode
-      </Typography>
       <Select
         value={settings.compressionMode}
         onChange={(e) => updateSettings({ compressionMode: e.target.value as CompressionMode })}
         fullWidth
-        size='small'
-        sx={{ borderRadius: 5 }}
+        size="small"
+        sx={{ borderRadius: componentStyles.card.borderRadius }}
       >
         {compressionModes.map((mode) => (
           <MenuItem
@@ -70,23 +68,13 @@ export default function CompressionModeSelector() {
             value={mode.value}
             disabled={mode.value === "lossless" && !isLosslessAvailable}
           >
-            <Box
-              display='flex'
-              alignItems='center'
-              gap={1}
-            >
+            <Box display="flex" alignItems="center" gap={1}>
               {mode.icon}
               <Box>
-                <Typography
-                  variant='body2'
-                  fontWeight={500}
-                >
+                <Typography variant="body2" fontWeight={500}>
                   {mode.label}
                 </Typography>
-                <Typography
-                  variant='caption'
-                  color='text.secondary'
-                >
+                <Typography variant="caption" color="text.secondary">
                   {mode.description}
                 </Typography>
               </Box>
@@ -97,32 +85,20 @@ export default function CompressionModeSelector() {
 
       {currentMode && (
         <Tooltip title={currentMode.details}>
-          <Typography
-            variant='caption'
-            color='text.secondary'
-            sx={{ mt: 1, display: "block" }}
-          >
-            ℹ️ {currentMode.details}
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: "block" }}>
+            {currentMode.details}
           </Typography>
         </Tooltip>
       )}
 
       {settings.compressionMode === "lossless" && !isLosslessAvailable && (
-        <Typography
-          variant='caption'
-          color='warning.main'
-          sx={{ mt: 1, display: "block" }}
-        >
+        <Typography variant="caption" color="warning.main" sx={{ mt: 1, display: "block" }}>
           ⚠️ Lossless mode only available for PNG and WebP formats
         </Typography>
       )}
 
       {settings.compressionMode === "maximum-quality" && settings.processingMode === "client" && (
-        <Typography
-          variant='caption'
-          color='info.main'
-          sx={{ mt: 1, display: "block" }}
-        >
+        <Typography variant="caption" color="info.main" sx={{ mt: 1, display: "block" }}>
           💡 Switch to Server mode for best results with Maximum Quality
         </Typography>
       )}

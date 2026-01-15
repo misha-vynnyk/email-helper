@@ -9,13 +9,15 @@ import { CssBaseline } from "@mui/material";
 
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { STORAGE_KEYS } from "../utils/storageKeys";
-import { ThemeMode } from "./tokens";
+import { ThemeMode, ThemeStyle } from "./tokens";
 import { createAppTheme } from "./theme";
 
 interface ThemeContextValue {
   mode: ThemeMode;
+  style: ThemeStyle;
   toggleMode: () => void;
   setMode: (mode: ThemeMode) => void;
+  setStyle: (style: ThemeStyle) => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
@@ -34,6 +36,7 @@ interface ThemeProviderProps {
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
   const [mode, setMode] = useLocalStorage<ThemeMode>(STORAGE_KEYS.THEME_MODE, "light");
+  const [style, setStyle] = useLocalStorage<ThemeStyle>(STORAGE_KEYS.THEME_STYLE, "default");
 
   // Sync with system preference on first load (only if no stored preference)
   useEffect(() => {
@@ -57,15 +60,24 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     [setMode]
   );
 
+  const handleSetStyle = useMemo(
+    () => (newStyle: ThemeStyle) => {
+      setStyle(newStyle);
+    },
+    [setStyle]
+  );
+
   const theme = useMemo(() => createAppTheme(mode), [mode]);
 
   const value = useMemo<ThemeContextValue>(
     () => ({
       mode,
+      style,
       toggleMode,
       setMode: handleSetMode,
+      setStyle: handleSetStyle,
     }),
-    [mode, toggleMode, handleSetMode]
+    [mode, style, toggleMode, handleSetMode, handleSetStyle]
   );
 
   return (

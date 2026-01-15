@@ -389,6 +389,7 @@ export default function BlockLibrary() {
   return (
     <Box
       p={3}
+      data-app-scroll="true"
       sx={{ overflow: "auto", maxHeight: "100vh" }}
     >
       <Box
