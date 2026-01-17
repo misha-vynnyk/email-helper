@@ -1,4 +1,3 @@
-import React from "react";
 import { Box, useTheme } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 
@@ -23,13 +22,13 @@ export default function AnimatedBackground() {
           ? `linear-gradient(135deg,
               ${alpha(theme.palette.primary.main, 0.2)} 0%,
               ${alpha(theme.palette.secondary.main, 0.2)} 25%,
-              ${alpha(theme.palette.accent?.main || theme.palette.primary.main, 0.15)} 50%,
+              ${alpha(theme.palette.primary.main, 0.15)} 50%,
               ${alpha(theme.palette.secondary.main, 0.2)} 75%,
               ${alpha(theme.palette.primary.main, 0.2)} 100%)`
           : `linear-gradient(135deg,
               ${alpha(theme.palette.primary.main, 0.12)} 0%,
               ${alpha(theme.palette.secondary.main, 0.12)} 25%,
-              ${alpha(theme.palette.accent?.main || theme.palette.primary.main, 0.08)} 50%,
+              ${alpha(theme.palette.primary.main, 0.08)} 50%,
               ${alpha(theme.palette.secondary.main, 0.12)} 75%,
               ${alpha(theme.palette.primary.main, 0.12)} 100%)`,
         backgroundSize: "400% 400%",
@@ -44,10 +43,10 @@ export default function AnimatedBackground() {
           background: isDark
             ? `radial-gradient(circle at 30% 30%, ${alpha(theme.palette.primary.main, 0.25)} 0%, transparent 50%),
                radial-gradient(circle at 70% 70%, ${alpha(theme.palette.secondary.main, 0.25)} 0%, transparent 50%),
-               radial-gradient(circle at 50% 50%, ${alpha(theme.palette.accent?.main || theme.palette.primary.main, 0.2)} 0%, transparent 60%)`
+               radial-gradient(circle at 50% 50%, ${alpha(theme.palette.primary.main, 0.2)} 0%, transparent 60%)`
             : `radial-gradient(circle at 30% 30%, ${alpha(theme.palette.primary.main, 0.15)} 0%, transparent 50%),
                radial-gradient(circle at 70% 70%, ${alpha(theme.palette.secondary.main, 0.15)} 0%, transparent 50%),
-               radial-gradient(circle at 50% 50%, ${alpha(theme.palette.accent?.main || theme.palette.primary.main, 0.12)} 0%, transparent 60%)`,
+               radial-gradient(circle at 50% 50%, ${alpha(theme.palette.primary.main, 0.12)} 0%, transparent 60%)`,
           animation: "radialMove 18s ease-in-out infinite",
           opacity: 0.7,
         },

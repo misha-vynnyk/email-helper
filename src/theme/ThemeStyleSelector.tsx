@@ -6,15 +6,7 @@
 import React from "react";
 
 import { Style as StyleIcon } from "@mui/icons-material";
-import {
-  IconButton,
-  Menu,
-  MenuItem,
-  ListItemIcon,
-  ListItemText,
-  Tooltip,
-  Divider,
-} from "@mui/material";
+import { IconButton, Menu, MenuItem, ListItemIcon, ListItemText, Tooltip } from "@mui/material";
 
 import { useThemeMode } from "./ThemeContext";
 import { ThemeStyle } from "./tokens";
@@ -46,8 +38,11 @@ export function ThemeStyleSelector() {
 
   return (
     <>
-      <Tooltip title="Component Style">
-        <IconButton onClick={handleClick} size="small">
+      <Tooltip title='Component Style'>
+        <IconButton
+          onClick={handleClick}
+          size='small'
+        >
           <StyleIcon />
         </IconButton>
       </Tooltip>

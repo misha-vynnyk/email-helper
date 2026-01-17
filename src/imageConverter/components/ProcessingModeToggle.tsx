@@ -1,5 +1,5 @@
 import { Cloud as CloudIcon, Computer as ComputerIcon } from "@mui/icons-material";
-import { Box, ToggleButton, ToggleButtonGroup, Tooltip, Typography } from "@mui/material";
+import { Box, ToggleButton, ToggleButtonGroup, Tooltip } from "@mui/material";
 
 import { useThemeMode } from "../../theme";
 import { getComponentStyles } from "../../theme/componentStyles";
@@ -25,6 +25,8 @@ export default function ProcessingModeToggle() {
             borderRadius: componentStyles.card.borderRadius,
             textTransform: "none",
           },
+          display: "flex",
+          gap: 1,
         }}
       >
         <ToggleButton value='client'>
@@ -34,7 +36,7 @@ export default function ProcessingModeToggle() {
               alignItems='center'
               gap={1}
             >
-              <ComputerIcon fontSize="small" />
+              <ComputerIcon fontSize='small' />
               <span>Client</span>
             </Box>
           </Tooltip>
@@ -46,21 +48,12 @@ export default function ProcessingModeToggle() {
               alignItems='center'
               gap={1}
             >
-              <CloudIcon fontSize="small" />
+              <CloudIcon fontSize='small' />
               <span>Server</span>
             </Box>
           </Tooltip>
         </ToggleButton>
       </ToggleButtonGroup>
-      <Typography
-        variant='caption'
-        color='text.secondary'
-        sx={{ mt: 1, display: "block" }}
-      >
-        {settings.processingMode === "client"
-          ? "Processing in browser (max 10MB per file)"
-          : "Processing on server (max 50MB per file)"}
-      </Typography>
     </Box>
   );
 }

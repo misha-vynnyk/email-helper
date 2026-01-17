@@ -213,16 +213,18 @@ boxShadow: "0 4px 12px rgba(0,0,0,0.3)";
 
 ## 7. SCSS Файли
 
-### `src/themes/modern/styles/_variables.scss`
+### ~~`src/themes/modern/styles/_variables.scss`~~ (ВИДАЛЕНО)
 
-Має власні змінні, які не синхронізовані з `tokens.ts`:
+> **Примітка:** Папка `src/themes` була видалена як невикористовуваний legacy код.
+> Всі стилі тепер керуються через `src/theme/tokens.ts` та MUI theme system.
 
+Раніше мала власні змінні, які не були синхронізовані з `tokens.ts`:
 - `$purple-primary`, `$purple-dark`, `$purple-light`
 - `$spacing-1`, `$spacing-2`, etc.
 - `$radius-sm`, `$radius-md`, etc.
 - `$shadow-sm`, `$shadow-md`, etc.
 
-**Проблема:** Два джерела правди - `tokens.ts` та SCSS змінні
+**Вирішено:** Папка видалена, всі стилі тепер централізовані в `tokens.ts`
 
 ---
 

@@ -3,7 +3,6 @@
  * Button to switch between light and dark themes
  */
 
-import React from "react";
 
 import { DarkMode, LightMode } from "@mui/icons-material";
 import { IconButton, Tooltip } from "@mui/material";
@@ -15,7 +14,10 @@ export function ThemeToggle() {
 
   return (
     <Tooltip title={`Switch to ${mode === "light" ? "dark" : "light"} mode`}>
-      <IconButton onClick={toggleMode} color={mode === "dark" ? "primary" : "default"}>
+      <IconButton
+        onClick={toggleMode}
+        color={mode === "dark" ? "primary" : "default"}
+      >
         {mode === "light" ? <DarkMode /> : <LightMode />}
       </IconButton>
     </Tooltip>

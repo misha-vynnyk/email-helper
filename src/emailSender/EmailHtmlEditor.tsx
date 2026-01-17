@@ -7,11 +7,14 @@ import CodeMirror from "@uiw/react-codemirror";
 
 import EmailValidationPanel from "../emailValidator/EmailValidationPanel";
 import { useThemeMode } from "../theme";
+import { createCodeMirrorTheme } from "../utils/codemirrorTheme";
 
 import { useEmailSender } from "./EmailSenderContext";
 
 const EmailHtmlEditor: React.FC = () => {
   const theme = useTheme();
+  const { mode, style } = useThemeMode();
+  const codeMirrorTheme = createCodeMirrorTheme(theme, mode, style);
   const {
     editorHtml,
     setEditorHtml,
@@ -93,50 +96,14 @@ const EmailHtmlEditor: React.FC = () => {
                 borderRadius: 2,
                 overflow: "hidden",
                 boxShadow: theme.shadows[2],
-                "& .cm-editor": {
-                  fontSize: "14px",
-                  backgroundColor: `${theme.palette.background.paper} !important`,
-                  color: `${theme.palette.text.primary} !important`,
-                },
-                "& .cm-scroller": {
-                  fontFamily: "monospace",
-                  backgroundColor: `${theme.palette.background.paper} !important`,
-                },
-                "& .cm-content": {
-                  color: `${theme.palette.text.primary} !important`,
-                  backgroundColor: `${theme.palette.background.paper} !important`,
-                },
-                "& .cm-gutters": {
-                  backgroundColor: `${theme.palette.background.default} !important`,
-                  borderRight: `1px solid ${theme.palette.divider} !important`,
-                  color: `${theme.palette.text.secondary} !important`,
-                },
-                "& .cm-lineNumbers": {
-                  color: `${theme.palette.text.secondary} !important`,
-                },
-                "& .cm-lineNumbers .cm-gutterElement": {
-                  color: `${theme.palette.text.secondary} !important`,
-                },
-                "& .cm-gutterElement": {
-                  color: `${theme.palette.text.secondary} !important`,
-                },
-                "& .cm-lineNumber": {
-                  color: `${theme.palette.text.secondary} !important`,
-                },
-                "& .cm-activeLineGutter": {
-                  backgroundColor: `${alpha(theme.palette.primary.main, 0.08)} !important`,
-                },
-                "& .cm-activeLine": {
-                  backgroundColor: `${alpha(theme.palette.primary.main, 0.04)} !important`,
+                "& .cm-selectionLayer .cm-selectionBackground": {
+                  backgroundColor: `${alpha(theme.palette.primary.main, 0.25)} !important`,
                 },
                 "& .cm-selectionBackground": {
-                  backgroundColor: `${alpha(theme.palette.primary.main, 0.2)} !important`,
+                  backgroundColor: `${alpha(theme.palette.primary.main, 0.25)} !important`,
                 },
-                "& .cm-cursor": {
-                  borderLeftColor: `${theme.palette.text.primary} !important`,
-                },
-                "& .cm-focused": {
-                  outline: "none",
+                "& .cm-content ::selection": {
+                  backgroundColor: `${alpha(theme.palette.primary.main, 0.25)} !important`,
                 },
               }}
             >
@@ -144,18 +111,19 @@ const EmailHtmlEditor: React.FC = () => {
                 value={editorHtml}
                 onChange={(value) => setEditorHtml(value)}
                 height='400px'
-                extensions={[html()]}
+                extensions={[html(), ...codeMirrorTheme]}
                 theme={undefined}
                 basicSetup={{
                   lineNumbers: true,
                   foldGutter: true,
-                  dropCursor: false,
+                  dropCursor: true,
                   allowMultipleSelections: false,
                   indentOnInput: true,
                   bracketMatching: true,
                   closeBrackets: true,
                   autocompletion: true,
-                  highlightSelectionMatches: false,
+                  highlightSelectionMatches: true,
+                  searchKeymap: true,
                 }}
               />
             </Box>

@@ -32,18 +32,31 @@ export default function AutoConvertToggle() {
           <Switch
             checked={settings.autoConvert}
             onChange={(e) => updateSettings({ autoConvert: e.target.checked })}
-            color="primary"
-            size="small"
+            color='primary'
+            size='small'
           />
         }
         label={
-          <Box display="flex" alignItems="center" gap={1}>
+          <Box
+            display='flex'
+            alignItems='center'
+            gap={1}
+          >
             {settings.autoConvert ? (
-              <AutoIcon fontSize="small" color="primary" />
+              <AutoIcon
+                fontSize='small'
+                color='primary'
+              />
             ) : (
-              <ManualIcon fontSize="small" color="action" />
+              <ManualIcon
+                fontSize='small'
+                color='action'
+              />
             )}
-            <Typography variant="body2" fontWeight={500}>
+            <Typography
+              variant='body2'
+              fontWeight={500}
+            >
               {settings.autoConvert ? "Auto-Convert" : "Manual Mode"}
             </Typography>
           </Box>

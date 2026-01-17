@@ -1,5 +1,3 @@
-import React from "react";
-
 import { Box, useTheme, useMediaQuery } from "@mui/material";
 
 import { useThemeMode } from "../../theme";
@@ -19,27 +17,55 @@ function ImageConverterContent() {
   const showAnimatedBackground = style !== "default";
 
   if (isMobile) {
-    // Mobile: Stack layout
+    // Mobile: Stack layout with Settings on top
     return (
-      <Box sx={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
+      <Box
+        sx={{
+          height: "100%",
+          minHeight: 0,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          position: "relative",
+        }}
+      >
         {/* Animated Background - only for non-default styles */}
         {showAnimatedBackground && <AnimatedBackground />}
 
+        {/* Settings Sidebar on top */}
+        <Box
+          sx={{
+            maxHeight: "40%",
+            minHeight: 0,
+            borderBottom: `1px solid ${theme.palette.divider}`,
+            overflow: "hidden",
+          }}
+        >
+          <SettingsSidebar />
+        </Box>
+
         {/* Main Content */}
         <Box
-          data-app-scroll="true"
-          sx={{ flex: 1, overflow: "auto", p: 2, position: "relative", zIndex: 1 }}
+          data-app-scroll='true'
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: "auto",
+            overflowX: "hidden",
+            p: 2,
+            position: "relative",
+            zIndex: 1,
+          }}
         >
           <FileUploadZone />
         </Box>
-
-        {/* Settings Drawer for mobile - can be added later */}
 
         {/* Sticky Footer */}
         <Box
           sx={{
             borderTop: `1px solid ${theme.palette.divider}`,
             backgroundColor: theme.palette.background.paper,
+            flexShrink: 0,
           }}
         >
           <BatchProcessor />
@@ -57,6 +83,7 @@ function ImageConverterContent() {
           width: SIDEBAR_WIDTH,
           minWidth: SIDEBAR_WIDTH,
           height: "100%",
+          minHeight: 0,
           flexShrink: 0,
         }}
       >
@@ -79,7 +106,7 @@ function ImageConverterContent() {
 
         {/* Main Content Area */}
         <Box
-          data-app-scroll="true"
+          data-app-scroll='true'
           sx={{
             flex: 1,
             overflow: "auto",

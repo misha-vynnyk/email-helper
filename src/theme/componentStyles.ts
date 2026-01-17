@@ -4,8 +4,7 @@
  * Each style defines how components (cards, panels, etc.) should look
  */
 
-import { alpha } from "@mui/material/styles";
-import { ThemeMode, ThemeStyle, borderRadius, backdropFilter, opacity } from "./tokens";
+import { ThemeMode, ThemeStyle, borderRadius, backdropFilter } from "./tokens";
 
 export interface ComponentStyle {
   card: {
