@@ -21,6 +21,7 @@ import {
   Visibility,
 } from "@mui/icons-material";
 import {
+  alpha,
   Alert,
   Box,
   Button,
@@ -38,11 +39,14 @@ import {
   TextField,
   Tooltip,
   Typography,
+  useTheme,
 } from "@mui/material";
 import CodeMirror from "@uiw/react-codemirror";
 
 import { EmailSenderContext } from "../emailSender/EmailSenderContext";
+import { useThemeMode } from "../theme";
 import { EmailTemplate, TEMPLATE_CATEGORIES, TemplateCategory } from "../types/template";
+import { createCodeMirrorTheme } from "../utils/codemirrorTheme";
 import { preloadImages } from "../utils/imageUrlReplacer";
 
 import { PreviewConfig } from "./PreviewSettings";
@@ -82,6 +86,9 @@ export default function TemplateItem({
   onNavigate,
   savedScrollPosition: savedScrollPositionProp = 0,
 }: TemplateItemProps) {
+  const theme = useTheme();
+  const { mode, style } = useThemeMode();
+  const codeMirrorTheme = createCodeMirrorTheme(theme, mode, style);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -1215,27 +1222,27 @@ export default function TemplateItem({
               borderColor: "divider",
               borderRadius: 1,
               overflow: "hidden",
-              "& .cm-editor": {
-                fontSize: "14px",
+              "& .cm-selectionLayer .cm-selectionBackground": {
+                backgroundColor: `${alpha(theme.palette.primary.main, 0.25)} !important`,
               },
-              "& .cm-focused": {
-                outline: "none",
+              "& .cm-selectionBackground": {
+                backgroundColor: `${alpha(theme.palette.primary.main, 0.25)} !important`,
               },
-              "& .cm-editor .cm-scroller": {
-                fontFamily: "monospace",
+              "& .cm-content ::selection": {
+                backgroundColor: `${alpha(theme.palette.primary.main, 0.25)} !important`,
               },
             }}
           >
             <CodeMirror
               value={codeLoading ? "Loading..." : codeContent || "No content available"}
               height='60vh'
-              extensions={[html()]}
+              extensions={[html(), ...codeMirrorTheme]}
               theme={undefined}
               editable={false}
               basicSetup={{
                 lineNumbers: true,
                 foldGutter: true,
-                dropCursor: false,
+                dropCursor: true,
                 allowMultipleSelections: false,
                 indentOnInput: true,
                 bracketMatching: true,

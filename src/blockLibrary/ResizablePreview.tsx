@@ -6,7 +6,7 @@
 import { motion } from "framer-motion";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
-import { Box } from "@mui/material";
+import { alpha, Box, useTheme } from "@mui/material";
 
 interface ResizablePreviewProps {
   children: React.ReactNode;
@@ -21,6 +21,7 @@ export default function ResizablePreview({
   onWidthChange,
   zoom,
 }: ResizablePreviewProps) {
+  const theme = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [currentWidth, setCurrentWidth] = useState<number>(typeof width === "number" ? width : 600);
@@ -99,15 +100,15 @@ export default function ResizablePreview({
             sx={{
               width: `${displayWidth * zoom}px`,
               height: 20,
-              backgroundColor: "#e3f2fd",
-              border: "1px solid #1976d2",
+              backgroundColor: alpha(theme.palette.primary.main, 0.08),
+              border: `1px solid ${theme.palette.primary.main}`,
               borderRadius: "4px 4px 0 0",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               fontSize: "11px",
               fontWeight: 600,
-              color: "#1976d2",
+              color: theme.palette.primary.main,
               fontFamily: "monospace",
               transition: isDragging ? "none" : "width 0.3s ease",
             }}
@@ -136,10 +137,10 @@ export default function ResizablePreview({
               bottom: 0,
               width: 8,
               cursor: "ew-resize",
-              backgroundColor: isDragging ? "#1976d2" : "transparent",
+              backgroundColor: isDragging ? theme.palette.primary.main : "transparent",
               transition: isDragging ? "none" : "all 0.3s ease",
               "&:hover": {
-                backgroundColor: "#1976d2",
+                backgroundColor: theme.palette.primary.main,
               },
               "&::after": {
                 content: '""',
@@ -149,7 +150,7 @@ export default function ResizablePreview({
                 transform: "translateY(-50%)",
                 width: 2,
                 height: 30,
-                backgroundColor: "#fff",
+                backgroundColor: theme.palette.common.white,
                 borderRadius: 1,
               },
             }}
@@ -177,10 +178,10 @@ export default function ResizablePreview({
               bottom: 0,
               width: 8,
               cursor: "ew-resize",
-              backgroundColor: isDragging ? "#1976d2" : "transparent",
+              backgroundColor: isDragging ? theme.palette.primary.main : "transparent",
               transition: isDragging ? "none" : "all 0.3s ease",
               "&:hover": {
-                backgroundColor: "#1976d2",
+                backgroundColor: theme.palette.primary.main,
               },
               "&::after": {
                 content: '""',
@@ -190,7 +191,7 @@ export default function ResizablePreview({
                 transform: "translateY(-50%)",
                 width: 2,
                 height: 30,
-                backgroundColor: "#fff",
+                backgroundColor: theme.palette.common.white,
                 borderRadius: 1,
               },
             }}
@@ -208,16 +209,16 @@ export default function ResizablePreview({
             top: "50%",
             left: "50%",
             transform: "translate(-50%, -50%)",
-            backgroundColor: "rgba(25, 118, 210, 0.95)",
-            color: "white",
+            backgroundColor: alpha(theme.palette.primary.main, 0.95),
+            color: theme.palette.primary.contrastText,
             padding: "8px 16px",
-            borderRadius: "4px",
+            borderRadius: theme.spacing(0.5), // 4px
             fontSize: "14px",
             fontWeight: 600,
             fontFamily: "monospace",
             pointerEvents: "none",
             zIndex: 10000,
-            boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+            boxShadow: theme.shadows[4],
           }}
         >
           {currentWidth}px

@@ -18,7 +18,6 @@ import { ConversionResult, ConversionSettings, ImageFile, ImageFormat } from "..
 import { convertImageClient } from "../utils/clientConverter";
 import { extractExif, insertExif } from "../utils/exifPreserver";
 import { detectImageFormat, getExtensionForFormat } from "../utils/imageFormatDetector";
-import { HistoryManager } from "../utils/historyManager";
 import { imageCache } from "../utils/imageCache";
 import { convertImageServer } from "../utils/imageConverterApi";
 import { performanceMonitor } from "../utils/performanceMonitor";
@@ -44,10 +43,6 @@ interface ImageConverterContextType {
   downloadSelected: () => void;
   convertSelected: () => void;
   selectedCount: number;
-  undo: () => void;
-  redo: () => void;
-  canUndo: boolean;
-  canRedo: boolean;
 }
 
 const ImageConverterContext = createContext<ImageConverterContextType | undefined>(undefined);
@@ -81,7 +76,7 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
         };
       }
     } catch (error) {
-      logger.error('ImageConverter', 'Failed to load settings', error);
+      logger.error("ImageConverter", "Failed to load settings", error);
     }
 
     // Default settings
@@ -113,11 +108,8 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
   const filesRef = React.useRef<ImageFile[]>([]);
   const workerPool = React.useRef<WorkerPool | null>(null);
-  const historyManager = React.useRef<HistoryManager>(new HistoryManager());
-  const [canUndo, setCanUndo] = useState(false);
-  const [canRedo, setCanRedo] = useState(false);
 
-  const USE_WORKERS = typeof Worker !== 'undefined' && typeof OffscreenCanvas !== 'undefined';
+  const USE_WORKERS = typeof Worker !== "undefined" && typeof OffscreenCanvas !== "undefined";
 
   // Keep filesRef in sync with files
   React.useEffect(() => {
@@ -128,10 +120,10 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
   React.useEffect(() => {
     if (USE_WORKERS && !workerPool.current) {
       workerPool.current = new WorkerPool(LIMITS.MAX_CONCURRENT_CONVERSIONS);
-          workerPool.current.init().catch((error) => {
-            logger.error('ImageConverter', 'Failed to initialize worker pool', error);
-            workerPool.current = null;
-          });
+      workerPool.current.init().catch((error) => {
+        logger.error("ImageConverter", "Failed to initialize worker pool", error);
+        workerPool.current = null;
+      });
     }
 
     return () => {
@@ -147,11 +139,11 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
       const updated = { ...prev, ...newSettings };
 
       // Persist to localStorage
-          try {
-            localStorage.setItem(STORAGE_KEYS.IMAGE_CONVERTER_SETTINGS, JSON.stringify(updated));
-          } catch (error) {
-            logger.error('ImageConverter', 'Failed to save settings', error);
-          }
+      try {
+        localStorage.setItem(STORAGE_KEYS.IMAGE_CONVERTER_SETTINGS, JSON.stringify(updated));
+      } catch (error) {
+        logger.error("ImageConverter", "Failed to save settings", error);
+      }
 
       return updated;
     });
@@ -174,7 +166,15 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
       // Update status to processing with start time
       setFiles((currentFiles) =>
         currentFiles.map((f) =>
-          f.id === id ? { ...f, status: "processing" as const, progress: 0, startTime: Date.now(), eta: undefined } : f
+          f.id === id
+            ? {
+                ...f,
+                status: "processing" as const,
+                progress: 0,
+                startTime: Date.now(),
+                eta: undefined,
+              }
+            : f
         )
       );
 
@@ -182,11 +182,28 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
         // Start performance tracking
         const startTime = performanceMonitor.startConversion(id);
 
-        // Calculate optimal quality if autoQuality is enabled
+        // Calculate effective quality based on compressionMode and autoQuality
         let effectiveSettings = settings;
-        if (settings.autoQuality) {
-          const qualityRec = await calculateOptimalQuality(fileToConvert.file);
-          effectiveSettings = { ...settings, quality: qualityRec.quality };
+
+        // Apply compression mode quality overrides
+        switch (settings.compressionMode) {
+          case "maximum-quality":
+            effectiveSettings = { ...effectiveSettings, quality: 92 };
+            break;
+          case "maximum-compression":
+            effectiveSettings = { ...effectiveSettings, quality: 75 };
+            break;
+          case "lossless":
+            effectiveSettings = { ...effectiveSettings, quality: 100 };
+            break;
+          case "balanced":
+          default:
+            // For balanced mode, use autoQuality or manual slider value
+            if (settings.autoQuality) {
+              const qualityRec = await calculateOptimalQuality(fileToConvert.file);
+              effectiveSettings = { ...effectiveSettings, quality: qualityRec.quality };
+            }
+            break;
         }
 
         // Extract EXIF if preservation is enabled
@@ -194,16 +211,21 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
           ? await extractExif(fileToConvert.file)
           : { data: null, hasExif: false };
 
-        // Generate cache key
+        // Generate content hash and cache key for true uniqueness
+        const contentHash = await imageCache.generateContentHash(fileToConvert.file);
         const cacheKey = imageCache.generateKey(
           fileToConvert.file.name,
           effectiveSettings.format,
           effectiveSettings.quality,
           {
-            width: effectiveSettings.resize.mode === 'preset' ? effectiveSettings.resize.preset : effectiveSettings.resize.width,
+            width:
+              effectiveSettings.resize.mode === "preset"
+                ? effectiveSettings.resize.preset
+                : effectiveSettings.resize.width,
             height: effectiveSettings.resize.height,
           },
-          effectiveSettings.compressionMode
+          effectiveSettings.compressionMode,
+          contentHash
         );
 
         // Progress callback to update UI with ETA
@@ -245,7 +267,7 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
           // Smooth progress animation for cached results
           for (let p = 10; p <= 100; p += 10) {
             onProgress(p);
-            await new Promise(resolve => setTimeout(resolve, 30));
+            await new Promise((resolve) => setTimeout(resolve, 30));
           }
         } else {
           performanceMonitor.recordCacheMiss();
@@ -264,13 +286,13 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
                 );
                 result = { blob, size: blob.size };
                 onProgress(85);
-                  } catch (error) {
-                    // Fallback to main thread if worker fails
-                    logger.warn('ImageConverter', 'Worker failed, falling back to main thread', error);
-                    onProgress(30);
-                    result = await convertImageClient(fileToConvert!.file, effectiveSettings);
-                    onProgress(85);
-                  }
+              } catch (error) {
+                // Fallback to main thread if worker fails
+                logger.warn("ImageConverter", "Worker failed, falling back to main thread", error);
+                onProgress(30);
+                result = await convertImageClient(fileToConvert!.file, effectiveSettings);
+                onProgress(85);
+              }
             } else {
               // Fallback to main thread conversion
               onProgress(25);
@@ -309,7 +331,7 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
               result.blob = await insertExif(result.blob, exifData.data);
               result.size = result.blob.size;
             } catch (error) {
-              logger.warn('ImageConverter', 'Failed to insert EXIF, continuing without it', error);
+              logger.warn("ImageConverter", "Failed to insert EXIF, continuing without it", error);
             }
           }
 
@@ -359,10 +381,10 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
               : f
           )
         );
-          } catch (error) {
-            logger.error('ImageConverter', 'Conversion error', error);
+      } catch (error) {
+        logger.error("ImageConverter", "Conversion error", error);
 
-            const currentFile = filesRef.current.find((f) => f.id === id);
+        const currentFile = filesRef.current.find((f) => f.id === id);
         const retryCount = (currentFile?.retryCount || 0) + 1;
 
         // Automatic retry with exponential backoff
@@ -394,7 +416,8 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
                 ? {
                     ...f,
                     status: "error" as const,
-                    error: error instanceof Error ? error.message : "Conversion failed after retries",
+                    error:
+                      error instanceof Error ? error.message : "Conversion failed after retries",
                     retryCount,
                   }
                 : f
@@ -410,46 +433,48 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
   React.useEffect(() => {
     if (conversionQueue.length === 0) return;
 
-        const processParallel = async () => {
-          // Calculate how many we can process now
-          const availableSlots = LIMITS.MAX_CONCURRENT_CONVERSIONS - processingIds.size;
+    const processParallel = async () => {
+      // Calculate how many we can process now
+      const availableSlots = LIMITS.MAX_CONCURRENT_CONVERSIONS - processingIds.size;
       if (availableSlots <= 0) return;
 
       // Get next batch to process
       const toProcess = conversionQueue
-        .filter(id => !processingIds.has(id))
+        .filter((id) => !processingIds.has(id))
         .slice(0, availableSlots);
 
       if (toProcess.length === 0) return;
 
       // Mark as processing
-      setProcessingIds(prev => {
+      setProcessingIds((prev) => {
         const next = new Set(prev);
-        toProcess.forEach(id => next.add(id));
+        toProcess.forEach((id) => next.add(id));
         return next;
       });
 
       // Remove from queue
-      setConversionQueue(prev => prev.filter(id => !toProcess.includes(id)));
+      setConversionQueue((prev) => prev.filter((id) => !toProcess.includes(id)));
 
       // Process in parallel
-      const results = await Promise.allSettled(
-        toProcess.map(id => convertFile(id))
-      );
+      const results = await Promise.allSettled(toProcess.map((id) => convertFile(id)));
 
       // Remove from processing set
-      setProcessingIds(prev => {
+      setProcessingIds((prev) => {
         const next = new Set(prev);
-        toProcess.forEach(id => next.delete(id));
+        toProcess.forEach((id) => next.delete(id));
         return next;
       });
 
-          // Log any failures for debugging
-          results.forEach((result, index) => {
-            if (result.status === 'rejected') {
-              logger.error('ImageConverter', `Conversion failed for ${toProcess[index]}`, result.reason);
-            }
-          });
+      // Log any failures for debugging
+      results.forEach((result, index) => {
+        if (result.status === "rejected") {
+          logger.error(
+            "ImageConverter",
+            `Conversion failed for ${toProcess[index]}`,
+            result.reason
+          );
+        }
+      });
     };
 
     processParallel();
@@ -466,7 +491,10 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
         previewUrl: URL.createObjectURL(file),
       }));
 
-      setFiles((prev) => [...prev, ...imageFiles]);
+      setFiles((prev) => {
+        const newState = [...prev, ...imageFiles];
+        return newState;
+      });
 
       // Auto-convert if enabled - add to queue after state update
       if (settings.autoConvert) {
@@ -485,9 +513,7 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
       const file = prev.find((f) => f.id === id);
       if (file?.previewUrl) URL.revokeObjectURL(file.previewUrl);
       if (file?.convertedUrl) URL.revokeObjectURL(file.convertedUrl);
-      const newState = prev.filter((f) => f.id !== id);
-      historyManager.current.push(newState, 'Removed file');
-      return newState;
+      return prev.filter((f) => f.id !== id);
     });
   }, []);
 
@@ -506,39 +532,12 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
       const newFiles = [...currentFiles];
       const [removed] = newFiles.splice(oldIndex, 1);
       newFiles.splice(newIndex, 0, removed);
-      historyManager.current.push(newFiles, 'Reordered files');
       return newFiles;
     });
   }, []);
 
-  const undo = useCallback(() => {
-    const previousState = historyManager.current.undo();
-    if (previousState) {
-      setFiles(previousState);
-      setCanUndo(historyManager.current.canUndo());
-      setCanRedo(historyManager.current.canRedo());
-    }
-  }, []);
-
-  const redo = useCallback(() => {
-    const nextState = historyManager.current.redo();
-    if (nextState) {
-      setFiles(nextState);
-      setCanUndo(historyManager.current.canUndo());
-      setCanRedo(historyManager.current.canRedo());
-    }
-  }, []);
-
-  // Update undo/redo state when files change
-  React.useEffect(() => {
-    setCanUndo(historyManager.current.canUndo());
-    setCanRedo(historyManager.current.canRedo());
-  }, [files]);
-
   const toggleSelection = useCallback((id: string) => {
-    setFiles((prev) =>
-      prev.map((f) => (f.id === id ? { ...f, selected: !f.selected } : f))
-    );
+    setFiles((prev) => prev.map((f) => (f.id === id ? { ...f, selected: !f.selected } : f)));
   }, []);
 
   const selectAll = useCallback(() => {
@@ -556,9 +555,7 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
         if (!file?.convertedBlob) return currentFiles;
 
         // Use preserved format if enabled, otherwise use settings format
-        const usedFormat = settings.preserveFormat
-          ? detectImageFormat(file.file)
-          : settings.format;
+        const usedFormat = settings.preserveFormat ? detectImageFormat(file.file) : settings.format;
         const extension = getExtensionForFormat(usedFormat);
         const filename = file.file.name.replace(/\.[^/.]+$/, "") + extension;
 
@@ -658,10 +655,6 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
     downloadSelected,
     convertSelected,
     selectedCount,
-    undo,
-    redo,
-    canUndo,
-    canRedo,
   };
 
   return (

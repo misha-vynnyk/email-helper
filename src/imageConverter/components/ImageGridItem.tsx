@@ -1,9 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import {
-  ReactCompareSlider,
-  ReactCompareSliderImage,
-} from "react-compare-slider";
+import { ReactCompareSlider, ReactCompareSliderImage } from "react-compare-slider";
 
 import {
   CheckBox as CheckedIcon,
@@ -17,6 +14,7 @@ import {
   Image as ImageIcon,
 } from "@mui/icons-material";
 import {
+  alpha,
   Box,
   Card,
   CardMedia,
@@ -28,8 +26,11 @@ import {
   LinearProgress,
   Tooltip,
   Typography,
+  useTheme,
 } from "@mui/material";
 
+import { useThemeMode } from "../../theme";
+import { getComponentStyles } from "../../theme/componentStyles";
 import { ImageFile } from "../types";
 import { calculateCompressionRatio, formatFileSize } from "../utils/clientConverter";
 
@@ -39,11 +40,22 @@ interface ImageGridItemProps {
   onRemove: () => void;
   onToggleSelection: () => void;
   index: number;
-  dragListeners?: any; // Drag-and-drop listeners from @dnd-kit
+  dragListeners?: any;
 }
 
-export default function ImageGridItem({ file, onDownload, onRemove, onToggleSelection, index, dragListeners }: ImageGridItemProps) {
+export default function ImageGridItem({
+  file,
+  onDownload,
+  onRemove,
+  onToggleSelection,
+  index,
+  dragListeners,
+}: ImageGridItemProps) {
+  const theme = useTheme();
+  const { mode, style } = useThemeMode();
+  const componentStyles = getComponentStyles(mode, style);
   const [compareOpen, setCompareOpen] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   const compression =
     file.convertedSize && file.status === "done"
@@ -68,7 +80,12 @@ export default function ImageGridItem({ file, onDownload, onRemove, onToggleSele
       case "done":
         return <DoneIcon fontSize='small' />;
       case "processing":
-        return <CircularProgress size={16} />;
+        return (
+          <CircularProgress
+            size={14}
+            color='inherit'
+          />
+        );
       case "error":
         return <ErrorIcon fontSize='small' />;
       default:
@@ -92,11 +109,12 @@ export default function ImageGridItem({ file, onDownload, onRemove, onToggleSele
   return (
     <Card
       component={motion.div}
-      initial={{ opacity: 0, scale: 0.8, y: 20 }}
+      initial={{ opacity: 0, scale: 0.9, y: 20 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.8, y: -20 }}
-      transition={{ duration: 0.3, delay: index * 0.05 }}
-      whileHover={{ y: -4, boxShadow: "0 8px 24px rgba(0,0,0,0.15)" }}
+      exit={{ opacity: 0, scale: 0.9, y: -20 }}
+      transition={{ duration: 0.3, delay: index * 0.03 }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       sx={{
         position: "relative",
         height: "100%",
@@ -104,16 +122,30 @@ export default function ImageGridItem({ file, onDownload, onRemove, onToggleSele
         flexDirection: "column",
         overflow: "hidden",
         cursor: "pointer",
-        transition: "box-shadow 0.3s ease",
-        borderRadius: 5,
+        borderRadius: componentStyles.card.borderRadius,
+        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+        backgroundColor: componentStyles.card.background || theme.palette.background.paper,
+        backdropFilter: componentStyles.card.backdropFilter,
+        WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
+        border: file.selected
+          ? `1px solid ${alpha(theme.palette.primary.main, 0.4)}`
+          : componentStyles.card.border,
+        boxShadow: componentStyles.card.boxShadow,
+        "&:hover": {
+          transform: componentStyles.card.hover?.transform || "translateY(-2px)",
+          boxShadow: componentStyles.card.hover?.boxShadow || theme.shadows[4],
+          border: file.selected
+            ? `1px solid ${alpha(theme.palette.primary.main, 0.6)}`
+            : componentStyles.card.hover?.border || componentStyles.card.border,
+        },
       }}
     >
-      {/* Selection Checkbox */}
+      {/* Selection Checkbox - Always visible */}
       <Box
         sx={{
           position: "absolute",
-          top: 10,
-          left: 10,
+          top: 8,
+          left: 8,
           zIndex: 3,
         }}
       >
@@ -125,13 +157,18 @@ export default function ImageGridItem({ file, onDownload, onRemove, onToggleSele
           }}
           icon={<UncheckedIcon />}
           checkedIcon={<CheckedIcon />}
+          size='small'
           sx={{
-            color: "white",
-            backgroundColor: "rgba(0,0,0,0.5)",
+            color: theme.palette.common.white,
+            backgroundColor: alpha(theme.palette.common.black, 0.4),
             borderRadius: 1,
-            p: 0.5,
+            p: 0.25,
             "&:hover": {
-              backgroundColor: "rgba(0,0,0,0.7)",
+              backgroundColor: alpha(theme.palette.common.black, 0.6),
+            },
+            "&.Mui-checked": {
+              color: theme.palette.primary.main,
+              backgroundColor: alpha(theme.palette.common.white, 0.9),
             },
           }}
         />
@@ -141,8 +178,8 @@ export default function ImageGridItem({ file, onDownload, onRemove, onToggleSele
       <Box
         sx={{
           position: "absolute",
-          top: 10,
-          left: 50,
+          top: 8,
+          left: 44,
           zIndex: 2,
         }}
       >
@@ -151,85 +188,116 @@ export default function ImageGridItem({ file, onDownload, onRemove, onToggleSele
           icon={getStatusIcon()}
           label={getStatusLabel()}
           color={getStatusColor()}
-          sx={{ fontWeight: 500 }}
+          sx={{
+            fontWeight: 500,
+            height: 24,
+            fontSize: "0.7rem",
+            "& .MuiChip-icon": {
+              fontSize: "0.9rem",
+            },
+          }}
         />
       </Box>
 
-      {/* Action Buttons */}
+      {/* Action Buttons - Show on hover */}
       <Box
         sx={{
           position: "absolute",
-          top: 10,
-          right: 10,
+          top: 8,
+          right: 8,
           zIndex: 2,
           display: "flex",
           gap: 0.5,
+          opacity: isHovered ? 1 : 0,
+          transform: isHovered ? "translateX(0)" : "translateX(10px)",
+          transition: "all 0.2s ease",
         }}
       >
         {file.status === "done" && (
           <>
-            <motion.div
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-            >
-              <Tooltip title='Download'>
-                <IconButton
-                  size='small'
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDownload();
-                  }}
-                  sx={{
-                    backgroundColor: "rgba(255,255,255,0.9)",
-                    "&:hover": { backgroundColor: "rgba(255,255,255,1)" },
-                  }}
-                >
-                  <DownloadIcon fontSize='small' />
-                </IconButton>
-              </Tooltip>
-            </motion.div>
-            <motion.div
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-            >
-              <Tooltip title='Compare Before/After'>
-                <IconButton
-                  size='small'
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setCompareOpen(true);
-                  }}
-                  sx={{
-                    backgroundColor: "rgba(255,255,255,0.9)",
-                    "&:hover": { backgroundColor: "rgba(255,255,255,1)" },
-                  }}
-                >
-                  <CompareIcon fontSize='small' />
-                </IconButton>
-              </Tooltip>
-            </motion.div>
+            <Tooltip title='Download'>
+              <IconButton
+                size='small'
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDownload();
+                }}
+                sx={{
+                  width: 32,
+                  height: 32,
+                  backgroundColor: alpha(theme.palette.background.paper, 0.95),
+                  backdropFilter: "blur(8px)",
+                  borderRadius: "50%",
+                  boxShadow: theme.shadows[2],
+                  border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+                  "&:hover": {
+                    backgroundColor: theme.palette.background.paper,
+                    color: theme.palette.success.main,
+                    boxShadow: theme.shadows[4],
+                    transform: "scale(1.1)",
+                  },
+                  transition: "all 0.2s ease",
+                }}
+              >
+                <DownloadIcon fontSize='small' />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title='Compare Before/After'>
+              <IconButton
+                size='small'
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCompareOpen(true);
+                }}
+                sx={{
+                  width: 32,
+                  height: 32,
+                  backgroundColor: alpha(theme.palette.background.paper, 0.95),
+                  backdropFilter: "blur(8px)",
+                  borderRadius: "50%",
+                  boxShadow: theme.shadows[2],
+                  border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+                  "&:hover": {
+                    backgroundColor: theme.palette.background.paper,
+                    color: theme.palette.info.main,
+                    boxShadow: theme.shadows[4],
+                    transform: "scale(1.1)",
+                  },
+                  transition: "all 0.2s ease",
+                }}
+              >
+                <CompareIcon fontSize='small' />
+              </IconButton>
+            </Tooltip>
           </>
         )}
-        <motion.div
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-        >
-          <Tooltip title='Remove'>
-            <IconButton
-              size='small'
-              onClick={(e) => {
-                e.stopPropagation();
-                onRemove();
-              }}
-              sx={{
-                backgroundColor: "rgba(255,255,255,0.9)",
-                "&:hover": { backgroundColor: "rgba(255,255,255,1)" },
-              }}
-            >
-              <DeleteIcon fontSize='small' />
-            </IconButton>
-          </Tooltip>
-        </motion.div>
+        <Tooltip title='Remove'>
+          <IconButton
+            size='small'
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove();
+            }}
+            sx={{
+              width: 32,
+              height: 32,
+              backgroundColor: alpha(theme.palette.background.paper, 0.95),
+              backdropFilter: "blur(8px)",
+              borderRadius: "50%",
+              boxShadow: theme.shadows[2],
+              border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
+              "&:hover": {
+                backgroundColor: theme.palette.background.paper,
+                color: theme.palette.error.main,
+                boxShadow: theme.shadows[4],
+                transform: "scale(1.1)",
+              },
+              transition: "all 0.2s ease",
+            }}
+          >
+            <DeleteIcon fontSize='small' />
+          </IconButton>
+        </Tooltip>
       </Box>
 
       {/* Image Preview */}
@@ -237,8 +305,8 @@ export default function ImageGridItem({ file, onDownload, onRemove, onToggleSele
         {...dragListeners}
         sx={{
           position: "relative",
-          paddingTop: "100%", // Square aspect ratio
-          backgroundColor: "#dedede",
+          paddingTop: "100%",
+          backgroundColor: theme.palette.grey[200],
           overflow: "hidden",
           cursor: dragListeners ? "grab" : "default",
           "&:active": {
@@ -268,50 +336,48 @@ export default function ImageGridItem({ file, onDownload, onRemove, onToggleSele
               left: 0,
               width: "100%",
               height: "100%",
-            }}
-          >
-            <ImageIcon sx={{ fontSize: 64, color: "#ccc" }} />
-          </Box>
-        )}
-
-        {/* Processing Overlay */}
-        {file.status === "processing" && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: "100%",
-              height: "100%",
-              backgroundColor: "rgba(0,0,0,0.5)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <CircularProgress sx={{ color: "white" }} />
-          </motion.div>
+            <ImageIcon sx={{ fontSize: 48, color: theme.palette.grey[400] }} />
+          </Box>
+        )}
+
+        {/* Processing Overlay */}
+        {file.status === "processing" && (
+          <Box
+            sx={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              backgroundColor: alpha(theme.palette.common.black, 0.5),
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <CircularProgress sx={{ color: theme.palette.common.white }} />
+          </Box>
         )}
       </Box>
 
       {/* Progress Bar */}
       {file.status === "processing" && (
-        <Box sx={{ width: "100%", position: "absolute", top: 185, bottom: 60 }}>
-          <LinearProgress
-            variant='determinate'
-            value={file.progress || 0}
-            sx={{
-              height: 3,
-              backgroundColor: "rgba(25, 118, 210, 0.1)",
-              "& .MuiLinearProgress-bar": {
-                backgroundColor: "#1976d2",
-                transition: "transform 0.3s ease",
-              },
-            }}
-          />
-        </Box>
+        <LinearProgress
+          variant='determinate'
+          value={file.progress || 0}
+          sx={{
+            height: 3,
+            backgroundColor: alpha(theme.palette.primary.main, 0.1),
+            "& .MuiLinearProgress-bar": {
+              backgroundColor: theme.palette.primary.main,
+            },
+          }}
+        />
       )}
 
       {/* File Info */}
@@ -339,9 +405,12 @@ export default function ImageGridItem({ file, onDownload, onRemove, onToggleSele
             {file.convertedSize && (
               <>
                 {" → "}
-                <span style={{ color: "#4caf50", fontWeight: 600 }}>
+                <Box
+                  component='span'
+                  sx={{ color: theme.palette.success.main, fontWeight: 600 }}
+                >
                   {formatFileSize(file.convertedSize)}
-                </span>
+                </Box>
               </>
             )}
           </Typography>
@@ -355,7 +424,7 @@ export default function ImageGridItem({ file, onDownload, onRemove, onToggleSele
                 size='small'
                 label={`-${compression}% saved`}
                 color='success'
-                sx={{ height: 20, fontSize: "0.7rem", fontWeight: 600 }}
+                sx={{ height: 20, fontSize: "0.65rem", fontWeight: 600 }}
               />
             </motion.div>
           )}
@@ -376,45 +445,58 @@ export default function ImageGridItem({ file, onDownload, onRemove, onToggleSele
       <Dialog
         open={compareOpen}
         onClose={() => setCompareOpen(false)}
-        maxWidth="lg"
+        maxWidth='lg'
         fullWidth
       >
-        <Box sx={{ p: 2, bgcolor: 'background.paper' }}>
-          <Typography variant="h6" gutterBottom>
+        <Box sx={{ p: 2, bgcolor: "background.paper" }}>
+          <Typography
+            variant='h6'
+            gutterBottom
+          >
             Before / After Comparison
           </Typography>
-          <Box sx={{ height: 500, position: 'relative' }}>
+          <Box sx={{ height: 500, position: "relative" }}>
             {file.previewUrl && file.convertedUrl && (
               <ReactCompareSlider
                 itemOne={
                   <ReactCompareSliderImage
                     src={file.previewUrl}
-                    alt="Original"
-                    style={{ objectFit: 'contain' }}
+                    alt='Original'
+                    style={{ objectFit: "contain" }}
                   />
                 }
                 itemTwo={
                   <ReactCompareSliderImage
                     src={file.convertedUrl}
-                    alt="Converted"
-                    style={{ objectFit: 'contain' }}
+                    alt='Converted'
+                    style={{ objectFit: "contain" }}
                   />
                 }
                 style={{
-                  height: '100%',
-                  width: '100%',
+                  height: "100%",
+                  width: "100%",
                 }}
               />
             )}
           </Box>
-          <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between' }}>
-            <Typography variant="body2" color="text.secondary">
+          <Box sx={{ mt: 2, display: "flex", justifyContent: "space-between" }}>
+            <Typography
+              variant='body2'
+              color='text.secondary'
+            >
               Original: {formatFileSize(file.originalSize)}
             </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Converted: {file.convertedSize ? formatFileSize(file.convertedSize) : 'N/A'}
+            <Typography
+              variant='body2'
+              color='text.secondary'
+            >
+              Converted: {file.convertedSize ? formatFileSize(file.convertedSize) : "N/A"}
             </Typography>
-            <Typography variant="body2" color="success.main">
+            <Typography
+              variant='body2'
+              color='success.main'
+              fontWeight={600}
+            >
               Saved: {compression}%
             </Typography>
           </Box>
