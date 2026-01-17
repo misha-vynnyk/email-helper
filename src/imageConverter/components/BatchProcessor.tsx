@@ -5,14 +5,13 @@ import {
   DeleteSweep as ClearIcon,
   PlayArrow as ConvertIcon,
 } from "@mui/icons-material";
-import { Box, Button, Chip, Typography, useTheme } from "@mui/material";
+import { Box, Button, Chip, Typography } from "@mui/material";
 
 import { useImageConverter } from "../context/ImageConverterContext";
 import { useImageStats } from "../hooks/useImageStats";
 import { formatFileSize } from "../utils/clientConverter";
 
 export default function BatchProcessor() {
-  const theme = useTheme();
   const { files, settings, clearFiles, downloadAll, convertAll } = useImageConverter();
   const stats = useImageStats(files);
 

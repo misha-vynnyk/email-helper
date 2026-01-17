@@ -22,6 +22,7 @@ import {
   Stack,
   Tooltip,
   Typography,
+  useMediaQuery,
   useTheme,
 } from "@mui/material";
 
@@ -131,6 +132,7 @@ function SettingsSection({ children, dense = false }: SettingsSectionProps) {
 
 export default function SettingsSidebar() {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const { mode, style } = useThemeMode();
   const componentStyles = getComponentStyles(mode, style);
   const { settings, updateSettings, files } = useImageConverter();
@@ -188,10 +190,11 @@ export default function SettingsSidebar() {
     <Box
       sx={{
         height: "100%",
+        minHeight: 0,
         display: "flex",
         flexDirection: "column",
         backgroundColor: theme.palette.background.default,
-        borderRight: `1px solid ${theme.palette.divider}`,
+        borderRight: isMobile ? "none" : `1px solid ${theme.palette.divider}`,
         overflow: "hidden",
         position: "relative",
       }}
@@ -203,7 +206,9 @@ export default function SettingsSidebar() {
       <Box
         sx={{
           flex: 1,
-          overflow: "auto",
+          minHeight: 0,
+          overflowY: "auto",
+          overflowX: "hidden",
           position: "relative",
           zIndex: 1,
           p: 2.5,
@@ -227,7 +232,7 @@ export default function SettingsSidebar() {
         data-app-scroll='true'
       >
         {/* Section 1: Mode - Always Expanded */}
-        <Box>
+        <Box sx={{ display: "flex", flexDirection: "row", gap: 1.5 }}>
           <SectionHeader
             icon={<SpeedIcon fontSize='small' />}
             title='Mode'
@@ -243,13 +248,8 @@ export default function SettingsSidebar() {
           <SectionHeader
             icon={<ImageIcon fontSize='small' />}
             title='Output Settings'
-            subtitle='Format, quality & compression'
           />
           <Stack spacing={1.5}>
-            <SettingsSection>
-              <CompressionModeSelector />
-            </SettingsSection>
-
             {!settings.preserveFormat && (
               <SettingsSection>
                 <FormatTabsSelector
@@ -278,6 +278,10 @@ export default function SettingsSidebar() {
                 }
                 sx={{ m: 0 }}
               />
+            </SettingsSection>
+
+            <SettingsSection>
+              <CompressionModeSelector />
             </SettingsSection>
 
             <SettingsSection>
@@ -310,250 +314,160 @@ export default function SettingsSidebar() {
         )}
 
         {/* Section 4: Advanced Settings - Collapsible */}
-        <Paper
-          elevation={0}
+        <Accordion
+          expanded={advancedExpanded}
+          onChange={(_, expanded) => setAdvancedExpanded(expanded)}
+          disableGutters
           sx={{
             borderRadius: componentStyles.card.borderRadius,
-            backgroundColor:
-              componentStyles.card.background || alpha(theme.palette.background.paper, 0.8),
+            bgcolor: componentStyles.card.background || "background.paper",
             backdropFilter: componentStyles.card.backdropFilter,
             WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
             border: componentStyles.card.border,
             boxShadow: componentStyles.card.boxShadow,
-            overflow: "hidden",
-            transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+            "&:before": { display: "none" },
+            "&.Mui-expanded": { m: 0 },
           }}
         >
-          <Accordion
-            expanded={advancedExpanded}
-            onChange={(_, expanded) => setAdvancedExpanded(expanded)}
-            disableGutters
+          <AccordionSummary
+            expandIcon={<ExpandMoreIcon sx={{ color: "text.secondary" }} />}
             sx={{
-              boxShadow: "none",
-              backgroundColor: "transparent",
-              "&:before": {
-                display: "none",
-              },
-              "&.Mui-expanded": {
-                margin: 0,
-              },
+              px: 2,
+              py: 1.5,
+              minHeight: 48,
+              "&.Mui-expanded": { minHeight: 48 },
+              "& .MuiAccordionSummary-content": { m: 0, "&.Mui-expanded": { m: 0 } },
+              "&:hover": { bgcolor: "action.hover" },
             }}
           >
-            <AccordionSummary
-              expandIcon={<ExpandMoreIcon sx={{ color: "text.secondary" }} />}
-              sx={{
-                px: 2,
-                py: 1.5,
-                minHeight: "auto",
-                "&.Mui-expanded": {
-                  minHeight: "auto",
-                },
-                "& .MuiAccordionSummary-content": {
-                  margin: 0,
-                  "&.Mui-expanded": {
-                    margin: 0,
-                  },
-                },
-                "&:hover": {
-                  backgroundColor: alpha(theme.palette.action.hover, 0.5),
-                },
-              }}
-            >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
               <Box
                 sx={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 1.5,
-                  width: "100%",
+                  justifyContent: "center",
+                  width: 36,
+                  height: 36,
+                  borderRadius: 2,
+                  bgcolor: alpha(theme.palette.primary.main, 0.12),
+                  color: "primary.main",
                 }}
               >
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: 36,
-                    height: 36,
-                    borderRadius: componentStyles.card.borderRadius,
-                    backgroundColor: alpha(theme.palette.primary.main, 0.12),
-                    color: theme.palette.primary.main,
-                    flexShrink: 0,
-                  }}
-                >
-                  <AdvancedIcon fontSize='small' />
-                </Box>
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography
-                    variant='subtitle2'
-                    fontWeight={600}
-                    color='text.primary'
-                    sx={{ lineHeight: 1.2 }}
-                  >
-                    Advanced
-                  </Typography>
-                  <Typography
-                    variant='caption'
-                    color='text.secondary'
-                    sx={{ lineHeight: 1.4, display: "block" }}
-                  >
-                    Resize, metadata & more
-                  </Typography>
-                </Box>
+                <AdvancedIcon fontSize='small' />
               </Box>
-            </AccordionSummary>
-            <AccordionDetails sx={{ px: 2, pb: 2.5, pt: 1 }}>
-              <AdvancedSettingsSection
-                settings={settings}
-                updateSettings={updateSettings}
-              />
-            </AccordionDetails>
-          </Accordion>
-        </Paper>
-
-        {/* Section 5: Tools - Collapsible */}
-        <Paper
-          elevation={0}
-          sx={{
-            borderRadius: componentStyles.card.borderRadius,
-            backgroundColor:
-              componentStyles.card.background || alpha(theme.palette.background.paper, 0.8),
-            backdropFilter: componentStyles.card.backdropFilter,
-            WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
-            border: componentStyles.card.border,
-            boxShadow: componentStyles.card.boxShadow,
-            overflow: "hidden",
-            transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-          }}
-        >
-          <Accordion
-            expanded={toolsExpanded}
-            onChange={(_, expanded) => setToolsExpanded(expanded)}
-            disableGutters
-            sx={{
-              boxShadow: "none",
-              backgroundColor: "transparent",
-              "&:before": {
-                display: "none",
-              },
-              "&.Mui-expanded": {
-                margin: 0,
-              },
-            }}
-          >
-            <AccordionSummary
-              expandIcon={<ExpandMoreIcon sx={{ color: "text.secondary" }} />}
-              sx={{
-                px: 2,
-                py: 1.5,
-                minHeight: "auto",
-                "&.Mui-expanded": {
-                  minHeight: "auto",
-                },
-                "& .MuiAccordionSummary-content": {
-                  margin: 0,
-                  "&.Mui-expanded": {
-                    margin: 0,
-                  },
-                },
-                "&:hover": {
-                  backgroundColor: alpha(theme.palette.action.hover, 0.5),
-                },
-              }}
-            >
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1.5,
-                  width: "100%",
-                }}
-              >
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: 36,
-                    height: 36,
-                    borderRadius: componentStyles.card.borderRadius,
-                    backgroundColor: alpha(theme.palette.primary.main, 0.12),
-                    color: theme.palette.primary.main,
-                    flexShrink: 0,
-                  }}
-                >
-                  <ToolsIcon fontSize='small' />
-                </Box>
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography
-                    variant='subtitle2'
-                    fontWeight={600}
-                    color='text.primary'
-                    sx={{ lineHeight: 1.2 }}
-                  >
-                    Tools
-                  </Typography>
-                  <Typography
-                    variant='caption'
-                    color='text.secondary'
-                    sx={{ lineHeight: 1.4, display: "block" }}
-                  >
-                    Cache Management
-                  </Typography>
-                </Box>
-              </Box>
-            </AccordionSummary>
-            <AccordionDetails sx={{ px: 2, pb: 2.5, pt: 1 }}>
-              {/* Cache Management */}
               <Box>
-                <Box
-                  display='flex'
-                  alignItems='center'
-                  justifyContent='space-between'
-                  mb={1.5}
-                >
-                  <Typography
-                    variant='subtitle2'
-                    fontWeight={600}
-                    color='text.primary'
-                  >
-                    Conversion Cache
-                  </Typography>
-                  <Tooltip
-                    title='Clear all cached conversions'
-                    arrow
-                  >
-                    <span>
-                      <Button
-                        variant='outlined'
-                        size='small'
-                        color='warning'
-                        startIcon={<DeleteOutline />}
-                        onClick={handleClearCache}
-                        disabled={!cacheStats || cacheStats.count === 0}
-                        sx={{
-                          textTransform: "none",
-                          minWidth: "auto",
-                          px: 1.5,
-                          borderRadius: componentStyles.card.borderRadius,
-                        }}
-                      >
-                        Clear
-                      </Button>
-                    </span>
-                  </Tooltip>
-                </Box>
                 <Typography
-                  variant='body2'
+                  variant='subtitle2'
+                  fontWeight={600}
+                >
+                  Advanced
+                </Typography>
+                <Typography
+                  variant='caption'
                   color='text.secondary'
                 >
-                  {cacheStats
-                    ? `${cacheStats.count} items (${cacheStats.sizeFormatted})`
-                    : "Loading..."}
+                  Resize, metadata & more
                 </Typography>
               </Box>
-            </AccordionDetails>
-          </Accordion>
-        </Paper>
+            </Box>
+          </AccordionSummary>
+          <AccordionDetails sx={{ px: 2, pb: 2, pt: 0 }}>
+            <AdvancedSettingsSection
+              settings={settings}
+              updateSettings={updateSettings}
+            />
+          </AccordionDetails>
+        </Accordion>
+
+        {/* Section 5: Tools - Collapsible */}
+        <Accordion
+          expanded={toolsExpanded}
+          onChange={(_, expanded) => setToolsExpanded(expanded)}
+          disableGutters
+          sx={{
+            borderRadius: componentStyles.card.borderRadius,
+            bgcolor: componentStyles.card.background || "background.paper",
+            backdropFilter: componentStyles.card.backdropFilter,
+            WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
+            border: componentStyles.card.border,
+            boxShadow: componentStyles.card.boxShadow,
+            "&:before": { display: "none" },
+            "&.Mui-expanded": { m: 0 },
+          }}
+        >
+          <AccordionSummary
+            expandIcon={<ExpandMoreIcon sx={{ color: "text.secondary" }} />}
+            sx={{
+              px: 2,
+              py: 1.5,
+              minHeight: 48,
+              "&.Mui-expanded": { minHeight: 48 },
+              "& .MuiAccordionSummary-content": { m: 0, "&.Mui-expanded": { m: 0 } },
+              "&:hover": { bgcolor: "action.hover" },
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 36,
+                  height: 36,
+                  borderRadius: 2,
+                  bgcolor: alpha(theme.palette.primary.main, 0.12),
+                  color: "primary.main",
+                }}
+              >
+                <ToolsIcon fontSize='small' />
+              </Box>
+              <Box>
+                <Typography
+                  variant='subtitle2'
+                  fontWeight={600}
+                >
+                  Tools
+                </Typography>
+                <Typography
+                  variant='caption'
+                  color='text.secondary'
+                >
+                  Cache Management
+                </Typography>
+              </Box>
+            </Box>
+          </AccordionSummary>
+          <AccordionDetails sx={{ px: 2, pb: 2, pt: 0 }}>
+            <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <Typography
+                variant='body2'
+                color='text.secondary'
+              >
+                {cacheStats
+                  ? `${cacheStats.count} items (${cacheStats.sizeFormatted})`
+                  : "Loading..."}
+              </Typography>
+              <Tooltip
+                title='Clear all cached conversions'
+                arrow
+              >
+                <span>
+                  <Button
+                    variant='outlined'
+                    size='small'
+                    color='warning'
+                    startIcon={<DeleteOutline />}
+                    onClick={handleClearCache}
+                    disabled={!cacheStats || cacheStats.count === 0}
+                    sx={{ textTransform: "none", borderRadius: 2 }}
+                  >
+                    Clear
+                  </Button>
+                </span>
+              </Tooltip>
+            </Box>
+          </AccordionDetails>
+        </Accordion>
       </Box>
     </Box>
   );
