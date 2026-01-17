@@ -5,14 +5,8 @@
 // Main component
 export { default as TemplateLibrary } from "./TemplateLibrary";
 
-// Hooks
-export { useTemplates } from "./hooks/useTemplates";
-
-// Services
-export { templateService, TemplateService } from "./services/templateService";
-
-// Types
-export type { EmailTemplate, TemplateCategory, TemplateMetadata } from "./types";
+// Types (from main types)
+export type { EmailTemplate, TemplateCategory } from "../types/template";
 
 // Components (for direct import if needed)
 export { default as DirectoryManagementModal } from "./DirectoryManagementModal";

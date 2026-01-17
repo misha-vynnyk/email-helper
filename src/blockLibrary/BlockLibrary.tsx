@@ -108,14 +108,14 @@ export default function BlockLibrary() {
         // Get storage locations from localStorage (only visible ones)
         const locations = getStorageLocations(false); // Exclude hidden
 
-        // Load blocks based on configured locations
-        const [custom, files] = await Promise.all([
+        // Load blocks from all sources
+        const [predefined, custom, files] = await Promise.all([
+          loadPredefinedBlocks(),
           Promise.resolve(loadCustomBlocks()),
           loadFileBlocks(),
         ]);
 
-        // Don't load predefined blocks from src - only show user-configured locations
-        setPredefinedBlocks([]);
+        setPredefinedBlocks(predefined);
         setCustomBlocks(custom.map((b) => ({ ...b, source: "localStorage" })));
 
         // If no visible locations configured, don't show any file blocks
@@ -134,6 +134,7 @@ export default function BlockLibrary() {
 
         // Preload зображень з усіх блоків в кеш (в фоні, не блокує UI)
         const allBlocksForPreload = [
+          ...predefined,
           ...custom.map((b) => ({ ...b, source: "localStorage" })),
           ...files,
         ];
@@ -388,6 +389,7 @@ export default function BlockLibrary() {
   return (
     <Box
       p={3}
+      data-app-scroll="true"
       sx={{ overflow: "auto", maxHeight: "100vh" }}
     >
       <Box

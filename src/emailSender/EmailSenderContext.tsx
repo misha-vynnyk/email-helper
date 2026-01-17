@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
 
 import API_URL from "../config/api";
@@ -36,12 +36,13 @@ export const useEmailSender = () => {
   return context;
 };
 
-// Проста валідація email
+// Валідація email
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const validateEmail = (email: string): boolean => {
-  return email.includes("@") && email.includes(".");
+  return EMAIL_REGEX.test(email);
 };
 
-// Проста валідація HTML
+// Валідація HTML
 const validateHTML = (html: string): boolean => {
   return html.trim().length > 0;
 };
@@ -85,15 +86,28 @@ export const EmailSenderProvider: React.FC<{ children: React.ReactNode }> = ({ c
     sessionStorage.setItem("emailEditorHtml", editorHtml);
   }, [editorHtml]);
 
-  // Preload зображень з HTML в кеш при зміні HTML
+  // Debounced preload зображень з HTML (чекаємо 500ms після останньої зміни)
+  const preloadTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   useEffect(() => {
-    if (editorHtml) {
-      // Завантажуємо зображення в фоні, не блокуємо UI
-      preloadImages(editorHtml).catch(error => {
-        // Ігноруємо помилки - це не критично
-        console.warn('[EmailSender] Failed to preload images:', error);
-      });
+    if (!editorHtml) return;
+
+    // Очищаємо попередній таймер
+    if (preloadTimeoutRef.current) {
+      clearTimeout(preloadTimeoutRef.current);
     }
+
+    // Запускаємо preload через 500ms після останньої зміни
+    preloadTimeoutRef.current = setTimeout(() => {
+      preloadImages(editorHtml).catch(() => {
+        // Ігноруємо помилки - це не критично
+      });
+    }, 500);
+
+    return () => {
+      if (preloadTimeoutRef.current) {
+        clearTimeout(preloadTimeoutRef.current);
+      }
+    };
   }, [editorHtml]);
 
   useEffect(() => {
@@ -103,7 +117,6 @@ export const EmailSenderProvider: React.FC<{ children: React.ReactNode }> = ({ c
   // Завантаження збережених даних та env змінних
   useEffect(() => {
     if (useStorageToggle === "localStorage") {
-      // First try to load from registration data
       const registrationData = localStorage.getItem("emailSenderCredentials");
       if (registrationData) {
         try {
@@ -113,19 +126,6 @@ export const EmailSenderProvider: React.FC<{ children: React.ReactNode }> = ({ c
           setAppPassword(parsed.appPassword || "");
         } catch {
           // Failed to parse registration credentials
-        }
-      } else {
-        // Fallback to old format for compatibility
-        const savedData = localStorage.getItem("emailSenderForm");
-        if (savedData) {
-          try {
-            const parsed = JSON.parse(savedData);
-            setUserEmail(parsed.userEmail || "");
-            setSenderEmail(parsed.senderEmail || "");
-            setAppPassword(parsed.appPassword || "");
-          } catch {
-            // Failed to parse saved email credentials
-          }
         }
       }
     } else if (useStorageToggle === "env") {
@@ -146,19 +146,13 @@ export const EmailSenderProvider: React.FC<{ children: React.ReactNode }> = ({ c
   // Автозбереження credentials (тільки для localStorage режиму)
   useEffect(() => {
     if (useStorageToggle === "localStorage" && (userEmail || senderEmail || appPassword)) {
-      const dataToSave = {
-        userEmail,
-        senderEmail,
-        appPassword,
-        updatedAt: new Date().toISOString(),
-      };
-
-      // Save to both old and new format for compatibility
-      localStorage.setItem("emailSenderForm", JSON.stringify(dataToSave));
       localStorage.setItem(
         "emailSenderCredentials",
         JSON.stringify({
-          ...dataToSave,
+          userEmail,
+          senderEmail,
+          appPassword,
+          updatedAt: new Date().toISOString(),
           useStorageToggle: "localStorage",
         })
       );

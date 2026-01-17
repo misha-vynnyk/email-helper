@@ -1,19 +1,18 @@
 import "react-toastify/dist/ReactToastify.css";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ErrorBoundary } from "react-error-boundary";
 import { ToastContainer } from "react-toastify";
 
 import { Box, Stack, useTheme } from "@mui/material";
 
 import { EmailSettingsMenu } from "../components/EmailSettingsMenu";
-import { Header, LandingPage } from "../components/LandingPage";
 import { RegistrationForm } from "../components/RegistrationForm";
+import { SplashLoader } from "../components/SplashLoader";
 import { useSamplesDrawerOpen } from "../contexts/AppState";
 import { useRegistrationStatus } from "../hooks/useRegistrationStatus";
 
 import SamplesDrawer, { SAMPLES_DRAWER_WIDTH } from "./SamplesDrawer";
-import ToggleSamplesPanelButton from "./SamplesDrawer/ToggleSamplesPanelButton";
 import TemplatePanel from "./TemplatePanel";
 
 function ErrorFallback({
@@ -51,50 +50,19 @@ function useDrawerTransition(cssProperty: "margin-left" | "margin-right", open: 
 
 export default function App() {
   const samplesDrawerOpen = useSamplesDrawerOpen();
-  const [showLanding, setShowLanding] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
   const [registrationOpen, setRegistrationOpen] = useState(false);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const { isRegistered, registrationData } = useRegistrationStatus();
 
   const marginLeftTransition = useDrawerTransition("margin-left", samplesDrawerOpen);
 
-  // Check if we should show landing page
-  useEffect(() => {
-    const checkHash = () => {
-      const hash = window.location.hash;
-      // Show landing only if hash is empty (first visit) or explicitly '#landing'
-      setShowLanding(!hash || hash === "#landing");
-    };
-
-    checkHash();
-    window.addEventListener("hashchange", checkHash);
-    return () => window.removeEventListener("hashchange", checkHash);
-  }, []);
-
-  const handleLogoClick = () => {
-    window.location.hash = "#landing";
-    setShowLanding(true);
-  };
-
-  const handleBackToBuilder = () => {
-    window.location.hash = "#empty";
-    setShowLanding(false);
-  };
-
-  const handleRegistrationClick = () => {
-    if (isRegistered) {
-      // Show settings menu if already registered
-      setSettingsMenuOpen(true);
-    } else {
-      // Show registration form for new users
-      setRegistrationOpen(true);
-    }
+  const handleSplashComplete = () => {
+    setShowSplash(false);
   };
 
   const handleRegistrationSuccess = () => {
-    // Navigate to builder after successful registration
-    window.location.hash = "#empty";
-    setShowLanding(false);
+    // Close registration form after success
   };
 
   const handleEditCredentials = () => {
@@ -102,29 +70,8 @@ export default function App() {
     setRegistrationOpen(true);
   };
 
-  if (showLanding) {
-    return (
-      <>
-        <Header
-          onLogoClick={handleLogoClick}
-          showBackToBuilder={false}
-          onBackToBuilder={handleBackToBuilder}
-          onRegistrationClick={handleRegistrationClick}
-        />
-        <LandingPage />
-        <ToastContainer
-          position='top-right'
-          autoClose={5000}
-          hideProgressBar={false}
-          newestOnTop={false}
-          closeOnClick
-          rtl={false}
-          pauseOnFocusLoss
-          draggable
-          pauseOnHover
-        />
-      </>
-    );
+  if (showSplash) {
+    return <SplashLoader onComplete={handleSplashComplete} duration={2500} />;
   }
 
   return (
@@ -143,20 +90,6 @@ export default function App() {
       >
         <TemplatePanel />
       </Stack>
-
-      {/* Fixed burger menu button when drawer is closed */}
-      {!samplesDrawerOpen && (
-        <Box
-          sx={{
-            position: "fixed",
-            left: 8,
-            top: 8,
-            zIndex: 1300, // Above drawer but below modals
-          }}
-        >
-          <ToggleSamplesPanelButton />
-        </Box>
-      )}
 
       <ToastContainer
         position='top-right'
