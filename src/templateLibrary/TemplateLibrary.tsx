@@ -38,6 +38,7 @@ import { listTemplates, syncAllTemplates, getTemplateContent } from "./templateA
 import { getCategoryIcon } from "./templateCategoryIcons";
 import TemplateItem from "./TemplateItem";
 import TemplateStorageModal from "./TemplateStorageModal";
+import VirtualizedTemplateGrid from "./VirtualizedTemplateGrid";
 import { getTemplateStorageLocations } from "./templateStorageConfig";
 import { templateContentCache } from "./templateContentCache";
 import { logger } from "../utils/logger";
@@ -782,9 +783,13 @@ export default function TemplateLibrary() {
       {/* Content Area */}
       <Box
         data-app-scroll="true"
-        flex={1}
-        overflow='auto'
-        p={2}
+        sx={{
+          flex: 1,
+          overflow: filteredTemplates.length === 0 ? "auto" : "hidden",
+          p: filteredTemplates.length === 0 ? 2 : 0,
+          display: "flex",
+          flexDirection: "column",
+        }}
       >
         {filteredTemplates.length === 0 ? (
           /* Empty State */
@@ -890,38 +895,20 @@ export default function TemplateLibrary() {
             )}
           </Box>
         ) : (
-          /* Templates Grid */
-          <Grid
-            container
-            spacing={2}
-          >
-            {filteredTemplates.map((template, index) => (
-              <Grid
-                item
-                xs={12}
-                sm={6}
-                md={4}
-                key={template.id}
-              >
-                <TemplateItem
-                  template={template}
-                  previewConfig={previewConfig}
-                  onDelete={handleTemplateDeleted}
-                  onUpdate={handleTemplateUpdated}
-                  onLoadTemplate={(html, tmpl) => {
-                    // TODO: Integrate with editor
-                  }}
-                  isOpen={openTemplateId === template.id}
-                  onOpen={() => handleOpenTemplate(template.id)}
-                  onClose={handleCloseTemplate}
-                  allTemplates={filteredTemplates}
-                  currentIndex={index}
-                  onNavigate={handleNavigateTemplate}
-                  savedScrollPosition={savedScrollPositionRef.current}
-                />
-              </Grid>
-            ))}
-          </Grid>
+          /* Virtualized Templates Grid - рендерить лише видимі елементи */
+          <Box sx={{ flex: 1, minHeight: 400 }}>
+            <VirtualizedTemplateGrid
+              templates={filteredTemplates}
+              previewConfig={previewConfig}
+              openTemplateId={openTemplateId}
+              onDelete={handleTemplateDeleted}
+              onUpdate={handleTemplateUpdated}
+              onOpen={handleOpenTemplate}
+              onClose={handleCloseTemplate}
+              onNavigate={handleNavigateTemplate}
+              savedScrollPosition={savedScrollPositionRef.current}
+            />
+          </Box>
         )}
       </Box>
 

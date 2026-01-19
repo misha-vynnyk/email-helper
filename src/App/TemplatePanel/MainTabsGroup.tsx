@@ -12,11 +12,14 @@ export default function MainTabsGroup() {
     _: React.SyntheticEvent,
     v: "email" | "blocks" | "templates" | "images"
   ) => {
-    if (v === "email" || v === "blocks" || v === "templates" || v === "images") {
-      setSelectedMainTab(v);
-    } else {
-      setSelectedMainTab("email");
-    }
+    // Використовуємо startTransition для не блокуючої зміни табу
+    React.startTransition(() => {
+      if (v === "email" || v === "blocks" || v === "templates" || v === "images") {
+        setSelectedMainTab(v);
+      } else {
+        setSelectedMainTab("email");
+      }
+    });
   };
 
   return (

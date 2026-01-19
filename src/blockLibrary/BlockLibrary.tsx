@@ -43,6 +43,7 @@ import {
   searchBlocks,
 } from "./blockLoader";
 import BlockStorageModal from "./BlockStorageModal";
+import VirtualizedBlockGrid from "./VirtualizedBlockGrid";
 import { getStorageLocations } from "./blockStorageConfig";
 import { GRID, TIMEOUTS } from "./constants";
 import { formatErrorMessage } from "./errorHandling";
@@ -388,10 +389,15 @@ export default function BlockLibrary() {
 
   return (
     <Box
-      p={3}
       data-app-scroll="true"
-      sx={{ overflow: "auto", maxHeight: "100vh" }}
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        overflow: filteredBlocks.length === 0 ? "auto" : "hidden",
+      }}
     >
+      <Box sx={{ p: 3, pb: 0 }}>
       <Box
         display='flex'
         justifyContent='space-between'
@@ -603,6 +609,7 @@ export default function BlockLibrary() {
           </Grid>
         </CardContent>
       </Card>
+      </Box>
 
       {/* Blocks Grid */}
       {filteredBlocks.length === 0 ? (
@@ -613,6 +620,7 @@ export default function BlockLibrary() {
           justifyContent='center'
           minHeight={400}
           textAlign='center'
+          sx={{ p: 3 }}
         >
           {getStorageLocations(false).length === 0 && !searchQuery && selectedCategory === "All" ? (
             <>
@@ -707,31 +715,15 @@ export default function BlockLibrary() {
           )}
         </Box>
       ) : (
-        <Grid
-          container
-          spacing={2}
-        >
-          {filteredBlocks.map((block) => {
-            const isFileBlock = fileBlocks.some((fb) => fb.id === block.id);
-
-            return (
-              <Grid
-                item
-                xs={12}
-                sm={6}
-                md={4}
-                key={`${block.source || "unknown"}-${block.id}`}
-              >
-                <BlockItem
-                  block={block}
-                  onDelete={handleDeleteBlock}
-                  onUpdate={handleUpdateBlock}
-                  isFileBlock={isFileBlock}
-                />
-              </Grid>
-            );
-          })}
-        </Grid>
+        /* Virtualized Blocks Grid - рендерить лише видимі елементи */
+        <Box sx={{ flex: 1, minHeight: 400, px: 3, pb: 3 }}>
+          <VirtualizedBlockGrid
+            blocks={filteredBlocks}
+            fileBlocks={fileBlocks}
+            onDelete={handleDeleteBlock}
+            onUpdate={handleUpdateBlock}
+          />
+        </Box>
       )}
 
       {/* Add Block Modal */}
