@@ -444,6 +444,7 @@ export function createAppTheme(mode: ThemeMode = "light"): Theme {
         },
       },
     },
+
     typography: {
       fontFamily: BASE_THEME.typography.fontFamily,
       h1: {

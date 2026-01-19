@@ -13,11 +13,25 @@ import ToggleSamplesPanelButton from "../SamplesDrawer/ToggleSamplesPanelButton"
 
 import EmailSenderPanel from "./EmailSenderPanel";
 import MainTabsGroup from "./MainTabsGroup";
+import TabPanel from "./TabPanel";
 
 export default function TemplatePanel() {
   const { style } = useThemeMode();
   const selectedMainTab = useSelectedMainTab();
+  // useDeferredValue - рендер контенту відкладається, таб-індикатор оновлюється миттєво
+  const deferredTab = React.useDeferredValue(selectedMainTab);
   const showAnimatedBackground = style !== "default";
+
+  // Відстежуємо які таби вже були відкриті для lazy mounting
+  const [mountedTabs, setMountedTabs] = React.useState<Set<string>>(new Set(["email"]));
+
+  React.useEffect(() => {
+    // Монтуємо таб при першому відкритті
+    if (!mountedTabs.has(selectedMainTab)) {
+      setMountedTabs(prev => new Set([...prev, selectedMainTab]));
+    }
+  }, [selectedMainTab, mountedTabs]);
+
   const handleFixedWheel = React.useCallback((event: React.WheelEvent) => {
     const scrollTarget = document.querySelector("[data-app-scroll='true']") as HTMLElement | null;
     if (!scrollTarget) {
@@ -25,25 +39,6 @@ export default function TemplatePanel() {
     }
     scrollTarget.scrollBy({ top: event.deltaY });
   }, []);
-
-  const renderMainPanel = () => {
-    switch (selectedMainTab) {
-      case "email":
-        return <EmailSenderPanel />;
-      case "blocks":
-        return <BlockLibrary />;
-      case "templates":
-        return (
-          <EmailSenderProvider>
-            <TemplateLibrary />
-          </EmailSenderProvider>
-        );
-      case "images":
-        return <ImageConverterPanel />;
-      default:
-        return <EmailSenderPanel />;
-    }
-  };
 
   return (
     <>
@@ -107,8 +102,25 @@ export default function TemplatePanel() {
           <ThemeToggle />
         </Box>
       </Stack>
-      <Box sx={{ height: "calc(100vh - 49px)", overflow: "hidden", minWidth: 370 }}>
-        {renderMainPanel()}
+      <Box sx={{ height: "calc(100vh - 49px)", overflow: "hidden", minWidth: 370, position: "relative" }}>
+        {/* Lazy mounting: рендеримо таб лише якщо він був відкритий хоча б раз */}
+        <TabPanel value="email" selectedValue={deferredTab} mounted={mountedTabs.has("email")}>
+          <EmailSenderPanel />
+        </TabPanel>
+
+        <TabPanel value="blocks" selectedValue={deferredTab} mounted={mountedTabs.has("blocks")}>
+          <BlockLibrary />
+        </TabPanel>
+
+        <TabPanel value="templates" selectedValue={deferredTab} mounted={mountedTabs.has("templates")}>
+          <EmailSenderProvider>
+            <TemplateLibrary />
+          </EmailSenderProvider>
+        </TabPanel>
+
+        <TabPanel value="images" selectedValue={deferredTab} mounted={mountedTabs.has("images")}>
+          <ImageConverterPanel />
+        </TabPanel>
       </Box>
     </>
   );
