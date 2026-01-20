@@ -7,7 +7,7 @@ import { create } from "zustand";
 
 type AppState = {
   document: any;
-  selectedMainTab: "email" | "blocks" | "templates" | "images";
+  selectedMainTab: "email" | "blocks" | "templates" | "images" | "converter";
   samplesDrawerOpen: boolean;
 };
 

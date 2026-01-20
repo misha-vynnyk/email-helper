@@ -1,0 +1,180 @@
+/**
+ * Utility functions for HTML/MJML conversion
+ */
+
+export function cleanEmptyHtmlTags(htmlContent: string): string {
+  htmlContent = htmlContent.replace(/&nbsp;/g, " ");
+  // <brbrbrbr>
+  htmlContent = htmlContent.replace(/<b>\s*<\/b>/g, "");
+  htmlContent = htmlContent.replace(/<li>\s*<\/li>/g, "");
+  htmlContent = htmlContent.replace(/<br>\s*<br>\s*<br>\s*<br>/g, "<br><br>");
+  htmlContent = htmlContent.replace(/<br>\s*<br>\s*<br>/g, "<br><br>");
+  htmlContent = htmlContent.replace(/(<span[^>]*>)\s*<br><br>/gi, "$1");
+  htmlContent = htmlContent.replace(/<\/a>\s*<a[^>]*>/g, " ");
+  htmlContent = htmlContent.replace(/<pre>/g, "");
+  htmlContent = htmlContent.replace(/<a[^>]*>\s*<\/a>/g, " ");
+  htmlContent = htmlContent.replace(/<b[^>]*>\s*<\/b>/g, " ");
+  htmlContent = htmlContent.replace(/<u>\s*<\/u>/g, " ");
+  htmlContent = htmlContent.replace(/<em[^>]*>\s*<\/em>/g, " ");
+  htmlContent = htmlContent.replace(/<\/em>\s*<em[^>]*>/g, " ");
+  htmlContent = htmlContent.replace(/<a[^>]*>\s*<\/a>/g, " ");
+  htmlContent = htmlContent.replace(/<br><br>\s*<\/span>/g, "</span>");
+  htmlContent = htmlContent.replace(/(<span[^>]*>)\s*<\/a>/gi, "$1");
+  htmlContent = htmlContent.replace(/(<span[^>]*>)\s*<\/b>/gi, "$1");
+  htmlContent = htmlContent.replace(/<a[^>]*>\s*<\/span>/g, "</span>");
+  htmlContent = htmlContent.replace(/<b[^>]*>\s*<\/span>/g, "</span>");
+  htmlContent = htmlContent.replace(/(<div[^>]*>)\s*<\/a>/gi, "$1");
+  htmlContent = htmlContent.replace(/(<div[^>]*>)\s*<\/b>/gi, "$1");
+  htmlContent = htmlContent.replace(/<a[^>]*>\s*<\/div>/g, "</div>");
+  htmlContent = htmlContent.replace(/<b[^>]*>\s*<\/div>/g, "</div>");
+
+  htmlContent = htmlContent.replace(/<h1[^>]*>/gi, "").replace(/<\/h1>/gi, "");
+  htmlContent = htmlContent.replace(/<h2[^>]*>/gi, "").replace(/<\/h2>/gi, "");
+  htmlContent = htmlContent.replace(/<h3[^>]*>/gi, "").replace(/<\/h3>/gi, "");
+  htmlContent = htmlContent.replace(/<h4[^>]*>/gi, "").replace(/<\/h4>/gi, "");
+  htmlContent = htmlContent.replace(/<h5[^>]*>/gi, "").replace(/<\/h5>/gi, "");
+  htmlContent = htmlContent.replace(/<h6[^>]*>/gi, "").replace(/<\/h6>/gi, "");
+  htmlContent = htmlContent.replace(/<br><br>\s*<br><br>/g, "<br><br>");
+  htmlContent = htmlContent.replace(/<br><br>\s*<\/div>/g, "</div>");
+  htmlContent = htmlContent.replace(/(<div[^>]*>)\s*<br><br>/gi, "$1");
+  htmlContent = htmlContent.replace(/(<span[^>]*>)\s*<br><br>/gi, "$1");
+  htmlContent = htmlContent.replace(/<br><br>\s*<\/span>/g, "</span>");
+  htmlContent = htmlContent.replace(/(<div[^>]*>)\s*<br><br>/gi, "$1");
+  htmlContent = htmlContent.replace(/<br><br>\s*<\/div>/g, "</div>");
+  htmlContent = htmlContent.replace(/<br>\s*<\/div>/g, "</div>");
+  htmlContent = htmlContent.replace(/<br>\s*<\/span>/g, "</span>");
+
+  htmlContent = htmlContent.replace(/<span[^>]*>\s*<\/span>/g, "");
+  htmlContent = htmlContent.replace(/<div[^>]*>\s*<\/div>/g, "");
+  htmlContent = htmlContent.replace(/<td[^>]*>\s*<\/td>/g, "");
+  htmlContent = htmlContent.replace(/<tr[^>]*>\s*<\/tr>/g, "");
+  return htmlContent;
+}
+
+export function addOneBr(htmlContent: string): string {
+  return htmlContent.replace(/ю/gi, function (match, content) {
+    return `
+                    <br>
+        `;
+  });
+}
+
+export function replaceTripleBrWithSingle(htmlContent: string): string {
+  const BR = `<br>\n`;
+  htmlContent = htmlContent.replace(
+    /<\w+[^>]*>\s*<\w+[^>]*>\s*<br\s*\/?>\s*<\/\w+>\s*<\/\w+>/gi,
+    BR
+  );
+
+  htmlContent = htmlContent.replace(/<\w+[^>]*>\s*<br\s*\/?>\s*<\/\w+>/gi, BR);
+
+  htmlContent = htmlContent.replace(/\s*<br\s*\/?>\s*<\/(\w+)>/gi, "</$1><br>");
+
+  htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*){3,}/gi, BR);
+
+  return htmlContent;
+}
+
+export function addBrAfterClosingP(htmlContent: string): string {
+  // Delete extra <br>
+  htmlContent = htmlContent.replace(/<br\s*\/?>/gi, "");
+
+  // Add <br><br>
+  htmlContent = htmlContent.replace(/<\/p>(?!\s*<\/li>)/gi, "</p>\n<br><br>\n");
+
+  // add <br> (ol, ul).
+  htmlContent = htmlContent.replace(/<br><br>(\s*<(ol|ul)[^>]*>)/gi, "<br>\n$1");
+
+  // Delete extra <p>
+  htmlContent = htmlContent.replace(/<p[^>]*>/gi, "").replace(/<\/p>/gi, "");
+
+  return htmlContent;
+}
+
+export function removeStylesFromLists(htmlContent: string): string {
+  htmlContent = htmlContent.replace(/<ol[^>]*style="[^"]*"[^>]*>/gi, "<ol>\n");
+  htmlContent = htmlContent.replace(/<ul[^>]*style="[^"]*"[^>]*>/gi, "<ul>\n");
+  htmlContent = htmlContent.replace(/<li[^>]*style="[^"]*"[^>]*>/gi, "<li>");
+  htmlContent = htmlContent.replace(/<\/li*>/gi, "</li>\n");
+  return htmlContent;
+}
+
+export function replaceAllEmojisAndSymbolsExcludingHTML(htmlContent: string): string {
+  const rx = /(?:\p{Extended_Pictographic}|(?![<>=&%"'#;:_-])[\p{S}\p{No}])(?:\uFE0F)?/gu;
+
+  return htmlContent.replace(rx, (match) => {
+    return Array.from(match)
+      .map((ch) => `&#${ch.codePointAt(0)};`)
+      .join("");
+  });
+}
+
+export function mergeSimilarTags(htmlContent: string): string {
+  console.log("Versioning Check: mergeSimilarTags with [[BR_SEP]] is running");
+  // Merge adjacent h1-h6 tags and add <br><br> between them
+  // Special handling for h6: merge all h6 tags even if separated by other elements (div, br, table, etc.)
+  const tagsWithoutH6 = ["h1", "h4", "h5"];
+
+  // Step 1: For h6, find patterns where </h6> is followed by any content (including div, br, table) then <h6
+  // Replace the content between with [[BR_SEP]]
+  const h6SeparatedRegex = /<\/h6>([\s\S]*?)<h6/gi;
+  let h6Count = 0;
+  let maxIterations = 50;
+  let iterations = 0;
+
+  while (iterations < maxIterations) {
+    const before = htmlContent;
+    htmlContent = htmlContent.replace(h6SeparatedRegex, (match, middle) => {
+      h6Count++;
+      return "</h6>[[BR_SEP]]<h6";
+    });
+    if (htmlContent === before) break; // No more replacements
+    iterations++;
+  }
+
+  // Step 2: Now merge consecutive h6 tags: <h6>content1</h6>[[BR_SEP]]<h6>content2</h6>
+  // -> <h6>content1[[BR_SEP]]content2</h6>
+  const h6MergeRegex =
+    /(<h6[^>]*>)([\s\S]*?)(<\/h6>)\s*\[\[BR_SEP\]\]\s*(<h6[^>]*>)([\s\S]*?)(<\/h6>)/gi;
+  let mergeCount = 0;
+  iterations = 0;
+
+  while (iterations < maxIterations) {
+    const before = htmlContent;
+    htmlContent = htmlContent.replace(
+      h6MergeRegex,
+      (match, open1, content1, close1, open2, content2, close2) => {
+        mergeCount++;
+        // Merge: keep first h6 tag, combine content with [[BR_SEP]], remove second h6
+        return open1 + content1 + "[[BR_SEP]]" + content2 + close1;
+      }
+    );
+    if (htmlContent === before) break; // No more replacements
+    iterations++;
+  }
+
+  if (h6Count > 0 || mergeCount > 0) {
+    console.log(`Processed ${h6Count} h6 separations, merged ${mergeCount} h6 pairs`);
+  }
+
+  // Now handle other tags normally (merge them)
+  tagsWithoutH6.forEach((tag) => {
+    const regex = new RegExp(`(<\\/${tag}>)\\s*<${tag}[^>]*>`, "gi");
+
+    let matchFound = true;
+    let tagIterations = 0;
+    while (matchFound && tagIterations < 50) {
+      matchFound = false;
+      let count = 0;
+      htmlContent = htmlContent.replace(regex, (match) => {
+        matchFound = true;
+        count++;
+        return "[[BR_SEP]]";
+      });
+      if (count > 0) console.log(`Merged ${count} pairs of ${tag}`);
+      tagIterations++;
+    }
+  });
+
+  return htmlContent;
+}

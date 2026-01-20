@@ -5,6 +5,7 @@ import { Box, CircularProgress, Fade, Stack } from "@mui/material";
 import { BlockLibrary } from "../../blockLibrary";
 import { useSelectedMainTab } from "../../contexts/AppState";
 import { EmailSenderProvider } from "../../emailSender/EmailSenderContext";
+import { HtmlConverterPanel } from "../../htmlConverter";
 import { ImageConverterPanel } from "../../imageConverter";
 import AnimatedBackground from "../../imageConverter/components/AnimatedBackground";
 import { TemplateLibrary } from "../../templateLibrary";
@@ -148,6 +149,10 @@ export default function TemplatePanel() {
 
         <TabPanel value="images" selectedValue={deferredTab} mounted={mountedTabs.has("images")}>
           <ImageConverterPanel />
+        </TabPanel>
+
+        <TabPanel value="converter" selectedValue={deferredTab} mounted={mountedTabs.has("converter")}>
+          <HtmlConverterPanel />
         </TabPanel>
       </Box>
     </>
