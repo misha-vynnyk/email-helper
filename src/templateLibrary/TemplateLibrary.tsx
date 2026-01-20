@@ -7,6 +7,7 @@ import React, { useEffect, useMemo, useState } from "react";
 
 import {
   Add as AddIcon,
+  Block as BlockIcon,
   Clear as ClearIcon,
   FolderOpen as FolderOpenIcon,
   Refresh as RefreshIcon,
@@ -22,20 +23,26 @@ import {
   CardContent,
   Chip,
   Grid,
+  IconButton,
   MenuItem,
   Skeleton,
   TextField,
+  Tooltip,
   Typography,
 } from "@mui/material";
 
 import { EmailTemplate, TemplateCategory } from "../types/template";
 
 import PreviewSettings, { loadPreviewConfig, PreviewConfig } from "./PreviewSettings";
-import { listTemplates, syncAllTemplates } from "./templateApi";
+import { listTemplates, syncAllTemplates, getTemplateContent } from "./templateApi";
 import { getCategoryIcon } from "./templateCategoryIcons";
 import TemplateItem from "./TemplateItem";
 import TemplateStorageModal from "./TemplateStorageModal";
+import VirtualizedTemplateGrid from "./VirtualizedTemplateGrid";
 import { getTemplateStorageLocations } from "./templateStorageConfig";
+import { templateContentCache } from "./templateContentCache";
+import { logger } from "../utils/logger";
+import { preloadImages } from "../utils/imageUrlReplacer";
 
 const CATEGORY_OPTIONS: Array<TemplateCategory | "All"> = [
   "All",
@@ -56,10 +63,13 @@ export default function TemplateLibrary() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<TemplateCategory | "All">("All");
-  const [selectedFolder, setSelectedFolder] = useState<string>("All");
+  const [selectedFolders, setSelectedFolders] = useState<Set<string>>(new Set());
+  const [excludedFolders, setExcludedFolders] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<SortOption>("date-newest");
   const [storageModalOpen, setStorageModalOpen] = useState(false);
   const [previewConfig, setPreviewConfig] = useState<PreviewConfig>(loadPreviewConfig());
+  const [openTemplateId, setOpenTemplateId] = useState<string | null>(null);
+  const savedScrollPositionRef = React.useRef<number>(0);
   const loadingRef = React.useRef(false);
 
   useEffect(() => {
@@ -112,13 +122,22 @@ export default function TemplateLibrary() {
           });
           setTemplates(filteredTemplates);
         }
+
+        // Preload зображень з preview шаблонів (якщо вони є) в кеш (в фоні)
+        const templatesWithPreview = data.filter((t) => t.preview);
+        if (templatesWithPreview.length > 0) {
+          preloadImages(templatesWithPreview.map((t) => t.preview!).join(' ')).catch((error) => {
+            // Ігноруємо помилки preloading - це не критично
+            logger.warn("TemplateLibrary", "Failed to preload template preview images", error);
+          });
+        }
       } else {
-        console.error("API returned non-array data:", data);
+        logger.error("TemplateLibrary", "API returned non-array data", data);
         setTemplates([]);
         setError("Invalid data format from server");
       }
     } catch (err) {
-      console.error("Failed to load templates:", err);
+      logger.error("TemplateLibrary", "Failed to load templates", err);
       setTemplates([]); // Ensure templates is always an array
       setError(err instanceof Error ? err.message : "Failed to load templates");
     } finally {
@@ -156,7 +175,7 @@ export default function TemplateLibrary() {
           totalFound += result.templatesFound;
         } catch (err) {
           const errorMsg = `Failed to sync ${location.name}: ${err instanceof Error ? err.message : "Unknown error"}`;
-          console.error(errorMsg);
+          logger.error("TemplateLibrary", errorMsg, err);
           errors.push(errorMsg);
         }
       }
@@ -170,7 +189,6 @@ export default function TemplateLibrary() {
       // Reload templates after sync
       await loadTemplates();
     } catch (err) {
-      console.error("❌ Sync failed:", err);
       setError(err instanceof Error ? err.message : "Failed to sync templates");
     } finally {
       setSyncing(false);
@@ -193,6 +211,53 @@ export default function TemplateLibrary() {
 
   const handleTemplateUpdated = (updated: EmailTemplate) => {
     setTemplates((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+  };
+
+  const handleOpenTemplate = (templateId: string) => {
+    setOpenTemplateId(templateId);
+  };
+
+  const handleCloseTemplate = () => {
+    setOpenTemplateId(null);
+  };
+
+  const handleNavigateTemplate = (direction: "prev" | "next", savedScrollPos?: number) => {
+    if (!openTemplateId || filteredTemplates.length === 0) return;
+
+    // Save scroll position if provided and enabled
+    if (previewConfig.saveScrollPosition && savedScrollPos !== undefined) {
+      savedScrollPositionRef.current = savedScrollPos;
+    } else {
+      // Reset scroll position if disabled
+      savedScrollPositionRef.current = 0;
+    }
+
+    const currentIndex = filteredTemplates.findIndex((t) => t.id === openTemplateId);
+    if (currentIndex === -1) return;
+
+    let newIndex: number;
+    if (direction === "prev") {
+      newIndex = currentIndex > 0 ? currentIndex - 1 : filteredTemplates.length - 1;
+    } else {
+      newIndex = currentIndex < filteredTemplates.length - 1 ? currentIndex + 1 : 0;
+    }
+
+    const newTemplate = filteredTemplates[newIndex];
+
+    // Preload next templates in background for faster navigation
+    const preloadIds = [
+      filteredTemplates[newIndex - 1]?.id,
+      filteredTemplates[newIndex + 1]?.id,
+      filteredTemplates[newIndex - 2]?.id,
+      filteredTemplates[newIndex + 2]?.id,
+    ].filter(Boolean) as string[];
+
+    if (preloadIds.length > 0) {
+      // Preload in background - don't wait
+      templateContentCache.preload(preloadIds, getTemplateContent);
+    }
+
+    setOpenTemplateId(newTemplate.id);
   };
 
   // Extract unique root folders from templates (memoized)
@@ -234,9 +299,16 @@ export default function TemplateLibrary() {
       }
 
       // Folder filter (root level)
-      if (selectedFolder !== "All") {
-        const rootFolder = template.folderPath?.split(" / ")[0];
-        if (rootFolder !== selectedFolder) {
+      const rootFolder = template.folderPath?.split(" / ")[0];
+
+      // Exclude folders that are in excludedFolders set
+      if (rootFolder && excludedFolders.has(rootFolder)) {
+        return false;
+      }
+
+      // If specific folders are selected, show only those folders
+      if (selectedFolders.size > 0) {
+        if (!rootFolder || !selectedFolders.has(rootFolder)) {
           return false;
         }
       }
@@ -279,7 +351,7 @@ export default function TemplateLibrary() {
     });
 
     return sorted;
-  }, [templates, selectedCategory, selectedFolder, searchQuery, sortBy]);
+  }, [templates, selectedCategory, selectedFolders, excludedFolders, searchQuery, sortBy]);
 
   // Skeleton Loading State
   if (loading) {
@@ -347,6 +419,7 @@ export default function TemplateLibrary() {
 
         {/* Templates skeleton */}
         <Box
+          data-app-scroll="true"
           flex={1}
           overflow='auto'
           p={2}
@@ -423,7 +496,9 @@ export default function TemplateLibrary() {
             >
               {filteredTemplates.length} {filteredTemplates.length === 1 ? "template" : "templates"}
               {searchQuery && ` matching "${searchQuery}"`}
-              {selectedFolder !== "All" && ` in 📁 ${selectedFolder}`}
+              {selectedFolders.size > 0 &&
+                ` in ${selectedFolders.size} folder${selectedFolders.size > 1 ? "s" : ""}`}
+              {excludedFolders.size > 0 && ` (${excludedFolders.size} hidden)`}
               {selectedCategory !== "All" && ` • ${selectedCategory}`}
             </Typography>
           </Box>
@@ -519,57 +594,7 @@ export default function TemplateLibrary() {
           <Grid
             item
             xs={12}
-            md={2.5}
-          >
-            <TextField
-              fullWidth
-              size='small'
-              select
-              label='Folder'
-              value={selectedFolder}
-              onChange={(e) => setSelectedFolder(e.target.value)}
-            >
-              <MenuItem value='All'>
-                <Box
-                  display='flex'
-                  alignItems='center'
-                  gap={1}
-                >
-                  <FolderOpenIcon fontSize='small' />
-                  <span>All Folders</span>
-                  <Chip
-                    label={templates.length}
-                    size='small'
-                    sx={{ ml: "auto" }}
-                  />
-                </Box>
-              </MenuItem>
-              {rootFolders.map((folder) => (
-                <MenuItem
-                  key={folder}
-                  value={folder}
-                >
-                  <Box
-                    display='flex'
-                    alignItems='center'
-                    gap={1}
-                    width='100%'
-                  >
-                    <span>📁 {folder}</span>
-                    <Chip
-                      label={folderStats[folder] || 0}
-                      size='small'
-                      sx={{ ml: "auto" }}
-                    />
-                  </Box>
-                </MenuItem>
-              ))}
-            </TextField>
-          </Grid>
-          <Grid
-            item
-            xs={12}
-            md={2.5}
+            md={4.5}
           >
             <TextField
               fullWidth
@@ -605,27 +630,106 @@ export default function TemplateLibrary() {
             display='flex'
             gap={1}
             flexWrap='wrap'
+            alignItems='center'
           >
             <Chip
               label='All'
-              variant={selectedFolder === "All" ? "filled" : "outlined"}
-              color={selectedFolder === "All" ? "primary" : "default"}
-              onClick={() => setSelectedFolder("All")}
+              variant={
+                selectedFolders.size === 0 && excludedFolders.size === 0 ? "filled" : "outlined"
+              }
+              color={
+                selectedFolders.size === 0 && excludedFolders.size === 0 ? "primary" : "default"
+              }
+              onClick={() => {
+                setSelectedFolders(new Set());
+                setExcludedFolders(new Set());
+              }}
               icon={<FolderOpenIcon />}
               size='small'
             />
-            {rootFolders.map((folder) => (
-              <Chip
-                key={folder}
-                label={`${folder} (${folderStats[folder] || 0})`}
-                variant={selectedFolder === folder ? "filled" : "outlined"}
-                color={selectedFolder === folder ? "primary" : "default"}
-                onClick={() => setSelectedFolder(folder)}
-                onDelete={selectedFolder === folder ? () => setSelectedFolder("All") : undefined}
-                deleteIcon={<ClearIcon />}
-                size='small'
-              />
-            ))}
+            {rootFolders.map((folder) => {
+              const isIncluded = selectedFolders.has(folder);
+              const isExcluded = excludedFolders.has(folder);
+
+              return (
+                <Box
+                  key={folder}
+                  display='flex'
+                  gap={0.5}
+                  alignItems='center'
+                >
+                  <Chip
+                    label={`${folder} (${folderStats[folder] || 0})`}
+                    variant={isIncluded ? "filled" : "outlined"}
+                    color={isIncluded ? "primary" : isExcluded ? "error" : "default"}
+                    onClick={() => {
+                      if (isExcluded) {
+                        // Can't select excluded folder - need to unexclude first
+                        return;
+                      }
+                      // Toggle inclusion
+                      setSelectedFolders((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(folder)) {
+                          next.delete(folder);
+                        } else {
+                          next.add(folder);
+                        }
+                        return next;
+                      });
+                    }}
+                    onDelete={
+                      isIncluded
+                        ? () => {
+                            setSelectedFolders((prev) => {
+                              const next = new Set(prev);
+                              next.delete(folder);
+                              return next;
+                            });
+                          }
+                        : undefined
+                    }
+                    deleteIcon={<ClearIcon />}
+                    size='small'
+                    sx={{
+                      opacity: isExcluded ? 0.5 : 1,
+                      cursor: isExcluded ? "not-allowed" : "pointer",
+                    }}
+                  />
+                  <Tooltip title={isExcluded ? "Show folder" : "Hide folder"}>
+                    <IconButton
+                      size='small'
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isExcluded) {
+                          // Unhide
+                          setExcludedFolders((prev) => {
+                            const next = new Set(prev);
+                            next.delete(folder);
+                            return next;
+                          });
+                        } else {
+                          // Hide
+                          setExcludedFolders((prev) => new Set(prev).add(folder));
+                          setSelectedFolders((prev) => {
+                            const next = new Set(prev);
+                            next.delete(folder);
+                            return next;
+                          });
+                        }
+                      }}
+                      color={isExcluded ? "error" : "default"}
+                      sx={{
+                        minWidth: 32,
+                        height: 32,
+                      }}
+                    >
+                      <BlockIcon fontSize='small' />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              );
+            })}
           </Box>
         )}
 
@@ -678,9 +782,14 @@ export default function TemplateLibrary() {
 
       {/* Content Area */}
       <Box
-        flex={1}
-        overflow='auto'
-        p={2}
+        data-app-scroll="true"
+        sx={{
+          flex: 1,
+          overflow: filteredTemplates.length === 0 ? "auto" : "hidden",
+          p: filteredTemplates.length === 0 ? 2 : 0,
+          display: "flex",
+          flexDirection: "column",
+        }}
       >
         {filteredTemplates.length === 0 ? (
           /* Empty State */
@@ -708,7 +817,10 @@ export default function TemplateLibrary() {
                 justifyContent: "center",
               }}
             >
-              {searchQuery || selectedCategory !== "All" || selectedFolder !== "All" ? (
+              {searchQuery ||
+              selectedCategory !== "All" ||
+              selectedFolders.size > 0 ||
+              excludedFolders.size > 0 ? (
                 <SearchOffIcon sx={{ fontSize: 60, color: "text.disabled" }} />
               ) : (
                 <FolderOpenIcon sx={{ fontSize: 60, color: "text.disabled" }} />
@@ -720,7 +832,10 @@ export default function TemplateLibrary() {
               gutterBottom
               fontWeight={600}
             >
-              {searchQuery || selectedCategory !== "All" || selectedFolder !== "All"
+              {searchQuery ||
+              selectedCategory !== "All" ||
+              selectedFolders.size > 0 ||
+              excludedFolders.size > 0
                 ? "No templates found"
                 : "Your template library is empty"}
             </Typography>
@@ -731,18 +846,25 @@ export default function TemplateLibrary() {
               mb={3}
               maxWidth={500}
             >
-              {searchQuery || selectedCategory !== "All" || selectedFolder !== "All"
+              {searchQuery ||
+              selectedCategory !== "All" ||
+              selectedFolders.size > 0 ||
+              excludedFolders.size > 0
                 ? "Try different keywords or clear filters to see more templates."
                 : "Start building your email collection by adding HTML templates from your file system. Place your templates in ~/Templates for quick access."}
             </Typography>
 
-            {searchQuery || selectedCategory !== "All" || selectedFolder !== "All" ? (
+            {searchQuery ||
+            selectedCategory !== "All" ||
+            selectedFolders.size > 0 ||
+            excludedFolders.size > 0 ? (
               <Button
                 variant='outlined'
                 onClick={() => {
                   setSearchQuery("");
                   setSelectedCategory("All");
-                  setSelectedFolder("All");
+                  setSelectedFolders(new Set());
+                  setExcludedFolders(new Set());
                 }}
               >
                 Clear Filters
@@ -754,49 +876,39 @@ export default function TemplateLibrary() {
               >
                 <Button
                   variant='contained'
-                  startIcon={<AddIcon />}
-                  onClick={() => setAddModalOpen(true)}
+                  startIcon={<SettingsIcon />}
+                  onClick={() => setStorageModalOpen(true)}
                   size='large'
                 >
-                  Add First Template
+                  Configure Storage
                 </Button>
                 <Button
                   variant='outlined'
-                  startIcon={<FolderOpenIcon />}
-                  onClick={() => setAddModalOpen(true)}
+                  startIcon={<RefreshIcon />}
+                  onClick={syncTemplates}
                   size='large'
+                  disabled={syncing}
                 >
-                  Import Folder
+                  {syncing ? "Syncing..." : "Sync Templates"}
                 </Button>
               </Box>
             )}
           </Box>
         ) : (
-          /* Templates Grid */
-          <Grid
-            container
-            spacing={2}
-          >
-            {filteredTemplates.map((template) => (
-              <Grid
-                item
-                xs={12}
-                sm={6}
-                md={4}
-                key={template.id}
-              >
-                <TemplateItem
-                  template={template}
-                  previewConfig={previewConfig}
-                  onDelete={handleTemplateDeleted}
-                  onUpdate={handleTemplateUpdated}
-                  onLoadTemplate={(html, tmpl) => {
-                    // TODO: Integrate with editor
-                  }}
-                />
-              </Grid>
-            ))}
-          </Grid>
+          /* Virtualized Templates Grid - рендерить лише видимі елементи */
+          <Box sx={{ flex: 1, minHeight: 400 }}>
+            <VirtualizedTemplateGrid
+              templates={filteredTemplates}
+              previewConfig={previewConfig}
+              openTemplateId={openTemplateId}
+              onDelete={handleTemplateDeleted}
+              onUpdate={handleTemplateUpdated}
+              onOpen={handleOpenTemplate}
+              onClose={handleCloseTemplate}
+              onNavigate={handleNavigateTemplate}
+              savedScrollPosition={savedScrollPositionRef.current}
+            />
+          </Box>
         )}
       </Box>
 

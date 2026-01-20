@@ -25,7 +25,6 @@ export const useRegistrationStatus = (): RegistrationStatus => {
 
   const checkRegistrationStatus = () => {
     try {
-      // Check new format first
       const registrationData = localStorage.getItem("emailSenderCredentials");
       if (registrationData) {
         const parsed: RegistrationData = JSON.parse(registrationData);
@@ -47,28 +46,6 @@ export const useRegistrationStatus = (): RegistrationStatus => {
         return;
       }
 
-      // Fallback to old format
-      const oldData = localStorage.getItem("emailSenderForm");
-      if (oldData) {
-        const parsed: RegistrationData = JSON.parse(oldData);
-        const hasValidCredentials = Boolean(
-          parsed.userEmail &&
-            parsed.senderEmail &&
-            parsed.appPassword &&
-            parsed.userEmail.includes("@") &&
-            parsed.senderEmail.includes("@gmail.com") &&
-            parsed.appPassword.length >= 16
-        );
-
-        setStatus({
-          isRegistered: true,
-          registrationData: parsed,
-          hasValidCredentials,
-          registeredAt: null,
-        });
-        return;
-      }
-
       // No registration data found
       setStatus({
         isRegistered: false,
@@ -77,7 +54,7 @@ export const useRegistrationStatus = (): RegistrationStatus => {
         registeredAt: null,
       });
     } catch (error) {
-      console.warn("Error checking registration status", error);
+      console.warn('[useRegistrationStatus] Error checking registration status:', error);
       setStatus({
         isRegistered: false,
         registrationData: null,
@@ -92,7 +69,7 @@ export const useRegistrationStatus = (): RegistrationStatus => {
 
     // Listen for localStorage changes
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "emailSenderCredentials" || e.key === "emailSenderForm") {
+      if (e.key === "emailSenderCredentials") {
         checkRegistrationStatus();
       }
     };

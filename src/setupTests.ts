@@ -1,7 +1,7 @@
-import '@testing-library/jest-dom';
+import "@testing-library/jest-dom";
 
 // Mock window.matchMedia
-Object.defineProperty(window, 'matchMedia', {
+Object.defineProperty(window, "matchMedia", {
   writable: true,
   value: jest.fn().mockImplementation((query) => ({
     matches: false,
@@ -38,7 +38,10 @@ const originalConsoleWarn = console.warn;
 
 beforeAll(() => {
   console.error = (...args: unknown[]) => {
-    if (typeof args[0] === 'string' && args[0].includes('Warning: ReactDOM.render is no longer supported')) {
+    if (
+      typeof args[0] === "string" &&
+      args[0].includes("Warning: ReactDOM.render is no longer supported")
+    ) {
       return;
     }
     originalConsoleError.call(console, ...args);
@@ -46,9 +49,9 @@ beforeAll(() => {
 
   console.warn = (...args: unknown[]) => {
     if (
-      typeof args[0] === 'string' &&
-      (args[0].includes('Warning: ReactDOM.render is no longer supported') ||
-        args[0].includes('Warning: componentWillReceiveProps'))
+      typeof args[0] === "string" &&
+      (args[0].includes("Warning: ReactDOM.render is no longer supported") ||
+        args[0].includes("Warning: componentWillReceiveProps"))
     ) {
       return;
     }

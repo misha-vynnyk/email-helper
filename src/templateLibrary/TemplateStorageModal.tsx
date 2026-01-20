@@ -3,7 +3,7 @@
  * Manage storage locations for template synchronization with add/remove capabilities
  */
 
-import React, { useState } from "react";
+import { useState } from "react";
 
 import {
   Add as AddIcon,
@@ -295,6 +295,7 @@ export default function TemplateStorageModal({ open, onClose, onSave }: Template
                         )}
                       </Box>
                     }
+                    primaryTypographyProps={{ component: "div" }}
                     secondary={
                       <>
                         <Typography
@@ -316,6 +317,7 @@ export default function TemplateStorageModal({ open, onClose, onSave }: Template
                         )}
                       </>
                     }
+                    secondaryTypographyProps={{ component: "div" }}
                   />
                 </ListItem>
               ))}

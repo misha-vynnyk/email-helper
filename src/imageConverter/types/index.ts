@@ -1,8 +1,8 @@
-export type ImageFormat = 'jpeg' | 'webp' | 'avif' | 'png';
+export type ImageFormat = "jpeg" | "webp" | "avif" | "png" | "gif";
 
-export type ProcessingMode = 'client' | 'server';
+export type ProcessingMode = "client" | "server";
 
-export type ResizeMode = 'original' | 'preset' | 'custom';
+export type ResizeMode = "original" | "preset" | "custom";
 
 export interface ResizeOptions {
   mode: ResizeMode;
@@ -12,7 +12,7 @@ export interface ResizeOptions {
   preserveAspectRatio: boolean;
 }
 
-export type CompressionMode = 'balanced' | 'maximum-quality' | 'maximum-compression' | 'lossless';
+export type CompressionMode = "balanced" | "maximum-quality" | "maximum-compression" | "lossless";
 
 export interface ConversionSettings {
   format: ImageFormat;
@@ -22,9 +22,19 @@ export interface ConversionSettings {
   processingMode: ProcessingMode;
   compressionMode: CompressionMode;
   autoConvert: boolean; // Auto-convert on file upload
+  preserveFormat: boolean; // Keep original image format instead of converting
+  autoQuality: boolean; // Automatically calculate optimal quality
+  preserveExif: boolean; // Preserve EXIF metadata during conversion
+  targetFileSize?: number; // Target file size in bytes (e.g., 1.5 MB = 1572864)
+  gifFrameResize?: {
+    enabled: boolean;
+    width?: number;
+    height?: number;
+    preserveAspectRatio: boolean;
+  };
 }
 
-export type ConversionStatus = 'pending' | 'processing' | 'done' | 'error';
+export type ConversionStatus = "pending" | "processing" | "done" | "error";
 
 export interface ImageFile {
   id: string;
@@ -37,6 +47,10 @@ export interface ImageFile {
   error?: string;
   previewUrl?: string;
   convertedUrl?: string;
+  retryCount?: number; // Number of retry attempts
+  startTime?: number; // When conversion started
+  eta?: number; // Estimated time remaining (seconds)
+  selected?: boolean; // For bulk selection
 }
 
 export interface ConversionResult {

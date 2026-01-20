@@ -1,6 +1,14 @@
-import React from 'react';
+import React from "react";
 
-import { AccountCircle, Email, ExpandLess, ExpandMore, Security, Visibility, VisibilityOff } from '@mui/icons-material';
+import {
+  AccountCircle,
+  Email,
+  ExpandLess,
+  ExpandMore,
+  Security,
+  Visibility,
+  VisibilityOff,
+} from "@mui/icons-material";
 import {
   Alert,
   Box,
@@ -14,10 +22,10 @@ import {
   Paper,
   TextField,
   Typography,
-} from '@mui/material';
+} from "@mui/material";
 
-import { useEmailSender } from './EmailSenderContext';
-import { StorageToggle } from './StorageToggle';
+import { useEmailSender } from "./EmailSenderContext";
+import { StorageToggle } from "./StorageToggle";
 
 const EmailCredentialsForm: React.FC = () => {
   const {
@@ -36,21 +44,21 @@ const EmailCredentialsForm: React.FC = () => {
 
   // За замовчуванням відкрито для всіх режимів крім "state" (Manual Entry)
   const [isExpanded, setIsExpanded] = React.useState(() => {
-    const saved = localStorage.getItem('emailCredentialsExpanded');
+    const saved = localStorage.getItem("emailCredentialsExpanded");
     if (saved !== null) {
       return JSON.parse(saved);
     }
-    return useStorageToggle !== 'state'; // Закрито тільки для Manual Entry
+    return useStorageToggle !== "state"; // Закрито тільки для Manual Entry
   });
 
   // Зберігаємо стан згортання
   React.useEffect(() => {
-    localStorage.setItem('emailCredentialsExpanded', JSON.stringify(isExpanded));
+    localStorage.setItem("emailCredentialsExpanded", JSON.stringify(isExpanded));
   }, [isExpanded]);
 
   // Автоматично відкриваємо при зміні режиму (крім Manual Entry)
   React.useEffect(() => {
-    if (useStorageToggle === 'state') {
+    if (useStorageToggle === "state") {
       setIsExpanded(true);
     } else {
       setIsExpanded(false);
@@ -63,12 +71,30 @@ const EmailCredentialsForm: React.FC = () => {
 
   const getServerStatusChip = () => {
     switch (serverStatus) {
-      case 'online':
-        return <Chip label="Server Online" color="success" size="small" />;
-      case 'offline':
-        return <Chip label="Server Offline" color="error" size="small" />;
+      case "online":
+        return (
+          <Chip
+            label='Server Online'
+            color='success'
+            size='small'
+          />
+        );
+      case "offline":
+        return (
+          <Chip
+            label='Server Offline'
+            color='error'
+            size='small'
+          />
+        );
       default:
-        return <Chip label="Checking..." color="default" size="small" />;
+        return (
+          <Chip
+            label='Checking...'
+            color='default'
+            size='small'
+          />
+        );
     }
   };
 
@@ -79,45 +105,52 @@ const EmailCredentialsForm: React.FC = () => {
       <Paper sx={{ p: 3, mb: 2 }}>
         <Box
           sx={{
-            display: 'flex',
-            alignItems: 'center',
+            display: "flex",
+            alignItems: "center",
             gap: 2,
             mb: 2,
-            cursor: 'pointer',
-            '&:hover': { backgroundColor: 'action.hover' },
+            cursor: "pointer",
+            "&:hover": { backgroundColor: "action.hover" },
             borderRadius: 1,
             p: 1,
             mx: -1,
           }}
           onClick={() => setIsExpanded(!isExpanded)}
         >
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+          <Typography
+            variant='h6'
+            sx={{ flexGrow: 1 }}
+          >
             📧 Email Configuration
           </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             {getServerStatusChip()}
-            <IconButton size="small">{isExpanded ? <ExpandLess /> : <ExpandMore />}</IconButton>
+            <IconButton size='small'>{isExpanded ? <ExpandLess /> : <ExpandMore />}</IconButton>
           </Box>
         </Box>
 
         <Collapse in={isExpanded}>
           {!areCredentialsValid && (
-            <Alert severity="info" sx={{ mb: 2 }}>
-              Please configure your email credentials to send emails. Use Gmail app passwords for authentication.
+            <Alert
+              severity='info'
+              sx={{ mb: 2 }}
+            >
+              Please configure your email credentials to send emails. Use Gmail app passwords for
+              authentication.
             </Alert>
           )}
 
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <TextField
-              label="Your Email (Gmail)"
-              type="email"
-              value={userEmail}
-              onChange={(e) => setUserEmail(e.target.value)}
-              placeholder="your-email@gmail.com"
+              label='Gmail Sender'
+              type='email'
+              value={senderEmail}
+              onChange={(e) => setSenderEmail(e.target.value)}
+              placeholder='your-email@gmail.com'
               fullWidth
               InputProps={{
                 startAdornment: (
-                  <InputAdornment position="start">
+                  <InputAdornment position='start'>
                     <AccountCircle />
                   </InputAdornment>
                 ),
@@ -126,52 +159,58 @@ const EmailCredentialsForm: React.FC = () => {
             />
 
             <TextField
-              label="Recipient Email"
-              type="email"
-              value={senderEmail}
-              onChange={(e) => setSenderEmail(e.target.value)}
-              placeholder="recipient@example.com"
+              label='Recipient Email'
+              type='email'
+              value={userEmail}
+              onChange={(e) => setUserEmail(e.target.value)}
+              placeholder='recipient@example.com'
               fullWidth
               InputProps={{
                 startAdornment: (
-                  <InputAdornment position="start">
+                  <InputAdornment position='start'>
                     <Email />
                   </InputAdornment>
                 ),
               }}
-              helperText="The email address that will receive the template"
+              helperText='The email address that will receive the template'
             />
 
-            <FormControl variant="outlined" fullWidth>
-              <InputLabel htmlFor="app-password">Gmail App Password</InputLabel>
+            <FormControl
+              variant='outlined'
+              fullWidth
+            >
+              <InputLabel htmlFor='app-password'>Gmail App Password</InputLabel>
               <OutlinedInput
-                id="app-password"
-                type={showPassword ? 'text' : 'password'}
+                id='app-password'
+                type={showPassword ? "text" : "password"}
                 value={appPassword}
                 onChange={(e) => setAppPassword(e.target.value)}
-                placeholder="16-character app password"
+                placeholder='16-character app password'
                 startAdornment={
-                  <InputAdornment position="start">
+                  <InputAdornment position='start'>
                     <Security />
                   </InputAdornment>
                 }
                 endAdornment={
-                  <InputAdornment position="end">
+                  <InputAdornment position='end'>
                     <IconButton
-                      aria-label="toggle password visibility"
+                      aria-label='toggle password visibility'
                       onClick={handleTogglePasswordVisibility}
-                      edge="end"
+                      edge='end'
                     >
                       {showPassword ? <VisibilityOff /> : <Visibility />}
                     </IconButton>
                   </InputAdornment>
                 }
-                label="Gmail App Password"
+                label='Gmail App Password'
               />
             </FormControl>
 
-            <Alert severity="warning" sx={{ mt: 1 }}>
-              <Typography variant="body2">
+            <Alert
+              severity='warning'
+              sx={{ mt: 1 }}
+            >
+              <Typography variant='body2'>
                 <strong>Important:</strong> Use Gmail App Passwords, not your regular password.
                 <br />
                 Generate one at: Google Account → Security → 2-Step Verification → App passwords

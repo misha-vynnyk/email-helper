@@ -4,7 +4,7 @@ export interface ValidationResult {
 }
 
 export function validateImageFile(file: File, maxSize: number): ValidationResult {
-  if (!file.type.startsWith('image/')) {
+  if (!file.type.startsWith("image/")) {
     return { valid: false, error: `${file.name}: Not an image file` };
   }
 
@@ -16,7 +16,10 @@ export function validateImageFile(file: File, maxSize: number): ValidationResult
   return { valid: true };
 }
 
-export function validateImageFiles(files: File[], maxSize: number): { validFiles: File[]; errors: string[] } {
+export function validateImageFiles(
+  files: File[],
+  maxSize: number
+): { validFiles: File[]; errors: string[] } {
   const validFiles: File[] = [];
   const errors: string[] = [];
 
@@ -31,4 +34,3 @@ export function validateImageFiles(files: File[], maxSize: number): { validFiles
 
   return { validFiles, errors };
 }
-

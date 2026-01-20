@@ -1,13 +1,13 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 const envSchema = z.object({
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  VITE_API_URL: z.string().url().default('http://localhost:3001'),
-  VITE_APP_NAME: z.string().default('Email Builder'),
-  VITE_APP_VERSION: z.string().default('0.0.1'),
+  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+  VITE_API_URL: z.string().url().default("http://localhost:3001"),
+  VITE_APP_NAME: z.string().default("Email Builder"),
+  VITE_APP_VERSION: z.string().default("0.0.1"),
   VITE_ENABLE_ANALYTICS: z.boolean().default(false),
   VITE_SENTRY_DSN: z.string().optional(),
-  VITE_LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
+  VITE_LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
 });
 
 export const env = envSchema.parse(import.meta.env);
@@ -15,9 +15,9 @@ export const env = envSchema.parse(import.meta.env);
 export type Env = z.infer<typeof envSchema>;
 
 // Helper functions
-export const isDevelopment = env.NODE_ENV === 'development';
-export const isProduction = env.NODE_ENV === 'production';
-export const isTest = env.NODE_ENV === 'test';
+export const isDevelopment = env.NODE_ENV === "development";
+export const isProduction = env.NODE_ENV === "production";
+export const isTest = env.NODE_ENV === "test";
 
 export const config = {
   api: {

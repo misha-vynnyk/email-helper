@@ -3,7 +3,7 @@
  * Main component for browsing and managing email blocks
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   Add as AddIcon,
@@ -43,10 +43,13 @@ import {
   searchBlocks,
 } from "./blockLoader";
 import BlockStorageModal from "./BlockStorageModal";
+import VirtualizedBlockGrid from "./VirtualizedBlockGrid";
 import { getStorageLocations } from "./blockStorageConfig";
 import { GRID, TIMEOUTS } from "./constants";
 import { formatErrorMessage } from "./errorHandling";
-import { useDebounce } from "./useDebounce";
+import { useDebounce } from "../hooks/useDebounce";
+import { logger } from "../utils/logger";
+import { preloadBlocksImages } from "../utils/blockImagePreloader";
 
 export default function BlockLibrary() {
   const [predefinedBlocks, setPredefinedBlocks] = useState<EmailBlock[]>([]);
@@ -76,20 +79,22 @@ export default function BlockLibrary() {
   const loadFileBlocks = useCallback(async (): Promise<EmailBlock[]> => {
     try {
       const fileBlockData = await blockFileApi.listBlocks();
-      return fileBlockData.map((fb) => ({
-        id: fb.id,
-        name: fb.name,
-        category: fb.category as string,
-        keywords: fb.keywords,
-        html: fb.html,
-        preview: fb.preview,
-        createdAt: fb.createdAt || Date.now(),
-        isCustom: true,
-        source: getBlockSource(fb.filePath), // Determine source from file path
-        filePath: fb.filePath, // Store full file path
-      }));
+      return fileBlockData
+        .filter((fb) => fb.filePath) // Filter out blocks without filePath
+        .map((fb) => ({
+          id: fb.id,
+          name: fb.name,
+          category: fb.category as EmailBlock["category"],
+          keywords: fb.keywords,
+          html: fb.html,
+          preview: fb.preview,
+          createdAt: fb.createdAt || Date.now(),
+          isCustom: true,
+          source: getBlockSource(fb.filePath!), // filePath guaranteed by filter
+          filePath: fb.filePath, // Store full file path
+        }));
     } catch (err) {
-      console.warn("File API unavailable:", err);
+      logger.warn("BlockLibrary", "File API unavailable", err);
       return [];
     }
   }, []);
@@ -104,14 +109,14 @@ export default function BlockLibrary() {
         // Get storage locations from localStorage (only visible ones)
         const locations = getStorageLocations(false); // Exclude hidden
 
-        // Load blocks based on configured locations
-        const [custom, files] = await Promise.all([
+        // Load blocks from all sources
+        const [predefined, custom, files] = await Promise.all([
+          loadPredefinedBlocks(),
           Promise.resolve(loadCustomBlocks()),
           loadFileBlocks(),
         ]);
 
-        // Don't load predefined blocks from src - only show user-configured locations
-        setPredefinedBlocks([]);
+        setPredefinedBlocks(predefined);
         setCustomBlocks(custom.map((b) => ({ ...b, source: "localStorage" })));
 
         // If no visible locations configured, don't show any file blocks
@@ -123,13 +128,24 @@ export default function BlockLibrary() {
           const filteredFiles = files.filter((block) => {
             if (!block.filePath) return false;
             // Check if block's file path matches any visible configured location
-            return Array.from(allowedPaths).some((path) => block.filePath.includes(path));
+            return Array.from(allowedPaths).some((path) => block.filePath!.includes(path));
           });
           setFileBlocks(filteredFiles);
         }
+
+        // Preload зображень з усіх блоків в кеш (в фоні, не блокує UI)
+        const allBlocksForPreload = [
+          ...predefined,
+          ...custom.map((b) => ({ ...b, source: "localStorage" })),
+          ...files,
+        ];
+        preloadBlocksImages(allBlocksForPreload).catch((error) => {
+          // Ігноруємо помилки preloading - це не критично
+          logger.warn("BlockLibrary", "Failed to preload block images", error);
+        });
       } catch (err) {
         const error = err instanceof Error ? err.message : "Unknown error";
-        console.error("Failed to load blocks:", error);
+        logger.error("BlockLibrary", "Failed to load blocks", err);
         setError(`Failed to load blocks: ${error}`);
       } finally {
         setLoading(false);
@@ -190,12 +206,12 @@ export default function BlockLibrary() {
               const allowedPaths = new Set(locations.map((loc) => loc.path));
               const filteredFiles = files.filter((block) => {
                 if (!block.filePath) return false;
-                return Array.from(allowedPaths).some((path) => block.filePath.includes(path));
+                return Array.from(allowedPaths).some((path) => block.filePath!.includes(path));
               });
               setFileBlocks(filteredFiles);
             }
           } catch (error) {
-            console.error("Failed to delete file block:", error);
+            logger.error("BlockLibrary", "Failed to delete file block", error);
             setError(formatErrorMessage(error));
           }
           return;
@@ -246,12 +262,12 @@ export default function BlockLibrary() {
               const allowedPaths = new Set(locations.map((loc) => loc.path));
               const filteredFiles = files.filter((block) => {
                 if (!block.filePath) return false;
-                return Array.from(allowedPaths).some((path) => block.filePath.includes(path));
+                return Array.from(allowedPaths).some((path) => block.filePath!.includes(path));
               });
               setFileBlocks(filteredFiles);
             }
           } catch (error) {
-            console.error("Failed to update file block:", error);
+            logger.error("BlockLibrary", "Failed to update file block", error);
             setError(formatErrorMessage(error));
           }
           return;
@@ -260,27 +276,31 @@ export default function BlockLibrary() {
         // Check if it's a custom block
         const customBlock = customBlocks.find((b) => b.id === updatedBlock.id);
         if (customBlock) {
-          const updatedCustomBlocks = customBlocks.map((b) =>
-            b.id === updatedBlock.id ? { ...updatedBlock, source: "localStorage" } : b
+          const updatedCustomBlocks: EmailBlock[] = customBlocks.map((b) =>
+            b.id === updatedBlock.id ? { ...updatedBlock, source: "localStorage" as const } : b
           );
           try {
             saveCustomBlocks(updatedCustomBlocks);
             setCustomBlocks(updatedCustomBlocks);
           } catch (error) {
-            console.error("Failed to save custom block:", error);
+            logger.error("BlockLibrary", "Failed to save custom block", error);
             setError(formatErrorMessage(error));
           }
           return;
         }
 
         // Predefined block - save as new custom block
-        const newCustomBlock = { ...updatedBlock, isCustom: true, source: "localStorage" };
-        const updatedCustomBlocks = [...customBlocks, newCustomBlock];
+        const newCustomBlock: EmailBlock = {
+          ...updatedBlock,
+          isCustom: true,
+          source: "localStorage" as const,
+        };
+        const updatedCustomBlocks: EmailBlock[] = [...customBlocks, newCustomBlock];
         try {
           saveCustomBlocks(updatedCustomBlocks);
           setCustomBlocks(updatedCustomBlocks);
         } catch (error) {
-          console.error("Failed to save custom block:", error);
+          logger.error("BlockLibrary", "Failed to save custom block", error);
           setError(formatErrorMessage(error));
         }
       } finally {
@@ -310,7 +330,7 @@ export default function BlockLibrary() {
       const allowedPaths = new Set(locations.map((loc) => loc.path));
       const filteredFiles = files.filter((block) => {
         if (!block.filePath) return false;
-        return Array.from(allowedPaths).some((path) => block.filePath.includes(path));
+        return Array.from(allowedPaths).some((path) => block.filePath!.includes(path));
       });
       setFileBlocks(filteredFiles);
     }
@@ -369,9 +389,15 @@ export default function BlockLibrary() {
 
   return (
     <Box
-      p={3}
-      sx={{ overflow: "auto", maxHeight: "100vh" }}
+      data-app-scroll="true"
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        overflow: filteredBlocks.length === 0 ? "auto" : "hidden",
+      }}
     >
+      <Box sx={{ p: 3, pb: 0 }}>
       <Box
         display='flex'
         justifyContent='space-between'
@@ -402,9 +428,11 @@ export default function BlockLibrary() {
             onClick={async () => {
               setLoading(true);
               try {
-                const predefined = loadPredefinedBlocks();
-                const files = await loadFileBlocks();
-                const custom = loadCustomBlocks();
+                const [predefined, files, custom] = await Promise.all([
+                  Promise.resolve(loadPredefinedBlocks()),
+                  loadFileBlocks(),
+                  Promise.resolve(loadCustomBlocks()),
+                ]);
 
                 setPredefinedBlocks(predefined);
 
@@ -416,7 +444,7 @@ export default function BlockLibrary() {
                   const allowedPaths = new Set(locations.map((loc) => loc.path));
                   const filteredFiles = files.filter((block) => {
                     if (!block.filePath) return false;
-                    return Array.from(allowedPaths).some((path) => block.filePath.includes(path));
+                    return Array.from(allowedPaths).some((path) => block.filePath!.includes(path));
                   });
                   setFileBlocks(filteredFiles);
                 }
@@ -489,7 +517,9 @@ export default function BlockLibrary() {
                 <InputLabel>Source</InputLabel>
                 <Select
                   value={blockSource}
-                  onChange={(e) => setBlockSource(e.target.value as string)}
+                  onChange={(e) =>
+                    setBlockSource(e.target.value as "all" | "src" | "data" | "localStorage")
+                  }
                   label='Source'
                 >
                   <MenuItem value='all'>
@@ -579,6 +609,7 @@ export default function BlockLibrary() {
           </Grid>
         </CardContent>
       </Card>
+      </Box>
 
       {/* Blocks Grid */}
       {filteredBlocks.length === 0 ? (
@@ -589,6 +620,7 @@ export default function BlockLibrary() {
           justifyContent='center'
           minHeight={400}
           textAlign='center'
+          sx={{ p: 3 }}
         >
           {getStorageLocations(false).length === 0 && !searchQuery && selectedCategory === "All" ? (
             <>
@@ -683,31 +715,15 @@ export default function BlockLibrary() {
           )}
         </Box>
       ) : (
-        <Grid
-          container
-          spacing={2}
-        >
-          {filteredBlocks.map((block) => {
-            const isFileBlock = fileBlocks.some((fb) => fb.id === block.id);
-
-            return (
-              <Grid
-                item
-                xs={12}
-                sm={6}
-                md={4}
-                key={`${block.source || "unknown"}-${block.id}`}
-              >
-                <BlockItem
-                  block={block}
-                  onDelete={handleDeleteBlock}
-                  onUpdate={handleUpdateBlock}
-                  isFileBlock={isFileBlock}
-                />
-              </Grid>
-            );
-          })}
-        </Grid>
+        /* Virtualized Blocks Grid - рендерить лише видимі елементи */
+        <Box sx={{ flex: 1, minHeight: 400, px: 3, pb: 3 }}>
+          <VirtualizedBlockGrid
+            blocks={filteredBlocks}
+            fileBlocks={fileBlocks}
+            onDelete={handleDeleteBlock}
+            onUpdate={handleUpdateBlock}
+          />
+        </Box>
       )}
 
       {/* Add Block Modal */}

@@ -31,8 +31,9 @@ import { BlockCategory, EmailBlock } from "../types/block";
 
 import { blockFileApi } from "./blockFileApi";
 import { addCustomBlock } from "./blockLoader";
-import { getDefaultLocation, getStorageLocations } from "./blockStorageConfig";
+import { getStorageLocations } from "./blockStorageConfig";
 import { VALIDATION } from "./constants";
+import { logger } from "../utils/logger";
 
 interface AddBlockModalProps {
   open: boolean;
@@ -198,7 +199,7 @@ export default function AddBlockModal({ open, onClose, onBlockAdded }: AddBlockM
       handleReset();
       onClose();
     } catch (err) {
-      console.error("Failed to add block:", err);
+      logger.error("AddBlockModal", "Failed to add block", err);
       const message = err instanceof Error ? err.message : "Failed to add block. Please try again.";
       setError(message);
     } finally {

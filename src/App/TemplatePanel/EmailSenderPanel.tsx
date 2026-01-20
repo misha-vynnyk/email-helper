@@ -8,10 +8,13 @@ import { EmailSenderProvider } from "../../emailSender/EmailSenderContext";
 const EmailCredentialsForm = lazy(() => import("../../emailSender/EmailCredentialsForm"));
 const EmailHtmlEditor = lazy(() => import("../../emailSender/EmailHtmlEditor"));
 
-// Основний компонент панелі
+// Main content of the email sender panel
 const EmailSenderPanelContent: React.FC = () => {
   return (
-    <Box sx={{ height: "100%", display: "flex", flexDirection: "column", overflow: "auto", p: 2 }}>
+    <Box
+      data-app-scroll="true"
+      sx={{ height: "100%", display: "flex", flexDirection: "column", overflow: "auto", p: 2 }}
+    >
       <Typography
         variant='h5'
         sx={{ mb: 3, display: "flex", alignItems: "center", gap: 1 }}
