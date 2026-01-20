@@ -35,6 +35,7 @@ import {
 } from "@mui/material";
 
 import { triggerRegistrationStatusUpdate } from "../../hooks/useRegistrationStatus";
+import { logger } from "../../utils/logger";
 
 interface RegistrationFormProps {
   open: boolean;
@@ -187,7 +188,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
       setActiveStep(0);
       setErrors({});
     } catch (error) {
-      console.error("Registration error", error);
+      logger.error("RegistrationForm", "Registration error", error);
       toast.error("Failed to save registration. Please try again.");
     } finally {
       setLoading(false);

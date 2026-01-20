@@ -3,7 +3,7 @@
  * Manage storage locations for new blocks with add/remove capabilities
  */
 
-import React, { useState } from "react";
+import { useState } from "react";
 
 import {
   Add as AddIcon,
@@ -189,7 +189,10 @@ export default function BlockStorageModal({ open, onClose, onSave }: BlockStorag
           severity='info'
           sx={{ mb: 3 }}
         >
-          <Typography variant='body2'>
+          <Typography
+            variant='body2'
+            component='div'
+          >
             <strong>💡 Paths:</strong> Use <strong>relative</strong> paths (e.g. `src/blocks`) or{" "}
             <strong>absolute</strong> paths within your Documents folder. Click ⭐ to set default.
           </Typography>
@@ -243,11 +246,13 @@ export default function BlockStorageModal({ open, onClose, onSave }: BlockStorag
                       )}
                     </Box>
                   }
+                  primaryTypographyProps={{ component: "div" }}
                   secondary={
-                    <Box>
+                    <Box component='div'>
                       <Typography
                         variant='caption'
                         color='text.secondary'
+                        component='div'
                         display='block'
                       >
                         📁 {location.path}
@@ -256,6 +261,7 @@ export default function BlockStorageModal({ open, onClose, onSave }: BlockStorag
                         <Typography
                           variant='caption'
                           color='text.secondary'
+                          component='div'
                           display='block'
                         >
                           {location.description}
@@ -263,6 +269,7 @@ export default function BlockStorageModal({ open, onClose, onSave }: BlockStorag
                       )}
                     </Box>
                   }
+                  secondaryTypographyProps={{ component: "div" }}
                 />
                 <Box
                   display='flex'
@@ -390,7 +397,10 @@ export default function BlockStorageModal({ open, onClose, onSave }: BlockStorag
           severity='warning'
           sx={{ mt: 2 }}
         >
-          <Typography variant='caption'>
+          <Typography
+            variant='caption'
+            component='div'
+          >
             <strong>Security:</strong> Paths outside project directory must be within your Documents
             folder. Backend validates all paths to prevent unauthorized access.
           </Typography>

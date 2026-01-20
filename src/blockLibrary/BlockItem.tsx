@@ -34,8 +34,13 @@ import {
   TextField,
   Tooltip,
   Typography,
+  useTheme,
 } from "@mui/material";
 
+import { useThemeMode } from "../theme";
+import { getComponentStyles } from "../theme/componentStyles";
+
+import { logger } from "../utils/logger";
 import { EmailBlock } from "../types/block";
 
 import { blockFileApi } from "./blockFileApi";
@@ -53,12 +58,16 @@ interface BlockItemProps {
   isFileBlock?: boolean; // NEW: Indicates if this is a file-based block
 }
 
-export default function BlockItem({
+function BlockItem({
   block,
   onDelete,
   onUpdate,
   isFileBlock = false,
 }: BlockItemProps) {
+  const theme = useTheme();
+  const { mode, style } = useThemeMode();
+  const componentStyles = getComponentStyles(mode, style);
+
   // ✅ useMemo: Wrap HTML only when block.html changes
   const wrappedPreviewHtml = useMemo(() => wrapInTemplate(block.html), [block.html]);
 
@@ -81,14 +90,12 @@ export default function BlockItem({
           let displayPath = dirPath;
 
           // Remove common prefixes for cleaner display
-          const pathsToTrim = [
-            "/Users/mykhailo.vynnyk/Documents/projects/email-helper/",
-            "/Users/mykhailo.vynnyk/Documents/",
-          ];
-
-          for (const prefix of pathsToTrim) {
-            if (prefix && dirPath.startsWith(prefix)) {
-              displayPath = dirPath.substring(prefix.length);
+          // Try to extract meaningful path segments instead of hardcoded paths
+          const commonPrefixes = ["server/data/blocks/", "data/blocks/", "blocks/"];
+          for (const prefix of commonPrefixes) {
+            const prefixIndex = dirPath.indexOf(prefix);
+            if (prefixIndex !== -1) {
+              displayPath = dirPath.substring(prefixIndex);
               break;
             }
           }
@@ -200,7 +207,7 @@ export default function BlockItem({
       setCopySuccess(true);
     } catch (err) {
       const error = err instanceof Error ? err.message : "Unknown error";
-      console.error("Failed to copy block HTML:", error);
+      logger.error("BlockItem", "Failed to copy block HTML", err);
       setSnackbar({
         open: true,
         message: `Copy failed: ${error}. Check clipboard permissions.`,
@@ -266,7 +273,7 @@ export default function BlockItem({
       }
     } catch (err) {
       const error = err instanceof Error ? err.message : "Unknown error";
-      console.error("Failed to save block:", error);
+      logger.error("BlockItem", "Failed to save block", err);
 
       if (error.includes("network") || error.includes("fetch")) {
         setSaveError("Network error. Check your connection.");
@@ -300,7 +307,7 @@ export default function BlockItem({
       });
     } catch (err) {
       const error = err instanceof Error ? err.message : "Unknown error";
-      console.error("Failed to delete block:", error);
+      logger.error("BlockItem", "Failed to delete block", err);
 
       setSnackbar({
         open: true,
@@ -319,11 +326,20 @@ export default function BlockItem({
           height: "100%",
           display: "flex",
           flexDirection: "column",
-          transition: "transform 0.2s, box-shadow 0.2s",
-          "&:hover": {
-            transform: "translateY(-4px)",
-            boxShadow: 4,
-          },
+          borderRadius: `${componentStyles.card.borderRadius}px`,
+          background: componentStyles.card.background || theme.palette.background.paper,
+          backdropFilter: componentStyles.card.backdropFilter,
+          WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
+          border: componentStyles.card.border,
+          boxShadow: componentStyles.card.boxShadow,
+          transition: "transform 0.2s ease, box-shadow 0.2s ease",
+          "&:hover": componentStyles.card.hover
+            ? {
+                transform: componentStyles.card.hover.transform,
+                boxShadow: componentStyles.card.hover.boxShadow,
+                border: componentStyles.card.hover.border || componentStyles.card.border,
+              }
+            : {},
         }}
       >
         {/* Preview Area */}
@@ -331,7 +347,7 @@ export default function BlockItem({
           sx={{
             position: "relative",
             height: GRID.PREVIEW_HEIGHT,
-            backgroundColor: "#f5f5f5",
+            backgroundColor: theme.palette.action.hover,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -778,3 +794,13 @@ export default function BlockItem({
     </>
   );
 }
+
+// Мемоізуємо компонент для запобігання зайвих ре-рендерів
+export default React.memo(BlockItem, (prevProps, nextProps) => {
+  return (
+    prevProps.block.id === nextProps.block.id &&
+    prevProps.block.name === nextProps.block.name &&
+    prevProps.block.html === nextProps.block.html &&
+    prevProps.isFileBlock === nextProps.isFileBlock
+  );
+});

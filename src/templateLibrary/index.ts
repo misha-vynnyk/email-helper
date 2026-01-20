@@ -1,11 +1,14 @@
 /**
- * Template Library - Barrel Export
+ * Template Library Public API
  */
 
-export { default as TemplateLibrary } from './TemplateLibrary';
-export { default as TemplateItem } from './TemplateItem';
-export { default as DirectoryManagementModal } from './DirectoryManagementModal';
-export { default as PreviewSettings } from './PreviewSettings';
-export type { PreviewConfig } from './PreviewSettings';
-export * from './templateApi';
-export * from './templateCategoryIcons';
+// Main component
+export { default as TemplateLibrary } from "./TemplateLibrary";
+
+// Types (from main types)
+export type { EmailTemplate, TemplateCategory } from "../types/template";
+
+// Components (for direct import if needed)
+export { default as DirectoryManagementModal } from "./DirectoryManagementModal";
+export { default as PreviewSettings } from "./PreviewSettings";
+export { default as TemplateItem } from "./TemplateItem";

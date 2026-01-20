@@ -5,7 +5,7 @@ export const EMAIL_DEFAULTS = {
   // Image dimensions
   DEFAULT_IMAGE_WIDTH: 600,
   DEFAULT_IMAGE_HEIGHT: 400,
-  DEFAULT_ALT_TEXT: 'Image',
+  DEFAULT_ALT_TEXT: "Image",
 
   // Table limits
   MAX_TABLES: 50,
@@ -30,8 +30,8 @@ export const EMAIL_DEFAULTS = {
   CACHE_CLEANUP_INTERVAL_MS: 10 * 60 * 1000, // 10 minutes
 
   // Default styles
-  DEFAULT_LINK_STYLES: 'color:#0000ff; text-decoration:none;',
-  DEFAULT_IMAGE_STYLES: 'display:block',
+  DEFAULT_LINK_STYLES: "color:#0000ff; text-decoration:none;",
+  DEFAULT_IMAGE_STYLES: "display:block",
 
   // Font sizes for headings
   HEADING_FONT_SIZES: {
@@ -120,18 +120,18 @@ export const CACHE_SCORING_WEIGHTS = {
 
 // Validation severity levels
 export const VALIDATION_SEVERITY = {
-  ERROR: 'error',
-  WARNING: 'warning',
-  INFO: 'info',
+  ERROR: "error",
+  WARNING: "warning",
+  INFO: "info",
 } as const;
 
 // Validation categories
 export const VALIDATION_CATEGORIES = {
-  STRUCTURE: 'structure',
-  ACCESSIBILITY: 'accessibility',
-  COMPATIBILITY: 'compatibility',
-  PERFORMANCE: 'performance',
-  BEST_PRACTICE: 'best-practice',
+  STRUCTURE: "structure",
+  ACCESSIBILITY: "accessibility",
+  COMPATIBILITY: "compatibility",
+  PERFORMANCE: "performance",
+  BEST_PRACTICE: "best-practice",
 } as const;
 
 // Common regex patterns that are reused
@@ -144,7 +144,7 @@ export const COMMON_PATTERNS = {
   MALFORMED_HREF_NO_EQUALS: /\s+href\s+([^"\s>]+)/gi,
   MALFORMED_HREF_WITH_QUOTES: /\s+href\s+"([^"]*)"([^>]*)/gi,
   // Default values
-  DEFAULT_HREF_VALUE: 'urlhere',
+  DEFAULT_HREF_VALUE: "urlhere",
 } as const;
 
 // HTML structure validation patterns
@@ -166,32 +166,32 @@ export const TIME_CONSTANTS = {
 
 // Error messages and constants
 export const ERROR_MESSAGES = {
-  HTML_TOO_LARGE: 'HTML is too large for validation',
-  HTML_TOO_LARGE_FOR_AUTOFIX: 'HTML too large for autofix',
-  VALIDATION_FAILED: 'Validation failed',
-  AUTOFIX_FAILED: 'Autofix failed',
-  RULE_NOT_FOUND: 'Rule not found',
-  INVALID_HTML_INPUT: 'Invalid HTML input: must be a non-empty string',
-  INVALID_RULE_NAME: 'Rule name is required',
-  INVALID_SEVERITY: 'Invalid severity level. Must be error, warning, or info',
-  INVALID_CONFIG: 'Invalid configuration provided',
-  VALIDATOR_DISPOSED: 'EmailHTMLValidator has been disposed and cannot be used',
+  HTML_TOO_LARGE: "HTML is too large for validation",
+  HTML_TOO_LARGE_FOR_AUTOFIX: "HTML too large for autofix",
+  VALIDATION_FAILED: "Validation failed",
+  AUTOFIX_FAILED: "Autofix failed",
+  RULE_NOT_FOUND: "Rule not found",
+  INVALID_HTML_INPUT: "Invalid HTML input: must be a non-empty string",
+  INVALID_RULE_NAME: "Rule name is required",
+  INVALID_SEVERITY: "Invalid severity level. Must be error, warning, or info",
+  INVALID_CONFIG: "Invalid configuration provided",
+  VALIDATOR_DISPOSED: "EmailHTMLValidator has been disposed and cannot be used",
 } as const;
 
 // Configuration validation constants
 export const CONFIG_VALIDATION = {
   MIN_HTML_SIZE_BYTES: 1,
   MIN_FILE_SIZE_KB: 1,
-  VALID_SEVERITY_LEVELS: ['error', 'warning', 'info'] as const,
+  VALID_SEVERITY_LEVELS: ["error", "warning", "info"] as const,
 } as const;
 
 // Logging constants
 export const LOGGING_CONSTANTS = {
-  SLOW_OPERATION_PREFIX: 'Slow operation detected',
-  CACHE_CLEANUP_PREFIX: 'Cache cleanup completed',
-  STATISTICS_RESET_PREFIX: 'Statistics reset',
-  DISPOSAL_PREFIX: 'disposed successfully',
-  GARBAGE_COLLECTION_PREFIX: 'Garbage collection triggered',
+  SLOW_OPERATION_PREFIX: "Slow operation detected",
+  CACHE_CLEANUP_PREFIX: "Cache cleanup completed",
+  STATISTICS_RESET_PREFIX: "Statistics reset",
+  DISPOSAL_PREFIX: "disposed successfully",
+  GARBAGE_COLLECTION_PREFIX: "Garbage collection triggered",
 } as const;
 
 // Type exports for use in other files

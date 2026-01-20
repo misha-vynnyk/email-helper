@@ -1,7 +1,7 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { Component, ErrorInfo, ReactNode } from "react";
 
-import { Refresh as RefreshIcon } from '@mui/icons-material';
-import { Alert, Box, Button, Typography } from '@mui/material';
+import { Refresh as RefreshIcon } from "@mui/icons-material";
+import { Alert, Box, Button, Typography } from "@mui/material";
 
 interface Props {
   children: ReactNode;
@@ -45,18 +45,30 @@ export class SectionErrorBoundary extends Component<Props, State> {
       return (
         <Box p={2}>
           <Alert
-            severity="error"
+            severity='error'
             action={
-              <Button color="inherit" size="small" startIcon={<RefreshIcon />} onClick={this.handleReset}>
+              <Button
+                color='inherit'
+                size='small'
+                startIcon={<RefreshIcon />}
+                onClick={this.handleReset}
+              >
                 Retry
               </Button>
             }
           >
-            <Typography variant="body2" gutterBottom>
+            <Typography
+              variant='body2'
+              gutterBottom
+            >
               Something went wrong in the <strong>{this.props.sectionName}</strong> section.
             </Typography>
             {this.state.error && (
-              <Typography variant="caption" component="pre" sx={{ mt: 1, fontSize: '0.75rem' }}>
+              <Typography
+                variant='caption'
+                component='pre'
+                sx={{ mt: 1, fontSize: "0.75rem" }}
+              >
                 {this.state.error.message}
               </Typography>
             )}
@@ -77,7 +89,10 @@ export function withErrorBoundary<P extends object>(
 ) {
   return function WithErrorBoundary(props: P) {
     return (
-      <SectionErrorBoundary sectionName={sectionName} fallback={fallback}>
+      <SectionErrorBoundary
+        sectionName={sectionName}
+        fallback={fallback}
+      >
         <Component {...props} />
       </SectionErrorBoundary>
     );

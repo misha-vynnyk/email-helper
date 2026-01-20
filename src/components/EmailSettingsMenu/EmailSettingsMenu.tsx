@@ -37,6 +37,7 @@ import {
   triggerRegistrationStatusUpdate,
   useRegistrationStatus,
 } from "../../hooks/useRegistrationStatus";
+import { logger } from "../../utils/logger";
 
 interface EmailSettingsMenuProps {
   open: boolean;
@@ -56,7 +57,6 @@ export const EmailSettingsMenu: React.FC<EmailSettingsMenuProps> = ({
   const handleDeleteCredentials = () => {
     try {
       localStorage.removeItem("emailSenderCredentials");
-      localStorage.removeItem("emailSenderForm");
       localStorage.removeItem("emailSenderUseStorageToggle");
 
       toast.success("Email credentials deleted successfully");
@@ -64,7 +64,7 @@ export const EmailSettingsMenu: React.FC<EmailSettingsMenuProps> = ({
       setDeleteConfirmOpen(false);
       onClose();
     } catch (error) {
-      console.error("Error deleting credentials", error);
+      logger.error("EmailSettingsMenu", "Error deleting credentials", error);
       toast.error("Failed to delete credentials");
     }
   };

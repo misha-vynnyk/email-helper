@@ -1,12 +1,15 @@
-import { motion } from 'framer-motion';
-import React from 'react';
+import { motion } from "framer-motion";
 
-import { Download as DownloadIcon } from '@mui/icons-material';
-import { Box, Button, Paper, Typography } from '@mui/material';
+import {
+  Download as DownloadIcon,
+  DeleteSweep as ClearIcon,
+  PlayArrow as ConvertIcon,
+} from "@mui/icons-material";
+import { Box, Button, Chip, Typography } from "@mui/material";
 
-import { useImageConverter } from '../context/ImageConverterContext';
-import { useImageStats } from '../hooks/useImageStats';
-import { formatFileSize } from '../utils/clientConverter';
+import { useImageConverter } from "../context/ImageConverterContext";
+import { useImageStats } from "../hooks/useImageStats";
+import { formatFileSize } from "../utils/clientConverter";
 
 export default function BatchProcessor() {
   const { files, settings, clearFiles, downloadAll, convertAll } = useImageConverter();
@@ -17,62 +20,88 @@ export default function BatchProcessor() {
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-      <Paper elevation={2} sx={{ p: 2, borderRadius: 5 }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center" >
-          {/* Stats */}
-          <Box>
-            {stats.completed > 0 && (
-              <Typography variant="body2" color="text.secondary">
-                <strong>{stats.completed}</strong> / {stats.total} converted •
-                <span style={{ color: '#4caf50', fontWeight: 600, marginLeft: 4 }}>
-                  {formatFileSize(stats.savedSize)} saved ({stats.savedPercent}%)
-                </span>
-              </Typography>
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        p: 2,
+        gap: 2,
+      }}
+    >
+      {/* Stats Section */}
+      <Box display="flex" alignItems="center" gap={2}>
+        {stats.completed > 0 ? (
+          <>
+            <Typography variant="body2" color="text.secondary">
+              <strong>{stats.completed}</strong> / {stats.total} converted
+            </Typography>
+            <Chip
+              size="small"
+              color="success"
+              label={`${formatFileSize(stats.savedSize)} saved (${stats.savedPercent}%)`}
+              sx={{ fontWeight: 600 }}
+            />
+          </>
+        ) : (
+          <Typography variant="body2" color="text.secondary">
+            {stats.processing > 0 ? (
+              <>Processing {stats.processing} {stats.processing === 1 ? "image" : "images"}...</>
+            ) : (
+              <>Ready to convert {stats.total} {stats.total === 1 ? "image" : "images"}</>
             )}
-            {stats.completed === 0 && (
-              <Typography variant="body2" color="text.secondary">
-                Ready to convert {stats.total} {stats.total === 1 ? 'image' : 'images'}
-              </Typography>
-            )}
-          </Box>
+          </Typography>
+        )}
+      </Box>
 
-          {/* Actions */}
-          <Box display="flex" gap={1}>
-            {!settings.autoConvert && stats.total > stats.completed && (
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Button
-                  variant="contained"
-                  onClick={convertAll}
-                  disabled={stats.processing > 0}
-                  sx={{ textTransform: 'none' }}
-                >
-                  Convert All
-                </Button>
-              </motion.div>
-            )}
-            {stats.completed > 0 && (
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Button
-                  variant="outlined"
-                  startIcon={<DownloadIcon />}
-                  onClick={downloadAll}
-                  sx={{ textTransform: 'none' }}
-                >
-                  Download All
-                </Button>
-              </motion.div>
-            )}
-            {stats.total > 0 && (
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Button variant="outlined" color="error" onClick={clearFiles} sx={{ textTransform: 'none' }}>
-                  Clear All
-                </Button>
-              </motion.div>
-            )}
-          </Box>
-        </Box>
-      </Paper>
-    </motion.div>
+      {/* Actions Section */}
+      <Box display="flex" gap={1}>
+        {/* Convert All Button */}
+        {!settings.autoConvert && stats.total > stats.completed && (
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<ConvertIcon />}
+              onClick={convertAll}
+              disabled={stats.processing > 0}
+              sx={{ textTransform: "none", fontWeight: 600 }}
+            >
+              Convert All
+            </Button>
+          </motion.div>
+        )}
+
+        {/* Download All Button */}
+        {stats.completed > 0 && (
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <Button
+              variant="contained"
+              color="success"
+              startIcon={<DownloadIcon />}
+              onClick={downloadAll}
+              sx={{ textTransform: "none", fontWeight: 600 }}
+            >
+              Download All
+            </Button>
+          </motion.div>
+        )}
+
+        {/* Clear All Button */}
+        {stats.total > 0 && (
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <Button
+              variant="outlined"
+              color="error"
+              startIcon={<ClearIcon />}
+              onClick={clearFiles}
+              sx={{ textTransform: "none" }}
+            >
+              Clear All
+            </Button>
+          </motion.div>
+        )}
+      </Box>
+    </Box>
   );
 }

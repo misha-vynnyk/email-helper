@@ -2,14 +2,19 @@ import React from "react";
 
 import { html } from "@codemirror/lang-html";
 import { Clear, Code, Send } from "@mui/icons-material";
-import { Alert, Box, Button, Stack, TextField, Typography } from "@mui/material";
+import { alpha, Alert, Box, Button, Stack, TextField, Typography, useTheme } from "@mui/material";
 import CodeMirror from "@uiw/react-codemirror";
 
 import EmailValidationPanel from "../emailValidator/EmailValidationPanel";
+import { useThemeMode } from "../theme";
+import { createCodeMirrorTheme } from "../utils/codemirrorTheme";
 
 import { useEmailSender } from "./EmailSenderContext";
 
 const EmailHtmlEditor: React.FC = () => {
+  const theme = useTheme();
+  const { mode, style } = useThemeMode();
+  const codeMirrorTheme = createCodeMirrorTheme(theme, mode, style);
   const {
     editorHtml,
     setEditorHtml,
@@ -90,15 +95,15 @@ const EmailHtmlEditor: React.FC = () => {
                 borderColor: "divider",
                 borderRadius: 2,
                 overflow: "hidden",
-                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
-                "& .cm-editor": {
-                  fontSize: "14px",
+                boxShadow: theme.shadows[2],
+                "& .cm-selectionLayer .cm-selectionBackground": {
+                  backgroundColor: `${alpha(theme.palette.primary.main, 0.25)} !important`,
                 },
-                "& .cm-focused": {
-                  outline: "none",
+                "& .cm-selectionBackground": {
+                  backgroundColor: `${alpha(theme.palette.primary.main, 0.25)} !important`,
                 },
-                "& .cm-editor .cm-scroller": {
-                  fontFamily: "monospace",
+                "& .cm-content ::selection": {
+                  backgroundColor: `${alpha(theme.palette.primary.main, 0.25)} !important`,
                 },
               }}
             >
@@ -106,18 +111,19 @@ const EmailHtmlEditor: React.FC = () => {
                 value={editorHtml}
                 onChange={(value) => setEditorHtml(value)}
                 height='400px'
-                extensions={[html()]}
+                extensions={[html(), ...codeMirrorTheme]}
                 theme={undefined}
                 basicSetup={{
                   lineNumbers: true,
                   foldGutter: true,
-                  dropCursor: false,
+                  dropCursor: true,
                   allowMultipleSelections: false,
                   indentOnInput: true,
                   bracketMatching: true,
                   closeBrackets: true,
                   autocompletion: true,
-                  highlightSelectionMatches: false,
+                  highlightSelectionMatches: true,
+                  searchKeymap: true,
                 }}
               />
             </Box>
@@ -136,7 +142,7 @@ const EmailHtmlEditor: React.FC = () => {
           p: 2,
           mx: -2,
           mt: 2,
-          boxShadow: "0px -2px 8px rgba(0, 0, 0, 0.1)",
+          boxShadow: theme.shadows[2],
           zIndex: 10,
         }}
       >
@@ -190,7 +196,7 @@ const EmailHtmlEditor: React.FC = () => {
                 "&:hover": {
                   bgcolor: isDisabled ? undefined : "success.dark",
                   transform: "translateY(-1px)",
-                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+                  boxShadow: theme.shadows[4],
                 },
                 "&:disabled": {
                   opacity: 0.6,

@@ -3,7 +3,7 @@
  * Visual icons for each block category
  */
 
-import React from 'react';
+import React from "react";
 
 import {
   Article as ArticleIcon,
@@ -13,18 +13,18 @@ import {
   Star as StarIcon,
   VerticalAlignBottom as VerticalAlignBottomIcon,
   ViewAgenda as ViewAgendaIcon,
-} from '@mui/icons-material';
+} from "@mui/icons-material";
 
 export const CATEGORY_ICONS: Record<string, React.ReactElement> = {
-  Structure: <GridOnIcon fontSize="small" />,
-  Layout: <GridOnIcon fontSize="small" />,
-  Content: <ArticleIcon fontSize="small" />,
-  Buttons: <SmartButtonIcon fontSize="small" />,
-  Footer: <VerticalAlignBottomIcon fontSize="small" />,
-  Footers: <VerticalAlignBottomIcon fontSize="small" />,
-  Headers: <ViewAgendaIcon fontSize="small" />,
-  Social: <ShareIcon fontSize="small" />,
-  Custom: <StarIcon fontSize="small" />,
+  Structure: <GridOnIcon fontSize='small' />,
+  Layout: <GridOnIcon fontSize='small' />,
+  Content: <ArticleIcon fontSize='small' />,
+  Buttons: <SmartButtonIcon fontSize='small' />,
+  Footer: <VerticalAlignBottomIcon fontSize='small' />,
+  Footers: <VerticalAlignBottomIcon fontSize='small' />,
+  Headers: <ViewAgendaIcon fontSize='small' />,
+  Social: <ShareIcon fontSize='small' />,
+  Custom: <StarIcon fontSize='small' />,
 };
 
 /**

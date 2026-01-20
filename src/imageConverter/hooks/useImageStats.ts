@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo } from "react";
 
-import { ImageFile } from '../types';
+import { ImageFile } from "../types";
 
 export interface ImageStats {
   total: number;
@@ -16,13 +16,14 @@ export interface ImageStats {
 export function useImageStats(files: ImageFile[]): ImageStats {
   return useMemo(() => {
     const total = files.length;
-    const completed = files.filter((f) => f.status === 'done').length;
-    const failed = files.filter((f) => f.status === 'error').length;
-    const processing = files.filter((f) => f.status === 'processing').length;
+    const completed = files.filter((f) => f.status === "done").length;
+    const failed = files.filter((f) => f.status === "error").length;
+    const processing = files.filter((f) => f.status === "processing").length;
     const originalTotalSize = files.reduce((sum, f) => sum + f.originalSize, 0);
     const convertedTotalSize = files.reduce((sum, f) => sum + (f.convertedSize || 0), 0);
     const savedSize = originalTotalSize - convertedTotalSize;
-    const savedPercent = originalTotalSize > 0 ? Math.round((savedSize / originalTotalSize) * 100) : 0;
+    const savedPercent =
+      originalTotalSize > 0 ? Math.round((savedSize / originalTotalSize) * 100) : 0;
 
     return {
       total,
@@ -36,4 +37,3 @@ export function useImageStats(files: ImageFile[]): ImageStats {
     };
   }, [files]);
 }
-

@@ -1,5 +1,5 @@
-import { PERFORMANCE_CONSTANTS } from './EMAIL_CONSTANTS';
-import { HTMLNode } from './types';
+import { PERFORMANCE_CONSTANTS } from "./EMAIL_CONSTANTS";
+import { HTMLNode } from "./types";
 
 export class SimpleHTMLParser {
   private html: string;
@@ -34,12 +34,12 @@ export class SimpleHTMLParser {
 
         // Additional safety check
         if (iterations >= maxIterations) {
-          console.warn('HTML parser reached max iterations, stopping to prevent infinite loop');
+          console.warn("HTML parser reached max iterations, stopping to prevent infinite loop");
           break;
         }
       }
     } catch (error) {
-      console.warn('HTML parser error:', error);
+      console.warn("HTML parser error:", error);
       // Return what we have so far
     }
 
@@ -53,8 +53,8 @@ export class SimpleHTMLParser {
       return null;
     }
 
-    if (this.html[this.position] === '<') {
-      if (this.html.substr(this.position, 4) === '<!--') {
+    if (this.html[this.position] === "<") {
+      if (this.html.substr(this.position, 4) === "<!--") {
         return this.parseComment();
       }
       return this.parseElement();
@@ -67,20 +67,20 @@ export class SimpleHTMLParser {
     const startLine = this.line;
     const startColumn = this.column;
 
-    if (this.html[this.position] !== '<') {
+    if (this.html[this.position] !== "<") {
       return null;
     }
 
     this.advance(); // Skip '<'
 
     // Check for closing tag
-    const isClosing = this.html[this.position] === '/';
+    const isClosing = this.html[this.position] === "/";
     if (isClosing) {
       this.advance(); // Skip '/'
       const closingTagName = this.parseTagName();
       if (closingTagName) {
         // Skip '>' for closing tag
-        if (this.html[this.position] === '>') {
+        if (this.html[this.position] === ">") {
           this.advance();
         }
         return null; // Closing tags are handled by parseChildren
@@ -98,18 +98,18 @@ export class SimpleHTMLParser {
     const attributes = this.parseAttributes();
 
     // Check for self-closing
-    const isSelfClosing = this.html[this.position] === '/';
+    const isSelfClosing = this.html[this.position] === "/";
     if (isSelfClosing) {
       this.advance(); // Skip '/'
     }
 
     // Skip '>'
-    if (this.html[this.position] === '>') {
+    if (this.html[this.position] === ">") {
       this.advance();
     }
 
     const node: HTMLNode = {
-      type: 'element',
+      type: "element",
       tagName: tagName.toLowerCase(),
       attributes,
       line: startLine,
@@ -126,7 +126,7 @@ export class SimpleHTMLParser {
   }
 
   private parseTagName(): string {
-    let tagName = '';
+    let tagName = "";
 
     while (this.position < this.html.length && /[a-zA-Z0-9]/.test(this.html[this.position])) {
       tagName += this.html[this.position];
@@ -143,7 +143,11 @@ export class SimpleHTMLParser {
     const attributes: Record<string, string> = {};
 
     let safetyCounter = 0;
-    while (this.position < this.html.length && this.html[this.position] !== '>' && this.html[this.position] !== '/') {
+    while (
+      this.position < this.html.length &&
+      this.html[this.position] !== ">" &&
+      this.html[this.position] !== "/"
+    ) {
       const beforePos = this.position;
       this.skipWhitespace();
 
@@ -151,7 +155,7 @@ export class SimpleHTMLParser {
         break;
       }
 
-      if (this.html[this.position] === '>' || this.html[this.position] === '/') {
+      if (this.html[this.position] === ">" || this.html[this.position] === "/") {
         break;
       }
 
@@ -184,11 +188,11 @@ export class SimpleHTMLParser {
     this.skipWhitespace();
 
     if (this.position >= this.html.length) {
-      return { name, value: '' };
+      return { name, value: "" };
     }
 
-    if (this.html[this.position] !== '=') {
-      return { name, value: '' };
+    if (this.html[this.position] !== "=") {
+      return { name, value: "" };
     }
 
     this.advance(); // Skip '='
@@ -200,7 +204,7 @@ export class SimpleHTMLParser {
   }
 
   private parseAttributeName(): string {
-    let name = '';
+    let name = "";
 
     while (this.position < this.html.length && /[a-zA-Z0-9\-_:]/.test(this.html[this.position])) {
       name += this.html[this.position];
@@ -212,15 +216,15 @@ export class SimpleHTMLParser {
 
   private parseAttributeValue(): string {
     if (this.position >= this.html.length) {
-      return '';
+      return "";
     }
 
     const quote = this.html[this.position];
 
-    if (quote === '"' || quote === '\'') {
+    if (quote === '"' || quote === "'") {
       this.advance(); // Skip opening quote
 
-      let value = '';
+      let value = "";
       while (this.position < this.html.length && this.html[this.position] !== quote) {
         value += this.html[this.position];
         this.advance();
@@ -234,7 +238,7 @@ export class SimpleHTMLParser {
     }
 
     // Unquoted value
-    let value = '';
+    let value = "";
     while (this.position < this.html.length && !/[\s>]/.test(this.html[this.position])) {
       value += this.html[this.position];
       this.advance();
@@ -295,15 +299,15 @@ export class SimpleHTMLParser {
   private parseText(): HTMLNode {
     const startLine = this.line;
     const startColumn = this.column;
-    let content = '';
+    let content = "";
 
-    while (this.position < this.html.length && this.html[this.position] !== '<') {
+    while (this.position < this.html.length && this.html[this.position] !== "<") {
       content += this.html[this.position];
       this.advance();
     }
 
     return {
-      type: 'text',
+      type: "text",
       content: content.trim(),
       line: startLine,
       column: startColumn,
@@ -315,20 +319,20 @@ export class SimpleHTMLParser {
     const startColumn = this.column;
 
     this.position += 4; // Skip '<!--'
-    let content = '';
+    let content = "";
 
-    while (this.position < this.html.length && this.html.substr(this.position, 3) !== '-->') {
+    while (this.position < this.html.length && this.html.substr(this.position, 3) !== "-->") {
       content += this.html[this.position];
       this.advance();
     }
 
-    if (this.position < this.html.length && this.html.substr(this.position, 3) === '-->') {
+    if (this.position < this.html.length && this.html.substr(this.position, 3) === "-->") {
       this.position += 3;
       this.updatePosition();
     }
 
     return {
-      type: 'comment',
+      type: "comment",
       content,
       line: startLine,
       column: startColumn,
@@ -336,7 +340,7 @@ export class SimpleHTMLParser {
   }
 
   private isSelfClosingTag(tagName: string): boolean {
-    const selfClosingTags = ['br', 'img', 'hr', 'area', 'base', 'col', 'input'];
+    const selfClosingTags = ["br", "img", "hr", "area", "base", "col", "input"];
     return selfClosingTags.includes(tagName.toLowerCase());
   }
 
@@ -351,7 +355,7 @@ export class SimpleHTMLParser {
       return;
     }
 
-    if (this.html[this.position] === '\n') {
+    if (this.html[this.position] === "\n") {
       this.line++;
       this.column = 1;
     } else {
@@ -367,7 +371,7 @@ export class SimpleHTMLParser {
     // More robust position updating
     for (let i = 0; i < 3 && this.position - 3 + i >= 0; i++) {
       const char = this.html[this.position - 3 + i];
-      if (char === '\n') {
+      if (char === "\n") {
         this.line++;
         this.column = 1;
       } else {
@@ -401,7 +405,7 @@ export function findNodesByTagName(nodes: HTMLNode[], tagName: string): HTMLNode
   const found: HTMLNode[] = [];
 
   traverseAST(nodes, (node) => {
-    if (node.type === 'element' && node.tagName === tagName.toLowerCase()) {
+    if (node.type === "element" && node.tagName === tagName.toLowerCase()) {
       found.push(node);
     }
   });
@@ -409,7 +413,11 @@ export function findNodesByTagName(nodes: HTMLNode[], tagName: string): HTMLNode
   return found;
 }
 
-export function findNodesByAttribute(nodes: HTMLNode[], attributeName: string, attributeValue?: string): HTMLNode[] {
+export function findNodesByAttribute(
+  nodes: HTMLNode[],
+  attributeName: string,
+  attributeValue?: string
+): HTMLNode[] {
   if (!Array.isArray(nodes) || !attributeName) {
     return [];
   }
@@ -417,7 +425,7 @@ export function findNodesByAttribute(nodes: HTMLNode[], attributeName: string, a
   const found: HTMLNode[] = [];
 
   traverseAST(nodes, (node) => {
-    if (node.type === 'element' && node.attributes?.[attributeName]) {
+    if (node.type === "element" && node.attributes?.[attributeName]) {
       if (!attributeValue || node.attributes[attributeName] === attributeValue) {
         found.push(node);
       }

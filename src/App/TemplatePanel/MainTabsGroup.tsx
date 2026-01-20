@@ -3,7 +3,7 @@ import React from "react";
 import { EmailOutlined, FolderOpen, Image as ImageIcon, ViewModule } from "@mui/icons-material";
 import { Tab, Tabs, Tooltip } from "@mui/material";
 
-import { setSelectedMainTab, useSelectedMainTab } from "../../documents/editor/EditorContext";
+import { setSelectedMainTab, useSelectedMainTab } from "../../contexts/AppState";
 
 export default function MainTabsGroup() {
   const selectedMainTab = useSelectedMainTab();
@@ -12,11 +12,14 @@ export default function MainTabsGroup() {
     _: React.SyntheticEvent,
     v: "email" | "blocks" | "templates" | "images"
   ) => {
-    if (v === "email" || v === "blocks" || v === "templates" || v === "images") {
-      setSelectedMainTab(v);
-    } else {
-      setSelectedMainTab("email");
-    }
+    // Використовуємо startTransition для не блокуючої зміни табу
+    React.startTransition(() => {
+      if (v === "email" || v === "blocks" || v === "templates" || v === "images") {
+        setSelectedMainTab(v);
+      } else {
+        setSelectedMainTab("email");
+      }
+    });
   };
 
   return (
