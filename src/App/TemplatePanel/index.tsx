@@ -1,6 +1,6 @@
 import React from "react";
 
-import { Box, Stack } from "@mui/material";
+import { Box, CircularProgress, Fade, Stack } from "@mui/material";
 
 import { BlockLibrary } from "../../blockLibrary";
 import { useSelectedMainTab } from "../../contexts/AppState";
@@ -21,6 +21,9 @@ export default function TemplatePanel() {
   // useDeferredValue - рендер контенту відкладається, таб-індикатор оновлюється миттєво
   const deferredTab = React.useDeferredValue(selectedMainTab);
   const showAnimatedBackground = style !== "default";
+
+  // Індикатор переходу між табами
+  const isTransitioning = selectedMainTab !== deferredTab;
 
   // Відстежуємо які таби вже були відкриті для lazy mounting
   const [mountedTabs, setMountedTabs] = React.useState<Set<string>>(new Set(["email"]));
@@ -103,6 +106,31 @@ export default function TemplatePanel() {
         </Box>
       </Stack>
       <Box sx={{ height: "calc(100vh - 49px)", overflow: "hidden", minWidth: 370, position: "relative" }}>
+        {/* Loading overlay при переході між табами */}
+        <Fade in={isTransitioning} timeout={{ enter: 100, exit: 200 }}>
+          <Box
+            sx={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              backgroundColor: (theme) =>
+                theme.palette.mode === "dark"
+                  ? "rgba(0, 0, 0, 0.5)"
+                  : "rgba(255, 255, 255, 0.6)",
+              backdropFilter: "blur(4px)",
+              zIndex: 100,
+              pointerEvents: isTransitioning ? "auto" : "none",
+            }}
+          >
+            <CircularProgress size={40} />
+          </Box>
+        </Fade>
+
         {/* Lazy mounting: рендеримо таб лише якщо він був відкритий хоча б раз */}
         <TabPanel value="email" selectedValue={deferredTab} mounted={mountedTabs.has("email")}>
           <EmailSenderPanel />

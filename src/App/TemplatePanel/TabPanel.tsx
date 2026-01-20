@@ -4,7 +4,7 @@
  */
 
 import React from "react";
-import { Box } from "@mui/material";
+import { Box, Fade } from "@mui/material";
 
 interface TabPanelProps {
   children: React.ReactNode;
@@ -37,7 +37,11 @@ export default function TabPanel({ children, value, selectedValue, mounted }: Ta
         contentVisibility: isActive ? "visible" : "auto",
       }}
     >
-      {children}
+      <Fade in={isActive} timeout={200}>
+        <Box sx={{ height: "100%", width: "100%" }}>
+          {children}
+        </Box>
+      </Fade>
     </Box>
   );
 }
