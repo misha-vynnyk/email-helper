@@ -13,7 +13,6 @@ import {
   FormControlLabel,
   IconButton,
   Paper,
-  Slider,
   Stack,
   TextField,
   Tooltip,
@@ -26,16 +25,16 @@ import {
   Code as CodeIcon,
   ContentCopy as CopyIcon,
   Download as DownloadIcon,
-  Image as ImageIcon,
   Remove as RemoveIcon,
   SwapHoriz as ConvertIcon,
 } from "@mui/icons-material";
 
 import { useThemeMode } from "../theme";
 import { getComponentStyles } from "../theme/componentStyles";
-import { borderRadius, opacity, spacing, spacingMUI } from "../theme/tokens";
+import { borderRadius, opacity, spacingMUI } from "../theme/tokens";
 import { formatHtml, formatMjml } from "./formatter";
-import { downloadImagesFolder, setupPasteHandler } from "./imageUtils";
+import { setupPasteHandler } from "./imageUtils";
+import ImageProcessor from "./ImageProcessor";
 
 interface SectionHeaderProps {
   icon: React.ReactNode;
@@ -74,10 +73,38 @@ function SectionHeader({ icon, title, subtitle }: SectionHeaderProps) {
   );
 }
 
-export default function HtmlConverterPanel() {
+interface StyledPaperProps {
+  children: React.ReactNode;
+  sx?: any;
+}
+
+function StyledPaper({ children, sx = {} }: StyledPaperProps) {
   const theme = useTheme();
   const { mode, style } = useThemeMode();
   const componentStyles = getComponentStyles(mode, style);
+
+  return (
+    <Paper
+      elevation={0}
+      sx={{
+        p: spacingMUI.base,
+        borderRadius: `${componentStyles.card.borderRadius}px`,
+        backgroundColor:
+          componentStyles.card.background || alpha(theme.palette.background.paper, 0.8),
+        backdropFilter: componentStyles.card.backdropFilter,
+        WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
+        border: componentStyles.card.border,
+        boxShadow: componentStyles.card.boxShadow,
+        ...sx,
+      }}
+    >
+      {children}
+    </Paper>
+  );
+}
+
+export default function HtmlConverterPanel() {
+  const theme = useTheme();
 
   // Refs for contenteditable divs
   const editorRef = useRef<HTMLDivElement>(null);
@@ -87,21 +114,67 @@ export default function HtmlConverterPanel() {
   // State
   const [fileName, setFileName] = useState("promo-1");
   const [approveNeeded, setApproveNeeded] = useState(true);
-  const [bgColor, setBgColor] = useState("#ffffff");
-  const [jpgQuality, setJpgQuality] = useState(0.82);
   const [log, setLog] = useState<string[]>([]);
+  const [showImageProcessor, setShowImageProcessor] = useState(false);
+  const [inputHtml, setInputHtml] = useState<string>("");
+  const [triggerExtract, setTriggerExtract] = useState(0);
 
   const addLog = (message: string) => {
     setLog(prev => [...prev, message]);
     console.log(message);
   };
 
-  // Setup paste handler
+  // Setup paste handler and auto-detect images
   useEffect(() => {
     if (editorRef.current) {
       setupPasteHandler(editorRef.current, addLog);
+
+      // Capture original HTML from clipboard on paste
+      const handlePaste = (e: ClipboardEvent) => {
+        const html = e.clipboardData?.getData('text/html');
+        if (html) {
+          // Replace base64 images with placeholders for display
+          const cleanHtml = html.replace(
+            /src="data:image\/[^;]+;base64,[^"]{100,}"/g,
+            (match) => {
+              const mimeType = match.match(/data:image\/([^;]+)/)?.[1] || 'unknown';
+              const length = match.length;
+              return `src="[IMAGE: ${mimeType}, ${length} bytes]"`;
+            }
+          );
+
+          // Save cleaned HTML for display
+          setInputHtml(cleanHtml);
+          addLog("📋 Збережено оригінальний HTML з буфера");
+        }
+
+        // Small delay to ensure DOM is updated after paste
+        setTimeout(() => {
+          if (!editorRef.current) return;
+          const imgElements = editorRef.current.querySelectorAll("img");
+          const hasImages = imgElements.length > 0;
+
+          if (hasImages && !showImageProcessor) {
+            addLog(`🔍 Автовиявлення: знайдено ${imgElements.length} зображень`);
+            setShowImageProcessor(true);
+
+            // Trigger extraction after state updates
+            setTimeout(() => {
+              setTriggerExtract(prev => prev + 1);
+            }, 100);
+          }
+        }, 300);
+      };
+
+      editorRef.current.addEventListener("paste", handlePaste as EventListener);
+
+      return () => {
+        if (editorRef.current) {
+          editorRef.current.removeEventListener("paste", handlePaste as EventListener);
+        }
+      };
     }
-  }, []);
+  }, [showImageProcessor]);
 
   const changeFileNumber = (delta: number) => {
     const match = fileName.match(/(\D*)(\d+)/);
@@ -114,22 +187,46 @@ export default function HtmlConverterPanel() {
 
   const handleExportHTML = () => {
     if (!editorRef.current) return;
-    const editorContent = editorRef.current.innerHTML;
-    const formattedContent = formatHtml(editorContent);
-    if (outputHtmlRef.current) {
-      outputHtmlRef.current.value = formattedContent;
+
+    try {
+      const editorContent = editorRef.current.innerHTML;
+      if (!editorContent.trim()) {
+        addLog("⚠️ Редактор порожній, нічого експортувати");
+        return;
+      }
+
+      const formattedContent = formatHtml(editorContent);
+      if (outputHtmlRef.current) {
+        outputHtmlRef.current.value = formattedContent;
+      }
+      addLog("✅ HTML експортовано");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Невідома помилка";
+      addLog(`❌ Помилка експорту HTML: ${message}`);
+      console.error("Export HTML error:", error);
     }
-    addLog("✅ HTML експортовано");
   };
 
   const handleExportMJML = () => {
     if (!editorRef.current) return;
-    const editorContent = editorRef.current.innerHTML;
-    const formattedContent = formatMjml(editorContent);
-    if (outputMjmlRef.current) {
-      outputMjmlRef.current.value = formattedContent;
+
+    try {
+      const editorContent = editorRef.current.innerHTML;
+      if (!editorContent.trim()) {
+        addLog("⚠️ Редактор порожній, нічого експортувати");
+        return;
+      }
+
+      const formattedContent = formatMjml(editorContent);
+      if (outputMjmlRef.current) {
+        outputMjmlRef.current.value = formattedContent;
+      }
+      addLog("✅ MJML експортовано");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Невідома помилка";
+      addLog(`❌ Помилка експорту MJML: ${message}`);
+      console.error("Export MJML error:", error);
     }
-    addLog("✅ MJML експортовано");
   };
 
   const handleCopyHTML = async () => {
@@ -147,6 +244,15 @@ export default function HtmlConverterPanel() {
     try {
       await navigator.clipboard.writeText(outputMjmlRef.current.value);
       addLog("✅ MJML скопійовано в буфер");
+    } catch (err) {
+      addLog("❌ Помилка копіювання");
+    }
+  };
+
+  const handleCopyInputHtml = async () => {
+    try {
+      await navigator.clipboard.writeText(inputHtml);
+      addLog("✅ Вхідний HTML скопійовано в буфер");
     } catch (err) {
       addLog("❌ Помилка копіювання");
     }
@@ -180,18 +286,6 @@ export default function HtmlConverterPanel() {
     }
   };
 
-  const handleDownloadImages = async () => {
-    if (!editorRef.current) return;
-    setLog([]);
-    addLog("🔄 Початок обробки зображень...");
-    await downloadImagesFolder(
-      editorRef.current,
-      fileName,
-      bgColor,
-      jpgQuality,
-      addLog
-    );
-  };
 
   const handleClear = () => {
     if (editorRef.current) {
@@ -204,6 +298,9 @@ export default function HtmlConverterPanel() {
       outputMjmlRef.current.value = '';
     }
     setLog([]);
+    setInputHtml("");
+    setShowImageProcessor(false);
+    setTriggerExtract(0);
     addLog("🧹 Очищено");
   };
 
@@ -211,10 +308,9 @@ export default function HtmlConverterPanel() {
     <Box
       data-app-scroll="true"
       sx={{
-        height: "100%",
+        width: "100%",
         display: "flex",
         flexDirection: "column",
-        overflow: "auto",
         p: spacingMUI.xl,
         gap: spacingMUI.lg,
       }}
@@ -235,19 +331,7 @@ export default function HtmlConverterPanel() {
       </Stack>
 
       {/* Editor */}
-      <Paper
-        elevation={0}
-        sx={{
-          p: spacingMUI.base,
-          borderRadius: `${componentStyles.card.borderRadius}px`,
-          backgroundColor:
-            componentStyles.card.background || alpha(theme.palette.background.paper, 0.8),
-          backdropFilter: componentStyles.card.backdropFilter,
-          WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
-          border: componentStyles.card.border,
-          boxShadow: componentStyles.card.boxShadow,
-        }}
-      >
+      <StyledPaper>
         <Typography variant="subtitle2" fontWeight={600} mb={spacingMUI.base}>
           Редактор тексту ✏️
         </Typography>
@@ -277,22 +361,10 @@ export default function HtmlConverterPanel() {
             }
           }}
         />
-      </Paper>
+      </StyledPaper>
 
       {/* File Settings */}
-      <Paper
-        elevation={0}
-        sx={{
-          p: spacingMUI.base,
-          borderRadius: `${componentStyles.card.borderRadius}px`,
-          backgroundColor:
-            componentStyles.card.background || alpha(theme.palette.background.paper, 0.8),
-          backdropFilter: componentStyles.card.backdropFilter,
-          WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
-          border: componentStyles.card.border,
-          boxShadow: componentStyles.card.boxShadow,
-        }}
-      >
+      <StyledPaper>
         <Typography variant="subtitle2" fontWeight={600} mb={spacingMUI.base}>
           Налаштування файлу
         </Typography>
@@ -330,96 +402,23 @@ export default function HtmlConverterPanel() {
             label={<Typography variant="body2">Approve needed</Typography>}
           />
         </Stack>
-      </Paper>
+      </StyledPaper>
 
-      {/* Image Settings */}
-      <Paper
-        elevation={0}
-        sx={{
-          p: spacingMUI.base,
-          borderRadius: `${componentStyles.card.borderRadius}px`,
-          backgroundColor:
-            componentStyles.card.background || alpha(theme.palette.background.paper, 0.8),
-          backdropFilter: componentStyles.card.backdropFilter,
-          WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
-          border: componentStyles.card.border,
-          boxShadow: componentStyles.card.boxShadow,
-        }}
-      >
-        <Typography variant="subtitle2" fontWeight={600} mb={spacingMUI.base}>
-          Налаштування зображень
-        </Typography>
-
-        <Stack direction="row" spacing={spacingMUI.xl} alignItems="center" flexWrap="wrap">
-          <Box>
-            <Typography variant="caption" display="block" mb={spacingMUI.xs} color="text.secondary">
-              Фон для прозорості:
-            </Typography>
-            <Box
-              component="input"
-              type="color"
-              value={bgColor}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBgColor(e.target.value)}
-              sx={{
-                width: 60,
-                height: 36,
-                border: `1px solid ${theme.palette.divider}`,
-                borderRadius: `${borderRadius.md}px`,
-                cursor: 'pointer',
-                '&:hover': {
-                  borderColor: theme.palette.primary.main,
-                }
-              }}
-            />
-          </Box>
-
-          <Box sx={{ flex: 1, minWidth: 200 }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" mb={spacingMUI.xs}>
-              <Typography variant="caption" color="text.secondary">
-                Якість JPG:
-              </Typography>
-              <Typography variant="caption" fontWeight={600} color="primary.main">
-                {(jpgQuality * 100).toFixed(0)}%
-              </Typography>
-            </Stack>
-            <Slider
-              value={jpgQuality}
-              onChange={(_, value) => setJpgQuality(value as number)}
-              min={0.5}
-              max={1}
-              step={0.05}
-              valueLabelDisplay="auto"
-              valueLabelFormat={(value) => `${(value * 100).toFixed(0)}%`}
-              size="small"
-            />
-          </Box>
-
-          <Button
-            variant="contained"
-            startIcon={<ImageIcon />}
-            onClick={handleDownloadImages}
-            sx={{ minWidth: 200 }}
-          >
-            Завантажити Images ZIP
-          </Button>
-        </Stack>
-      </Paper>
+      {/* Image Processor - only visible when images detected */}
+      <ImageProcessor
+        editorRef={editorRef}
+        onLog={addLog}
+        visible={showImageProcessor}
+        onVisibilityChange={setShowImageProcessor}
+        triggerExtract={triggerExtract}
+      />
 
       {/* Output Blocks */}
       <Stack direction={{ xs: 'column', lg: 'row' }} spacing={spacingMUI.lg}>
         {/* HTML Output */}
-        <Paper
-          elevation={0}
+        <StyledPaper
           sx={{
             flex: 1,
-            p: spacingMUI.base,
-            borderRadius: `${componentStyles.card.borderRadius}px`,
-            backgroundColor:
-              componentStyles.card.background || alpha(theme.palette.background.paper, 0.8),
-            backdropFilter: componentStyles.card.backdropFilter,
-            WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
-            border: componentStyles.card.border,
-            boxShadow: componentStyles.card.boxShadow,
             display: "flex",
             flexDirection: "column",
           }}
@@ -471,21 +470,12 @@ export default function HtmlConverterPanel() {
               },
             }}
           />
-        </Paper>
+        </StyledPaper>
 
         {/* MJML Output */}
-        <Paper
-          elevation={0}
+        <StyledPaper
           sx={{
             flex: 1,
-            p: spacingMUI.base,
-            borderRadius: `${componentStyles.card.borderRadius}px`,
-            backgroundColor:
-              componentStyles.card.background || alpha(theme.palette.background.paper, 0.8),
-            backdropFilter: componentStyles.card.backdropFilter,
-            WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
-            border: componentStyles.card.border,
-            boxShadow: componentStyles.card.boxShadow,
             display: "flex",
             flexDirection: "column",
           }}
@@ -537,72 +527,81 @@ export default function HtmlConverterPanel() {
               },
             }}
           />
-        </Paper>
+        </StyledPaper>
       </Stack>
 
-      {/* Log */}
-      {log.length > 0 && (
-        <Paper
-          elevation={0}
-          sx={{
-            p: spacingMUI.base,
-            borderRadius: `${componentStyles.card.borderRadius}px`,
-            backgroundColor:
-              componentStyles.card.background || alpha(theme.palette.background.paper, 0.8),
-            backdropFilter: componentStyles.card.backdropFilter,
-            WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
-            border: componentStyles.card.border,
-            boxShadow: componentStyles.card.boxShadow,
-            maxHeight: 200,
-            overflow: "auto",
-          }}
-        >
-          <Typography variant="subtitle2" fontWeight={600} mb={spacingMUI.sm}>
-            Лог операцій
-          </Typography>
-          <Divider sx={{ mb: spacingMUI.sm }} />
-          {log.map((entry, idx) => (
-            <Typography
-              key={idx}
-              variant="caption"
-              display="block"
+      {/* Input HTML & Log */}
+      {(inputHtml || log.length > 0) && (
+        <Stack direction={{ xs: 'column', lg: 'row' }} spacing={spacingMUI.lg}>
+          {/* Input HTML */}
+          {inputHtml && (
+            <StyledPaper
               sx={{
-                fontFamily: 'monospace',
-                color: 'text.secondary',
-                lineHeight: 1.8,
-                py: 0.25,
+                flex: 1,
+                maxHeight: 300,
+                overflow: "auto",
               }}
             >
-              {entry}
-            </Typography>
-          ))}
-        </Paper>
-      )}
+              <Stack direction="row" justifyContent="space-between" alignItems="center" mb={spacingMUI.sm}>
+                <Typography variant="subtitle2" fontWeight={600}>
+                  Вхідний HTML
+                </Typography>
+                <Tooltip title="Копіювати">
+                  <IconButton size="small" onClick={handleCopyInputHtml}>
+                    <CopyIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              </Stack>
+              <Divider sx={{ mb: spacingMUI.sm }} />
+              <Box
+                component="pre"
+                sx={{
+                  fontFamily: 'monospace',
+                  fontSize: '12px',
+                  color: 'text.secondary',
+                  lineHeight: 1.6,
+                  m: 0,
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                }}
+              >
+                {inputHtml}
+              </Box>
+            </StyledPaper>
+          )}
 
-      {/* Footer Tip */}
-      <Paper
-        elevation={0}
-        sx={{
-          p: spacingMUI.base,
-          borderRadius: `${componentStyles.card.borderRadius}px`,
-          backgroundColor: alpha(theme.palette.primary.main, 0.05),
-          border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-        }}
-      >
-        <Typography variant="caption" color="text.secondary" display="flex" alignItems="center" gap={spacingMUI.sm}>
-          <Box
-            component="span"
-            sx={{
-              fontSize: '1.2em',
-              display: 'inline-flex',
-              alignItems: 'center',
-            }}
-          >
-            💡
-          </Box>
-          Вставте HTML з Google Docs або іншого редактора, налаштуйте параметри та експортуйте
-        </Typography>
-      </Paper>
+          {/* Log */}
+          {log.length > 0 && (
+            <StyledPaper
+              sx={{
+                flex: 1,
+                maxHeight: 300,
+                overflow: "auto",
+              }}
+            >
+              <Typography variant="subtitle2" fontWeight={600} mb={spacingMUI.sm}>
+                Лог операцій
+              </Typography>
+              <Divider sx={{ mb: spacingMUI.sm }} />
+              {log.map((entry, idx) => (
+                <Typography
+                  key={idx}
+                  variant="caption"
+                  display="block"
+                  sx={{
+                    fontFamily: 'monospace',
+                    color: 'text.secondary',
+                    lineHeight: 1.8,
+                    py: 0.25,
+                  }}
+                >
+                  {entry}
+                </Typography>
+              ))}
+            </StyledPaper>
+          )}
+        </Stack>
+      )}
     </Box>
   );
 }

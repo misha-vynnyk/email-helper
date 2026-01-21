@@ -7,7 +7,7 @@ import { useSelectedMainTab } from "../../contexts/AppState";
 import { EmailSenderProvider } from "../../emailSender/EmailSenderContext";
 import { HtmlConverterPanel } from "../../htmlConverter";
 import { ImageConverterPanel } from "../../imageConverter";
-import AnimatedBackground from "../../imageConverter/components/AnimatedBackground";
+import GeometricBackground from "../../imageConverter/components/GeometricBackground";
 import { TemplateLibrary } from "../../templateLibrary";
 import { ThemeToggle, ThemeStyleSelector, useThemeMode } from "../../theme";
 import ToggleSamplesPanelButton from "../SamplesDrawer/ToggleSamplesPanelButton";
@@ -75,7 +75,7 @@ export default function TemplatePanel() {
               pointerEvents: "none",
             }}
           >
-            <AnimatedBackground />
+            <GeometricBackground />
           </Box>
         )}
         <Box sx={{ position: "relative", zIndex: 1, minWidth: 40 }}>
