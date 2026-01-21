@@ -3,7 +3,8 @@
  */
 
 // Image processing types
-export type ImageFormat = "jpeg" | "webp";
+export type ImageFormat = "jpeg" | "png";
+export type ImageFormatOverride = ImageFormat | "auto";
 export type ImageStatus = "pending" | "processing" | "done" | "error";
 
 export interface ProcessedImage {
@@ -17,6 +18,8 @@ export interface ProcessedImage {
   convertedSize?: number;
   status: ImageStatus;
   error?: string;
+  formatOverride?: ImageFormatOverride; // Per-image format override
+  hasTransparency?: boolean; // Detected transparency
 }
 
 export interface ImageSettings {
