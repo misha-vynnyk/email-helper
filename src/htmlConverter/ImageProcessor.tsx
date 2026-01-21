@@ -8,6 +8,7 @@ import {
   alpha,
   Box,
   Button,
+  Chip,
   IconButton,
   LinearProgress,
   Paper,
@@ -24,7 +25,6 @@ import {
 import {
   Close as CloseIcon,
   Download as DownloadIcon,
-  Refresh as RefreshIcon,
   PlayArrow as ProcessIcon,
   CloudUpload as UploadIcon,
   FindReplace as ReplaceIcon,
@@ -42,7 +42,80 @@ import StorageUploadDialog from "./StorageUploadDialog";
 import { formatSize, extractFolderName } from "./utils/formatters";
 import { logError, logSuccess, logWarning } from "./utils/errorHandler";
 import { STORAGE_KEYS, UI_TIMINGS, UPLOAD_CONFIG, IMAGE_DEFAULTS, STORAGE_URL_PREFIX } from "./constants";
-import type { ProcessedImage, ImageFormat, ImageSettings, UploadResult, StorageUploadResponse } from "./types";
+import type { ProcessedImage, ImageFormat, ImageFormatOverride, ImageSettings, UploadResult, StorageUploadResponse } from "./types";
+
+// Utility function to detect transparency in image
+const detectTransparency = async (src: string): Promise<boolean> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+
+    img.onload = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d");
+
+        if (!ctx) {
+          resolve(false);
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+
+        // Check if any pixel has alpha < 255 (transparent)
+        for (let i = 3; i < data.length; i += 4) {
+          if (data[i] < 255) {
+            resolve(true);
+            return;
+          }
+        }
+
+        resolve(false);
+      } catch (error) {
+        // If error (e.g., CORS), assume no transparency
+        resolve(false);
+      }
+    };
+
+    img.onerror = () => resolve(false);
+    img.src = src;
+  });
+};
+
+// Get final format for image based on override and auto-detection
+const getImageFormat = (
+  image: ProcessedImage,
+  globalFormat: ImageFormat
+): ImageFormat => {
+  // If manual override is set (not "auto"), use it
+  if (image.formatOverride && image.formatOverride !== "auto") {
+    return image.formatOverride;
+  }
+
+  // Auto-detection: if has transparency, use PNG
+  if (image.hasTransparency) {
+    return "png";
+  }
+
+  // Otherwise use global format
+  return globalFormat;
+};
+
+// Get file extension for image format
+const getFileExtension = (imageFormat: ImageFormat): string => {
+  switch (imageFormat) {
+    case "jpeg":
+      return ".jpg";
+    case "png":
+      return ".png";
+    default:
+      return ".jpg";
+  }
+};
 
 interface ImageProcessorProps {
   editorRef: React.RefObject<HTMLDivElement>;
@@ -104,7 +177,6 @@ export default function ImageProcessor({
   const [format, setFormat] = useState<ImageFormat>(savedSettings.format);
   const [quality, setQuality] = useState(savedSettings.quality);
   const [maxWidth, setMaxWidth] = useState(savedSettings.maxWidth);
-  const [isExtracting, setIsExtracting] = useState(false);
   const [autoProcess, setAutoProcess] = useState(savedSettings.autoProcess);
   const [preserveFormat, setPreserveFormat] = useState(savedSettings.preserveFormat);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
@@ -118,6 +190,11 @@ export default function ImageProcessor({
     message: '',
     severity: 'success',
   });
+
+  // Helper to show snackbar notifications
+  const showSnackbar = useCallback((message: string, severity: 'success' | 'info' | 'warning' | 'error' = 'success') => {
+    setSnackbar({ open: true, message, severity });
+  }, []);
 
   const initialFolderName = extractFolderName(fileName);
 
@@ -159,7 +236,6 @@ export default function ImageProcessor({
     }
 
     isExtractingRef.current = true;
-    setIsExtracting(true);
     log("🔍 Пошук зображень в HTML...");
 
     try {
@@ -177,7 +253,6 @@ export default function ImageProcessor({
         // Hide image processor panel when no images
         onVisibilityChange(false);
         isExtractingRef.current = false;
-        setIsExtracting(false);
         return;
       }
 
@@ -185,6 +260,7 @@ export default function ImageProcessor({
 
       const newImages: ProcessedImage[] = [];
 
+      // Detect transparency for each image
       for (let i = 0; i < imgElements.length; i++) {
         const img = imgElements[i];
         const src = img.src;
@@ -194,6 +270,9 @@ export default function ImageProcessor({
         const id = `${Date.now()}-${i}`;
         const name = `image-${i + 1}`;
 
+        // Detect transparency asynchronously
+        const hasTransparency = await detectTransparency(src);
+
         newImages.push({
           id,
           src,
@@ -201,7 +280,13 @@ export default function ImageProcessor({
           originalSize: 0, // Will be calculated when loaded
           status: "pending" as const,
           name,
+          hasTransparency,
+          formatOverride: "auto", // Default to auto-detection
         });
+
+        if (hasTransparency) {
+          log(`✨ ${name}: виявлено прозорість → PNG`);
+        }
       }
 
       setImages(newImages);
@@ -215,12 +300,11 @@ export default function ImageProcessor({
       log(`❌ Помилка витягування: ${error instanceof Error ? error.message : "Unknown"}`);
     } finally {
       isExtractingRef.current = false;
-      setIsExtracting(false);
     }
   }, [editorRef, log, autoProcess, onVisibilityChange]);
 
   const convertImage = useCallback(
-    async (src: string): Promise<{ blob: Blob; originalSize: number }> => {
+    async (src: string, targetFormat: ImageFormat): Promise<{ blob: Blob; originalSize: number }> => {
       return new Promise((resolve, reject) => {
         const img = new Image();
         img.crossOrigin = "anonymous";
@@ -247,24 +331,30 @@ export default function ImageProcessor({
             canvas.width = width;
             canvas.height = height;
 
-            // Detect original format
-            let outputFormat: ImageFormat = format;
+            // Use target format (already determined by caller)
+            let outputFormat: ImageFormat = targetFormat;
+
+            // Override with preserveFormat if enabled
             if (preserveFormat && img.src.startsWith("data:")) {
-              const mimeMatch = img.src.match(/data:image\/(jpeg|jpg|png|webp)/i);
+              const mimeMatch = img.src.match(/data:image\/(jpeg|jpg|png)/i);
               if (mimeMatch) {
                 const detectedFormat = mimeMatch[1].toLowerCase();
                 if (detectedFormat === "jpg") {
                   outputFormat = "jpeg";
-                } else if (detectedFormat === "webp" || detectedFormat === "jpeg") {
+                } else if (detectedFormat === "jpeg" || detectedFormat === "png") {
                   outputFormat = detectedFormat as ImageFormat;
                 }
               }
             }
 
-            // Fill white background for JPEG
+            // Handle background based on format
             if (outputFormat === "jpeg") {
+              // JPEG doesn't support transparency - fill with white
               ctx.fillStyle = "#FFFFFF";
               ctx.fillRect(0, 0, width, height);
+            } else {
+              // PNG/WebP support transparency - clear canvas
+              ctx.clearRect(0, 0, width, height);
             }
 
             // Draw and convert
@@ -315,10 +405,13 @@ export default function ImageProcessor({
         return;
       }
 
-      log(`🔄 Початок обробки ${image.name}...`);
+      // Determine format for this specific image
+      const imageFormat = getImageFormat(image, format);
+
+      log(`🔄 Початок обробки ${image.name}... (${imageFormat.toUpperCase()})`);
 
       try {
-        const result = await convertImage(image.src);
+        const result = await convertImage(image.src, imageFormat);
 
         setImages((prev) =>
           prev.map((img) =>
@@ -368,7 +461,8 @@ export default function ImageProcessor({
 
     const zip = new JSZip();
     completed.forEach((img) => {
-      const ext = format === "jpeg" ? ".jpg" : ".webp";
+      const imageFormat = getImageFormat(img, format);
+      const ext = getFileExtension(imageFormat);
       const name = img.name + ext;
       zip.file(name, img.convertedBlob!);
     });
@@ -387,7 +481,8 @@ export default function ImageProcessor({
       return;
     }
 
-    const ext = format === "jpeg" ? ".jpg" : ".webp";
+    const imageFormat = getImageFormat(img, format);
+    const ext = getFileExtension(imageFormat);
     const filename = `${img.name}${ext}`;
     saveAs(img.convertedBlob, filename);
     log(`✅ Завантажено: ${filename}`);
@@ -428,7 +523,9 @@ export default function ImageProcessor({
       try {
         for (let i = 0; i < completed.length; i++) {
           const img = completed[i];
-          const ext = format === "jpeg" ? ".jpg" : ".webp";
+          // Determine format for this specific image
+          const imageFormat = getImageFormat(img, format);
+          const ext = getFileExtension(imageFormat);
           // Use custom name if provided, otherwise use default name
           const baseName = customNames[img.id] || img.name;
           const filename = `${baseName}${ext}`;
@@ -611,6 +708,31 @@ export default function ImageProcessor({
     });
   }, []);
 
+  const handleFormatChange = useCallback((id: string, newFormat: ImageFormatOverride) => {
+    setImages((prev) =>
+      prev.map((img) =>
+        img.id === id
+          ? {
+              ...img,
+              formatOverride: newFormat,
+              // Reset to pending to force re-processing from original
+              status: "pending" as const,
+              convertedBlob: undefined,
+              convertedSize: undefined,
+            }
+          : img
+      )
+    );
+
+    // Process from original source (not from converted blob)
+    const img = images.find((i) => i.id === id);
+    if (img) {
+      log(`🔄 Зміна формату для ${img.name} → ${newFormat.toUpperCase()}`);
+      // Will be auto-processed if autoProcess is enabled
+      // Otherwise user needs to click "Process all"
+    }
+  }, [images, log]);
+
   const handleClear = useCallback(() => {
     images.forEach((img) => {
       if (img.previewUrl) URL.revokeObjectURL(img.previewUrl);
@@ -626,11 +748,7 @@ export default function ImageProcessor({
       onReplaceUrls(lastUploadedUrls);
       setReplacementDone(true);
       log(`✅ Замінено ${Object.keys(lastUploadedUrls).length} посилань в Output`);
-      setSnackbar({
-        open: true,
-        message: `🔄 Замінено ${Object.keys(lastUploadedUrls).length} посилань в Output HTML/MJML`,
-        severity: 'success',
-      });
+      showSnackbar(`🔄 Замінено ${Object.keys(lastUploadedUrls).length} посилань в Output HTML/MJML`, 'success');
     }
   }, [lastUploadedUrls, onReplaceUrls, log]);
 
@@ -752,7 +870,7 @@ export default function ImageProcessor({
               disabled={preserveFormat}
             >
               <ToggleButton value="jpeg">JPEG</ToggleButton>
-              <ToggleButton value="webp">WebP</ToggleButton>
+              <ToggleButton value="png">PNG</ToggleButton>
             </ToggleButtonGroup>
           </Box>
 
@@ -794,48 +912,59 @@ export default function ImageProcessor({
           </Box>
         </Stack>
 
-        {/* Extract Button */}
-        <Button
-          variant="contained"
-          startIcon={<RefreshIcon />}
-          onClick={extractImages}
-          disabled={isExtracting}
-          fullWidth
-          sx={{
-            textTransform: 'none',
-            fontWeight: 600,
-            borderRadius: `${borderRadius.md}px`,
-          }}
-        >
-          {isExtracting ? "Витягування..." : "Витягти зображення з HTML"}
-        </Button>
-
         {/* Images List */}
         {images.length > 0 && (
           <Box>
             <Stack direction="row" spacing={spacingMUI.sm} sx={{ overflowX: "auto", pb: spacingMUI.xs }}>
-              {images.map((img) => (
-                <Box
-                  key={img.id}
-                  sx={{
-                    position: "relative",
-                    minWidth: 80,
-                    maxWidth: 80,
-                    height: 80,
-                    borderRadius: `${borderRadius.sm}px`,
-                    overflow: "hidden",
-                    border: `1px solid ${theme.palette.divider}`,
-                  }}
-                >
-                  <img
-                    src={img.previewUrl}
-                    alt={img.name}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
+              {images.map((img) => {
+                const imgFormat = getImageFormat(img, format);
+                const isCustomFormat = img.formatOverride && img.formatOverride !== "auto";
+
+                return (
+                <Stack key={img.id} spacing={0.5} alignItems="center">
+                  <Box
+                    sx={{
+                      position: "relative",
+                      minWidth: 80,
+                      maxWidth: 80,
+                      height: 80,
+                      borderRadius: `${borderRadius.sm}px`,
+                      overflow: "hidden",
+                      border: `1px solid ${theme.palette.divider}`,
                     }}
-                  />
+                  >
+                    <img
+                      src={img.previewUrl}
+                      alt={img.name}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
+                    />
+
+                    {/* Format Badge */}
+                    <Chip
+                      label={imgFormat.toUpperCase()}
+                      size="small"
+                      sx={{
+                        position: "absolute",
+                        top: 2,
+                        right: 2,
+                        height: 16,
+                        fontSize: '0.65rem',
+                        fontWeight: 700,
+                        backgroundColor: img.hasTransparency
+                          ? alpha(theme.palette.info.main, 0.9)
+                          : isCustomFormat
+                          ? alpha(theme.palette.warning.main, 0.9)
+                          : alpha(theme.palette.primary.main, 0.7),
+                        color: 'white',
+                        '& .MuiChip-label': {
+                          px: 0.5,
+                        },
+                      }}
+                    />
                   {img.status === "processing" && (
                     <Box
                       sx={{
@@ -853,50 +982,79 @@ export default function ImageProcessor({
                       <LinearProgress sx={{ width: "80%" }} />
                     </Box>
                   )}
-                  {img.status === "done" && (
-                    <Tooltip title="Завантажити">
+                    {img.status === "done" && (
+                      <Tooltip title="Завантажити">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDownloadSingle(img.id)}
+                          sx={{
+                            position: "absolute",
+                            bottom: 2,
+                            right: 2,
+                            backgroundColor: alpha(theme.palette.success.main, 0.9),
+                            color: "white",
+                            width: 20,
+                            height: 20,
+                            "&:hover": {
+                              backgroundColor: theme.palette.success.main,
+                            },
+                          }}
+                        >
+                          <DownloadIcon sx={{ fontSize: 14 }} />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                    <Tooltip title="Видалити">
                       <IconButton
                         size="small"
-                        onClick={() => handleDownloadSingle(img.id)}
+                        onClick={() => handleRemove(img.id)}
                         sx={{
                           position: "absolute",
                           bottom: 2,
-                          right: 2,
-                          backgroundColor: alpha(theme.palette.success.main, 0.9),
+                          left: 2,
+                          backgroundColor: alpha(theme.palette.error.main, 0.8),
                           color: "white",
                           width: 20,
                           height: 20,
                           "&:hover": {
-                            backgroundColor: theme.palette.success.main,
+                            backgroundColor: theme.palette.error.main,
                           },
                         }}
                       >
-                        <DownloadIcon sx={{ fontSize: 14 }} />
+                        <CloseIcon sx={{ fontSize: 14 }} />
                       </IconButton>
                     </Tooltip>
-                  )}
-                  <Tooltip title="Видалити">
-                    <IconButton
-                      size="small"
-                      onClick={() => handleRemove(img.id)}
-                      sx={{
-                        position: "absolute",
-                        top: 2,
-                        left: 2,
-                        backgroundColor: alpha(theme.palette.error.main, 0.8),
-                        color: "white",
-                        width: 20,
-                        height: 20,
-                        "&:hover": {
-                          backgroundColor: theme.palette.error.main,
-                        },
-                      }}
-                    >
-                      <CloseIcon sx={{ fontSize: 14 }} />
-                    </IconButton>
-                  </Tooltip>
-                </Box>
-              ))}
+                  </Box>
+
+                  {/* Format Selector */}
+                  <ToggleButtonGroup
+                    value={img.formatOverride || "auto"}
+                    exclusive
+                    onChange={(_, val) => val && handleFormatChange(img.id, val as ImageFormatOverride)}
+                    size="small"
+                    sx={{
+                      height: 20,
+                      '& .MuiToggleButton-root': {
+                        fontSize: '0.65rem',
+                        px: 0.5,
+                        py: 0.25,
+                        minWidth: 28,
+                        lineHeight: 1,
+                        border: `1px solid ${theme.palette.divider}`,
+                      },
+                    }}
+                  >
+                    <ToggleButton value="auto">
+                      <Tooltip title="Авто (прозорість → PNG)">
+                        <span>Auto</span>
+                      </Tooltip>
+                    </ToggleButton>
+                    <ToggleButton value="jpeg">JPG</ToggleButton>
+                    <ToggleButton value="png">PNG</ToggleButton>
+                  </ToggleButtonGroup>
+                </Stack>
+              );
+              })}
             </Stack>
 
             {/* Stats */}
@@ -1037,11 +1195,11 @@ export default function ImageProcessor({
       <Snackbar
         open={snackbar.open}
         autoHideDuration={UI_TIMINGS.SNACKBAR_DURATION}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
       >
         <Alert
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
           severity={snackbar.severity}
           sx={{ width: '100%' }}
         >
