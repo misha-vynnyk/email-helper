@@ -44,6 +44,7 @@ app.use("/api/templates", require("./routes/templates"));
 app.use("/api/custom-blocks", require("./routes/customBlocks"));
 app.use("/api/image-converter", require("./routes/imageConverter"));
 app.use("/api/storage-paths", require("./routes/storagePaths"));
+app.use(require("./routes/storageUpload"));
 app.use("/api", require("./routes/email"));
 
 // Error handling middleware
