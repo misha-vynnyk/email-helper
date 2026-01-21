@@ -17,28 +17,38 @@ export const formatSize = (bytes: number): string => {
 
 /**
  * Extracts folder name from file name input
- * Prioritizes uppercase patterns (e.g., "ABCD123")
- * Falls back to any alphanumeric pattern
+ * Always returns uppercase format: LETTERS + NUMBERS (e.g., "SMMKTS1303")
+ * Handles any input: spaces, lowercase, hyphens, underscores, etc.
  *
- * @param name - Input file name (e.g., "promo-ABCD123")
- * @returns Extracted folder name (e.g., "ABCD123")
+ * @param name - Input file name
+ * @returns Extracted folder name in uppercase (e.g., "SMMKTS1303")
  *
  * @example
+ * extractFolderName("SMMKTS1303_mjml(Approve needed)") // "SMMKTS1303"
+ * extractFolderName("smmkts1303-mjml-approve") // "SMMKTS1303"
+ * extractFolderName("smmkts 1303 mjml") // "SMMKTS1303"
  * extractFolderName("promo-ABCD123") // "ABCD123"
- * extractFolderName("Finance-456") // "Finance456"
- * extractFolderName("test") // ""
  */
 export const extractFolderName = (name: string): string => {
-  // First try to match uppercase patterns (e.g., ABCD123)
+  // Try to match uppercase letters + digits pattern (already uppercase)
   const uppercaseMatch = name.match(/([A-Z]+\d+)/);
   if (uppercaseMatch) {
     return uppercaseMatch[1];
   }
 
-  // Remove hyphens and try to match any alphanumeric pattern
-  const cleaned = name.replace(/-/g, '');
+  // If no uppercase match, clean and extract pattern, then uppercase it
+  // Remove all non-alphanumeric characters (except keep letters and digits together)
+  const cleaned = name.replace(/[^a-zA-Z0-9]/g, '');
+
+  // Extract pattern: letters followed by digits
   const match = cleaned.match(/([a-zA-Z]+\d+)/);
-  return match ? match[1] : "";
+
+  if (match) {
+    // Convert to uppercase (e.g., "smmkts1303" -> "SMMKTS1303")
+    return match[1].toUpperCase();
+  }
+
+  return "";
 };
 
 /**
