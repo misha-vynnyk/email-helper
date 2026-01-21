@@ -110,6 +110,7 @@ export default function ImageProcessor({
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const uploadAbortControllerRef = useRef<AbortController | null>(null);
+  const isExtractingRef = useRef(false);
   const [lastUploadedUrls, setLastUploadedUrls] = useState<Record<string, string>>({});
   const [replacementDone, setReplacementDone] = useState(false);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'info' | 'warning' | 'error' }>({
@@ -152,6 +153,12 @@ export default function ImageProcessor({
       return;
     }
 
+    if (isExtractingRef.current) {
+      log("⚠️ Витягування вже виконується...");
+      return;
+    }
+
+    isExtractingRef.current = true;
     setIsExtracting(true);
     log("🔍 Пошук зображень в HTML...");
 
@@ -160,6 +167,16 @@ export default function ImageProcessor({
 
       if (imgElements.length === 0) {
         log("❌ Зображення не знайдено");
+        // Clear existing images when no images found in editor
+        setImages((prevImages) => {
+          prevImages.forEach((img) => {
+            if (img.previewUrl) URL.revokeObjectURL(img.previewUrl);
+          });
+          return [];
+        });
+        // Hide image processor panel when no images
+        onVisibilityChange(false);
+        isExtractingRef.current = false;
         setIsExtracting(false);
         return;
       }
@@ -197,6 +214,7 @@ export default function ImageProcessor({
     } catch (error) {
       log(`❌ Помилка витягування: ${error instanceof Error ? error.message : "Unknown"}`);
     } finally {
+      isExtractingRef.current = false;
       setIsExtracting(false);
     }
   }, [editorRef, log, autoProcess, onVisibilityChange]);
@@ -361,9 +379,32 @@ export default function ImageProcessor({
     log(`✅ Завантажено ${completed.length} зображень`);
   }, [images, format, log]);
 
+  const handleDownloadSingle = useCallback((id: string) => {
+    const img = images.find((i) => i.id === id);
+
+    if (!img || img.status !== "done" || !img.convertedBlob) {
+      log("❌ Зображення не готове для завантаження");
+      return;
+    }
+
+    const ext = format === "jpeg" ? ".jpg" : ".webp";
+    const filename = `${img.name}${ext}`;
+    saveAs(img.convertedBlob, filename);
+    log(`✅ Завантажено: ${filename}`);
+  }, [images, format, log]);
+
   const handleUploadToStorage = useCallback(
-    async (category: string, folderName: string): Promise<{ results: Array<{ filename: string; url: string; success: boolean }>; category: string; folderName: string }> => {
-      const completed = images.filter((img) => img.status === "done" && img.convertedBlob);
+    async (category: string, folderName: string, customNames: Record<string, string> = {}, fileOrder?: string[]): Promise<{ results: Array<{ filename: string; url: string; success: boolean }>; category: string; folderName: string }> => {
+      let completed = images.filter((img) => img.status === "done" && img.convertedBlob);
+
+      // Sort by order if provided
+      if (fileOrder && fileOrder.length > 0) {
+        completed = completed.sort((a, b) => {
+          const indexA = fileOrder.indexOf(a.id);
+          const indexB = fileOrder.indexOf(b.id);
+          return indexA - indexB;
+        });
+      }
 
       if (completed.length === 0) {
         throw new Error("Немає оброблених зображень для завантаження");
@@ -388,7 +429,9 @@ export default function ImageProcessor({
         for (let i = 0; i < completed.length; i++) {
           const img = completed[i];
           const ext = format === "jpeg" ? ".jpg" : ".webp";
-          const filename = img.name + ext;
+          // Use custom name if provided, otherwise use default name
+          const baseName = customNames[img.id] || img.name;
+          const filename = `${baseName}${ext}`;
 
           // Check if upload was cancelled
           if (uploadAbortControllerRef.current?.signal.aborted) {
@@ -603,10 +646,11 @@ export default function ImageProcessor({
 
   // Listen for extraction trigger
   useEffect(() => {
-    if (triggerExtract > 0 && visible && images.length === 0) {
+    if (triggerExtract > 0 && visible) {
       extractImages();
     }
-  }, [triggerExtract, visible, images.length, extractImages]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [triggerExtract, visible]);
 
   // Auto-process pending images when autoProcess is enabled
   useEffect(() => {
@@ -617,6 +661,7 @@ export default function ImageProcessor({
       log(`🔄 Автообробка ${pendingImages.length} зображень...`);
       pendingImages.forEach((img) => processImage(img.id));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [images, autoProcess]);
 
   // Clear images when component is hidden
@@ -809,23 +854,26 @@ export default function ImageProcessor({
                     </Box>
                   )}
                   {img.status === "done" && (
-                    <Box
-                      sx={{
-                        position: "absolute",
-                        top: 2,
-                        right: 2,
-                        backgroundColor: alpha(theme.palette.success.main, 0.9),
-                        borderRadius: "50%",
-                        width: 18,
-                        height: 18,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: 12,
-                      }}
-                    >
-                      ✓
-                    </Box>
+                    <Tooltip title="Завантажити">
+                      <IconButton
+                        size="small"
+                        onClick={() => handleDownloadSingle(img.id)}
+                        sx={{
+                          position: "absolute",
+                          bottom: 2,
+                          right: 2,
+                          backgroundColor: alpha(theme.palette.success.main, 0.9),
+                          color: "white",
+                          width: 20,
+                          height: 20,
+                          "&:hover": {
+                            backgroundColor: theme.palette.success.main,
+                          },
+                        }}
+                      >
+                        <DownloadIcon sx={{ fontSize: 14 }} />
+                      </IconButton>
+                    </Tooltip>
                   )}
                   <Tooltip title="Видалити">
                     <IconButton
@@ -973,7 +1021,7 @@ export default function ImageProcessor({
         onClose={() => setUploadDialogOpen(false)}
         files={images
           .filter((img) => img.status === "done")
-          .map((img) => ({ id: img.id, name: img.name }))}
+          .map((img) => ({ id: img.id, name: img.name, path: img.previewUrl }))}
         onUpload={handleUploadToStorage}
         onCancel={() => {
           if (uploadAbortControllerRef.current) {

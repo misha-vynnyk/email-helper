@@ -120,10 +120,14 @@ async function convertImage(message: WorkerMessage): Promise<Blob> {
   // Get output format
   const outputFormat = getConversionFormat(fileName, fileType, settings);
 
-  // Fill background for formats without transparency
+  // Handle background based on format
   if (outputFormat === 'jpeg') {
+    // JPEG doesn't support transparency - fill with background color
     ctx.fillStyle = settings.backgroundColor;
     ctx.fillRect(0, 0, width, height);
+  } else {
+    // PNG/WebP/AVIF support transparency - ensure canvas is transparent
+    ctx.clearRect(0, 0, width, height);
   }
 
   // Draw image
@@ -181,4 +185,3 @@ self.addEventListener('message', async (e: MessageEvent<WorkerMessage>) => {
 });
 
 export {};
-

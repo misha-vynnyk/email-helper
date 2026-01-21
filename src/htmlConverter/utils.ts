@@ -110,7 +110,6 @@ export function replaceAllEmojisAndSymbolsExcludingHTML(htmlContent: string): st
 }
 
 export function mergeSimilarTags(htmlContent: string): string {
-  console.log("Versioning Check: mergeSimilarTags with [[BR_SEP]] is running");
   // Merge adjacent h1-h6 tags and add <br><br> between them
   // Special handling for h6: merge all h6 tags even if separated by other elements (div, br, table, etc.)
   const tagsWithoutH6 = ["h1", "h4", "h5"];
@@ -153,9 +152,8 @@ export function mergeSimilarTags(htmlContent: string): string {
     iterations++;
   }
 
-  if (h6Count > 0 || mergeCount > 0) {
-    console.log(`Processed ${h6Count} h6 separations, merged ${mergeCount} h6 pairs`);
-  }
+  // Debug tracking for h6 processing
+  // h6Count and mergeCount are tracked for optimization
 
   // Now handle other tags normally (merge them)
   tagsWithoutH6.forEach((tag) => {
@@ -171,7 +169,6 @@ export function mergeSimilarTags(htmlContent: string): string {
         count++;
         return "[[BR_SEP]]";
       });
-      if (count > 0) console.log(`Merged ${count} pairs of ${tag}`);
       tagIterations++;
     }
   });

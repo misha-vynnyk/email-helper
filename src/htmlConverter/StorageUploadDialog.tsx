@@ -30,6 +30,7 @@ import {
   CheckCircleOutline as CheckIcon,
   Close as CloseIcon,
   Link as LinkIcon,
+  DragIndicator as DragIcon,
 } from "@mui/icons-material";
 import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
@@ -45,7 +46,7 @@ interface StorageUploadDialogProps {
   open: boolean;
   onClose: () => void;
   files: Array<{ id: string; name: string; path?: string }>;
-  onUpload: (category: string, folderName: string) => Promise<{ results: UploadResult[]; category: string; folderName: string }>;
+  onUpload: (category: string, folderName: string, customNames: Record<string, string>, fileOrder?: string[]) => Promise<{ results: UploadResult[]; category: string; folderName: string }>;
   onCancel?: () => void;
   initialFolderName?: string;
   onHistoryAdd?: (category: string, folderName: string, results: UploadResult[]) => void;
@@ -70,6 +71,14 @@ export default function StorageUploadDialog({
   const [error, setError] = useState<string | null>(null);
   const [uploadResults, setUploadResults] = useState<UploadResult[]>([]);
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
+  const [customNames, setCustomNames] = useState<Record<string, string>>({});
+  const [orderedFiles, setOrderedFiles] = useState(files);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
+  // Sync orderedFiles when files prop changes
+  useEffect(() => {
+    setOrderedFiles(files);
+  }, [files]);
 
   // Auto-fill from initialFolderName or clipboard on mount
   useEffect(() => {
@@ -98,6 +107,28 @@ export default function StorageUploadDialog({
     }
   }, [open, initialFolderName]);
 
+  // Drag and drop handlers
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+
+    const newFiles = [...orderedFiles];
+    const draggedItem = newFiles[draggedIndex];
+    newFiles.splice(draggedIndex, 1);
+    newFiles.splice(index, 0, draggedItem);
+
+    setOrderedFiles(newFiles);
+    setDraggedIndex(index);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+  };
+
   const handleUpload = async () => {
     setError(null);
     setUploadResults([]);
@@ -116,7 +147,8 @@ export default function StorageUploadDialog({
     setUploading(true);
 
     try {
-      const response = await onUpload(category, folderName.trim());
+      const fileOrder = orderedFiles.map((f) => f.id);
+      const response = await onUpload(category, folderName.trim(), customNames, fileOrder);
       setUploadResults(response.results);
 
       // Add to history
@@ -141,6 +173,7 @@ export default function StorageUploadDialog({
       setError(null);
       setUploadResults([]);
       setCopiedUrl(null);
+      setCustomNames({});
     }
   };
 
@@ -232,35 +265,118 @@ export default function StorageUploadDialog({
           {/* Hide input section if upload is complete */}
           {uploadResults.length === 0 && (
             <>
-              {/* Files info */}
+              {/* Files list with thumbnails, rename, and drag & drop */}
               <Box>
                 <Typography variant="body2" color="text.secondary" fontWeight={500} gutterBottom>
-                  Files to upload:
+                  Files to upload ({orderedFiles.length}):
                 </Typography>
-            <Box
-              display="flex"
-              gap={spacingMUI.sm}
-              flexWrap="wrap"
-              mt={spacingMUI.sm}
-              sx={{
-                p: spacingMUI.base,
-                borderRadius: `${borderRadius.sm}px`,
-                backgroundColor: alpha(theme.palette.primary.main, 0.05),
-                border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-              }}
-            >
-              {files.map((file) => (
-                <Chip
-                  key={file.id}
-                  label={file.name}
-                  size="small"
-                  variant="outlined"
-                  sx={{
-                    borderRadius: `${borderRadius.sm}px`,
-                  }}
-                />
-              ))}
-            </Box>
+                <Stack spacing={spacingMUI.sm} mt={spacingMUI.sm}>
+                  {orderedFiles.map((file, index) => (
+                    <Box
+                      key={file.id}
+                      draggable={!uploading}
+                      onDragStart={() => handleDragStart(index)}
+                      onDragOver={(e) => handleDragOver(e, index)}
+                      onDragEnd={handleDragEnd}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: spacingMUI.sm,
+                        p: spacingMUI.sm,
+                        borderRadius: `${borderRadius.sm}px`,
+                        backgroundColor: draggedIndex === index
+                          ? alpha(theme.palette.primary.main, 0.15)
+                          : alpha(theme.palette.background.paper, 0.5),
+                        border: `1px solid ${draggedIndex === index ? theme.palette.primary.main : theme.palette.divider}`,
+                        cursor: uploading ? 'default' : 'grab',
+                        transition: 'all 0.2s ease',
+                        '&:active': {
+                          cursor: uploading ? 'default' : 'grabbing',
+                        },
+                        '&:hover': uploading ? {} : {
+                          backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                          borderColor: theme.palette.primary.light,
+                        },
+                      }}
+                    >
+                      {/* Drag Handle */}
+                      <DragIcon
+                        sx={{
+                          color: theme.palette.text.disabled,
+                          cursor: uploading ? 'default' : 'grab',
+                          '&:active': {
+                            cursor: uploading ? 'default' : 'grabbing',
+                          },
+                        }}
+                      />
+
+                      {/* Thumbnail */}
+                      {file.path && (
+                        <Box
+                          sx={{
+                            width: 48,
+                            height: 48,
+                            borderRadius: `${borderRadius.sm}px`,
+                            overflow: 'hidden',
+                            flexShrink: 0,
+                            border: `1px solid ${theme.palette.divider}`,
+                            backgroundColor: alpha(theme.palette.background.default, 0.5),
+                          }}
+                        >
+                          <img
+                            src={file.path}
+                            alt={file.name}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                            }}
+                          />
+                        </Box>
+                      )}
+
+                      {/* Index Chip */}
+                      <Chip
+                        label={`#${index + 1}`}
+                        size="small"
+                        sx={{
+                          minWidth: 36,
+                          fontWeight: 700,
+                          backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                          color: theme.palette.primary.main,
+                        }}
+                      />
+
+                      {/* Name Input */}
+                      <TextField
+                        size="small"
+                        fullWidth
+                        placeholder={file.name.replace(/\.[^/.]+$/, '')}
+                        value={customNames[file.id] || ''}
+                        onChange={(e) => {
+                          const value = e.target.value
+                            .replace(/[^a-zA-Z0-9-_]/g, '')
+                            .toLowerCase();
+                          setCustomNames((prev) => ({
+                            ...prev,
+                            [file.id]: value,
+                          }));
+                        }}
+                        disabled={uploading}
+                        helperText={customNames[file.id] ? `${customNames[file.id]}.jpg` : file.name}
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            borderRadius: `${borderRadius.sm}px`,
+                          },
+                          '& .MuiFormHelperText-root': {
+                            fontFamily: 'monospace',
+                            fontSize: '0.7rem',
+                          },
+                        }}
+                      />
+                    </Box>
+                  ))}
+                </Stack>
           </Box>
 
           {/* Category Selection */}
