@@ -3,7 +3,7 @@
  * Main UI component for converting HTML to table-based email code
  */
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   alpha,
   Box,
@@ -35,6 +35,9 @@ import { borderRadius, opacity, spacingMUI } from "../theme/tokens";
 import { formatHtml, formatMjml } from "./formatter";
 import { setupPasteHandler } from "./imageUtils";
 import ImageProcessor from "./ImageProcessor";
+import UploadHistory from "./UploadHistory";
+import { STORAGE_KEYS, UPLOAD_CONFIG } from "./constants";
+import type { UploadSession } from "./types";
 
 interface SectionHeaderProps {
   icon: React.ReactNode;
@@ -118,11 +121,113 @@ export default function HtmlConverterPanel() {
   const [showImageProcessor, setShowImageProcessor] = useState(false);
   const [inputHtml, setInputHtml] = useState<string>("");
   const [triggerExtract, setTriggerExtract] = useState(0);
+  const [uploadHistory, setUploadHistory] = useState<UploadSession[]>(() => {
+    // Load from localStorage
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.UPLOAD_HISTORY);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const resetReplacementRef = useRef<(() => void) | null>(null);
+  const [hasOutput, setHasOutput] = useState(false);
 
   const addLog = (message: string) => {
     setLog(prev => [...prev, message]);
     console.log(message);
   };
+
+  const handleAddToHistory = useCallback((
+    category: string,
+    folderName: string,
+    results: Array<{ filename: string; url: string; success: boolean }>
+  ) => {
+    const newSession: UploadSession = {
+      id: `${Date.now()}-${Math.random()}`,
+      timestamp: Date.now(),
+      category,
+      folderName,
+      files: results
+        .filter(r => r.success)
+        .map(r => ({
+          id: `${Date.now()}-${Math.random()}`,
+          timestamp: Date.now(),
+          filename: r.filename,
+          url: r.url,
+          shortPath: r.url.replace('https://storage.5th-elementagency.com/', ''),
+          category,
+          folderName,
+        })),
+    };
+
+    setUploadHistory(prev => {
+      const updated = [newSession, ...prev].slice(0, UPLOAD_CONFIG.MAX_HISTORY_SESSIONS);
+      localStorage.setItem(STORAGE_KEYS.UPLOAD_HISTORY, JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
+  const handleClearHistory = useCallback(() => {
+    setUploadHistory([]);
+    localStorage.removeItem(STORAGE_KEYS.UPLOAD_HISTORY);
+  }, []);
+
+  const handleResetReplacement = useCallback((resetFn: () => void) => {
+    resetReplacementRef.current = resetFn;
+  }, []);
+
+  const handleReplaceUrls = useCallback((urlMap: Record<string, string>) => {
+    // Get storage URLs in order (image-1, image-2, etc.)
+    const storageUrls = Object.values(urlMap);
+
+    if (storageUrls.length === 0) {
+      addLog(`⚠️ Немає URLs для заміни`);
+      return;
+    }
+
+    // Replace URLs in output HTML by position
+    if (outputHtmlRef.current && outputHtmlRef.current.value) {
+      let html = outputHtmlRef.current.value;
+      let imageIndex = 0;
+      let replacedCount = 0;
+
+      // Replace all img src attributes in order
+      html = html.replace(/(<img[^>]+src=["'])([^"']+)(["'][^>]*>)/gi, (match, prefix, _oldUrl, suffix) => {
+        if (imageIndex < storageUrls.length) {
+          const newUrl = storageUrls[imageIndex];
+          imageIndex++;
+          replacedCount++;
+          return `${prefix}${newUrl}${suffix}`;
+        }
+        return match;
+      });
+
+      outputHtmlRef.current.value = html;
+      addLog(`🔄 Замінено ${replacedCount} посилань в Output HTML`);
+    }
+
+    // Replace URLs in output MJML by position
+    if (outputMjmlRef.current && outputMjmlRef.current.value) {
+      let mjml = outputMjmlRef.current.value;
+      let imageIndex = 0;
+      let replacedCount = 0;
+
+      // Replace all mj-image and img src attributes in order
+      mjml = mjml.replace(/(<(?:mj-image|img)[^>]+src=["'])([^"']+)(["'][^>]*>)/gi, (match, prefix, _oldUrl, suffix) => {
+        if (imageIndex < storageUrls.length) {
+          const newUrl = storageUrls[imageIndex];
+          imageIndex++;
+          replacedCount++;
+          return `${prefix}${newUrl}${suffix}`;
+        }
+        return match;
+      });
+
+      outputMjmlRef.current.value = mjml;
+      addLog(`🔄 Замінено ${replacedCount} посилань в Output MJML`);
+    }
+  }, [addLog]);
 
   // Setup paste handler and auto-detect images
   useEffect(() => {
@@ -199,6 +304,15 @@ export default function HtmlConverterPanel() {
       if (outputHtmlRef.current) {
         outputHtmlRef.current.value = formattedContent;
       }
+
+      // Mark that output exists
+      setHasOutput(true);
+
+      // Reset replacement state (output regenerated with old URLs)
+      if (resetReplacementRef.current) {
+        resetReplacementRef.current();
+      }
+
       addLog("✅ HTML експортовано");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Невідома помилка";
@@ -221,6 +335,15 @@ export default function HtmlConverterPanel() {
       if (outputMjmlRef.current) {
         outputMjmlRef.current.value = formattedContent;
       }
+
+      // Mark that output exists
+      setHasOutput(true);
+
+      // Reset replacement state (output regenerated with old URLs)
+      if (resetReplacementRef.current) {
+        resetReplacementRef.current();
+      }
+
       addLog("✅ MJML експортовано");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Невідома помилка";
@@ -301,6 +424,13 @@ export default function HtmlConverterPanel() {
     setInputHtml("");
     setShowImageProcessor(false);
     setTriggerExtract(0);
+    setHasOutput(false);
+
+    // Reset replacement state
+    if (resetReplacementRef.current) {
+      resetReplacementRef.current();
+    }
+
     addLog("🧹 Очищено");
   };
 
@@ -411,6 +541,11 @@ export default function HtmlConverterPanel() {
         visible={showImageProcessor}
         onVisibilityChange={setShowImageProcessor}
         triggerExtract={triggerExtract}
+        fileName={fileName}
+        onHistoryAdd={handleAddToHistory}
+        onReplaceUrls={handleReplaceUrls}
+        onResetReplacement={handleResetReplacement}
+        hasOutput={hasOutput}
       />
 
       {/* Output Blocks */}
@@ -600,8 +735,15 @@ export default function HtmlConverterPanel() {
               ))}
             </StyledPaper>
           )}
+
         </Stack>
       )}
+
+      {/* Upload History - Always visible when there are sessions */}
+      <UploadHistory
+        sessions={uploadHistory}
+        onClear={handleClearHistory}
+      />
     </Box>
   );
 }

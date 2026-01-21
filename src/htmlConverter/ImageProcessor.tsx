@@ -18,12 +18,17 @@ import {
   Tooltip,
   Typography,
   useTheme,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import {
   Close as CloseIcon,
   Download as DownloadIcon,
   Refresh as RefreshIcon,
   PlayArrow as ProcessIcon,
+  CloudUpload as UploadIcon,
+  FindReplace as ReplaceIcon,
+  Check as CheckIcon,
 } from "@mui/icons-material";
 import Checkbox from "@mui/material/Checkbox";
 import FormControlLabel from "@mui/material/FormControlLabel";
@@ -33,20 +38,11 @@ import { saveAs } from "file-saver";
 import { useThemeMode } from "../theme";
 import { getComponentStyles } from "../theme/componentStyles";
 import { borderRadius, spacingMUI } from "../theme/tokens";
-
-type ImageFormat = "jpeg" | "webp";
-
-interface ProcessedImage {
-  id: string;
-  src: string;
-  previewUrl: string;
-  convertedBlob?: Blob;
-  originalSize: number;
-  convertedSize?: number;
-  status: "pending" | "processing" | "done" | "error";
-  error?: string;
-  name: string;
-}
+import StorageUploadDialog from "./StorageUploadDialog";
+import { formatSize, extractFolderName } from "./utils/formatters";
+import { logError, logSuccess, logWarning } from "./utils/errorHandler";
+import { STORAGE_KEYS, UI_TIMINGS, UPLOAD_CONFIG, IMAGE_DEFAULTS, STORAGE_URL_PREFIX } from "./constants";
+import type { ProcessedImage, ImageFormat, ImageSettings, UploadResult, StorageUploadResponse } from "./types";
 
 interface ImageProcessorProps {
   editorRef: React.RefObject<HTMLDivElement>;
@@ -54,21 +50,16 @@ interface ImageProcessorProps {
   visible: boolean;
   onVisibilityChange: (visible: boolean) => void;
   triggerExtract?: number;
+  fileName?: string;
+  onHistoryAdd?: (category: string, folderName: string, results: Array<{ filename: string; url: string; success: boolean }>) => void;
+  onReplaceUrls?: (urlMap: Record<string, string>) => void;
+  onResetReplacement?: (resetFn: () => void) => void;
+  hasOutput?: boolean;
 }
 
-const HTML_CONVERTER_STORAGE_KEY = "html-converter-image-settings";
-
-interface HtmlConverterImageSettings {
-  format: ImageFormat;
-  quality: number;
-  maxWidth: number;
-  autoProcess: boolean;
-  preserveFormat: boolean;
-}
-
-function loadSettings(): HtmlConverterImageSettings {
+function loadSettings(): ImageSettings {
   try {
-    const stored = localStorage.getItem(HTML_CONVERTER_STORAGE_KEY);
+    const stored = localStorage.getItem(STORAGE_KEYS.IMAGE_SETTINGS);
     if (stored) {
       return JSON.parse(stored);
     }
@@ -76,17 +67,17 @@ function loadSettings(): HtmlConverterImageSettings {
     console.error("Failed to load HTML converter settings:", error);
   }
   return {
-    format: "jpeg",
-    quality: 82,
-    maxWidth: 600,
-    autoProcess: true,
-    preserveFormat: false,
+    format: IMAGE_DEFAULTS.FORMAT,
+    quality: IMAGE_DEFAULTS.QUALITY,
+    maxWidth: IMAGE_DEFAULTS.MAX_WIDTH,
+    autoProcess: IMAGE_DEFAULTS.AUTO_PROCESS,
+    preserveFormat: IMAGE_DEFAULTS.PRESERVE_FORMAT,
   };
 }
 
-function saveSettings(settings: HtmlConverterImageSettings) {
+function saveSettings(settings: ImageSettings) {
   try {
-    localStorage.setItem(HTML_CONVERTER_STORAGE_KEY, JSON.stringify(settings));
+    localStorage.setItem(STORAGE_KEYS.IMAGE_SETTINGS, JSON.stringify(settings));
   } catch (error) {
     console.error("Failed to save HTML converter settings:", error);
   }
@@ -97,7 +88,12 @@ export default function ImageProcessor({
   onLog,
   visible,
   onVisibilityChange,
-  triggerExtract = 0
+  triggerExtract = 0,
+  fileName = "",
+  onHistoryAdd,
+  onReplaceUrls,
+  onResetReplacement,
+  hasOutput = false
 }: ImageProcessorProps) {
   const theme = useTheme();
   const { mode, style } = useThemeMode();
@@ -111,6 +107,25 @@ export default function ImageProcessor({
   const [isExtracting, setIsExtracting] = useState(false);
   const [autoProcess, setAutoProcess] = useState(savedSettings.autoProcess);
   const [preserveFormat, setPreserveFormat] = useState(savedSettings.preserveFormat);
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const uploadAbortControllerRef = useRef<AbortController | null>(null);
+  const [lastUploadedUrls, setLastUploadedUrls] = useState<Record<string, string>>({});
+  const [replacementDone, setReplacementDone] = useState(false);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'info' | 'warning' | 'error' }>({
+    open: false,
+    message: '',
+    severity: 'success',
+  });
+
+  const initialFolderName = extractFolderName(fileName);
+
+  // Register reset function with parent
+  useEffect(() => {
+    if (onResetReplacement) {
+      onResetReplacement(() => setReplacementDone(false));
+    }
+  }, [onResetReplacement]);
 
   const log = useCallback(
     (message: string) => {
@@ -336,7 +351,7 @@ export default function ImageProcessor({
     const zip = new JSZip();
     completed.forEach((img) => {
       const ext = format === "jpeg" ? ".jpg" : ".webp";
-      const name = img.name.replace(/^image-/, "img-") + ext;
+      const name = img.name + ext;
       zip.file(name, img.convertedBlob!);
     });
 
@@ -345,6 +360,205 @@ export default function ImageProcessor({
 
     log(`✅ Завантажено ${completed.length} зображень`);
   }, [images, format, log]);
+
+  const handleUploadToStorage = useCallback(
+    async (category: string, folderName: string): Promise<{ results: Array<{ filename: string; url: string; success: boolean }>; category: string; folderName: string }> => {
+      const completed = images.filter((img) => img.status === "done" && img.convertedBlob);
+
+      if (completed.length === 0) {
+        throw new Error("Немає оброблених зображень для завантаження");
+      }
+
+      // Prevent multiple simultaneous uploads
+      if (isUploading) {
+        throw new Error("Завантаження вже виконується");
+      }
+
+      setIsUploading(true);
+      uploadAbortControllerRef.current = new AbortController();
+
+      log(`🚀 Початок завантаження ${completed.length} зображень на storage...`);
+
+      const uploadedUrls: Record<string, string> = {}; // Original src -> uploaded URL
+      const results: Array<{ filename: string; url: string; success: boolean }> = [];
+      const errors: string[] = [];
+      let successCount = 0;
+
+      try {
+        for (let i = 0; i < completed.length; i++) {
+          const img = completed[i];
+          const ext = format === "jpeg" ? ".jpg" : ".webp";
+          const filename = img.name + ext;
+
+          // Check if upload was cancelled
+          if (uploadAbortControllerRef.current?.signal.aborted) {
+            log(`⚠️ Завантаження скасовано користувачем`);
+            throw new Error("Завантаження скасовано");
+          }
+
+          try {
+            log(`📤 [${i + 1}/${completed.length}] Завантаження ${filename}...`);
+
+            // Prepare file (upload blob to server) with timeout
+            const formData = new FormData();
+            formData.append("file", img.convertedBlob!, filename);
+            formData.append("category", category);
+            formData.append("folderName", folderName);
+
+            const prepareResponse = await Promise.race([
+              fetch("http://localhost:3001/api/storage-upload/prepare", {
+                method: "POST",
+                body: formData,
+                signal: uploadAbortControllerRef.current.signal,
+              }),
+              new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error("Timeout: сервер не відповідає (30s)")), UPLOAD_CONFIG.PREPARE_TIMEOUT)
+              ),
+            ]);
+
+            if (!prepareResponse.ok) {
+              const errorData = await prepareResponse.json().catch(() => ({}));
+              throw new Error(errorData.error || `HTTP ${prepareResponse.status}`);
+            }
+
+            const { tempPath } = await prepareResponse.json();
+
+            // Upload to storage with longer timeout (for slow internet)
+            const storageResponse = await Promise.race([
+              fetch("http://localhost:3001/api/storage-upload", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  filePath: tempPath,
+                  category,
+                  folderName,
+                  skipConfirmation: true,
+                }),
+                signal: uploadAbortControllerRef.current.signal,
+              }),
+              new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error("Timeout: storage не відповідає (180s)")), UPLOAD_CONFIG.STORAGE_TIMEOUT)
+              ),
+            ]);
+
+            if (!storageResponse.ok) {
+              const errorData = await storageResponse.json().catch(() => ({}));
+              throw new Error(errorData.error || `Storage HTTP ${storageResponse.status}`);
+            }
+
+            const result = await storageResponse.json();
+            if (result.filePath) {
+              // Map original src to uploaded URL
+              const fullUrl = `${STORAGE_URL_PREFIX}${result.filePath}`;
+              uploadedUrls[img.src] = fullUrl;
+              successCount++;
+              log(`✅ [${i + 1}/${completed.length}] ${filename} → storage`);
+
+              // Add to results
+              results.push({
+                filename,
+                url: fullUrl,
+                success: true,
+              });
+            }
+          } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : "Unknown error";
+
+            // Add failed result
+            results.push({
+              filename,
+              url: "",
+              success: false,
+            });
+
+            // Distinguish between network errors and other errors
+            if (errorMsg.includes("Failed to fetch") || errorMsg === "Network request failed") {
+              errors.push(`${filename}: Немає з'єднання з сервером`);
+              log(`❌ ${filename}: Немає з'єднання з сервером`);
+            } else if (errorMsg.includes("Timeout")) {
+              errors.push(`${filename}: ${errorMsg}`);
+              log(`❌ ${filename}: ${errorMsg}`);
+            } else if (errorMsg === "Завантаження скасовано") {
+              throw error; // Propagate cancellation
+            } else {
+              errors.push(`${filename}: ${errorMsg}`);
+              log(`❌ ${filename}: ${errorMsg}`);
+            }
+
+            // Continue with next file instead of stopping everything
+            continue;
+          }
+        }
+
+        // Replace images in HTML editor with uploaded URLs
+        if (editorRef.current && Object.keys(uploadedUrls).length > 0) {
+          const imgElements = editorRef.current.querySelectorAll("img");
+          imgElements.forEach((imgEl) => {
+            if (uploadedUrls[imgEl.src]) {
+              imgEl.src = uploadedUrls[imgEl.src];
+            }
+          });
+          log(`🔄 Замінено ${Object.keys(uploadedUrls).length} зображень в HTML editor`);
+        }
+
+        // Save uploaded URLs for manual replacement
+        if (Object.keys(uploadedUrls).length > 0) {
+          setLastUploadedUrls(uploadedUrls);
+        }
+
+        // Copy all URLs to clipboard
+        if (Object.keys(uploadedUrls).length > 0) {
+          const urlsList = Object.values(uploadedUrls).join("\n");
+          let clipboardSuccess = false;
+
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            try {
+              await navigator.clipboard.writeText(urlsList);
+              clipboardSuccess = true;
+            } catch (clipError) {
+              // Fallback: try using execCommand
+              try {
+                const textArea = document.createElement("textarea");
+                textArea.value = urlsList;
+                textArea.style.position = "fixed";
+                textArea.style.left = "-999999px";
+                textArea.style.top = "-999999px";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                const success = document.execCommand('copy');
+                document.body.removeChild(textArea);
+                clipboardSuccess = success;
+              } catch (fallbackError) {
+                console.warn("Fallback clipboard failed:", fallbackError);
+              }
+            }
+          }
+
+          if (clipboardSuccess) {
+            log(`📋 URLs скопійовано в буфер`);
+          } else {
+            log(`📋 URLs: ${urlsList.split('\n').join(', ')}`);
+          }
+        }
+
+        // Final summary
+        if (successCount === completed.length) {
+          log(`🎉 Успішно завантажено всі ${successCount} зображень`);
+        } else if (successCount > 0) {
+          log(`⚠️ Завантажено ${successCount} з ${completed.length} зображень (${errors.length} помилок)`);
+        } else {
+          log(`❌ Не вдалося завантажити жодного зображення`);
+        }
+
+        return { results, category, folderName };
+      } finally {
+        setIsUploading(false);
+        uploadAbortControllerRef.current = null;
+      }
+    },
+    [images, format, log, editorRef, isUploading]
+  );
 
   const handleRemove = useCallback((id: string) => {
     setImages((prev) => {
@@ -359,9 +573,23 @@ export default function ImageProcessor({
       if (img.previewUrl) URL.revokeObjectURL(img.previewUrl);
     });
     setImages([]);
+    setLastUploadedUrls({});
     onVisibilityChange(false);
     log("🗑️ Очищено");
   }, [images, log, onVisibilityChange]);
+
+  const handleReplaceInOutput = useCallback(() => {
+    if (onReplaceUrls && Object.keys(lastUploadedUrls).length > 0) {
+      onReplaceUrls(lastUploadedUrls);
+      setReplacementDone(true);
+      log(`✅ Замінено ${Object.keys(lastUploadedUrls).length} посилань в Output`);
+      setSnackbar({
+        open: true,
+        message: `🔄 Замінено ${Object.keys(lastUploadedUrls).length} посилань в Output HTML/MJML`,
+        severity: 'success',
+      });
+    }
+  }, [lastUploadedUrls, onReplaceUrls, log]);
 
   const handleProcessAll = useCallback(() => {
     const pendingImages = images.filter(img => img.status === "pending");
@@ -400,14 +628,6 @@ export default function ImageProcessor({
       setImages([]);
     }
   }, [visible]);
-
-  const formatSize = (bytes: number): string => {
-    if (bytes === 0) return "0 B";
-    const k = 1024;
-    const sizes = ["B", "KB", "MB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round((bytes / Math.pow(k, i)) * 10) / 10 + " " + sizes[i];
-  };
 
   const totalOriginal = images.reduce((sum, img) => sum + img.originalSize, 0);
   const totalConverted = images.reduce(
@@ -536,6 +756,11 @@ export default function ImageProcessor({
           onClick={extractImages}
           disabled={isExtracting}
           fullWidth
+          sx={{
+            textTransform: 'none',
+            fontWeight: 600,
+            borderRadius: `${borderRadius.md}px`,
+          }}
         >
           {isExtracting ? "Витягування..." : "Витягти зображення з HTML"}
         </Button>
@@ -655,26 +880,126 @@ export default function ImageProcessor({
                   startIcon={<ProcessIcon />}
                   onClick={handleProcessAll}
                   fullWidth
+                  sx={{
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    borderRadius: `${borderRadius.md}px`,
+                  }}
                 >
                   Обробити все ({pendingCount})
                 </Button>
               )}
               <Button
                 variant="contained"
+                color="primary"
+                startIcon={<UploadIcon />}
+                onClick={() => setUploadDialogOpen(true)}
+                disabled={doneCount === 0}
+                fullWidth
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  borderRadius: `${borderRadius.md}px`,
+                }}
+              >
+                Upload to Storage ({doneCount})
+              </Button>
+              {Object.keys(lastUploadedUrls).length > 0 && (
+                <Tooltip
+                  title={
+                    !hasOutput
+                      ? "Спочатку експортуйте HTML або MJML"
+                      : replacementDone
+                        ? "URLs вже замінені в Output"
+                        : "Замінити зображення на storage URLs"
+                  }
+                  arrow
+                >
+                  <span style={{ width: '100%' }}>
+                    <Button
+                      variant={replacementDone ? "contained" : "outlined"}
+                      color={replacementDone ? "success" : "secondary"}
+                      startIcon={replacementDone ? <CheckIcon /> : <ReplaceIcon />}
+                      onClick={handleReplaceInOutput}
+                      disabled={replacementDone || !hasOutput}
+                      fullWidth
+                      sx={{
+                        textTransform: 'none',
+                        fontWeight: 600,
+                        borderRadius: `${borderRadius.md}px`,
+                      }}
+                    >
+                      {replacementDone
+                        ? `✓ Замінено в Output (${Object.keys(lastUploadedUrls).length})`
+                        : `Замінити в Output (${Object.keys(lastUploadedUrls).length})`
+                      }
+                    </Button>
+                  </span>
+                </Tooltip>
+              )}
+              <Button
+                variant="contained"
+                color="success"
                 startIcon={<DownloadIcon />}
                 onClick={handleDownloadAll}
                 disabled={doneCount === 0}
                 fullWidth
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  borderRadius: `${borderRadius.md}px`,
+                }}
               >
                 Завантажити ZIP ({doneCount})
               </Button>
-              <Button variant="outlined" onClick={handleClear}>
+              <Button
+                variant="outlined"
+                onClick={handleClear}
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  borderRadius: `${borderRadius.md}px`,
+                }}
+              >
                 Очистити
               </Button>
             </Stack>
           </Box>
         )}
       </Stack>
+
+      <StorageUploadDialog
+        open={uploadDialogOpen}
+        onClose={() => setUploadDialogOpen(false)}
+        files={images
+          .filter((img) => img.status === "done")
+          .map((img) => ({ id: img.id, name: img.name }))}
+        onUpload={handleUploadToStorage}
+        onCancel={() => {
+          if (uploadAbortControllerRef.current) {
+            uploadAbortControllerRef.current.abort();
+            log("⚠️ Завантаження скасовано користувачем");
+          }
+        }}
+        initialFolderName={initialFolderName}
+        onHistoryAdd={onHistoryAdd}
+      />
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={UI_TIMINGS.SNACKBAR_DURATION}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Paper>
   );
 }
