@@ -10,6 +10,7 @@ export interface ProcessedImage {
   id: string;
   src: string;
   name: string;
+  customName?: string; // Custom name set by user (without extension)
   previewUrl: string;
   convertedBlob?: Blob;
   originalSize: number;
