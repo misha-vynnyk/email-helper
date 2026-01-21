@@ -259,23 +259,38 @@ export default function HtmlConverterPanel() {
           const imgElements = editorRef.current.querySelectorAll("img");
           const hasImages = imgElements.length > 0;
 
-          if (hasImages && !showImageProcessor) {
+          if (hasImages) {
             addLog(`🔍 Автовиявлення: знайдено ${imgElements.length} зображень`);
             setShowImageProcessor(true);
-
-            // Trigger extraction after state updates
-            setTimeout(() => {
-              setTriggerExtract(prev => prev + 1);
-            }, 100);
           }
+
+          // Always trigger extraction to clear old images if needed
+          setTimeout(() => {
+            setTriggerExtract(prev => prev + 1);
+          }, 100);
         }, 300);
       };
 
+      const handleInput = () => {
+        if (!editorRef.current) return;
+
+        // Check if there are still images in the editor
+        const imgElements = editorRef.current.querySelectorAll("img");
+        const hasImages = imgElements.length > 0;
+
+        if (!hasImages && showImageProcessor) {
+          // No images found, trigger extraction to clear
+          setTriggerExtract(prev => prev + 1);
+        }
+      };
+
       editorRef.current.addEventListener("paste", handlePaste as EventListener);
+      editorRef.current.addEventListener("input", handleInput);
 
       return () => {
         if (editorRef.current) {
           editorRef.current.removeEventListener("paste", handlePaste as EventListener);
+          editorRef.current.removeEventListener("input", handleInput);
         }
       };
     }
