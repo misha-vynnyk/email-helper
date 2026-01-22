@@ -137,8 +137,17 @@ export default function TemplateLibrary() {
         setError("Invalid data format from server");
       }
     } catch (err) {
-      logger.error("TemplateLibrary", "Failed to load templates", err);
-      setTemplates([]); // Ensure templates is always an array
+      const isConnectionError = err instanceof Error && (
+        err.message.includes("Failed to fetch") ||
+        err.message.includes("ERR_CONNECTION_REFUSED")
+      );
+
+      // Don't log connection errors to reduce console noise
+      if (!isConnectionError) {
+        logger.error("TemplateLibrary", "Failed to load templates", err);
+      }
+
+      setTemplates([]);
       setError(err instanceof Error ? err.message : "Failed to load templates");
     } finally {
       setLoading(false);
@@ -175,7 +184,16 @@ export default function TemplateLibrary() {
           totalFound += result.templatesFound;
         } catch (err) {
           const errorMsg = `Failed to sync ${location.name}: ${err instanceof Error ? err.message : "Unknown error"}`;
-          logger.error("TemplateLibrary", errorMsg, err);
+          const isConnectionError = err instanceof Error && (
+            err.message.includes("Failed to fetch") ||
+            err.message.includes("ERR_CONNECTION_REFUSED")
+          );
+
+          // Don't log connection errors to reduce console noise
+          if (!isConnectionError) {
+            logger.error("TemplateLibrary", errorMsg, err);
+          }
+
           errors.push(errorMsg);
         }
       }
@@ -189,6 +207,16 @@ export default function TemplateLibrary() {
       // Reload templates after sync
       await loadTemplates();
     } catch (err) {
+      const isConnectionError = err instanceof Error && (
+        err.message.includes("Failed to fetch") ||
+        err.message.includes("ERR_CONNECTION_REFUSED")
+      );
+
+      // Don't log connection errors to reduce console noise
+      if (!isConnectionError) {
+        logger.error("TemplateLibrary", "Failed to sync templates", err);
+      }
+
       setError(err instanceof Error ? err.message : "Failed to sync templates");
     } finally {
       setSyncing(false);
