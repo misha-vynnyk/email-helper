@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -11,6 +11,7 @@ import {
   useTheme,
   alpha,
   Tooltip,
+  Pagination,
 } from "@mui/material";
 import {
   History as HistoryIcon,
@@ -29,8 +30,7 @@ import { useThemeMode } from "../theme";
 import { getComponentStyles } from "../theme/componentStyles";
 import { borderRadius, spacingMUI } from "../theme/tokens";
 import { copyToClipboard } from "./utils/clipboard";
-import { getShortPath } from "./utils/formatters";
-import { STORAGE_URL_PREFIX, UI_TIMINGS } from "./constants";
+import { UI_TIMINGS, UPLOAD_CONFIG } from "./constants";
 import type { UploadSession } from "./types";
 
 interface UploadHistoryProps {
@@ -45,6 +45,26 @@ export default function UploadHistory({ sessions, onClear }: UploadHistoryProps)
 
   const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set());
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(sessions.length / UPLOAD_CONFIG.SESSIONS_PER_PAGE);
+  const startIndex = (currentPage - 1) * UPLOAD_CONFIG.SESSIONS_PER_PAGE;
+  const endIndex = startIndex + UPLOAD_CONFIG.SESSIONS_PER_PAGE;
+  const paginatedSessions = sessions.slice(startIndex, endIndex);
+
+  const handlePageChange = (_event: React.ChangeEvent<unknown>, page: number) => {
+    setCurrentPage(page);
+    // Reset expanded sessions when changing page
+    setExpandedSessions(new Set());
+  };
+
+  // Reset to page 1 when sessions list changes (new upload or clear)
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [sessions.length, currentPage, totalPages]);
 
   const toggleSession = (sessionId: string) => {
     setExpandedSessions((prev) => {
@@ -137,7 +157,7 @@ export default function UploadHistory({ sessions, onClear }: UploadHistoryProps)
 
       {/* Sessions List */}
       <Stack spacing={spacingMUI.sm}>
-        {sessions.map((session) => {
+        {paginatedSessions.map((session) => {
           const isExpanded = expandedSessions.has(session.id);
           const successCount = session.files.filter(f => f.url).length;
 
@@ -300,6 +320,36 @@ export default function UploadHistory({ sessions, onClear }: UploadHistoryProps)
           );
         })}
       </Stack>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <Box
+          display="flex"
+          justifyContent="center"
+          mt={spacingMUI.lg}
+          pt={spacingMUI.base}
+          borderTop={`1px solid ${alpha(theme.palette.divider, 0.1)}`}
+        >
+          <Pagination
+            count={totalPages}
+            page={currentPage}
+            onChange={handlePageChange}
+            color="primary"
+            shape="rounded"
+            showFirstButton
+            showLastButton
+            sx={{
+              '& .MuiPaginationItem-root': {
+                borderRadius: `${borderRadius.sm}px`,
+                fontWeight: 500,
+              },
+              '& .Mui-selected': {
+                fontWeight: 700,
+              },
+            }}
+          />
+        </Box>
+      )}
     </Paper>
   );
 }

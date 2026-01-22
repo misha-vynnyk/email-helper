@@ -367,6 +367,9 @@ export default function StorageUploadDialog({
                         sx={{
                           '& .MuiOutlinedInput-root': {
                             borderRadius: `${borderRadius.sm}px`,
+                            '&.Mui-focused': {
+                              backgroundColor: 'transparent',
+                            },
                           },
                           '& .MuiFormHelperText-root': {
                             fontFamily: 'monospace',
@@ -414,6 +417,9 @@ export default function StorageUploadDialog({
             sx={{
               '& .MuiOutlinedInput-root': {
                 borderRadius: `${borderRadius.md}px`,
+                '&.Mui-focused': {
+                  backgroundColor: 'transparent',
+                },
               }
             }}
           />
