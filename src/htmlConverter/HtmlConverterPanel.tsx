@@ -468,8 +468,6 @@ export default function HtmlConverterPanel() {
           title="HTML to Table Converter"
           subtitle="Конвертація HTML в табличну структуру для email"
         />
-
-        <Stack direction="row" alignItems="center" spacing={spacingMUI.sm}>
           <FormControlLabel
             control={
               <Checkbox
@@ -490,8 +488,9 @@ export default function HtmlConverterPanel() {
                 size="small"
               />
             }
-            label={<Typography variant="caption">Автообробка</Typography>}
+            label={<Typography variant="caption">Автообробка зображень</Typography>}
           />
+        <Stack direction="row" alignItems="center" spacing={spacingMUI.sm}>
           <Tooltip title="Очистити все">
             <IconButton onClick={handleClear} color="error" size="small">
               <ClearIcon />
