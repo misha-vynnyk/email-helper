@@ -30,9 +30,6 @@ import {
   FindReplace as ReplaceIcon,
   Check as CheckIcon,
 } from "@mui/icons-material";
-import Checkbox from "@mui/material/Checkbox";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import JSZip from "jszip";
 import { saveAs } from "file-saver";
 
 import { useThemeMode } from "../theme";
@@ -121,6 +118,7 @@ interface ImageProcessorProps {
   onReplaceUrls?: (urlMap: Record<string, string>) => void;
   onResetReplacement?: (resetFn: () => void) => void;
   hasOutput?: boolean;
+  autoProcess?: boolean;
 }
 
 function loadSettings(): ImageSettings {
@@ -130,7 +128,7 @@ function loadSettings(): ImageSettings {
       return JSON.parse(stored);
     }
   } catch (error) {
-    console.error("Failed to load HTML converter settings:", error);
+    // Silently fallback to defaults if settings can't be loaded
   }
   return {
     format: IMAGE_DEFAULTS.FORMAT,
@@ -145,7 +143,7 @@ function saveSettings(settings: ImageSettings) {
   try {
     localStorage.setItem(STORAGE_KEYS.IMAGE_SETTINGS, JSON.stringify(settings));
   } catch (error) {
-    console.error("Failed to save HTML converter settings:", error);
+    // Silently ignore if settings can't be saved (e.g., quota exceeded)
   }
 }
 
@@ -159,7 +157,8 @@ export default function ImageProcessor({
   onHistoryAdd,
   onReplaceUrls,
   onResetReplacement,
-  hasOutput = false
+  hasOutput = false,
+  autoProcess: autoProcessProp
 }: ImageProcessorProps) {
   const theme = useTheme();
   const { mode, style } = useThemeMode();
@@ -167,11 +166,10 @@ export default function ImageProcessor({
 
   const [images, setImages] = useState<ProcessedImage[]>([]);
   const savedSettings = loadSettings();
-  const [format, setFormat] = useState<ImageFormat>(savedSettings.format);
+  const [format] = useState<ImageFormat>(savedSettings.format);
   const [quality, setQuality] = useState(savedSettings.quality);
   const [maxWidth, setMaxWidth] = useState(savedSettings.maxWidth);
-  const [autoProcess, setAutoProcess] = useState(savedSettings.autoProcess);
-  const [preserveFormat, setPreserveFormat] = useState(savedSettings.preserveFormat);
+  const [autoProcess, setAutoProcess] = useState(autoProcessProp ?? savedSettings.autoProcess);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const uploadAbortControllerRef = useRef<AbortController | null>(null);
@@ -211,6 +209,13 @@ export default function ImageProcessor({
     [onLog]
   );
 
+  // Sync autoProcess with prop if provided
+  useEffect(() => {
+    if (autoProcessProp !== undefined && autoProcessProp !== autoProcess) {
+      setAutoProcess(autoProcessProp);
+    }
+  }, [autoProcessProp, autoProcess]);
+
   // Save settings to localStorage when they change
   useEffect(() => {
     saveSettings({
@@ -218,9 +223,9 @@ export default function ImageProcessor({
       quality,
       maxWidth,
       autoProcess,
-      preserveFormat,
+      preserveFormat: IMAGE_DEFAULTS.PRESERVE_FORMAT,
     });
-  }, [format, quality, maxWidth, autoProcess, preserveFormat]);
+  }, [format, quality, maxWidth, autoProcess]);
 
   // Re-process when quality/maxWidth changes so slider actually affects output
   useEffect(() => {
@@ -255,7 +260,6 @@ export default function ImageProcessor({
     }
 
     isExtractingRef.current = true;
-    log("🔍 Пошук зображень в HTML...");
 
     try {
       const imgElements = editorRef.current.querySelectorAll("img");
@@ -291,23 +295,18 @@ export default function ImageProcessor({
         const id = `${Date.now()}-${i}`;
         const name = `image-${i + 1}`;
 
-        // Detect transparency asynchronously
         const hasTransparency = await detectTransparency(src);
 
         newImages.push({
           id,
           src,
           previewUrl: src,
-          originalSize: 0, // Will be calculated when loaded
+          originalSize: 0,
           status: "pending" as const,
           name,
           hasTransparency,
-          formatOverride: "auto", // Default to auto-detection
+          formatOverride: "auto",
         });
-
-        if (hasTransparency) {
-          log(`✨ ${name}: виявлено прозорість → PNG`);
-        }
       }
 
       setImages(newImages);
@@ -364,7 +363,7 @@ export default function ImageProcessor({
           const optimizedBlob = await convertResponse.blob();
           return { blob: optimizedBlob, originalSize };
         } catch (error) {
-          console.warn("Server PNG optimization failed, using client-side:", error);
+          // Fallback to client-side conversion if server fails
         }
       }
 
@@ -449,8 +448,6 @@ export default function ImageProcessor({
       // Determine format for this specific image
       const imageFormat = getImageFormat(image, format);
 
-      log(`🔄 Початок обробки ${image.name}... (${imageFormat.toUpperCase()}, якість ${quality}%)`);
-
       try {
         const result = await convertImage(image.src, imageFormat, { quality, maxWidth });
         const originalSize = result.originalSize || image.originalSize;
@@ -490,29 +487,6 @@ export default function ImageProcessor({
     [images, format, convertImage, log, quality, maxWidth]
   );
 
-  const handleDownloadAll = useCallback(async () => {
-    const completed = images.filter((img) => img.status === "done" && img.convertedBlob);
-
-    if (completed.length === 0) {
-      log("❌ Немає оброблених зображень");
-      return;
-    }
-
-    log("📦 Створення ZIP архіву...");
-
-    const zip = new JSZip();
-    completed.forEach((img) => {
-      const imageFormat = getImageFormat(img, format);
-      const ext = getFileExtension(imageFormat);
-      const name = img.name + ext;
-      zip.file(name, img.convertedBlob!);
-    });
-
-    const blob = await zip.generateAsync({ type: "blob" });
-    saveAs(blob, `images-${Date.now()}.zip`);
-
-    log(`✅ Завантажено ${completed.length} зображень`);
-  }, [images, format, log]);
 
   const handleDownloadSingle = useCallback((id: string) => {
     const img = images.find((i) => i.id === id);
@@ -717,10 +691,6 @@ export default function ImageProcessor({
 
   const handleFormatChange = useCallback((id: string, newFormat: ImageFormatOverride) => {
     setImages((prev) => {
-      const img = prev.find((i) => i.id === id);
-      if (img) {
-        log(`🔄 Зміна формату для ${img.name} → ${newFormat.toUpperCase()}`);
-      }
       return prev.map((img) =>
         img.id === id
           ? {
@@ -733,7 +703,7 @@ export default function ImageProcessor({
           : img
       );
     });
-  }, [log]);
+  }, []);
 
   const handleClear = useCallback(() => {
     clearImagesAndRevoke();
@@ -758,7 +728,6 @@ export default function ImageProcessor({
       log("⚠️ Всі зображення вже оброблені");
       return;
     }
-    log(`🔄 Обробка ${pendingImages.length} зображень...`);
     pendingImages.forEach((img) => processImage(img.id));
   }, [images, log, processImage]);
 
@@ -775,7 +744,6 @@ export default function ImageProcessor({
 
     const pendingImages = images.filter((img) => img.status === "pending");
     if (pendingImages.length > 0) {
-      log(`🔄 Автообробка ${pendingImages.length} зображень...`);
       pendingImages.forEach((img) => processImage(img.id));
     }
   }, [images, autoProcess, processImage]);
@@ -832,45 +800,6 @@ export default function ImageProcessor({
 
         {/* Settings Row */}
         <Stack direction="row" spacing={spacingMUI.lg} alignItems="flex-start" flexWrap="wrap">
-          {/* Checkboxes */}
-          <Stack spacing={spacingMUI.xs}>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={autoProcess}
-                  onChange={(e) => setAutoProcess(e.target.checked)}
-                  size="small"
-                />
-              }
-              label={<Typography variant="caption">Автообробка</Typography>}
-            />
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={preserveFormat}
-                  onChange={(e) => setPreserveFormat(e.target.checked)}
-                  size="small"
-                />
-              }
-              label={<Typography variant="caption">Зберегти формат</Typography>}
-            />
-          </Stack>
-
-          <Box>
-            <Typography variant="caption" display="block" mb={spacingMUI.xs} color="text.secondary">
-              Формат:
-            </Typography>
-            <ToggleButtonGroup
-              value={format}
-              exclusive
-              onChange={(_, val) => val && setFormat(val)}
-              size="small"
-            >
-              <ToggleButton value="jpeg">JPEG</ToggleButton>
-              <ToggleButton value="png">PNG</ToggleButton>
-            </ToggleButtonGroup>
-          </Box>
-
           <Box sx={{ flex: 1, minWidth: 150 }}>
             <Stack direction="row" justifyContent="space-between" alignItems="center" mb={spacingMUI.xs}>
               <Typography variant="caption" color="text.secondary">
@@ -1129,17 +1058,7 @@ export default function ImageProcessor({
                   </span>
                 </Tooltip>
               )}
-              <Button
-                variant="contained"
-                color="success"
-                startIcon={<DownloadIcon />}
-                onClick={handleDownloadAll}
-                disabled={doneCount === 0}
-                fullWidth
-                sx={actionButtonSx}
-              >
-                Завантажити ZIP ({doneCount})
-              </Button>
+
               <Button variant="outlined" onClick={handleClear} sx={actionButtonSx}>
                 Очистити
               </Button>

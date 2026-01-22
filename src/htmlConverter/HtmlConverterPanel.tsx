@@ -33,10 +33,10 @@ import { useThemeMode } from "../theme";
 import { getComponentStyles } from "../theme/componentStyles";
 import { borderRadius, opacity, spacingMUI } from "../theme/tokens";
 import { formatHtml, formatMjml } from "./formatter";
-import { setupPasteHandler } from "./imageUtils";
+import { setupPasteHandler, isSignatureImageTag } from "./imageUtils";
 import ImageProcessor from "./ImageProcessor";
 import UploadHistory from "./UploadHistory";
-import { STORAGE_KEYS, UPLOAD_CONFIG } from "./constants";
+import { STORAGE_KEYS, UPLOAD_CONFIG, IMAGE_DEFAULTS } from "./constants";
 import type { UploadSession } from "./types";
 
 interface SectionHeaderProps {
@@ -132,10 +132,21 @@ export default function HtmlConverterPanel() {
   });
   const resetReplacementRef = useRef<(() => void) | null>(null);
   const [hasOutput, setHasOutput] = useState(false);
+  const [autoProcess, setAutoProcess] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.IMAGE_SETTINGS);
+      if (stored) {
+        const settings = JSON.parse(stored);
+        return settings.autoProcess ?? IMAGE_DEFAULTS.AUTO_PROCESS;
+      }
+    } catch {
+      // Fallback to default
+    }
+    return IMAGE_DEFAULTS.AUTO_PROCESS;
+  });
 
   const addLog = (message: string) => {
     setLog(prev => [...prev, message]);
-    console.log(message);
   };
 
   const handleAddToHistory = useCallback((
@@ -177,8 +188,24 @@ export default function HtmlConverterPanel() {
     resetReplacementRef.current = resetFn;
   }, []);
 
+  const replaceUrlsInContent = useCallback((content: string, pattern: RegExp, storageUrls: string[]) => {
+    let imageIndex = 0;
+    let replacedCount = 0;
+
+    const replaced = content.replace(pattern, (match, prefix, _oldUrl, suffix) => {
+      if (isSignatureImageTag(match)) return match;
+      if (imageIndex < storageUrls.length) {
+        const newUrl = storageUrls[imageIndex++];
+        replacedCount++;
+        return `${prefix}${newUrl}${suffix}`;
+      }
+      return match;
+    });
+
+    return { replaced, count: replacedCount };
+  }, []);
+
   const handleReplaceUrls = useCallback((urlMap: Record<string, string>) => {
-    // Get storage URLs in order (image-1, image-2, etc.)
     const storageUrls = Object.values(urlMap);
 
     if (storageUrls.length === 0) {
@@ -186,48 +213,26 @@ export default function HtmlConverterPanel() {
       return;
     }
 
-    // Replace URLs in output HTML by position
-    if (outputHtmlRef.current && outputHtmlRef.current.value) {
-      let html = outputHtmlRef.current.value;
-      let imageIndex = 0;
-      let replacedCount = 0;
-
-      // Replace all img src attributes in order
-      html = html.replace(/(<img[^>]+src=["'])([^"']+)(["'][^>]*>)/gi, (match, prefix, _oldUrl, suffix) => {
-        if (imageIndex < storageUrls.length) {
-          const newUrl = storageUrls[imageIndex];
-          imageIndex++;
-          replacedCount++;
-          return `${prefix}${newUrl}${suffix}`;
-        }
-        return match;
-      });
-
-      outputHtmlRef.current.value = html;
-      addLog(`🔄 Замінено ${replacedCount} посилань в Output HTML`);
+    if (outputHtmlRef.current?.value) {
+      const { replaced, count } = replaceUrlsInContent(
+        outputHtmlRef.current.value,
+        /(<img[^>]+src=["'])([^"']+)(["'][^>]*>)/gi,
+        storageUrls
+      );
+      outputHtmlRef.current.value = replaced;
+      if (count > 0) addLog(`🔄 Замінено ${count} посилань в Output HTML`);
     }
 
-    // Replace URLs in output MJML by position
-    if (outputMjmlRef.current && outputMjmlRef.current.value) {
-      let mjml = outputMjmlRef.current.value;
-      let imageIndex = 0;
-      let replacedCount = 0;
-
-      // Replace all mj-image and img src attributes in order
-      mjml = mjml.replace(/(<(?:mj-image|img)[^>]+src=["'])([^"']+)(["'][^>]*>)/gi, (match, prefix, _oldUrl, suffix) => {
-        if (imageIndex < storageUrls.length) {
-          const newUrl = storageUrls[imageIndex];
-          imageIndex++;
-          replacedCount++;
-          return `${prefix}${newUrl}${suffix}`;
-        }
-        return match;
-      });
-
-      outputMjmlRef.current.value = mjml;
-      addLog(`🔄 Замінено ${replacedCount} посилань в Output MJML`);
+    if (outputMjmlRef.current?.value) {
+      const { replaced, count } = replaceUrlsInContent(
+        outputMjmlRef.current.value,
+        /(<(?:mj-image|img)[^>]+src=["'])([^"']+)(["'][^>]*>)/gi,
+        storageUrls
+      );
+      outputMjmlRef.current.value = replaced;
+      if (count > 0) addLog(`🔄 Замінено ${count} посилань в Output MJML`);
     }
-  }, [addLog]);
+  }, [addLog, replaceUrlsInContent]);
 
   // Setup paste handler and auto-detect images
   useEffect(() => {
@@ -250,7 +255,6 @@ export default function HtmlConverterPanel() {
 
           // Save cleaned HTML for display
           setInputHtml(cleanHtml);
-          addLog("📋 Збережено оригінальний HTML з буфера");
         }
 
         // Small delay to ensure DOM is updated after paste
@@ -260,7 +264,6 @@ export default function HtmlConverterPanel() {
           const hasImages = imgElements.length > 0;
 
           if (hasImages) {
-            addLog(`🔍 Автовиявлення: знайдено ${imgElements.length} зображень`);
             setShowImageProcessor(true);
           }
 
@@ -332,7 +335,6 @@ export default function HtmlConverterPanel() {
     } catch (error) {
       const message = error instanceof Error ? error.message : "Невідома помилка";
       addLog(`❌ Помилка експорту HTML: ${message}`);
-      console.error("Export HTML error:", error);
     }
   };
 
@@ -363,7 +365,6 @@ export default function HtmlConverterPanel() {
     } catch (error) {
       const message = error instanceof Error ? error.message : "Невідома помилка";
       addLog(`❌ Помилка експорту MJML: ${message}`);
-      console.error("Export MJML error:", error);
     }
   };
 
@@ -468,11 +469,35 @@ export default function HtmlConverterPanel() {
           subtitle="Конвертація HTML в табличну структуру для email"
         />
 
-        <Tooltip title="Очистити все">
-          <IconButton onClick={handleClear} color="error" size="small">
-            <ClearIcon />
-          </IconButton>
-        </Tooltip>
+        <Stack direction="row" alignItems="center" spacing={spacingMUI.sm}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={autoProcess}
+                onChange={(e) => {
+                  const newValue = e.target.checked;
+                  setAutoProcess(newValue);
+                  // Save to localStorage
+                  try {
+                    const stored = localStorage.getItem(STORAGE_KEYS.IMAGE_SETTINGS);
+                    const settings = stored ? JSON.parse(stored) : {};
+                    settings.autoProcess = newValue;
+                    localStorage.setItem(STORAGE_KEYS.IMAGE_SETTINGS, JSON.stringify(settings));
+                  } catch {
+                    // Ignore errors
+                  }
+                }}
+                size="small"
+              />
+            }
+            label={<Typography variant="caption">Автообробка</Typography>}
+          />
+          <Tooltip title="Очистити все">
+            <IconButton onClick={handleClear} color="error" size="small">
+              <ClearIcon />
+            </IconButton>
+          </Tooltip>
+        </Stack>
       </Stack>
 
       {/* Editor */}
@@ -498,10 +523,10 @@ export default function HtmlConverterPanel() {
             '&:focus': {
               outline: `2px solid ${theme.palette.primary.main}`,
               outlineOffset: -2,
-              backgroundColor: alpha(theme.palette.action.hover, 0.5),
+              backgroundColor: theme.palette.action.hover,
             },
             '&:empty:before': {
-              content: '"Вставте або введіть HTML код сюди..."',
+              content: '"Вставте або введіть текст сюди..."',
               color: theme.palette.text.disabled,
             }
           }}
@@ -523,6 +548,18 @@ export default function HtmlConverterPanel() {
               onClick={(e) => (e.target as HTMLInputElement).select()}
               size="small"
               fullWidth
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: `${borderRadius.md}px`,
+                  transition: 'all 0.2s ease',
+                  '&.Mui-focused': {
+                    backgroundColor: 'transparent',
+                    '& fieldset': {
+                      borderWidth: '2px',
+                    },
+                  },
+                },
+              }}
             />
             <Tooltip title="Зменшити номер">
               <IconButton size="small" onClick={() => changeFileNumber(-1)} color="primary">
@@ -561,6 +598,7 @@ export default function HtmlConverterPanel() {
         onReplaceUrls={handleReplaceUrls}
         onResetReplacement={handleResetReplacement}
         hasOutput={hasOutput}
+        autoProcess={autoProcess}
       />
 
       {/* Output Blocks */}
@@ -617,6 +655,9 @@ export default function HtmlConverterPanel() {
                 fontSize: "13px",
                 lineHeight: 1.5,
                 backgroundColor: theme.palette.action.hover,
+                "&.Mui-focused": {
+                  backgroundColor: theme.palette.action.hover,
+                },
               },
             }}
           />
@@ -674,6 +715,9 @@ export default function HtmlConverterPanel() {
                 fontSize: "13px",
                 lineHeight: 1.5,
                 backgroundColor: theme.palette.action.hover,
+                "&.Mui-focused": {
+                  backgroundColor: theme.palette.action.hover,
+                },
               },
             }}
           />
