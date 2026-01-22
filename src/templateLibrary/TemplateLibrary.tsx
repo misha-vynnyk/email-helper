@@ -137,7 +137,19 @@ export default function TemplateLibrary() {
         setError("Invalid data format from server");
       }
     } catch (err) {
-      logger.error("TemplateLibrary", "Failed to load templates", err);
+      const isConnectionError = err instanceof Error && (
+        err.message.includes("Failed to fetch") ||
+        err.message.includes("connection") ||
+        err.message.includes("Server connection failed")
+      );
+
+      // Only log connection errors as warnings to reduce console noise
+      if (isConnectionError) {
+        logger.warn("TemplateLibrary", "Server unavailable - templates cannot be loaded");
+      } else {
+        logger.error("TemplateLibrary", "Failed to load templates", err);
+      }
+
       setTemplates([]); // Ensure templates is always an array
       setError(err instanceof Error ? err.message : "Failed to load templates");
     } finally {
@@ -175,7 +187,19 @@ export default function TemplateLibrary() {
           totalFound += result.templatesFound;
         } catch (err) {
           const errorMsg = `Failed to sync ${location.name}: ${err instanceof Error ? err.message : "Unknown error"}`;
-          logger.error("TemplateLibrary", errorMsg, err);
+          const isConnectionError = err instanceof Error && (
+            err.message.includes("Failed to fetch") ||
+            err.message.includes("connection") ||
+            err.message.includes("Server connection failed")
+          );
+
+          // Only log connection errors as warnings to reduce console noise
+          if (isConnectionError) {
+            logger.warn("TemplateLibrary", `Server unavailable - sync failed for ${location.name}`);
+          } else {
+            logger.error("TemplateLibrary", errorMsg, err);
+          }
+
           errors.push(errorMsg);
         }
       }
@@ -189,6 +213,19 @@ export default function TemplateLibrary() {
       // Reload templates after sync
       await loadTemplates();
     } catch (err) {
+      const isConnectionError = err instanceof Error && (
+        err.message.includes("Failed to fetch") ||
+        err.message.includes("connection") ||
+        err.message.includes("Server connection failed")
+      );
+
+      // Only log connection errors as warnings to reduce console noise
+      if (isConnectionError) {
+        logger.warn("TemplateLibrary", "Server unavailable - sync failed");
+      } else {
+        logger.error("TemplateLibrary", "Failed to sync templates", err);
+      }
+
       setError(err instanceof Error ? err.message : "Failed to sync templates");
     } finally {
       setSyncing(false);

@@ -11,9 +11,22 @@ type AppState = {
   samplesDrawerOpen: boolean;
 };
 
+// Load initial tab from localStorage
+const loadSelectedTab = (): AppState["selectedMainTab"] => {
+  try {
+    const saved = localStorage.getItem("app-selected-main-tab");
+    if (saved && ["email", "blocks", "templates", "images", "converter"].includes(saved)) {
+      return saved as AppState["selectedMainTab"];
+    }
+  } catch {
+    // Ignore errors
+  }
+  return "email";
+};
+
 const appStateStore = create<AppState>(() => ({
   document: {},
-  selectedMainTab: "email",
+  selectedMainTab: loadSelectedTab(),
   samplesDrawerOpen: false,
 }));
 
@@ -26,6 +39,12 @@ export function useSelectedMainTab() {
 }
 
 export function setSelectedMainTab(selectedMainTab: AppState["selectedMainTab"]) {
+  // Save to localStorage
+  try {
+    localStorage.setItem("app-selected-main-tab", selectedMainTab);
+  } catch {
+    // Ignore errors
+  }
   return appStateStore.setState({ selectedMainTab });
 }
 
