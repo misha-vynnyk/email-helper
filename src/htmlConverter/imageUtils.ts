@@ -2,22 +2,23 @@
  * Paste handler utilities for HTML converter
  */
 
+import { IMAGE_EXCLUSION_ALT_REGEX } from "./constants";
+
 type LogFunction = (msg: string) => void;
 
-export function setupPasteHandler(editorElement: HTMLElement, log: LogFunction): void {
-  editorElement.addEventListener('paste', (e) => {
-    const items = Array.from(e.clipboardData?.items || []);
-    const hasFiles = items.some(it => it.kind === 'file');
-    const html = e.clipboardData?.getData('text/html') || '';
-    const hasImgs = /<img\b[^>]*src=/i.test(html);
-    const hasDataURIs = /src=["']data:image\//i.test(html);
+/** Exclude from extraction: img with alt containing "Signature" (e.g. sign-i, sign-i-e) */
+export function isSignatureImageAlt(alt: string | null): boolean {
+  return !!(alt && IMAGE_EXCLUSION_ALT_REGEX.test(alt));
+}
 
-    if (hasFiles || hasDataURIs) {
-      log('📋 Вставлено зображення як файл/dataURL — все ок.');
-    } else if (hasImgs) {
-      log('📋 Вставлено зображення як URL — спробуємо завантажити. Якщо не вийде, з\'явиться попередження.');
-    } else {
-      log('📋 Вставлено без зображень.');
-    }
+/** Exclude from URL replacement: <img> / <mj-image> tag with alt containing "Signature" */
+export function isSignatureImageTag(tag: string): boolean {
+  return /\balt=["'][^"']*Signature/i.test(tag);
+}
+
+export function setupPasteHandler(editorElement: HTMLElement, log: LogFunction): void {
+  // Paste handler setup - no logging needed, images are processed automatically
+  editorElement.addEventListener('paste', () => {
+    // Handler exists for potential future functionality
   });
 }
