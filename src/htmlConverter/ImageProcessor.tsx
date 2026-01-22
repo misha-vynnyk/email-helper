@@ -40,9 +40,11 @@ import { getComponentStyles } from "../theme/componentStyles";
 import { borderRadius, spacingMUI } from "../theme/tokens";
 import StorageUploadDialog from "./StorageUploadDialog";
 import { formatSize, extractFolderName } from "./utils/formatters";
-import { logError, logSuccess, logWarning } from "./utils/errorHandler";
+import { copyToClipboard } from "./utils/clipboard";
+import { isSignatureImageAlt } from "./imageUtils";
 import { STORAGE_KEYS, UI_TIMINGS, UPLOAD_CONFIG, IMAGE_DEFAULTS, STORAGE_URL_PREFIX } from "./constants";
-import type { ProcessedImage, ImageFormat, ImageFormatOverride, ImageSettings, UploadResult, StorageUploadResponse } from "./types";
+import type { ProcessedImage, ImageFormat, ImageFormatOverride, ImageSettings } from "./types";
+import API_URL from "../config/api";
 
 // Utility function to detect transparency in image
 const detectTransparency = async (src: string): Promise<boolean> => {
@@ -105,17 +107,8 @@ const getImageFormat = (
   return globalFormat;
 };
 
-// Get file extension for image format
-const getFileExtension = (imageFormat: ImageFormat): string => {
-  switch (imageFormat) {
-    case "jpeg":
-      return ".jpg";
-    case "png":
-      return ".png";
-    default:
-      return ".jpg";
-  }
-};
+const EXT_BY_FORMAT: Record<ImageFormat, string> = { jpeg: ".jpg", png: ".png" };
+const getFileExtension = (f: ImageFormat) => EXT_BY_FORMAT[f] ?? ".jpg";
 
 interface ImageProcessorProps {
   editorRef: React.RefObject<HTMLDivElement>;
@@ -191,9 +184,15 @@ export default function ImageProcessor({
     severity: 'success',
   });
 
-  // Helper to show snackbar notifications
   const showSnackbar = useCallback((message: string, severity: 'success' | 'info' | 'warning' | 'error' = 'success') => {
     setSnackbar({ open: true, message, severity });
+  }, []);
+
+  const clearImagesAndRevoke = useCallback(() => {
+    setImages((prev) => {
+      prev.forEach((img) => img.previewUrl && URL.revokeObjectURL(img.previewUrl));
+      return [];
+    });
   }, []);
 
   const initialFolderName = extractFolderName(fileName);
@@ -223,6 +222,26 @@ export default function ImageProcessor({
     });
   }, [format, quality, maxWidth, autoProcess, preserveFormat]);
 
+  // Re-process when quality/maxWidth changes so slider actually affects output
+  useEffect(() => {
+    setImages((prev) => {
+      const hasProcessed = prev.some((img) => img.status === "done" || img.status === "error");
+      if (!hasProcessed) return prev;
+      return prev.map((img) =>
+        img.status === "done" || img.status === "error"
+          ? {
+              ...img,
+              status: "pending" as const,
+              convertedBlob: undefined,
+              convertedSize: undefined,
+              error: undefined,
+            }
+          : img
+      );
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quality, maxWidth]);
+
   // Extract images from HTML
   const extractImages = useCallback(async () => {
     if (!editorRef.current) {
@@ -243,29 +262,31 @@ export default function ImageProcessor({
 
       if (imgElements.length === 0) {
         log("❌ Зображення не знайдено");
-        // Clear existing images when no images found in editor
-        setImages((prevImages) => {
-          prevImages.forEach((img) => {
-            if (img.previewUrl) URL.revokeObjectURL(img.previewUrl);
-          });
-          return [];
-        });
-        // Hide image processor panel when no images
+        clearImagesAndRevoke();
         onVisibilityChange(false);
         isExtractingRef.current = false;
         return;
       }
 
-      log(`✅ Знайдено ${imgElements.length} зображень`);
+      const eligible = Array.from(imgElements).filter(
+        (img) => img.src && !isSignatureImageAlt(img.getAttribute("alt"))
+      );
+
+      if (eligible.length === 0) {
+        log("✅ Зображень не знайдено (тільки підписи або порожні)");
+        clearImagesAndRevoke();
+        onVisibilityChange(false);
+        isExtractingRef.current = false;
+        return;
+      }
+
+      log(`✅ Знайдено ${eligible.length} зображень` + (eligible.length < imgElements.length ? ` (пропущено ${imgElements.length - eligible.length} підписів)` : ""));
 
       const newImages: ProcessedImage[] = [];
 
-      // Detect transparency for each image
-      for (let i = 0; i < imgElements.length; i++) {
-        const img = imgElements[i];
+      for (let i = 0; i < eligible.length; i++) {
+        const img = eligible[i];
         const src = img.src;
-
-        if (!src) continue;
 
         const id = `${Date.now()}-${i}`;
         const name = `image-${i + 1}`;
@@ -301,10 +322,53 @@ export default function ImageProcessor({
     } finally {
       isExtractingRef.current = false;
     }
-  }, [editorRef, log, autoProcess, onVisibilityChange]);
+  }, [editorRef, log, autoProcess, onVisibilityChange, clearImagesAndRevoke]);
 
   const convertImage = useCallback(
-    async (src: string, targetFormat: ImageFormat): Promise<{ blob: Blob; originalSize: number }> => {
+    async (
+      src: string,
+      targetFormat: ImageFormat,
+      opts: { quality: number; maxWidth: number }
+    ): Promise<{ blob: Blob; originalSize: number }> => {
+      const { quality: q, maxWidth: mw } = opts;
+
+      // For PNG, use server-side conversion to properly handle compression
+      if (targetFormat === "png") {
+        try {
+          const response = await fetch(src);
+          if (!response.ok) throw new Error("Failed to fetch image");
+
+          const originalBlob = await response.blob();
+          const originalSize = originalBlob.size;
+          const file = new File([originalBlob], "image.png", { type: "image/png" });
+
+          const formData = new FormData();
+          formData.append("image", file);
+          formData.append("format", "png");
+          formData.append("quality", q.toString());
+          formData.append("resizeMode", "preset");
+          formData.append("preset", mw.toString());
+          formData.append("preserveAspectRatio", "true");
+          formData.append("compressionMode", "balanced");
+
+          const convertResponse = await fetch(`${API_URL}/api/image-converter/convert`, {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!convertResponse.ok) {
+            const errorData = await convertResponse.json().catch(() => ({}));
+            throw new Error(errorData.error || "Server conversion failed");
+          }
+
+          const optimizedBlob = await convertResponse.blob();
+          return { blob: optimizedBlob, originalSize };
+        } catch (error) {
+          console.warn("Server PNG optimization failed, using client-side:", error);
+        }
+      }
+
+      // Client-side conversion for JPEG or PNG fallback
       return new Promise((resolve, reject) => {
         const img = new Image();
         img.crossOrigin = "anonymous";
@@ -319,64 +383,42 @@ export default function ImageProcessor({
               return;
             }
 
-            // Calculate dimensions
             let width = img.width;
             let height = img.height;
-
-            if (width > maxWidth) {
-              height = (height * maxWidth) / width;
-              width = maxWidth;
+            const maxDim = Math.max(width, height);
+            if (maxDim > mw) {
+              const scale = mw / maxDim;
+              width = Math.round(width * scale);
+              height = Math.round(height * scale);
             }
 
             canvas.width = width;
             canvas.height = height;
 
-            // Use target format (already determined by caller)
-            let outputFormat: ImageFormat = targetFormat;
+            const outputFormat: ImageFormat = targetFormat;
 
-            // Override with preserveFormat if enabled
-            if (preserveFormat && img.src.startsWith("data:")) {
-              const mimeMatch = img.src.match(/data:image\/(jpeg|jpg|png)/i);
-              if (mimeMatch) {
-                const detectedFormat = mimeMatch[1].toLowerCase();
-                if (detectedFormat === "jpg") {
-                  outputFormat = "jpeg";
-                } else if (detectedFormat === "jpeg" || detectedFormat === "png") {
-                  outputFormat = detectedFormat as ImageFormat;
-                }
-              }
-            }
-
-            // Handle background based on format
             if (outputFormat === "jpeg") {
-              // JPEG doesn't support transparency - fill with white
               ctx.fillStyle = "#FFFFFF";
               ctx.fillRect(0, 0, width, height);
             } else {
-              // PNG/WebP support transparency - clear canvas
               ctx.clearRect(0, 0, width, height);
             }
 
-            // Draw and convert
             ctx.drawImage(img, 0, 0, width, height);
 
-            // Calculate original size (approximate from data URL if present)
             let originalSize = 0;
             if (img.src.startsWith("data:")) {
               const base64 = img.src.split(",")[1];
-              originalSize = Math.ceil((base64.length * 3) / 4);
+              originalSize = base64 ? Math.ceil((base64.length * 3) / 4) : 0;
             }
 
             canvas.toBlob(
               (blob) => {
-                if (blob) {
-                  resolve({ blob, originalSize });
-                } else {
-                  reject(new Error("Failed to create blob"));
-                }
+                if (blob) resolve({ blob, originalSize });
+                else reject(new Error("Failed to create blob"));
               },
               `image/${outputFormat}`,
-              quality / 100
+              q / 100
             );
           } catch (error) {
             reject(error);
@@ -384,11 +426,10 @@ export default function ImageProcessor({
         };
 
         img.onerror = () => reject(new Error("Failed to load image"));
-
         img.src = src;
       });
     },
-    [format, quality, maxWidth, preserveFormat]
+    []
   );
 
   const processImage = useCallback(
@@ -408,10 +449,11 @@ export default function ImageProcessor({
       // Determine format for this specific image
       const imageFormat = getImageFormat(image, format);
 
-      log(`🔄 Початок обробки ${image.name}... (${imageFormat.toUpperCase()})`);
+      log(`🔄 Початок обробки ${image.name}... (${imageFormat.toUpperCase()}, якість ${quality}%)`);
 
       try {
-        const result = await convertImage(image.src, imageFormat);
+        const result = await convertImage(image.src, imageFormat, { quality, maxWidth });
+        const originalSize = result.originalSize || image.originalSize;
 
         setImages((prev) =>
           prev.map((img) =>
@@ -421,13 +463,12 @@ export default function ImageProcessor({
                   status: "done" as const,
                   convertedBlob: result.blob,
                   convertedSize: result.blob.size,
-                  originalSize: result.originalSize || img.originalSize,
+                  originalSize,
                 }
               : img
           )
         );
 
-        const originalSize = result.originalSize || image.originalSize;
         if (originalSize > 0) {
           const saved = ((1 - result.blob.size / originalSize) * 100).toFixed(0);
           log(`✅ ${image.name}: ${formatSize(originalSize)} → ${formatSize(result.blob.size)} (-${saved}%)`);
@@ -446,7 +487,7 @@ export default function ImageProcessor({
         log(`❌ Помилка: ${image.name}`);
       }
     },
-    [images, convertImage, log]
+    [images, format, convertImage, log, quality, maxWidth]
   );
 
   const handleDownloadAll = useCallback(async () => {
@@ -515,9 +556,8 @@ export default function ImageProcessor({
 
       log(`🚀 Початок завантаження ${completed.length} зображень на storage...`);
 
-      const uploadedUrls: Record<string, string> = {}; // Original src -> uploaded URL
+      const uploadedUrls: Record<string, string> = {};
       const results: Array<{ filename: string; url: string; success: boolean }> = [];
-      const errors: string[] = [];
       let successCount = 0;
 
       try {
@@ -546,7 +586,7 @@ export default function ImageProcessor({
             formData.append("folderName", folderName);
 
             const prepareResponse = await Promise.race([
-              fetch("http://localhost:3001/api/storage-upload/prepare", {
+              fetch(`${API_URL}/api/storage-upload/prepare`, {
                 method: "POST",
                 body: formData,
                 signal: uploadAbortControllerRef.current.signal,
@@ -565,7 +605,7 @@ export default function ImageProcessor({
 
             // Upload to storage with longer timeout (for slow internet)
             const storageResponse = await Promise.race([
-              fetch("http://localhost:3001/api/storage-upload", {
+              fetch(`${API_URL}/api/storage-upload`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -612,18 +652,17 @@ export default function ImageProcessor({
             });
 
             // Distinguish between network errors and other errors
-            if (errorMsg.includes("Failed to fetch") || errorMsg === "Network request failed") {
-              errors.push(`${filename}: Немає з'єднання з сервером`);
-              log(`❌ ${filename}: Немає з'єднання з сервером`);
-            } else if (errorMsg.includes("Timeout")) {
-              errors.push(`${filename}: ${errorMsg}`);
-              log(`❌ ${filename}: ${errorMsg}`);
-            } else if (errorMsg === "Завантаження скасовано") {
-              throw error; // Propagate cancellation
-            } else {
-              errors.push(`${filename}: ${errorMsg}`);
-              log(`❌ ${filename}: ${errorMsg}`);
+            if (errorMsg === "Завантаження скасовано") {
+              throw error;
             }
+
+            const errorPrefix = errorMsg.includes("Failed to fetch") || errorMsg === "Network request failed"
+              ? "Немає з'єднання з сервером"
+              : errorMsg.includes("Timeout")
+              ? errorMsg
+              : errorMsg;
+
+            log(`❌ ${filename}: ${errorPrefix}`);
 
             // Continue with next file instead of stopping everything
             continue;
@@ -641,52 +680,20 @@ export default function ImageProcessor({
           log(`🔄 Замінено ${Object.keys(uploadedUrls).length} зображень в HTML editor`);
         }
 
-        // Save uploaded URLs for manual replacement
+        // Save uploaded URLs for manual replacement and copy to clipboard
         if (Object.keys(uploadedUrls).length > 0) {
           setLastUploadedUrls(uploadedUrls);
-        }
-
-        // Copy all URLs to clipboard
-        if (Object.keys(uploadedUrls).length > 0) {
           const urlsList = Object.values(uploadedUrls).join("\n");
-          let clipboardSuccess = false;
-
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            try {
-              await navigator.clipboard.writeText(urlsList);
-              clipboardSuccess = true;
-            } catch (clipError) {
-              // Fallback: try using execCommand
-              try {
-                const textArea = document.createElement("textarea");
-                textArea.value = urlsList;
-                textArea.style.position = "fixed";
-                textArea.style.left = "-999999px";
-                textArea.style.top = "-999999px";
-                document.body.appendChild(textArea);
-                textArea.focus();
-                textArea.select();
-                const success = document.execCommand('copy');
-                document.body.removeChild(textArea);
-                clipboardSuccess = success;
-              } catch (fallbackError) {
-                console.warn("Fallback clipboard failed:", fallbackError);
-              }
-            }
-          }
-
-          if (clipboardSuccess) {
-            log(`📋 URLs скопійовано в буфер`);
-          } else {
-            log(`📋 URLs: ${urlsList.split('\n').join(', ')}`);
-          }
+          const ok = await copyToClipboard(urlsList);
+          log(ok ? "📋 URLs скопійовано в буфер" : `📋 URLs: ${urlsList.split("\n").join(", ")}`);
         }
 
         // Final summary
+        const errorCount = results.filter((r) => !r.success).length;
         if (successCount === completed.length) {
           log(`🎉 Успішно завантажено всі ${successCount} зображень`);
         } else if (successCount > 0) {
-          log(`⚠️ Завантажено ${successCount} з ${completed.length} зображень (${errors.length} помилок)`);
+          log(`⚠️ Завантажено ${successCount} з ${completed.length} зображень (${errorCount} помилок)`);
         } else {
           log(`❌ Не вдалося завантажити жодного зображення`);
         }
@@ -709,58 +716,51 @@ export default function ImageProcessor({
   }, []);
 
   const handleFormatChange = useCallback((id: string, newFormat: ImageFormatOverride) => {
-    setImages((prev) =>
-      prev.map((img) =>
+    setImages((prev) => {
+      const img = prev.find((i) => i.id === id);
+      if (img) {
+        log(`🔄 Зміна формату для ${img.name} → ${newFormat.toUpperCase()}`);
+      }
+      return prev.map((img) =>
         img.id === id
           ? {
               ...img,
               formatOverride: newFormat,
-              // Reset to pending to force re-processing from original
               status: "pending" as const,
               convertedBlob: undefined,
               convertedSize: undefined,
             }
           : img
-      )
-    );
-
-    // Process from original source (not from converted blob)
-    const img = images.find((i) => i.id === id);
-    if (img) {
-      log(`🔄 Зміна формату для ${img.name} → ${newFormat.toUpperCase()}`);
-      // Will be auto-processed if autoProcess is enabled
-      // Otherwise user needs to click "Process all"
-    }
-  }, [images, log]);
+      );
+    });
+  }, [log]);
 
   const handleClear = useCallback(() => {
-    images.forEach((img) => {
-      if (img.previewUrl) URL.revokeObjectURL(img.previewUrl);
-    });
-    setImages([]);
+    clearImagesAndRevoke();
     setLastUploadedUrls({});
     onVisibilityChange(false);
     log("🗑️ Очищено");
-  }, [images, log, onVisibilityChange]);
+  }, [clearImagesAndRevoke, log, onVisibilityChange]);
 
   const handleReplaceInOutput = useCallback(() => {
-    if (onReplaceUrls && Object.keys(lastUploadedUrls).length > 0) {
+    const n = Object.keys(lastUploadedUrls).length;
+    if (onReplaceUrls && n > 0) {
       onReplaceUrls(lastUploadedUrls);
       setReplacementDone(true);
-      log(`✅ Замінено ${Object.keys(lastUploadedUrls).length} посилань в Output`);
-      showSnackbar(`🔄 Замінено ${Object.keys(lastUploadedUrls).length} посилань в Output HTML/MJML`, 'success');
+      log(`✅ Замінено ${n} посилань в Output`);
+      showSnackbar(`🔄 Замінено ${n} посилань в Output HTML/MJML`, "success");
     }
-  }, [lastUploadedUrls, onReplaceUrls, log]);
+  }, [lastUploadedUrls, onReplaceUrls, log, showSnackbar]);
 
   const handleProcessAll = useCallback(() => {
-    const pendingImages = images.filter(img => img.status === "pending");
+    const pendingImages = images.filter((img) => img.status === "pending");
     if (pendingImages.length === 0) {
       log("⚠️ Всі зображення вже оброблені");
       return;
     }
     log(`🔄 Обробка ${pendingImages.length} зображень...`);
     pendingImages.forEach((img) => processImage(img.id));
-  }, [images, log]);
+  }, [images, log, processImage]);
 
   // Listen for extraction trigger
   useEffect(() => {
@@ -770,35 +770,33 @@ export default function ImageProcessor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [triggerExtract, visible]);
 
-  // Auto-process pending images when autoProcess is enabled
   useEffect(() => {
     if (!autoProcess || images.length === 0) return;
 
-    const pendingImages = images.filter(img => img.status === "pending");
+    const pendingImages = images.filter((img) => img.status === "pending");
     if (pendingImages.length > 0) {
       log(`🔄 Автообробка ${pendingImages.length} зображень...`);
       pendingImages.forEach((img) => processImage(img.id));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [images, autoProcess]);
+  }, [images, autoProcess, processImage]);
 
-  // Clear images when component is hidden
   useEffect(() => {
     if (!visible && images.length > 0) {
-      images.forEach((img) => {
-        if (img.previewUrl) URL.revokeObjectURL(img.previewUrl);
-      });
-      setImages([]);
+      clearImagesAndRevoke();
     }
-  }, [visible]);
+  }, [visible, images.length, clearImagesAndRevoke]);
 
   const totalOriginal = images.reduce((sum, img) => sum + img.originalSize, 0);
-  const totalConverted = images.reduce(
-    (sum, img) => sum + (img.convertedSize || 0),
-    0
-  );
+  const totalConverted = images.reduce((sum, img) => sum + (img.convertedSize || 0), 0);
   const doneCount = images.filter((img) => img.status === "done").length;
   const pendingCount = images.filter((img) => img.status === "pending").length;
+  const lastUploadedCount = Object.keys(lastUploadedUrls).length;
+
+  const actionButtonSx = {
+    textTransform: "none" as const,
+    fontWeight: 600,
+    borderRadius: `${borderRadius.md}px`,
+  };
 
   if (!visible) {
     return null;
@@ -867,7 +865,6 @@ export default function ImageProcessor({
               exclusive
               onChange={(_, val) => val && setFormat(val)}
               size="small"
-              disabled={preserveFormat}
             >
               <ToggleButton value="jpeg">JPEG</ToggleButton>
               <ToggleButton value="png">PNG</ToggleButton>
@@ -885,7 +882,10 @@ export default function ImageProcessor({
             </Stack>
             <Slider
               value={quality}
-              onChange={(_, val) => setQuality(val as number)}
+              onChange={(_, val) => {
+                const v = Array.isArray(val) ? val[0] : val;
+                if (typeof v === "number") setQuality(v);
+              }}
               min={60}
               max={100}
               size="small"
@@ -903,7 +903,10 @@ export default function ImageProcessor({
             </Stack>
             <Slider
               value={maxWidth}
-              onChange={(_, val) => setMaxWidth(val as number)}
+              onChange={(_, val) => {
+                const v = Array.isArray(val) ? val[0] : val;
+                if (typeof v === "number") setMaxWidth(v);
+              }}
               min={300}
               max={1200}
               step={100}
@@ -918,7 +921,12 @@ export default function ImageProcessor({
             <Stack direction="row" spacing={spacingMUI.sm} sx={{ overflowX: "auto", pb: spacingMUI.xs }}>
               {images.map((img) => {
                 const imgFormat = getImageFormat(img, format);
-                const isCustomFormat = img.formatOverride && img.formatOverride !== "auto";
+
+                // Distinct colors by output format (updates when user changes format)
+                const badgeBg =
+                  imgFormat === "png"
+                    ? theme.palette.success.main
+                    : theme.palette.warning.dark;
 
                 return (
                 <Stack key={img.id} spacing={0.5} alignItems="center">
@@ -943,8 +951,9 @@ export default function ImageProcessor({
                       }}
                     />
 
-                    {/* Format Badge */}
+                    {/* Format Badge — color by imgFormat so it updates on toggle */}
                     <Chip
+                      key={`${img.id}-${imgFormat}`}
                       label={imgFormat.toUpperCase()}
                       size="small"
                       sx={{
@@ -952,17 +961,12 @@ export default function ImageProcessor({
                         top: 2,
                         right: 2,
                         height: 16,
-                        fontSize: '0.65rem',
+                        fontSize: "0.65rem",
                         fontWeight: 700,
-                        backgroundColor: img.hasTransparency
-                          ? alpha(theme.palette.info.main, 0.9)
-                          : isCustomFormat
-                          ? alpha(theme.palette.warning.main, 0.9)
-                          : alpha(theme.palette.primary.main, 0.7),
-                        color: 'white',
-                        '& .MuiChip-label': {
-                          px: 0.5,
-                        },
+                        backgroundColor: badgeBg,
+                        color: "white",
+                        border: "1px solid rgba(255,255,255,0.4)",
+                        "& .MuiChip-label": { px: 0.5 },
                       }}
                     />
                   {img.status === "processing" && (
@@ -1081,17 +1085,7 @@ export default function ImageProcessor({
             {/* Actions */}
             <Stack direction="row" spacing={spacingMUI.sm} mt={spacingMUI.sm}>
               {pendingCount > 0 && !autoProcess && (
-                <Button
-                  variant="outlined"
-                  startIcon={<ProcessIcon />}
-                  onClick={handleProcessAll}
-                  fullWidth
-                  sx={{
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    borderRadius: `${borderRadius.md}px`,
-                  }}
-                >
+                <Button variant="outlined" startIcon={<ProcessIcon />} onClick={handleProcessAll} fullWidth sx={actionButtonSx}>
                   Обробити все ({pendingCount})
                 </Button>
               )}
@@ -1102,15 +1096,11 @@ export default function ImageProcessor({
                 onClick={() => setUploadDialogOpen(true)}
                 disabled={doneCount === 0}
                 fullWidth
-                sx={{
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  borderRadius: `${borderRadius.md}px`,
-                }}
+                sx={actionButtonSx}
               >
                 Upload to Storage ({doneCount})
               </Button>
-              {Object.keys(lastUploadedUrls).length > 0 && (
+              {lastUploadedCount > 0 && (
                 <Tooltip
                   title={
                     !hasOutput
@@ -1121,7 +1111,7 @@ export default function ImageProcessor({
                   }
                   arrow
                 >
-                  <span style={{ width: '100%' }}>
+                  <span style={{ width: "100%" }}>
                     <Button
                       variant={replacementDone ? "contained" : "outlined"}
                       color={replacementDone ? "success" : "secondary"}
@@ -1129,15 +1119,11 @@ export default function ImageProcessor({
                       onClick={handleReplaceInOutput}
                       disabled={replacementDone || !hasOutput}
                       fullWidth
-                      sx={{
-                        textTransform: 'none',
-                        fontWeight: 600,
-                        borderRadius: `${borderRadius.md}px`,
-                      }}
+                      sx={actionButtonSx}
                     >
                       {replacementDone
-                        ? `✓ Замінено в Output (${Object.keys(lastUploadedUrls).length})`
-                        : `Замінити в Output (${Object.keys(lastUploadedUrls).length})`
+                        ? `✓ Замінено в Output (${lastUploadedCount})`
+                        : `Замінити в Output (${lastUploadedCount})`
                       }
                     </Button>
                   </span>
@@ -1150,23 +1136,11 @@ export default function ImageProcessor({
                 onClick={handleDownloadAll}
                 disabled={doneCount === 0}
                 fullWidth
-                sx={{
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  borderRadius: `${borderRadius.md}px`,
-                }}
+                sx={actionButtonSx}
               >
                 Завантажити ZIP ({doneCount})
               </Button>
-              <Button
-                variant="outlined"
-                onClick={handleClear}
-                sx={{
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  borderRadius: `${borderRadius.md}px`,
-                }}
-              >
+              <Button variant="outlined" onClick={handleClear} sx={actionButtonSx}>
                 Очистити
               </Button>
             </Stack>
