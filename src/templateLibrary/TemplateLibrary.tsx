@@ -38,6 +38,7 @@ import { listTemplates, syncAllTemplates, getTemplateContent } from "./templateA
 import { getCategoryIcon } from "./templateCategoryIcons";
 import TemplateItem from "./TemplateItem";
 import TemplateStorageModal from "./TemplateStorageModal";
+import VirtualizedTemplateGrid from "./VirtualizedTemplateGrid";
 import { getTemplateStorageLocations } from "./templateStorageConfig";
 import { templateContentCache } from "./templateContentCache";
 import { logger } from "../utils/logger";
@@ -136,7 +137,19 @@ export default function TemplateLibrary() {
         setError("Invalid data format from server");
       }
     } catch (err) {
-      logger.error("TemplateLibrary", "Failed to load templates", err);
+      const isConnectionError = err instanceof Error && (
+        err.message.includes("Failed to fetch") ||
+        err.message.includes("connection") ||
+        err.message.includes("Server connection failed")
+      );
+
+      // Only log connection errors as warnings to reduce console noise
+      if (isConnectionError) {
+        logger.warn("TemplateLibrary", "Server unavailable - templates cannot be loaded");
+      } else {
+        logger.error("TemplateLibrary", "Failed to load templates", err);
+      }
+
       setTemplates([]); // Ensure templates is always an array
       setError(err instanceof Error ? err.message : "Failed to load templates");
     } finally {
@@ -174,7 +187,19 @@ export default function TemplateLibrary() {
           totalFound += result.templatesFound;
         } catch (err) {
           const errorMsg = `Failed to sync ${location.name}: ${err instanceof Error ? err.message : "Unknown error"}`;
-          logger.error("TemplateLibrary", errorMsg, err);
+          const isConnectionError = err instanceof Error && (
+            err.message.includes("Failed to fetch") ||
+            err.message.includes("connection") ||
+            err.message.includes("Server connection failed")
+          );
+
+          // Only log connection errors as warnings to reduce console noise
+          if (isConnectionError) {
+            logger.warn("TemplateLibrary", `Server unavailable - sync failed for ${location.name}`);
+          } else {
+            logger.error("TemplateLibrary", errorMsg, err);
+          }
+
           errors.push(errorMsg);
         }
       }
@@ -188,6 +213,19 @@ export default function TemplateLibrary() {
       // Reload templates after sync
       await loadTemplates();
     } catch (err) {
+      const isConnectionError = err instanceof Error && (
+        err.message.includes("Failed to fetch") ||
+        err.message.includes("connection") ||
+        err.message.includes("Server connection failed")
+      );
+
+      // Only log connection errors as warnings to reduce console noise
+      if (isConnectionError) {
+        logger.warn("TemplateLibrary", "Server unavailable - sync failed");
+      } else {
+        logger.error("TemplateLibrary", "Failed to sync templates", err);
+      }
+
       setError(err instanceof Error ? err.message : "Failed to sync templates");
     } finally {
       setSyncing(false);
@@ -782,9 +820,13 @@ export default function TemplateLibrary() {
       {/* Content Area */}
       <Box
         data-app-scroll="true"
-        flex={1}
-        overflow='auto'
-        p={2}
+        sx={{
+          flex: 1,
+          overflow: filteredTemplates.length === 0 ? "auto" : "hidden",
+          p: filteredTemplates.length === 0 ? 2 : 0,
+          display: "flex",
+          flexDirection: "column",
+        }}
       >
         {filteredTemplates.length === 0 ? (
           /* Empty State */
@@ -890,38 +932,20 @@ export default function TemplateLibrary() {
             )}
           </Box>
         ) : (
-          /* Templates Grid */
-          <Grid
-            container
-            spacing={2}
-          >
-            {filteredTemplates.map((template, index) => (
-              <Grid
-                item
-                xs={12}
-                sm={6}
-                md={4}
-                key={template.id}
-              >
-                <TemplateItem
-                  template={template}
-                  previewConfig={previewConfig}
-                  onDelete={handleTemplateDeleted}
-                  onUpdate={handleTemplateUpdated}
-                  onLoadTemplate={(html, tmpl) => {
-                    // TODO: Integrate with editor
-                  }}
-                  isOpen={openTemplateId === template.id}
-                  onOpen={() => handleOpenTemplate(template.id)}
-                  onClose={handleCloseTemplate}
-                  allTemplates={filteredTemplates}
-                  currentIndex={index}
-                  onNavigate={handleNavigateTemplate}
-                  savedScrollPosition={savedScrollPositionRef.current}
-                />
-              </Grid>
-            ))}
-          </Grid>
+          /* Virtualized Templates Grid - рендерить лише видимі елементи */
+          <Box sx={{ flex: 1, minHeight: 400 }}>
+            <VirtualizedTemplateGrid
+              templates={filteredTemplates}
+              previewConfig={previewConfig}
+              openTemplateId={openTemplateId}
+              onDelete={handleTemplateDeleted}
+              onUpdate={handleTemplateUpdated}
+              onOpen={handleOpenTemplate}
+              onClose={handleCloseTemplate}
+              onNavigate={handleNavigateTemplate}
+              savedScrollPosition={savedScrollPositionRef.current}
+            />
+          </Box>
         )}
       </Box>
 

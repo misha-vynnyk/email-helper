@@ -38,8 +38,11 @@ function getCompressionOptions(format, quality, mode) {
             chromaSubsampling: '4:4:4',
           };
         case 'png':
+          // Map quality to compression level: 86-100 = level 3 (faster, less compression)
+          // 71-85 = level 6 (balanced), 60-70 = level 9 (maximum compression)
+          const pngCompressionLevel = quality >= 86 ? 3 : quality >= 71 ? 6 : 9;
           return {
-            compressionLevel: 9, // Maximum compression
+            compressionLevel: pngCompressionLevel,
             palette: false, // True color
             effort: 10, // Maximum effort
             quality: 100,
@@ -72,9 +75,11 @@ function getCompressionOptions(format, quality, mode) {
             effort: 6,
           };
         case 'png':
+          // Map quality to compression level for maximum compression mode
+          const maxCompPngLevel = quality >= 86 ? 6 : quality >= 71 ? 9 : 9;
           return {
-            compressionLevel: 9,
-            palette: true, // Try palette mode for smaller files
+            compressionLevel: maxCompPngLevel,
+            palette: quality <= 75, // Use palette for lower quality
             effort: 10,
           };
         default:
@@ -90,8 +95,10 @@ function getCompressionOptions(format, quality, mode) {
             effort: 6,
           };
         case 'png':
+          // For lossless, still use quality-based compression level
+          const losslessPngLevel = quality >= 86 ? 3 : quality >= 71 ? 6 : 9;
           return {
-            compressionLevel: 9,
+            compressionLevel: losslessPngLevel,
             effort: 10,
             quality: 100,
           };
@@ -130,8 +137,10 @@ function getCompressionOptions(format, quality, mode) {
             effort: 4,
           };
         case 'png':
+          // Map quality to compression level: 86-100 = level 3, 71-85 = level 6, 60-70 = level 9
+          const balancedPngLevel = quality >= 86 ? 3 : quality >= 71 ? 6 : 9;
           return {
-            compressionLevel: 6,
+            compressionLevel: balancedPngLevel,
             effort: 7,
           };
         default:
@@ -157,6 +166,7 @@ const upload = multer({
       'image/png',
       'image/gif',
       'image/webp',
+      'image/avif',
       'image/svg+xml',
     ];
 

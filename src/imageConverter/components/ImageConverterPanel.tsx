@@ -3,7 +3,7 @@ import { Box, useTheme, useMediaQuery } from "@mui/material";
 import { useThemeMode } from "../../theme";
 import { ImageConverterProvider } from "../context/ImageConverterContext";
 
-import AnimatedBackground from "./AnimatedBackground";
+import GeometricBackground from "./GeometricBackground";
 import BatchProcessor from "./BatchProcessor";
 import FileUploadZone from "./FileUploadZone";
 import SettingsSidebar from "./SettingsSidebar";
@@ -30,7 +30,7 @@ function ImageConverterContent() {
         }}
       >
         {/* Animated Background - only for non-default styles */}
-        {showAnimatedBackground && <AnimatedBackground />}
+        {showAnimatedBackground && <GeometricBackground />}
 
         {/* Settings Sidebar on top */}
         <Box
@@ -102,7 +102,7 @@ function ImageConverterContent() {
         }}
       >
         {/* Animated Background - only for non-default styles */}
-        {showAnimatedBackground && <AnimatedBackground />}
+        {showAnimatedBackground && <GeometricBackground />}
 
         {/* Main Content Area */}
         <Box

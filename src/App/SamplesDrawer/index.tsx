@@ -5,7 +5,7 @@ import { Settings, Email } from "@mui/icons-material";
 
 import { useSamplesDrawerOpen } from "../../contexts/AppState";
 import { useRegistrationStatus } from "../../hooks/useRegistrationStatus";
-import AnimatedBackground from "../../imageConverter/components/AnimatedBackground";
+import GeometricBackground from "../../imageConverter/components/GeometricBackground";
 import { getComponentStyles, useThemeMode } from "../../theme";
 import { getGradients } from "../../theme/tokens";
 
@@ -63,7 +63,7 @@ export default function SamplesDrawer({
       {/* Animated Background - only for non-default styles */}
       {showAnimatedBackground && (
         <Box sx={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 }}>
-          <AnimatedBackground />
+          <GeometricBackground />
         </Box>
       )}
       <Stack

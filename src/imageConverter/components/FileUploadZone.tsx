@@ -150,9 +150,9 @@ export default function FileUploadZone() {
           borderRadius: componentStyles.card.borderRadius,
           backgroundColor: isDragging
             ? alpha(theme.palette.primary.main, 0.06)
-            : componentStyles.card.background || theme.palette.background.paper,
-          backdropFilter: componentStyles.card.backdropFilter,
-          WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
+            : alpha(theme.palette.background.paper, 0.6),
+          backdropFilter: "blur(10px)",
+          WebkitBackdropFilter: "blur(10px)",
           cursor: hasFiles ? "default" : "pointer",
           transition: "all 0.25s ease",
           minHeight: hasFiles ? 400 : 300,
@@ -162,9 +162,7 @@ export default function FileUploadZone() {
           flexDirection: "column",
           "&:hover": {
             borderColor: hasFiles ? theme.palette.divider : theme.palette.primary.main,
-            backgroundColor: hasFiles
-              ? componentStyles.card.background || theme.palette.background.paper
-              : alpha(theme.palette.primary.main, 0.02),
+            backgroundColor: alpha(theme.palette.background.paper, 0.7),
             boxShadow: componentStyles.card.hover?.boxShadow || componentStyles.card.boxShadow,
           },
         }}

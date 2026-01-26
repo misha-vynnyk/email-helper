@@ -3,7 +3,7 @@
  * Displays a single block card with preview and actions
  */
 
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 import {
   Add as AddIcon,
@@ -34,7 +34,11 @@ import {
   TextField,
   Tooltip,
   Typography,
+  useTheme,
 } from "@mui/material";
+
+import { useThemeMode } from "../theme";
+import { getComponentStyles } from "../theme/componentStyles";
 
 import { logger } from "../utils/logger";
 import { EmailBlock } from "../types/block";
@@ -54,12 +58,16 @@ interface BlockItemProps {
   isFileBlock?: boolean; // NEW: Indicates if this is a file-based block
 }
 
-export default function BlockItem({
+function BlockItem({
   block,
   onDelete,
   onUpdate,
   isFileBlock = false,
 }: BlockItemProps) {
+  const theme = useTheme();
+  const { mode, style } = useThemeMode();
+  const componentStyles = getComponentStyles(mode, style);
+
   // ✅ useMemo: Wrap HTML only when block.html changes
   const wrappedPreviewHtml = useMemo(() => wrapInTemplate(block.html), [block.html]);
 
@@ -318,11 +326,20 @@ export default function BlockItem({
           height: "100%",
           display: "flex",
           flexDirection: "column",
-          transition: "transform 0.2s, box-shadow 0.2s",
-          "&:hover": {
-            transform: "translateY(-4px)",
-            boxShadow: 4,
-          },
+          borderRadius: `${componentStyles.card.borderRadius}px`,
+          background: componentStyles.card.background || theme.palette.background.paper,
+          backdropFilter: componentStyles.card.backdropFilter,
+          WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
+          border: componentStyles.card.border,
+          boxShadow: componentStyles.card.boxShadow,
+          transition: "transform 0.2s ease, box-shadow 0.2s ease",
+          "&:hover": componentStyles.card.hover
+            ? {
+                transform: componentStyles.card.hover.transform,
+                boxShadow: componentStyles.card.hover.boxShadow,
+                border: componentStyles.card.hover.border || componentStyles.card.border,
+              }
+            : {},
         }}
       >
         {/* Preview Area */}
@@ -330,7 +347,7 @@ export default function BlockItem({
           sx={{
             position: "relative",
             height: GRID.PREVIEW_HEIGHT,
-            backgroundColor: "#f5f5f5",
+            backgroundColor: theme.palette.action.hover,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -777,3 +794,13 @@ export default function BlockItem({
     </>
   );
 }
+
+// Мемоізуємо компонент для запобігання зайвих ре-рендерів
+export default React.memo(BlockItem, (prevProps, nextProps) => {
+  return (
+    prevProps.block.id === nextProps.block.id &&
+    prevProps.block.name === nextProps.block.name &&
+    prevProps.block.html === nextProps.block.html &&
+    prevProps.isFileBlock === nextProps.isFileBlock
+  );
+});

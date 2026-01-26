@@ -1,0 +1,38 @@
+{
+  "browser": {
+    "executablePath": "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
+    "debugPort": 9222,
+    "userDataDir": "/Users/mykhailo.vynnyk/Library/Application Support/BravePlaywright",
+    "autoCloseTab": true,
+    "closeDelaySuccess": 0,
+    "closeDelayCancel": 3000
+  },
+  "storage": {
+    "baseUrl": "https://storage.epcnetwork.dev",
+    "publicUrl": "https://storage.5th-elementagency.com",
+    "basePath": "Promo"
+  },
+  "ui": {
+    "formServerPort": 3838,
+    "interactiveMode": true
+  },
+  "timeouts": {
+    "browserStart": 1500,
+    "pageLoad": 10000,
+    "elementWait": 5000,
+    "uploadRetry": 2000,
+    "interfaceCheck": 200,
+    "interfaceMaxChecks": 10
+  },
+  "retries": {
+    "uploadAttempts": 2
+  },
+  "notifications": {
+    "enabled": true,
+    "sounds": {
+      "success": "/System/Library/Sounds/Blow.aiff",
+      "error": "/System/Library/Sounds/Basso.aiff",
+      "warning": "/System/Library/Sounds/Sosumi.aiff"
+    }
+  }
+}

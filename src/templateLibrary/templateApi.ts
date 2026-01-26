@@ -16,16 +16,28 @@ import {
 
 const API_BASE = `${API_URL}/api/templates`;
 
+// Helper to handle connection errors
+const handleConnectionError = (error: unknown): Error => {
+  if (error instanceof TypeError && error.message.includes("Failed to fetch")) {
+    return new Error("Server connection failed. Please ensure the server is running.");
+  }
+  return error instanceof Error ? error : new Error(String(error));
+};
+
 /**
  * List all templates in the library
  */
 export async function listTemplates(): Promise<EmailTemplate[]> {
-  const response = await fetch(`${API_BASE}/list`);
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "Failed to list templates");
+  try {
+    const response = await fetch(`${API_BASE}/list`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || "Failed to list templates");
+    }
+    return response.json();
+  } catch (error) {
+    throw handleConnectionError(error);
   }
-  return response.json();
 }
 
 /**
@@ -195,14 +207,18 @@ export async function syncAllTemplates(
   scannedRoots: number;
   message: string;
 }> {
-  const response = await fetch(`${API_BASE}/sync-all`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(options),
-  });
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "Failed to sync templates");
+  try {
+    const response = await fetch(`${API_BASE}/sync-all`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(options),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || "Failed to sync templates");
+    }
+    return response.json();
+  } catch (error) {
+    throw handleConnectionError(error);
   }
-  return response.json();
 }
