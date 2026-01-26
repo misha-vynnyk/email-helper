@@ -1,6 +1,8 @@
 import { Cloud as CloudIcon, Computer as ComputerIcon } from "@mui/icons-material";
 import { Box, ToggleButton, ToggleButtonGroup, Tooltip } from "@mui/material";
+import { useEffect } from "react";
 
+import { isApiAvailable } from "../../config/api";
 import { useThemeMode } from "../../theme";
 import { getComponentStyles } from "../../theme/componentStyles";
 import { useImageConverter } from "../context/ImageConverterContext";
@@ -10,6 +12,14 @@ export default function ProcessingModeToggle() {
   const { mode, style } = useThemeMode();
   const componentStyles = getComponentStyles(mode, style);
   const { settings, updateSettings } = useImageConverter();
+  const apiAvailable = isApiAvailable();
+
+  // Auto-switch to client mode if server mode is selected but API is unavailable
+  useEffect(() => {
+    if (settings.processingMode === "server" && !apiAvailable) {
+      updateSettings({ processingMode: "client" });
+    }
+  }, [apiAvailable, settings.processingMode, updateSettings]);
 
   return (
     <Box>
@@ -41,8 +51,17 @@ export default function ProcessingModeToggle() {
             </Box>
           </Tooltip>
         </ToggleButton>
-        <ToggleButton value='server'>
-          <Tooltip title='Process on server (better quality, larger files)'>
+        <ToggleButton 
+          value='server' 
+          disabled={!apiAvailable}
+        >
+          <Tooltip 
+            title={
+              apiAvailable 
+                ? 'Process on server (better quality, larger files)'
+                : 'Server processing unavailable - backend server is not configured'
+            }
+          >
             <Box
               display='flex'
               alignItems='center'
