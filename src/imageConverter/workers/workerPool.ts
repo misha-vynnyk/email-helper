@@ -6,6 +6,10 @@
 import { logger } from '../../utils/logger';
 import { ConversionSettings } from '../types';
 
+// Import worker - Vite will handle this correctly in production
+// Using ?worker suffix tells Vite to bundle this as a worker
+import WorkerConstructor from './imageWorker.ts?worker';
+
 interface WorkerTask {
   id: string;
   file: File;
@@ -24,14 +28,12 @@ export class WorkerPool {
   private workers: WorkerWithState[] = [];
   private queue: WorkerTask[] = [];
   private poolSize: number;
-  private workerUrl: string;
+  private WorkerClass: typeof Worker;
 
   constructor(poolSize: number = 2) {
     this.poolSize = poolSize;
-
-    // Create worker URL from worker file
-    // In Vite, we use ?worker to import as a worker module
-    this.workerUrl = new URL('./imageWorker.ts', import.meta.url).href;
+    // Use imported Worker class - Vite handles this correctly in production
+    this.WorkerClass = WorkerConstructor;
   }
 
   /**
@@ -42,7 +44,7 @@ export class WorkerPool {
 
     for (let i = 0; i < this.poolSize; i++) {
       try {
-        const worker = new Worker(this.workerUrl, { type: 'module' });
+        const worker = new this.WorkerClass();
         this.workers.push({ worker, busy: false });
       } catch (error) {
         logger.error('WorkerPool', 'Failed to create worker', error);
