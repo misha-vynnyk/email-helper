@@ -28,11 +28,12 @@ export class WorkerPool {
   private workers: WorkerWithState[] = [];
   private queue: WorkerTask[] = [];
   private poolSize: number;
-  private WorkerClass: typeof Worker;
+  private WorkerClass: typeof WorkerConstructor;
 
   constructor(poolSize: number = 2) {
     this.poolSize = poolSize;
     // Use imported Worker class - Vite handles this correctly in production
+    // Vite's ?worker returns a Worker class with different constructor signature
     this.WorkerClass = WorkerConstructor;
   }
 
@@ -109,7 +110,7 @@ export class WorkerPool {
    * Run a single task on a worker
    */
   private async runTask(worker: Worker, task: WorkerTask): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<void>((resolve) => {
       let resolved = false;
 
       const handleMessage = (e: MessageEvent) => {
