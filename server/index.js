@@ -23,8 +23,46 @@ app.use(helmet());
 app.use(limiter);
 
 // CORS configuration - allow local development and GitHub Pages demo
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://misha-vynnyk.github.io",
+];
+
+// Add origin from environment variable if set
+if (process.env.ALLOWED_ORIGIN) {
+  allowedOrigins.push(process.env.ALLOWED_ORIGIN);
+}
+
+// In production, allow all GitHub Pages origins for this user
+if (process.env.NODE_ENV === "production") {
+  allowedOrigins.push("https://misha-vynnyk.github.io");
+  // Also allow wildcard for any path on GitHub Pages
+  allowedOrigins.push(/^https:\/\/misha-vynnyk\.github\.io/);
+}
+
 const corsOptions = {
-  origin: ["http://localhost:5173", "http://localhost:3000", "https://misha-vynnyk.github.io"],
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Check if origin matches any allowed origin
+    const isAllowed = allowedOrigins.some((allowedOrigin) => {
+      if (typeof allowedOrigin === "string") {
+        return origin === allowedOrigin || origin.startsWith(allowedOrigin);
+      }
+      if (allowedOrigin instanceof RegExp) {
+        return allowedOrigin.test(origin);
+      }
+      return false;
+    });
+
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   credentials: true,
   optionsSuccessStatus: 200,
 };
@@ -75,5 +113,5 @@ process.on("unhandledRejection", (reason, promise) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📝 Environment: ${process.env.NODE_ENV || "development"}`);
-  console.log(`🌐 CORS enabled for: ${corsOptions.origin}`);
+  console.log(`🌐 CORS enabled for: ${allowedOrigins.join(", ")}`);
 });

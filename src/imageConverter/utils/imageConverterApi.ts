@@ -1,4 +1,4 @@
-import API_URL from "../../config/api";
+import API_URL, { isApiAvailable } from "../../config/api";
 import { ConversionSettings, ImageFormat } from "../types";
 import { detectImageFormat } from "./imageFormatDetector";
 
@@ -50,6 +50,10 @@ export async function convertImageServer(file: File, settings: ConversionSetting
 
   if (settings.gifFrameResize) {
     formData.append("gifFrameResize", JSON.stringify(settings.gifFrameResize));
+  }
+
+  if (!isApiAvailable()) {
+    throw new Error("Backend server is not available. Please configure VITE_API_URL environment variable.");
   }
 
   const response = await fetch(`${API_URL}/api/image-converter/convert`, {

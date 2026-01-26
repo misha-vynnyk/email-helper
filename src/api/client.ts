@@ -4,7 +4,7 @@
  */
 
 import { logger } from '../utils/logger';
-import API_URL from '../config/api';
+import API_URL, { isApiAvailable } from '../config/api';
 
 class ApiClient {
   private baseUrl: string;
@@ -14,6 +14,13 @@ class ApiClient {
   }
 
   async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
+    // If API is not available, reject immediately without making a request
+    if (!isApiAvailable()) {
+      const error = new Error('API is not configured. Backend server is not available.');
+      logger.warn('ApiClient', `API not available, skipping request: ${endpoint}`);
+      throw error;
+    }
+
     try {
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
         ...options,
@@ -30,7 +37,10 @@ class ApiClient {
 
       return response.json();
     } catch (error) {
-      logger.error('ApiClient', `Request failed: ${endpoint}`, error);
+      // Only log errors if API is available (to avoid spamming console with CORS errors)
+      if (isApiAvailable()) {
+        logger.error('ApiClient', `Request failed: ${endpoint}`, error);
+      }
       throw error;
     }
   }
