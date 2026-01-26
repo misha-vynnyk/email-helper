@@ -1,59 +1,87 @@
-# 🤖 Automation Scripts
+# Automation Server
 
-Playwright-based scripts для автоматичного завантаження зображень на storage.
+Локальний сервер для автоматизації завантаження файлів через браузер Brave.
 
-## 🚀 Quick Start
+## Встановлення
 
 ```bash
-# Install
 npm install
-
-# Usage
-node scripts/upload-playwright-brave.js /path/to/image.jpg finance ABCD123
-
-# Shortcuts
-./save-in-finance.sh /path/to/image.jpg ABCD123
-./save-in-health.sh /path/to/image.jpg HEALTH456
 ```
 
-## 📋 Requirements
+## Запуск сервера
 
-- Node.js >= 18
-- Brave Browser with CDP enabled:
-  ```bash
-  "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser" \
-    --remote-debugging-port=9222
-  ```
-
-## 📚 Documentation
-
-**[→ Full Documentation](../AUTOMATION.md)**
-
-## 📁 Files
-
-```
-scripts/
-├── upload-playwright-brave.js   # Main script
-└── upload-form.html             # Test form
-
-save-in-finance.sh              # Finance shortcut
-save-in-health.sh               # Health shortcut
-config.json                     # Configuration
+```bash
+npm run server
+# або
+npm start
 ```
 
-## ⚙️ Configuration
+Сервер запуститься на `http://127.0.0.1:3839`
 
-Edit `config.json`:
+## Використання з веб-додатком
 
+1. Запустіть сервер автоматизації:
+   ```bash
+   cd automation
+   npm run server
+   ```
+
+2. Відкрийте веб-додаток (локально або на GitHub Pages)
+
+3. При завантаженні зображень через HTML Converter, якщо бекенд недоступний, автоматично використовується сервер автоматизації
+
+## API Endpoints
+
+### GET /health
+Перевірка доступності сервера
+
+**Response:**
 ```json
 {
-  "browser": "brave",
-  "headless": false,
-  "timeout": 300000,
-  "cdpEndpoint": "http://127.0.0.1:9222"
+  "status": "ok",
+  "port": 3839
 }
 ```
 
----
+### POST /upload
+Завантаження файлу через автоматизацію
 
-**More details:** See [AUTOMATION.md](../AUTOMATION.md) and [HTML_CONVERTER.md](../HTML_CONVERTER.md)
+**Request:**
+```json
+{
+  "fileData": "data:image/png;base64,iVBORw0KG...",
+  "fileName": "image.png",
+  "category": "finance",
+  "folderName": "abcd123",
+  "skipConfirmation": true
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "File uploaded successfully",
+  "url": "https://storage.5th-elementagency.com/...",
+  "output": "..."
+}
+```
+
+## Налаштування
+
+Порт сервера можна змінити через змінну оточення:
+```bash
+AUTOMATION_PORT=3840 npm run server
+```
+
+## Вимоги
+
+- Node.js >= 18
+- Brave Browser встановлений
+- Playwright встановлений (`npm install`)
+
+## Примітки
+
+- Сервер автоматично очищає тимчасові файли старші за 1 годину
+- Файли зберігаються в `temp/` директорії
+- Для роботи потрібен запущений Brave Browser з remote debugging (автоматично налаштовується)

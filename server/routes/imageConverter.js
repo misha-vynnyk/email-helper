@@ -166,6 +166,7 @@ const upload = multer({
       'image/png',
       'image/gif',
       'image/webp',
+      'image/avif',
       'image/svg+xml',
     ];
 

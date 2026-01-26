@@ -76,11 +76,30 @@ export function replaceTripleBrWithSingle(htmlContent: string): string {
 }
 
 export function addBrAfterClosingP(htmlContent: string): string {
+  // First, handle sequences of empty paragraphs (p tags with only br inside)
+  // Replace sequences of empty paragraphs with a marker
+  // Pattern: <p...><br /></p> repeated 2+ times = should become <br><br> between text paragraphs
+  // We'll count empty paragraphs and convert them appropriately
+  htmlContent = htmlContent.replace(
+    /(<p[^>]*>[\s\S]*?<\/p>)(\s*<p[^>]*>\s*<br\s*\/?>\s*<\/p>\s*){2,}(<p[^>]*>[\s\S]*?<\/p>)/gi,
+    (match, beforeP, emptyPs, afterP) => {
+      // Count how many empty paragraphs we have
+      const emptyCount = (emptyPs.match(/<p[^>]*>\s*<br\s*\/?>\s*<\/p>/gi) || []).length;
+      // For 2+ empty paragraphs between text, we want <br><br> (2 line breaks)
+      // Mark this sequence for later processing
+      return beforeP + `[[EMPTY_P_SEQ_${emptyCount}]]` + afterP;
+    }
+  );
+
   // Delete extra <br>
   htmlContent = htmlContent.replace(/<br\s*\/?>/gi, "");
 
-  // Add <br><br>
-  htmlContent = htmlContent.replace(/<\/p>(?!\s*<\/li>)/gi, "</p>\n<br><br>\n");
+  // Add <br><br> after each </p> (but not after empty paragraph sequences - they're already marked)
+  htmlContent = htmlContent.replace(/<\/p>(?!\s*\[\[EMPTY_P_SEQ)/gi, "</p>\n<br><br>\n");
+
+  // Replace empty paragraph sequence markers with <br><br>
+  // Multiple empty paragraphs (2+) between text should result in <br><br>
+  htmlContent = htmlContent.replace(/\[\[EMPTY_P_SEQ_\d+\]\]/gi, "\n<br><br>\n");
 
   // add <br> (ol, ul).
   htmlContent = htmlContent.replace(/<br><br>(\s*<(ol|ul)[^>]*>)/gi, "<br>\n$1");
