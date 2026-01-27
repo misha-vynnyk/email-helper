@@ -52,7 +52,7 @@ export function cleanEmptyHtmlTags(htmlContent: string): string {
 }
 
 export function addOneBr(htmlContent: string): string {
-  return htmlContent.replace(/ю/gi, function (match, content) {
+  return htmlContent.replace(/ю/gi, function ( _match, _content) {
     return `
                     <br>
         `;
@@ -82,7 +82,7 @@ export function addBrAfterClosingP(htmlContent: string): string {
   // We'll count empty paragraphs and convert them appropriately
   htmlContent = htmlContent.replace(
     /(<p[^>]*>[\s\S]*?<\/p>)(\s*<p[^>]*>\s*<br\s*\/?>\s*<\/p>\s*){2,}(<p[^>]*>[\s\S]*?<\/p>)/gi,
-    (match, beforeP, emptyPs, afterP) => {
+    (_match, beforeP, emptyPs, afterP) => {
       // Count how many empty paragraphs we have
       const emptyCount = (emptyPs.match(/<p[^>]*>\s*<br\s*\/?>\s*<\/p>/gi) || []).length;
       // For 2+ empty paragraphs between text, we want <br><br> (2 line breaks)
@@ -114,7 +114,7 @@ export function removeStylesFromLists(htmlContent: string): string {
   htmlContent = htmlContent.replace(/<ol[^>]*style="[^"]*"[^>]*>/gi, "<ol>\n");
   htmlContent = htmlContent.replace(/<ul[^>]*style="[^"]*"[^>]*>/gi, "<ul>\n");
   htmlContent = htmlContent.replace(/<li[^>]*style="[^"]*"[^>]*>/gi, "<li>");
-  htmlContent = htmlContent.replace(/<\/li*>/gi, "</li>\n");
+  htmlContent = htmlContent.replace(/<\/li>/gi, "</li>\n");
   return htmlContent;
 }
 
@@ -142,7 +142,7 @@ export function mergeSimilarTags(htmlContent: string): string {
 
   while (iterations < maxIterations) {
     const before = htmlContent;
-    htmlContent = htmlContent.replace(h6SeparatedRegex, (match, middle) => {
+    htmlContent = htmlContent.replace(h6SeparatedRegex, (_match, _middle) => {
       h6Count++;
       return "</h6>[[BR_SEP]]<h6";
     });
@@ -161,7 +161,7 @@ export function mergeSimilarTags(htmlContent: string): string {
     const before = htmlContent;
     htmlContent = htmlContent.replace(
       h6MergeRegex,
-      (match, open1, content1, close1, open2, content2, close2) => {
+      (_match, open1, content1, close1, _open2, content2, _close2) => {
         mergeCount++;
         // Merge: keep first h6 tag, combine content with [[BR_SEP]], remove second h6
         return open1 + content1 + "[[BR_SEP]]" + content2 + close1;
@@ -183,7 +183,7 @@ export function mergeSimilarTags(htmlContent: string): string {
     while (matchFound && tagIterations < 50) {
       matchFound = false;
       let count = 0;
-      htmlContent = htmlContent.replace(regex, (match) => {
+      htmlContent = htmlContent.replace(regex, (_match) => {
         matchFound = true;
         count++;
         return "[[BR_SEP]]";
