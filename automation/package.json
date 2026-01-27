@@ -11,7 +11,7 @@
     "start": "node server.js"
   },
   "keywords": ["automation", "playwright", "upload", "storage"],
-  "author": "Mykhailo Vynnyk",
+  "author": "Stanislav Drahoi",
   "license": "ISC",
   "dependencies": {
     "playwright": "^1.57.0"

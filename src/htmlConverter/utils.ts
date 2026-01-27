@@ -2,6 +2,8 @@
  * Utility functions for HTML/MJML conversion
  */
 
+import { SYMBOLS } from "./constants";
+
 export function cleanEmptyHtmlTags(htmlContent: string): string {
   htmlContent = htmlContent.replace(/&nbsp;/g, " ");
   // <brbrbrbr>
@@ -52,7 +54,7 @@ export function cleanEmptyHtmlTags(htmlContent: string): string {
 }
 
 export function addOneBr(htmlContent: string): string {
-  return htmlContent.replace(/ю/gi, function (match, content) {
+  return htmlContent.replace(new RegExp(SYMBOLS.ONE_BR, "gi"), function (_match, _content) {
     return `
                     <br>
         `;
@@ -78,22 +80,17 @@ export function replaceTripleBrWithSingle(htmlContent: string): string {
 export function addBrAfterClosingP(htmlContent: string): string {
   // First, handle <p> tags inside <li> elements - remove p tags but keep content
   // This prevents <br> from being added inside list items
-  htmlContent = htmlContent.replace(
-    /<li[^>]*>([\s\S]*?)<\/li>/gi,
-    (match, liContent) => {
-      // Remove <p> tags inside <li>, keeping the content
-      const cleanedContent = liContent
-        .replace(/<p[^>]*>/gi, "")
-        .replace(/<\/p>/gi, "");
-      return `<li>${cleanedContent}</li>`;
-    }
-  );
+  htmlContent = htmlContent.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (_match, liContent) => {
+    // Remove <p> tags inside <li>, keeping the content
+    const cleanedContent = liContent.replace(/<p[^>]*>/gi, "").replace(/<\/p>/gi, "");
+    return `<li>${cleanedContent}</li>`;
+  });
 
   // Handle sequences of empty paragraphs (p tags with only br inside)
   // Replace sequences of empty paragraphs with a marker
   htmlContent = htmlContent.replace(
     /(<p[^>]*>[\s\S]*?<\/p>)(\s*<p[^>]*>\s*<br\s*\/?>\s*<\/p>\s*){2,}(<p[^>]*>[\s\S]*?<\/p>)/gi,
-    (match, beforeP, emptyPs, afterP) => {
+    (_match, beforeP, emptyPs, afterP) => {
       // Count how many empty paragraphs we have
       const emptyCount = (emptyPs.match(/<p[^>]*>\s*<br\s*\/?>\s*<\/p>/gi) || []).length;
       // For 2+ empty paragraphs between text, we want <br><br> (2 line breaks)
@@ -108,7 +105,10 @@ export function addBrAfterClosingP(htmlContent: string): string {
   // Add <br><br> after each </p> (but not inside lists - they're already processed)
   // Use negative lookahead to skip </p> that are inside <li> elements
   // Pattern: </p> that is NOT followed by </li> and is NOT inside an open <li>
-  htmlContent = htmlContent.replace(/<\/p>(?!\s*\[\[EMPTY_P_SEQ)(?!\s*<\/li>)/gi, "</p>\n<br><br>\n");
+  htmlContent = htmlContent.replace(
+    /<\/p>(?!\s*\[\[EMPTY_P_SEQ)(?!\s*<\/li>)/gi,
+    "</p>\n<br><br>\n"
+  );
 
   // Replace empty paragraph sequence markers with <br><br>
   htmlContent = htmlContent.replace(/\[\[EMPTY_P_SEQ_\d+\]\]/gi, "\n<br><br>\n");
@@ -134,7 +134,7 @@ export function removeStylesFromLists(htmlContent: string): string {
   htmlContent = htmlContent.replace(/<ol[^>]*style="[^"]*"[^>]*>/gi, "<ol>\n");
   htmlContent = htmlContent.replace(/<ul[^>]*style="[^"]*"[^>]*>/gi, "<ul>\n");
   htmlContent = htmlContent.replace(/<li[^>]*style="[^"]*"[^>]*>/gi, "<li>");
-  htmlContent = htmlContent.replace(/<\/li*>/gi, "</li>\n");
+  htmlContent = htmlContent.replace(/<\/li>/gi, "</li>\n");
   return htmlContent;
 }
 
@@ -162,7 +162,7 @@ export function mergeSimilarTags(htmlContent: string): string {
 
   while (iterations < maxIterations) {
     const before = htmlContent;
-    htmlContent = htmlContent.replace(h6SeparatedRegex, (match, middle) => {
+    htmlContent = htmlContent.replace(h6SeparatedRegex, (_match, _middle) => {
       h6Count++;
       return "</h6>[[BR_SEP]]<h6";
     });
@@ -181,7 +181,7 @@ export function mergeSimilarTags(htmlContent: string): string {
     const before = htmlContent;
     htmlContent = htmlContent.replace(
       h6MergeRegex,
-      (match, open1, content1, close1, open2, content2, close2) => {
+      (_match, open1, content1, close1, _open2, content2, _close2) => {
         mergeCount++;
         // Merge: keep first h6 tag, combine content with [[BR_SEP]], remove second h6
         return open1 + content1 + "[[BR_SEP]]" + content2 + close1;
@@ -203,7 +203,7 @@ export function mergeSimilarTags(htmlContent: string): string {
     while (matchFound && tagIterations < 50) {
       matchFound = false;
       let count = 0;
-      htmlContent = htmlContent.replace(regex, (match) => {
+      htmlContent = htmlContent.replace(regex, (_match) => {
         matchFound = true;
         count++;
         return "[[BR_SEP]]";

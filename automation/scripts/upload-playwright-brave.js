@@ -9,6 +9,9 @@ const http = require("http");
 // === Завантаження конфігурації ===
 const configPath = pathModule.join(__dirname, "..", "config.json");
 const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+// Env overrides for cross-machine setup (no edit of config.json needed)
+if (process.env.BRAVE_EXECUTABLE_PATH) config.browser.executablePath = process.env.BRAVE_EXECUTABLE_PATH;
+if (process.env.BRAVE_USER_DATA_DIR) config.browser.userDataDir = process.env.BRAVE_USER_DATA_DIR;
 
 // === Константи ===
 const VALID_CATEGORIES = ["finance", "health"];
@@ -31,12 +34,14 @@ function escapeShellArg(arg) {
 }
 
 function playSound(type) {
+  if (process.platform !== "darwin") return;
   if (!config.notifications.enabled) return;
   const sound = config.notifications.sounds[type];
   if (sound) safeExec(`afplay ${escapeShellArg(sound)}`, false);
 }
 
 function showNotification(title, message) {
+  if (process.platform !== "darwin") return;
   if (!config.notifications.enabled) return;
   const escapedTitle = escapeShellArg(title);
   const escapedMessage = escapeShellArg(message);
@@ -151,7 +156,9 @@ function showConfirmationForm(fileInfo) {
 
 // === Валідація аргументів ===
 const filePath = process.argv[2];
-const categoryArg = process.argv[3]; // 'finance', 'health' або null
+const rest = process.argv.slice(3).filter((x) => !["--no-confirm", "-y"].includes(x));
+const categoryArg = rest[0] || null; // 'finance', 'health' або null
+const folderNameArg = rest[1] || null; // для --no-confirm, інакше з форми/буфера
 const skipConfirmation = process.argv.includes("--no-confirm") || process.argv.includes("-y");
 
 if (!filePath || !fs.existsSync(filePath)) {
@@ -215,15 +222,19 @@ const fileSizeFormatted = (fileSize / 1024).toFixed(2) + " KB";
       }
       serverCategory = categoryArg.toLowerCase();
 
-      // Читаємо з буферу обміну
-      clipboardContent = safeExec("pbpaste");
+      // folderName: з argv (крос-платформно) або з буфера на macOS
+      clipboardContent =
+        folderNameArg ||
+        (process.platform === "darwin" ? safeExec("pbpaste", false) : null);
       if (!clipboardContent) {
-        console.error("Помилка: буфер обміну порожній");
+        console.error(
+          "Помилка: в режимі --no-confirm потрібна назва папки (4-й аргумент) або буфер обміну (macOS)"
+        );
         process.exit(1);
       }
 
       console.log(`📂 Категорія: ${serverCategory}`);
-      console.log(`📋 З буферу: "${clipboardContent}"`);
+      console.log(`📋 Папка: "${clipboardContent}"`);
     } else {
       // === ЗАВЖДИ показуємо форму для підтвердження ===
       console.log("📝 Підготовка інформації для форми...");
@@ -428,7 +439,8 @@ const fileSizeFormatted = (fileSize / 1024).toFixed(2) + " KB";
         const publicUrl = `${config.storage.publicUrl}/${serverFilePath}`;
 
         // Безпечне копіювання в буфер
-        safeExec(`printf %s ${escapeShellArg(serverFilePath)} | pbcopy`);
+        process.platform === "darwin" &&
+          safeExec(`printf %s ${escapeShellArg(serverFilePath)} | pbcopy`, false);
         playSound("success");
         showNotification("Storage Upload", `✅ Файл завантажено: ${publicUrl}`);
         console.log(`📋 Скопійовано в буфер: ${serverFilePath}`);

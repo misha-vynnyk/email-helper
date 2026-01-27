@@ -116,26 +116,21 @@ router.post("/api/storage-upload", async (req, res) => {
   }
 
   try {
-    const automationScriptPath = path.join(__dirname, "../../automation/scripts/upload-playwright-brave.js");
+    const runUploadPath = path.join(__dirname, "../../automation/run-upload.js");
 
-    if (!fs.existsSync(automationScriptPath)) {
+    if (!fs.existsSync(runUploadPath)) {
       return res.status(500).json({
         success: false,
-        error: "Automation script not found"
+        error: "Automation entry point not found (automation/run-upload.js)"
       });
     }
 
-    // Copy folder name to clipboard (required by the script)
-    const pbcopyCmd = `echo "${folderName}" | pbcopy`;
-    exec(pbcopyCmd, (pbError) => {
-      if (pbError) {
-        console.error("Failed to copy to clipboard:", pbError);
-      }
-    });
-
-    // Build command
-    const skipFlag = skipConfirmation ? "--no-confirm" : "";
-    const command = `node "${automationScriptPath}" "${filePath}" ${category} ${skipFlag}`;
+    // Крос-платформно: передаємо folderName аргументом (скрипт приймає argv[4] у --no-confirm)
+    const args = [filePath, category];
+    if (skipConfirmation) {
+      args.push("--no-confirm", folderName);
+    }
+    const command = `node "${runUploadPath}" ${args.map((a) => `"${String(a).replace(/"/g, '\\"')}"`).join(" ")}`;
 
     console.log(`🚀 Executing: ${command}`);
 
