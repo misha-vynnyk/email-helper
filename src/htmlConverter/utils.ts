@@ -76,10 +76,21 @@ export function replaceTripleBrWithSingle(htmlContent: string): string {
 }
 
 export function addBrAfterClosingP(htmlContent: string): string {
-  // First, handle sequences of empty paragraphs (p tags with only br inside)
+  // First, handle <p> tags inside <li> elements - remove p tags but keep content
+  // This prevents <br> from being added inside list items
+  htmlContent = htmlContent.replace(
+    /<li[^>]*>([\s\S]*?)<\/li>/gi,
+    (match, liContent) => {
+      // Remove <p> tags inside <li>, keeping the content
+      const cleanedContent = liContent
+        .replace(/<p[^>]*>/gi, "")
+        .replace(/<\/p>/gi, "");
+      return `<li>${cleanedContent}</li>`;
+    }
+  );
+
+  // Handle sequences of empty paragraphs (p tags with only br inside)
   // Replace sequences of empty paragraphs with a marker
-  // Pattern: <p...><br /></p> repeated 2+ times = should become <br><br> between text paragraphs
-  // We'll count empty paragraphs and convert them appropriately
   htmlContent = htmlContent.replace(
     /(<p[^>]*>[\s\S]*?<\/p>)(\s*<p[^>]*>\s*<br\s*\/?>\s*<\/p>\s*){2,}(<p[^>]*>[\s\S]*?<\/p>)/gi,
     (match, beforeP, emptyPs, afterP) => {
@@ -94,18 +105,27 @@ export function addBrAfterClosingP(htmlContent: string): string {
   // Delete extra <br>
   htmlContent = htmlContent.replace(/<br\s*\/?>/gi, "");
 
-  // Add <br><br> after each </p> (but not after empty paragraph sequences - they're already marked)
-  htmlContent = htmlContent.replace(/<\/p>(?!\s*\[\[EMPTY_P_SEQ)/gi, "</p>\n<br><br>\n");
+  // Add <br><br> after each </p> (but not inside lists - they're already processed)
+  // Use negative lookahead to skip </p> that are inside <li> elements
+  // Pattern: </p> that is NOT followed by </li> and is NOT inside an open <li>
+  htmlContent = htmlContent.replace(/<\/p>(?!\s*\[\[EMPTY_P_SEQ)(?!\s*<\/li>)/gi, "</p>\n<br><br>\n");
 
   // Replace empty paragraph sequence markers with <br><br>
-  // Multiple empty paragraphs (2+) between text should result in <br><br>
   htmlContent = htmlContent.replace(/\[\[EMPTY_P_SEQ_\d+\]\]/gi, "\n<br><br>\n");
 
-  // add <br> (ol, ul).
-  htmlContent = htmlContent.replace(/<br><br>(\s*<(ol|ul)[^>]*>)/gi, "<br>\n$1");
-
-  // Delete extra <p>
+  // Delete extra <p> tags (but not inside lists - already processed)
   htmlContent = htmlContent.replace(/<p[^>]*>/gi, "").replace(/<\/p>/gi, "");
+
+  // Remove <br> between <li> elements (lists should not have <br> between items)
+  // This must be done after deleting <p> tags to catch any remaining <br>
+  htmlContent = htmlContent.replace(/<\/li>\s*<br>\s*<br>\s*<li>/gi, "</li>\n<li>");
+  htmlContent = htmlContent.replace(/<\/li>\s*<br>\s*<li>/gi, "</li>\n<li>");
+  // Also remove <br> at the start of <li> (if any were added incorrectly)
+  htmlContent = htmlContent.replace(/<li>\s*<br>\s*<br>/gi, "<li>");
+  htmlContent = htmlContent.replace(/<li>\s*<br>/gi, "<li>");
+
+  // add <br> before (ol, ul) if needed
+  htmlContent = htmlContent.replace(/<br><br>(\s*<(ol|ul)[^>]*>)/gi, "<br>\n$1");
 
   return htmlContent;
 }

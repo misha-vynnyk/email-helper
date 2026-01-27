@@ -67,10 +67,20 @@ function SectionHeader({ icon, title, subtitle }: SectionHeaderProps) {
         {icon}
       </Box>
       <Box>
-        <Typography variant='subtitle2' fontWeight={600}>
+        <Typography
+          variant='subtitle2'
+          fontWeight={600}
+        >
           {title}
         </Typography>
-        {subtitle && <Typography variant='caption' color='text.secondary'>{subtitle}</Typography>}
+        {subtitle && (
+          <Typography
+            variant='caption'
+            color='text.secondary'
+          >
+            {subtitle}
+          </Typography>
+        )}
       </Box>
     </Box>
   );
@@ -146,38 +156,41 @@ export default function HtmlConverterPanel() {
   });
 
   const addLog = (message: string) => {
-    setLog(prev => [...prev, message]);
+    setLog((prev) => [...prev, message]);
   };
 
-  const handleAddToHistory = useCallback((
-    category: string,
-    folderName: string,
-    results: Array<{ filename: string; url: string; success: boolean }>
-  ) => {
-    const newSession: UploadSession = {
-      id: `${Date.now()}-${Math.random()}`,
-      timestamp: Date.now(),
-      category,
-      folderName,
-      files: results
-        .filter(r => r.success)
-        .map(r => ({
-          id: `${Date.now()}-${Math.random()}`,
-          timestamp: Date.now(),
-          filename: r.filename,
-          url: r.url,
-          shortPath: r.url.replace('https://storage.5th-elementagency.com/', ''),
-          category,
-          folderName,
-        })),
-    };
+  const handleAddToHistory = useCallback(
+    (
+      category: string,
+      folderName: string,
+      results: Array<{ filename: string; url: string; success: boolean }>
+    ) => {
+      const newSession: UploadSession = {
+        id: `${Date.now()}-${Math.random()}`,
+        timestamp: Date.now(),
+        category,
+        folderName,
+        files: results
+          .filter((r) => r.success)
+          .map((r) => ({
+            id: `${Date.now()}-${Math.random()}`,
+            timestamp: Date.now(),
+            filename: r.filename,
+            url: r.url,
+            shortPath: r.url.replace("https://storage.5th-elementagency.com/", ""),
+            category,
+            folderName,
+          })),
+      };
 
-    setUploadHistory(prev => {
-      const updated = [newSession, ...prev].slice(0, UPLOAD_CONFIG.MAX_HISTORY_SESSIONS);
-      localStorage.setItem(STORAGE_KEYS.UPLOAD_HISTORY, JSON.stringify(updated));
-      return updated;
-    });
-  }, []);
+      setUploadHistory((prev) => {
+        const updated = [newSession, ...prev].slice(0, UPLOAD_CONFIG.MAX_HISTORY_SESSIONS);
+        localStorage.setItem(STORAGE_KEYS.UPLOAD_HISTORY, JSON.stringify(updated));
+        return updated;
+      });
+    },
+    []
+  );
 
   const handleClearHistory = useCallback(() => {
     setUploadHistory([]);
@@ -188,51 +201,57 @@ export default function HtmlConverterPanel() {
     resetReplacementRef.current = resetFn;
   }, []);
 
-  const replaceUrlsInContent = useCallback((content: string, pattern: RegExp, storageUrls: string[]) => {
-    let imageIndex = 0;
-    let replacedCount = 0;
+  const replaceUrlsInContent = useCallback(
+    (content: string, pattern: RegExp, storageUrls: string[]) => {
+      let imageIndex = 0;
+      let replacedCount = 0;
 
-    const replaced = content.replace(pattern, (match, prefix, _oldUrl, suffix) => {
-      if (isSignatureImageTag(match)) return match;
-      if (imageIndex < storageUrls.length) {
-        const newUrl = storageUrls[imageIndex++];
-        replacedCount++;
-        return `${prefix}${newUrl}${suffix}`;
+      const replaced = content.replace(pattern, (match, prefix, _oldUrl, suffix) => {
+        if (isSignatureImageTag(match)) return match;
+        if (imageIndex < storageUrls.length) {
+          const newUrl = storageUrls[imageIndex++];
+          replacedCount++;
+          return `${prefix}${newUrl}${suffix}`;
+        }
+        return match;
+      });
+
+      return { replaced, count: replacedCount };
+    },
+    []
+  );
+
+  const handleReplaceUrls = useCallback(
+    (urlMap: Record<string, string>) => {
+      const storageUrls = Object.values(urlMap);
+
+      if (storageUrls.length === 0) {
+        addLog(`⚠️ Немає URLs для заміни`);
+        return;
       }
-      return match;
-    });
 
-    return { replaced, count: replacedCount };
-  }, []);
+      if (outputHtmlRef.current?.value) {
+        const { replaced, count } = replaceUrlsInContent(
+          outputHtmlRef.current.value,
+          /(<img[^>]+src=["'])([^"']+)(["'][^>]*>)/gi,
+          storageUrls
+        );
+        outputHtmlRef.current.value = replaced;
+        if (count > 0) addLog(`🔄 Замінено ${count} посилань в Output HTML`);
+      }
 
-  const handleReplaceUrls = useCallback((urlMap: Record<string, string>) => {
-    const storageUrls = Object.values(urlMap);
-
-    if (storageUrls.length === 0) {
-      addLog(`⚠️ Немає URLs для заміни`);
-      return;
-    }
-
-    if (outputHtmlRef.current?.value) {
-      const { replaced, count } = replaceUrlsInContent(
-        outputHtmlRef.current.value,
-        /(<img[^>]+src=["'])([^"']+)(["'][^>]*>)/gi,
-        storageUrls
-      );
-      outputHtmlRef.current.value = replaced;
-      if (count > 0) addLog(`🔄 Замінено ${count} посилань в Output HTML`);
-    }
-
-    if (outputMjmlRef.current?.value) {
-      const { replaced, count } = replaceUrlsInContent(
-        outputMjmlRef.current.value,
-        /(<(?:mj-image|img)[^>]+src=["'])([^"']+)(["'][^>]*>)/gi,
-        storageUrls
-      );
-      outputMjmlRef.current.value = replaced;
-      if (count > 0) addLog(`🔄 Замінено ${count} посилань в Output MJML`);
-    }
-  }, [addLog, replaceUrlsInContent]);
+      if (outputMjmlRef.current?.value) {
+        const { replaced, count } = replaceUrlsInContent(
+          outputMjmlRef.current.value,
+          /(<(?:mj-image|img)[^>]+src=["'])([^"']+)(["'][^>]*>)/gi,
+          storageUrls
+        );
+        outputMjmlRef.current.value = replaced;
+        if (count > 0) addLog(`🔄 Замінено ${count} посилань в Output MJML`);
+      }
+    },
+    [addLog, replaceUrlsInContent]
+  );
 
   // Setup paste handler and auto-detect images
   useEffect(() => {
@@ -241,17 +260,14 @@ export default function HtmlConverterPanel() {
 
       // Capture original HTML from clipboard on paste
       const handlePaste = (e: ClipboardEvent) => {
-        const html = e.clipboardData?.getData('text/html');
+        const html = e.clipboardData?.getData("text/html");
         if (html) {
           // Replace base64 images with placeholders for display
-          const cleanHtml = html.replace(
-            /src="data:image\/[^;]+;base64,[^"]{100,}"/g,
-            (match) => {
-              const mimeType = match.match(/data:image\/([^;]+)/)?.[1] || 'unknown';
-              const length = match.length;
-              return `src="[IMAGE: ${mimeType}, ${length} bytes]"`;
-            }
-          );
+          const cleanHtml = html.replace(/src="data:image\/[^;]+;base64,[^"]{100,}"/g, (match) => {
+            const mimeType = match.match(/data:image\/([^;]+)/)?.[1] || "unknown";
+            const length = match.length;
+            return `src="[IMAGE: ${mimeType}, ${length} bytes]"`;
+          });
 
           // Save cleaned HTML for display
           setInputHtml(cleanHtml);
@@ -269,7 +285,7 @@ export default function HtmlConverterPanel() {
 
           // Always trigger extraction to clear old images if needed
           setTimeout(() => {
-            setTriggerExtract(prev => prev + 1);
+            setTriggerExtract((prev) => prev + 1);
           }, 100);
         }, 300);
       };
@@ -283,7 +299,7 @@ export default function HtmlConverterPanel() {
 
         if (!hasImages && showImageProcessor) {
           // No images found, trigger extraction to clear
-          setTriggerExtract(prev => prev + 1);
+          setTriggerExtract((prev) => prev + 1);
         }
       };
 
@@ -398,13 +414,13 @@ export default function HtmlConverterPanel() {
   };
 
   const downloadFile = (content: string, extension: string) => {
-    const name = fileName.replace(/\s+/g, '').toUpperCase();
-    const approvalText = approveNeeded ? '(Approve needed)' : '';
+    const name = fileName.replace(/\s+/g, "").toUpperCase();
+    const approvalText = approveNeeded ? "(Approve needed)" : "";
     const fullName = `${name}_${extension}${approvalText}.html`;
 
-    const blob = new Blob([content], { type: 'text/html' });
+    const blob = new Blob([content], { type: "text/html" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = fullName;
     a.click();
@@ -415,26 +431,25 @@ export default function HtmlConverterPanel() {
 
   const handleDownloadHTML = () => {
     if (outputHtmlRef.current) {
-      downloadFile(outputHtmlRef.current.value, 'html');
+      downloadFile(outputHtmlRef.current.value, "html");
     }
   };
 
   const handleDownloadMJML = () => {
     if (outputMjmlRef.current) {
-      downloadFile(outputMjmlRef.current.value, 'mjml');
+      downloadFile(outputMjmlRef.current.value, "mjml");
     }
   };
 
-
   const handleClear = () => {
     if (editorRef.current) {
-      editorRef.current.innerHTML = '';
+      editorRef.current.innerHTML = "";
     }
     if (outputHtmlRef.current) {
-      outputHtmlRef.current.value = '';
+      outputHtmlRef.current.value = "";
     }
     if (outputMjmlRef.current) {
-      outputMjmlRef.current.value = '';
+      outputMjmlRef.current.value = "";
     }
     setLog([]);
     setInputHtml("");
@@ -452,7 +467,7 @@ export default function HtmlConverterPanel() {
 
   return (
     <Box
-      data-app-scroll="true"
+      data-app-scroll='true'
       sx={{
         width: "100%",
         display: "flex",
@@ -462,37 +477,49 @@ export default function HtmlConverterPanel() {
       }}
     >
       {/* Header */}
-      <Stack direction="row" alignItems="center" justifyContent="space-between">
+      <Stack
+        direction='row'
+        alignItems='center'
+        justifyContent='space-between'
+      >
         <SectionHeader
-          icon={<CodeIcon fontSize="small" />}
-          title="HTML to Table Converter"
-          subtitle="Конвертація HTML в табличну структуру для email"
+          icon={<CodeIcon fontSize='small' />}
+          title='HTML to Table Converter'
+          subtitle='Конвертація HTML в табличну структуру для email'
         />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={autoProcess}
-                onChange={(e) => {
-                  const newValue = e.target.checked;
-                  setAutoProcess(newValue);
-                  // Save to localStorage
-                  try {
-                    const stored = localStorage.getItem(STORAGE_KEYS.IMAGE_SETTINGS);
-                    const settings = stored ? JSON.parse(stored) : {};
-                    settings.autoProcess = newValue;
-                    localStorage.setItem(STORAGE_KEYS.IMAGE_SETTINGS, JSON.stringify(settings));
-                  } catch {
-                    // Ignore errors
-                  }
-                }}
-                size="small"
-              />
-            }
-            label={<Typography variant="caption">Автообробка зображень</Typography>}
-          />
-        <Stack direction="row" alignItems="center" spacing={spacingMUI.sm}>
-          <Tooltip title="Очистити все">
-            <IconButton onClick={handleClear} color="error" size="small">
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={autoProcess}
+              onChange={(e) => {
+                const newValue = e.target.checked;
+                setAutoProcess(newValue);
+                // Save to localStorage
+                try {
+                  const stored = localStorage.getItem(STORAGE_KEYS.IMAGE_SETTINGS);
+                  const settings = stored ? JSON.parse(stored) : {};
+                  settings.autoProcess = newValue;
+                  localStorage.setItem(STORAGE_KEYS.IMAGE_SETTINGS, JSON.stringify(settings));
+                } catch {
+                  // Ignore errors
+                }
+              }}
+              size='small'
+            />
+          }
+          label={<Typography variant='caption'>Автообробка зображень</Typography>}
+        />
+        <Stack
+          direction='row'
+          alignItems='center'
+          spacing={spacingMUI.sm}
+        >
+          <Tooltip title='Очистити все'>
+            <IconButton
+              onClick={handleClear}
+              color='error'
+              size='small'
+            >
               <ClearIcon />
             </IconButton>
           </Tooltip>
@@ -501,7 +528,11 @@ export default function HtmlConverterPanel() {
 
       {/* Editor */}
       <StyledPaper>
-        <Typography variant="subtitle2" fontWeight={600} mb={spacingMUI.base}>
+        <Typography
+          variant='subtitle2'
+          fontWeight={600}
+          mb={spacingMUI.base}
+        >
           Редактор тексту ✏️
         </Typography>
         <Box
@@ -515,59 +546,81 @@ export default function HtmlConverterPanel() {
             p: spacingMUI.base,
             borderRadius: `${borderRadius.md}px`,
             backgroundColor: theme.palette.action.hover,
-            fontFamily: 'monospace',
-            fontSize: '14px',
+            fontFamily: "monospace",
+            fontSize: "14px",
             lineHeight: 1.6,
-            transition: 'all 0.2s ease',
-            '&:focus': {
+            transition: "all 0.2s ease",
+            "&:focus": {
               outline: `2px solid ${theme.palette.primary.main}`,
               outlineOffset: -2,
               backgroundColor: theme.palette.action.hover,
             },
-            '&:empty:before': {
+            "&:empty:before": {
               content: '"Вставте або введіть текст сюди..."',
               color: theme.palette.text.disabled,
-            }
+            },
           }}
         />
       </StyledPaper>
 
       {/* File Settings */}
       <StyledPaper>
-        <Typography variant="subtitle2" fontWeight={600} mb={spacingMUI.base}>
+        <Typography
+          variant='subtitle2'
+          fontWeight={600}
+          mb={spacingMUI.base}
+        >
           Налаштування файлу
         </Typography>
 
-        <Stack direction="row" spacing={spacingMUI.base} alignItems="center" flexWrap="wrap">
-          <Stack direction="row" spacing={spacingMUI.sm} alignItems="center" sx={{ flex: 1, minWidth: 250 }}>
+        <Stack
+          direction='row'
+          spacing={spacingMUI.base}
+          alignItems='center'
+          flexWrap='wrap'
+        >
+          <Stack
+            direction='row'
+            spacing={spacingMUI.sm}
+            alignItems='center'
+            sx={{ flex: 1, minWidth: 250 }}
+          >
             <TextField
               label="Ім'я файлу"
               value={fileName}
               onChange={(e) => setFileName(e.target.value)}
               onClick={(e) => (e.target as HTMLInputElement).select()}
-              size="small"
+              size='small'
               fullWidth
               sx={{
-                '& .MuiOutlinedInput-root': {
+                "& .MuiOutlinedInput-root": {
                   borderRadius: `${borderRadius.md}px`,
-                  transition: 'all 0.2s ease',
-                  '&.Mui-focused': {
-                    backgroundColor: 'transparent',
-                    '& fieldset': {
-                      borderWidth: '2px',
+                  transition: "all 0.2s ease",
+                  "&.Mui-focused": {
+                    backgroundColor: "transparent",
+                    "& fieldset": {
+                      borderWidth: "2px",
                     },
                   },
                 },
               }}
             />
-            <Tooltip title="Зменшити номер">
-              <IconButton size="small" onClick={() => changeFileNumber(-1)} color="primary">
-                <RemoveIcon fontSize="small" />
+            <Tooltip title='Зменшити номер'>
+              <IconButton
+                size='small'
+                onClick={() => changeFileNumber(-1)}
+                color='primary'
+              >
+                <RemoveIcon fontSize='small' />
               </IconButton>
             </Tooltip>
-            <Tooltip title="Збільшити номер">
-              <IconButton size="small" onClick={() => changeFileNumber(1)} color="primary">
-                <AddIcon fontSize="small" />
+            <Tooltip title='Збільшити номер'>
+              <IconButton
+                size='small'
+                onClick={() => changeFileNumber(1)}
+                color='primary'
+              >
+                <AddIcon fontSize='small' />
               </IconButton>
             </Tooltip>
           </Stack>
@@ -577,10 +630,10 @@ export default function HtmlConverterPanel() {
               <Checkbox
                 checked={approveNeeded}
                 onChange={(e) => setApproveNeeded(e.target.checked)}
-                size="small"
+                size='small'
               />
             }
-            label={<Typography variant="body2">Approve needed</Typography>}
+            label={<Typography variant='body2'>Approve needed</Typography>}
           />
         </Stack>
       </StyledPaper>
@@ -601,7 +654,10 @@ export default function HtmlConverterPanel() {
       />
 
       {/* Output Blocks */}
-      <Stack direction={{ xs: 'column', lg: 'row' }} spacing={spacingMUI.lg}>
+      <Stack
+        direction={{ xs: "column", lg: "row" }}
+        spacing={spacingMUI.lg}
+      >
         {/* HTML Output */}
         <StyledPaper
           sx={{
@@ -610,34 +666,43 @@ export default function HtmlConverterPanel() {
             flexDirection: "column",
           }}
         >
-          <Stack direction="row" spacing={spacingMUI.sm} mb={spacingMUI.base} flexWrap="wrap">
+          <Stack
+            direction='row'
+            spacing={spacingMUI.sm}
+            mb={spacingMUI.base}
+            flexWrap='wrap'
+          >
             <Button
-              variant="contained"
-              size="small"
+              variant='contained'
+              size='small'
               onClick={handleExportHTML}
               startIcon={<ConvertIcon />}
             >
               Експортувати HTML
             </Button>
             <Button
-              variant="outlined"
-              size="small"
+              variant='outlined'
+              size='small'
               onClick={handleDownloadHTML}
-              startIcon={<DownloadIcon fontSize="small" />}
+              startIcon={<DownloadIcon fontSize='small' />}
             >
               Завантажити
             </Button>
             <Button
-              variant="outlined"
-              size="small"
+              variant='outlined'
+              size='small'
               onClick={handleCopyHTML}
-              startIcon={<CopyIcon fontSize="small" />}
+              startIcon={<CopyIcon fontSize='small' />}
             >
               Copy
             </Button>
           </Stack>
 
-          <Typography variant="subtitle2" fontWeight={600} mb={spacingMUI.sm}>
+          <Typography
+            variant='subtitle2'
+            fontWeight={600}
+            mb={spacingMUI.sm}
+          >
             HTML результат:
           </Typography>
           <TextField
@@ -670,34 +735,43 @@ export default function HtmlConverterPanel() {
             flexDirection: "column",
           }}
         >
-          <Stack direction="row" spacing={spacingMUI.sm} mb={spacingMUI.base} flexWrap="wrap">
+          <Stack
+            direction='row'
+            spacing={spacingMUI.sm}
+            mb={spacingMUI.base}
+            flexWrap='wrap'
+          >
             <Button
-              variant="contained"
-              size="small"
+              variant='contained'
+              size='small'
               onClick={handleExportMJML}
               startIcon={<ConvertIcon />}
             >
               Експортувати MJML
             </Button>
             <Button
-              variant="outlined"
-              size="small"
+              variant='outlined'
+              size='small'
               onClick={handleDownloadMJML}
-              startIcon={<DownloadIcon fontSize="small" />}
+              startIcon={<DownloadIcon fontSize='small' />}
             >
               Завантажити
             </Button>
             <Button
-              variant="outlined"
-              size="small"
+              variant='outlined'
+              size='small'
               onClick={handleCopyMJML}
-              startIcon={<CopyIcon fontSize="small" />}
+              startIcon={<CopyIcon fontSize='small' />}
             >
               Copy
             </Button>
           </Stack>
 
-          <Typography variant="subtitle2" fontWeight={600} mb={spacingMUI.sm}>
+          <Typography
+            variant='subtitle2'
+            fontWeight={600}
+            mb={spacingMUI.sm}
+          >
             MJML результат:
           </Typography>
           <TextField
@@ -725,7 +799,10 @@ export default function HtmlConverterPanel() {
 
       {/* Input HTML & Log */}
       {(inputHtml || log.length > 0) && (
-        <Stack direction={{ xs: 'column', lg: 'row' }} spacing={spacingMUI.lg}>
+        <Stack
+          direction={{ xs: "column", lg: "row" }}
+          spacing={spacingMUI.lg}
+        >
           {/* Input HTML */}
           {inputHtml && (
             <StyledPaper
@@ -735,27 +812,38 @@ export default function HtmlConverterPanel() {
                 overflow: "auto",
               }}
             >
-              <Stack direction="row" justifyContent="space-between" alignItems="center" mb={spacingMUI.sm}>
-                <Typography variant="subtitle2" fontWeight={600}>
+              <Stack
+                direction='row'
+                justifyContent='space-between'
+                alignItems='center'
+                mb={spacingMUI.sm}
+              >
+                <Typography
+                  variant='subtitle2'
+                  fontWeight={600}
+                >
                   Вхідний HTML
                 </Typography>
-                <Tooltip title="Копіювати">
-                  <IconButton size="small" onClick={handleCopyInputHtml}>
-                    <CopyIcon fontSize="small" />
+                <Tooltip title='Копіювати'>
+                  <IconButton
+                    size='small'
+                    onClick={handleCopyInputHtml}
+                  >
+                    <CopyIcon fontSize='small' />
                   </IconButton>
                 </Tooltip>
               </Stack>
               <Divider sx={{ mb: spacingMUI.sm }} />
               <Box
-                component="pre"
+                component='pre'
                 sx={{
-                  fontFamily: 'monospace',
-                  fontSize: '12px',
-                  color: 'text.secondary',
+                  fontFamily: "monospace",
+                  fontSize: "12px",
+                  color: "text.secondary",
                   lineHeight: 1.6,
                   m: 0,
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word',
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
                 }}
               >
                 {inputHtml}
@@ -772,18 +860,22 @@ export default function HtmlConverterPanel() {
                 overflow: "auto",
               }}
             >
-              <Typography variant="subtitle2" fontWeight={600} mb={spacingMUI.sm}>
+              <Typography
+                variant='subtitle2'
+                fontWeight={600}
+                mb={spacingMUI.sm}
+              >
                 Лог операцій
               </Typography>
               <Divider sx={{ mb: spacingMUI.sm }} />
               {log.map((entry, idx) => (
                 <Typography
                   key={idx}
-                  variant="caption"
-                  display="block"
+                  variant='caption'
+                  display='block'
                   sx={{
-                    fontFamily: 'monospace',
-                    color: 'text.secondary',
+                    fontFamily: "monospace",
+                    color: "text.secondary",
                     lineHeight: 1.8,
                     py: 0.25,
                   }}
@@ -793,7 +885,6 @@ export default function HtmlConverterPanel() {
               ))}
             </StyledPaper>
           )}
-
         </Stack>
       )}
 
