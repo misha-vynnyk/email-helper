@@ -524,6 +524,12 @@ export default function ImageProcessor({
         throw new Error("Немає оброблених зображень для завантаження");
       }
 
+      if (!isApiAvailable()) {
+        throw new Error(
+          "Для завантаження на storage потрібен backend.\n\nЗапустіть: npm run dev\nабо налаштуйте VITE_API_URL на існуючий backend."
+        );
+      }
+
       // Prevent multiple simultaneous uploads
       if (isUploading) {
         throw new Error("Завантаження вже виконується");
@@ -563,100 +569,7 @@ export default function ImageProcessor({
             formData.append("category", category);
             formData.append("folderName", folderName);
 
-            // Try automation server first (for production without backend)
-            // Note: This only works when accessing from localhost or with browser extension
-            // GitHub Pages (HTTPS) cannot access HTTP localhost due to mixed content policy
-            const AUTOMATION_SERVER_URL = "http://127.0.0.1:3839";
-            
-            // Check if automation server is available
-            // Only check if we're on localhost (not GitHub Pages)
-            let useAutomationServer = false;
-            const isLocalhost = window.location.hostname === "localhost" || 
-                               window.location.hostname === "127.0.0.1" ||
-                               window.location.protocol === "file:";
-            
-            if (!isApiAvailable() && isLocalhost) {
-              try {
-                const healthCheck = await fetch(`${AUTOMATION_SERVER_URL}/health`, { 
-                  signal: AbortSignal.timeout(2000) 
-                });
-                if (healthCheck.ok) {
-                  useAutomationServer = true;
-                }
-              } catch {
-                // Automation server not available, will show error below
-              }
-            }
-
-            if (!isApiAvailable() && !useAutomationServer) {
-              const isGitHubPages = window.location.hostname.includes("github.io");
-              const errorMessage = isGitHubPages
-                ? "Backend server is not available.\n\n" +
-                  "Для завантаження зображень на GitHub Pages потрібен бекенд сервер.\n\n" +
-                  "Альтернативи:\n" +
-                  "1. Запустіть локально: npm run dev\n" +
-                  "2. Налаштуйте бекенд і встановіть VITE_API_URL\n" +
-                  "3. Використовуйте локальний сервер автоматизації (працює тільки з localhost)"
-                : "Backend server is not available.\n\n" +
-                  "Для завантаження зображень потрібен один з варіантів:\n" +
-                  "1. Налаштуйте бекенд і встановіть VITE_API_URL\n" +
-                  "2. Запустіть сервер автоматизації локально:\n" +
-                  "   cd automation && npm run server";
-              throw new Error(errorMessage);
-            }
-
-            if (useAutomationServer) {
-              // Use automation server (Playwright via Brave browser)
-              log(`🤖 Використовуємо автоматизацію через Brave браузер...`);
-              
-              // Convert blob to base64
-              const base64 = await new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                  const result = reader.result as string;
-                  resolve(result);
-                };
-                reader.onerror = reject;
-                reader.readAsDataURL(img.convertedBlob!);
-              });
-
-              const automationResponse = await Promise.race([
-                fetch(`${AUTOMATION_SERVER_URL}/upload`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    fileData: base64,
-                    fileName: filename,
-                    category,
-                    folderName,
-                    skipConfirmation: true,
-                  }),
-                  signal: uploadAbortControllerRef.current.signal,
-                }),
-                new Promise<never>((_, reject) =>
-                  setTimeout(() => reject(new Error("Timeout: автоматизація не відповідає (120s)")), 120000)
-                ),
-              ]);
-
-              if (!automationResponse.ok) {
-                const errorData = await automationResponse.json().catch(() => ({}));
-                throw new Error(errorData.error || `Automation HTTP ${automationResponse.status}`);
-              }
-
-              const automationResult = await automationResponse.json();
-              
-              // Extract URL from result or construct from config
-              const publicUrl = automationResult.url || 
-                `https://storage.5th-elementagency.com/Promo/${category}/${folderName}/${filename}`;
-              
-              uploadedUrls[img.id] = publicUrl;
-              results.push({ filename, url: publicUrl, success: true });
-              successCount++;
-              log(`✅ [${i + 1}/${completed.length}] ${filename} завантажено через автоматизацію`);
-              continue;
-            }
-
-            // Use backend API (original flow)
+            // Backend: prepare → run automation/run-upload.js → Playwright
             const prepareResponse = await Promise.race([
               fetch(`${API_URL}/api/storage-upload/prepare`, {
                 method: "POST",

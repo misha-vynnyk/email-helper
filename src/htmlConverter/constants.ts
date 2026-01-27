@@ -8,21 +8,26 @@ export const STORAGE_KEYS = {
   UPLOAD_HISTORY: "html-converter-upload-history",
 } as const;
 
+// Symbols
+export const SYMBOLS = {
+  ONE_BR: "§", // § is a symbol that is not used in HTML
+} as const;
+
 // UI timing constants (in milliseconds)
 export const UI_TIMINGS = {
-  COPIED_FEEDBACK: 2000,        // How long to show "copied" feedback
-  SNACKBAR_DURATION: 4000,      // Toast notification duration
-  SUCCESS_DIALOG_CLOSE: 2000,   // Auto-close delay for success dialogs
-  SLIDER_DEBOUNCE_MS: 400,      // Wait after quality/maxWidth change before re-processing
+  COPIED_FEEDBACK: 2000, // How long to show "copied" feedback
+  SNACKBAR_DURATION: 4000, // Toast notification duration
+  SUCCESS_DIALOG_CLOSE: 2000, // Auto-close delay for success dialogs
+  SLIDER_DEBOUNCE_MS: 400, // Wait after quality/maxWidth change before re-processing
 } as const;
 
 // Upload configuration
 export const UPLOAD_CONFIG = {
-  MAX_HISTORY_SESSIONS: 50,     // Maximum number of upload sessions to keep in history
-  SESSIONS_PER_PAGE: 5,         // Number of sessions to display per page in history
-  PREPARE_TIMEOUT: 30000,       // 30 seconds for file preparation
-  STORAGE_TIMEOUT: 180000,      // 3 minutes for storage upload
-  SERVER_TIMEOUT: 300000,       // 5 minutes for server processing
+  MAX_HISTORY_SESSIONS: 50, // Maximum number of upload sessions to keep in history
+  SESSIONS_PER_PAGE: 5, // Number of sessions to display per page in history
+  PREPARE_TIMEOUT: 30000, // 30 seconds for file preparation
+  STORAGE_TIMEOUT: 180000, // 3 minutes for storage upload
+  SERVER_TIMEOUT: 300000, // 5 minutes for server processing
 } as const;
 
 // Image processing defaults

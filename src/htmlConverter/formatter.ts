@@ -74,13 +74,13 @@ function processStyles(htmlContent: string): string {
 }
 
 function applyTemplate(content: string, regex: RegExp, templateFn: (content: string) => string): string {
-  return content.replace(regex, (match, innerContent) => templateFn(innerContent));
+  return content.replace(regex, (_match, innerContent) => templateFn(innerContent));
 }
 
 // Special handling for the function that wraps images AND the whole content
 function wrapTextInSpan(htmlContent: string, templateFn: (content: string) => string, type: 'html' | 'mjml' = 'html'): string {
   // 1. Replace Images
-  htmlContent = htmlContent.replace(/<img[^>]*src="([^"]*)"[^>]*>/gi, function (match, src) {
+  htmlContent = htmlContent.replace(/<img[^>]*src="([^"]*)"[^>]*>/gi, function (_match, src) {
     return templateFn(src);
   });
 
