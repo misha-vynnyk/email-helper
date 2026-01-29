@@ -7,10 +7,38 @@
     "closeDelaySuccess": 0,
     "closeDelayCancel": 3000
   },
+  "browserProfiles": {
+    "default": {
+      "debugPort": 9222,
+      "userDataDir": "/Users/mykhailo.vynnyk/Library/Application Support/BravePlaywright"
+    },
+    "alphaone": {
+      "debugPort": 9223,
+      "userDataDir": "/Users/mykhailo.vynnyk/Library/Application Support/BravePlaywright-AlfaOne"
+    }
+  },
   "storage": {
     "baseUrl": "https://storage.epcnetwork.dev",
     "publicUrl": "https://storage.5th-elementagency.com",
     "basePath": "Promo"
+  },
+  "storageProviders": {
+    "default": {
+      "bucket": "files",
+      "usesCategory": true,
+      "consoleRootPrefix": "Promo",
+      "publicBaseUrl": "https://storage.5th-elementagency.com",
+      "publicPathPrefix": "files",
+      "publicRootPrefix": "Promo"
+    },
+    "alphaone": {
+      "bucket": "alphaone",
+      "usesCategory": false,
+      "consoleRootPrefix": "promo",
+      "publicBaseUrl": "https://alphaonest.com",
+      "publicPathPrefix": "files",
+      "publicRootPrefix": "promo"
+    }
   },
   "ui": {
     "formServerPort": 3838,

@@ -127,6 +127,7 @@ export default function HtmlConverterPanel() {
   // State
   const [fileName, setFileName] = useState("promo-1");
   const [approveNeeded, setApproveNeeded] = useState(true);
+  const [useAlfaOne, setUseAlfaOne] = useState(false);
   const [log, setLog] = useState<string[]>([]);
   const [showImageProcessor, setShowImageProcessor] = useState(false);
   const [inputHtml, setInputHtml] = useState<string>("");
@@ -177,7 +178,14 @@ export default function HtmlConverterPanel() {
             timestamp: Date.now(),
             filename: r.filename,
             url: r.url,
-            shortPath: r.url.replace("https://storage.5th-elementagency.com/", ""),
+            shortPath: (() => {
+              try {
+                const u = new URL(r.url);
+                return u.pathname.startsWith("/") ? u.pathname.slice(1) : u.pathname;
+              } catch {
+                return r.url;
+              }
+            })(),
             category,
             folderName,
           })),
@@ -635,6 +643,17 @@ export default function HtmlConverterPanel() {
             }
             label={<Typography variant='body2'>Approve needed</Typography>}
           />
+
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={useAlfaOne}
+                onChange={(e) => setUseAlfaOne(e.target.checked)}
+                size='small'
+              />
+            }
+            label={<Typography variant='body2'>AlfaOne</Typography>}
+          />
         </Stack>
       </StyledPaper>
 
@@ -651,6 +670,7 @@ export default function HtmlConverterPanel() {
         onResetReplacement={handleResetReplacement}
         hasOutput={hasOutput}
         autoProcess={autoProcess}
+        storageProvider={useAlfaOne ? "alphaone" : "default"}
       />
 
       {/* Output Blocks */}

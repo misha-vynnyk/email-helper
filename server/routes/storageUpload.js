@@ -6,6 +6,13 @@ const os = require("os");
 const multer = require("multer");
 const router = express.Router();
 
+let sharedStorageProviders = null;
+try {
+  sharedStorageProviders = require("../../src/htmlConverter/storageProviders.json");
+} catch {
+  // optional
+}
+
 // Configure multer for temporary file storage
 const upload = multer({
   dest: path.join(os.tmpdir(), "email-helper-uploads"),
@@ -145,6 +152,44 @@ router.post("/api/storage-upload/prepare-from-url", async (req, res) => {
 });
 
 /**
+ * POST /api/storage-upload/finalize
+ * Close current automation tab after successful batch.
+ * Body: { provider?: string }
+ */
+router.post("/api/storage-upload/finalize", async (req, res) => {
+  const providerKey = String(req.body?.provider || "default").toLowerCase();
+  try {
+    const runUploadPath = path.join(__dirname, "../../automation/run-upload.js");
+    if (!fs.existsSync(runUploadPath)) {
+      return res.status(500).json({
+        success: false,
+        error: "Automation entry point not found (automation/run-upload.js)",
+      });
+    }
+
+    const args = [];
+    if (providerKey && providerKey !== "default") args.push("--provider", providerKey);
+    args.push("--finalize");
+    const command = `node "${runUploadPath}" ${args
+      .map((a) => `"${String(a).replace(/"/g, '\\"')}"`)
+      .join(" ")}`;
+
+    exec(command, { timeout: 60000, maxBuffer: 2 * 1024 * 1024 }, (error, stdout, stderr) => {
+      if (error) {
+        return res.status(500).json({
+          success: false,
+          error: error.message,
+          details: stderr || error.stderr,
+        });
+      }
+      return res.json({ success: true, output: stdout });
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
  * POST /api/storage-upload
  * Upload converted images to storage using automation script
  *
@@ -155,28 +200,42 @@ router.post("/api/storage-upload/prepare-from-url", async (req, res) => {
  * - skipConfirmation: boolean (optional)
  */
 router.post("/api/storage-upload", async (req, res) => {
-  const { filePath, category, folderName, skipConfirmation = true } = req.body;
+  const {
+    filePath,
+    category,
+    folderName,
+    skipConfirmation = true,
+    provider = "default",
+  } = req.body;
 
   // Validation
   if (!filePath || !fs.existsSync(filePath)) {
     return res.status(400).json({
       success: false,
-      error: "File not found"
+      error: "File not found",
     });
   }
 
-  const validCategories = ["finance", "health"];
-  if (!category || !validCategories.includes(category.toLowerCase())) {
-    return res.status(400).json({
-      success: false,
-      error: `Invalid category. Must be one of: ${validCategories.join(", ")}`
-    });
+  const providerKey = String(provider).toLowerCase();
+  const isAlphaOne = providerKey === "alphaone";
+
+  const validCategories = sharedStorageProviders?.providers?.default?.categories || [
+    "finance",
+    "health",
+  ];
+  if (!isAlphaOne) {
+    if (!category || !validCategories.includes(category.toLowerCase())) {
+      return res.status(400).json({
+        success: false,
+        error: `Invalid category. Must be one of: ${validCategories.join(", ")}`,
+      });
+    }
   }
 
   if (!folderName || !/[a-zA-Z]+\d+/.test(folderName)) {
     return res.status(400).json({
       success: false,
-      error: "Invalid folder name format. Expected format like: ABCD123"
+      error: "Invalid folder name format. Expected format like: ABCD123",
     });
   }
 
@@ -186,12 +245,15 @@ router.post("/api/storage-upload", async (req, res) => {
     if (!fs.existsSync(runUploadPath)) {
       return res.status(500).json({
         success: false,
-        error: "Automation entry point not found (automation/run-upload.js)"
+        error: "Automation entry point not found (automation/run-upload.js)",
       });
     }
 
     // Крос-платформно: передаємо folderName аргументом (скрипт приймає argv[4] у --no-confirm)
     const args = [filePath, category];
+    if (providerKey && providerKey !== "default") {
+      args.push("--provider", providerKey);
+    }
     if (skipConfirmation) {
       args.push("--no-confirm", folderName);
     }
@@ -199,8 +261,8 @@ router.post("/api/storage-upload", async (req, res) => {
 
     console.log(`🚀 Executing: ${command}`);
 
-    // Execute automation script with extended timeout for slow internet (5 minutes)
-    exec(command, { timeout: 300000, maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+    // Execute automation script with extended timeout (login may require manual steps)
+    exec(command, { timeout: 900000, maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
       // Clean up temp file first (regardless of success/failure)
       if (fs.existsSync(filePath)) {
         try {
@@ -214,29 +276,78 @@ router.post("/api/storage-upload", async (req, res) => {
       if (error) {
         console.error("Upload error:", error);
 
+        const stderrText = String(stderr || error.stderr || "");
         let errorMessage = error.message;
+        let statusCode = 500;
 
         // Provide more specific error messages
-        if (error.killed && error.signal === 'SIGTERM') {
+        if (error.killed && error.signal === "SIGTERM") {
           errorMessage = "Upload timeout (5 minutes). Check your internet connection.";
-        } else if (stderr && stderr.includes("ECONNREFUSED")) {
-          errorMessage = "Cannot connect to storage server";
+        } else if (stderrText.includes("ERROR:LOGIN_REQUIRED")) {
+          statusCode = 401;
+          errorMessage =
+            "Потрібен логін в MinIO Console (Brave профіль для цього provider). Відкрий AlfaOne, залогінься, і повтори upload.";
+        } else if (stderrText.includes("ERROR:LOGIN_TIMEOUT")) {
+          statusCode = 408;
+          errorMessage = "Timeout: користувач не залогінився вчасно.";
+        } else if (stderrText.includes("ERROR:UPLOAD_UI_TIMEOUT")) {
+          statusCode = 408;
+          errorMessage =
+            "Timeout: MinIO UI не завантажилось/не показало логін або Upload. Спробуй ще раз (або перевір, що сторінка доступна і ти залогінений).";
+        } else if (
+          stderrText.includes("ERROR:BROWSER_CLOSED") ||
+          stderrText.includes("Target page, context or browser has been closed")
+        ) {
+          statusCode = 499;
+          errorMessage = "Браузер було закрито — завантаження скасовано.";
+        } else if (
+          stderrText.includes("connectOverCDP") &&
+          (stderrText.includes("127.0.0.1:9222") || stderrText.includes("127.0.0.1:9223"))
+        ) {
+          errorMessage =
+            "Brave CDP порт недоступний. Закрий BravePlaywright/BravePlaywright-AlfaOne або дай скрипту запустити Brave з потрібним портом, і повтори upload.";
+        } else if (stderrText.includes("ECONNREFUSED") && stderrText.includes("127.0.0.1:")) {
+          errorMessage =
+            "Не вдалося підключитись до локального Brave CDP (remote debugging). Перевір, що Brave дозволено запускатись і порт не зайнятий.";
         } else if (stderr && stderr.includes("ENOTFOUND")) {
           errorMessage = "Storage server not found. Check your internet connection.";
+        } else if (
+          stderrText.includes("page.waitForSelector") &&
+          stderrText.includes("#upload-main")
+        ) {
+          statusCode = 401;
+          errorMessage =
+            "MinIO UI не показало Upload (ймовірно потрібен логін або інша сторінка). Відкрий AlfaOne, залогінься, і повтори upload.";
         } else if (stderr) {
           errorMessage = `Upload failed: ${stderr.substring(0, 200)}`;
         }
 
-        return res.status(500).json({
+        return res.status(statusCode).json({
           success: false,
           error: errorMessage,
-          details: stderr || error.stderr
+          details: stderr || error.stderr,
         });
       }
 
       // Parse output to extract file path (from clipboard copy)
       const lines = stdout.split("\n");
       let uploadedPath = null;
+      let publicUrl = null;
+
+      for (const line of lines) {
+        if (line.startsWith("RESULT_JSON=")) {
+          try {
+            const jsonStr = line.slice("RESULT_JSON=".length).trim();
+            const parsed = JSON.parse(jsonStr);
+            if (parsed && typeof parsed === "object") {
+              if (typeof parsed.filePath === "string") uploadedPath = parsed.filePath;
+              if (typeof parsed.publicUrl === "string") publicUrl = parsed.publicUrl;
+            }
+          } catch {
+            // ignore parse errors; fallback to legacy format below
+          }
+        }
+      }
 
       for (const line of lines) {
         if (line.includes("Скопійовано в буфер:")) {
@@ -245,15 +356,23 @@ router.post("/api/storage-upload", async (req, res) => {
         }
       }
 
+      if (!uploadedPath) {
+        return res.status(500).json({
+          success: false,
+          error: "Upload did not return file path (not logged in, cancelled, or UI changed).",
+          output: stdout,
+        });
+      }
+
       // Success response
       res.json({
         success: true,
         filePath: uploadedPath,
+        publicUrl,
         output: stdout,
-        message: "File uploaded successfully"
+        message: "File uploaded successfully",
       });
     });
-
   } catch (error) {
     console.error("Storage upload error:", error);
 
@@ -268,7 +387,7 @@ router.post("/api/storage-upload", async (req, res) => {
 
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message,
     });
   }
 });
