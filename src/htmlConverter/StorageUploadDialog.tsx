@@ -39,14 +39,31 @@ import { useThemeMode } from "../theme";
 import { getComponentStyles } from "../theme/componentStyles";
 import { spacingMUI, borderRadius } from "../theme/tokens";
 import { copyToClipboard } from "./utils/clipboard";
-import { STORAGE_URL_PREFIX, UI_TIMINGS } from "./constants";
+import { UI_TIMINGS } from "./constants";
+import { STORAGE_PROVIDERS_CONFIG } from "./constants";
 import type { UploadResult } from "./types";
+import type { StorageProviderKey } from "./constants";
+
+function toShortPath(url: string): string {
+  try {
+    const u = new URL(url);
+    return u.pathname.startsWith("/") ? u.pathname.slice(1) : u.pathname;
+  } catch {
+    return url;
+  }
+}
 
 interface StorageUploadDialogProps {
   open: boolean;
   onClose: () => void;
+  storageProvider?: StorageProviderKey;
   files: Array<{ id: string; name: string; path?: string }>;
-  onUpload: (category: string, folderName: string, customNames: Record<string, string>, fileOrder?: string[]) => Promise<{ results: UploadResult[]; category: string; folderName: string }>;
+  onUpload: (
+    category: string,
+    folderName: string,
+    customNames: Record<string, string>,
+    fileOrder?: string[]
+  ) => Promise<{ results: UploadResult[]; category: string; folderName: string }>;
   onCancel?: () => void;
   initialFolderName?: string;
   onHistoryAdd?: (category: string, folderName: string, results: UploadResult[]) => void;
@@ -55,6 +72,7 @@ interface StorageUploadDialogProps {
 export default function StorageUploadDialog({
   open,
   onClose,
+  storageProvider = "default",
   files,
   onUpload,
   onCancel,
@@ -65,7 +83,21 @@ export default function StorageUploadDialog({
   const { mode, style } = useThemeMode();
   const componentStyles = getComponentStyles(mode, style);
 
-  const [category, setCategory] = useState<string>("finance");
+  const providerCfg =
+    STORAGE_PROVIDERS_CONFIG.providers[storageProvider] ||
+    STORAGE_PROVIDERS_CONFIG.providers.default;
+  const showCategory = providerCfg.usesCategory;
+
+  const categories = (showCategory && providerCfg.categories && providerCfg.categories.length > 0
+    ? providerCfg.categories
+    : STORAGE_PROVIDERS_CONFIG.providers.default.categories) || ["finance", "health"];
+  const defaultCategory =
+    (showCategory && providerCfg.defaultCategory) ||
+    STORAGE_PROVIDERS_CONFIG.providers.default.defaultCategory ||
+    categories[0] ||
+    "finance";
+
+  const [category, setCategory] = useState<string>(defaultCategory);
   const [folderName, setFolderName] = useState<string>("");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,6 +111,13 @@ export default function StorageUploadDialog({
   useEffect(() => {
     setOrderedFiles(files);
   }, [files]);
+
+  // Reset category when provider changes
+  useEffect(() => {
+    if (!showCategory) return;
+    setCategory((prev) => (categories.includes(prev) ? prev : defaultCategory));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storageProvider]);
 
   // Auto-fill from initialFolderName or clipboard on mount
   useEffect(() => {
@@ -148,7 +187,8 @@ export default function StorageUploadDialog({
 
     try {
       const fileOrder = orderedFiles.map((f) => f.id);
-      const response = await onUpload(category, folderName.trim(), customNames, fileOrder);
+      const effectiveCategory = showCategory ? category : "finance";
+      const response = await onUpload(effectiveCategory, folderName.trim(), customNames, fileOrder);
       setUploadResults(response.results);
 
       // Add to history
@@ -186,9 +226,7 @@ export default function StorageUploadDialog({
   };
 
   const handleCopyUrl = async (url: string, isShortPath = false) => {
-    const textToCopy = isShortPath
-      ? url.replace(STORAGE_URL_PREFIX, '')
-      : url;
+    const textToCopy = isShortPath ? toShortPath(url) : url;
 
     const copiedKey = isShortPath ? `${url}-short` : url;
 
@@ -201,11 +239,8 @@ export default function StorageUploadDialog({
 
   const handleCopyAllUrls = async (isShortPath = false) => {
     const urls = uploadResults
-      .filter(r => r.success)
-      .map(r => isShortPath
-        ? r.url.replace(STORAGE_URL_PREFIX, '')
-        : r.url
-      )
+      .filter((r) => r.success)
+      .map((r) => (isShortPath ? toShortPath(r.url) : r.url))
       .join("\n");
 
     const copiedKey = isShortPath ? "all-short" : "all";
@@ -221,39 +256,51 @@ export default function StorageUploadDialog({
     <Dialog
       open={open}
       onClose={handleClose}
-      maxWidth="sm"
+      maxWidth='sm'
       fullWidth
       PaperProps={{
         sx: {
           borderRadius: `${borderRadius.lg}px`,
           backgroundColor: componentStyles.card.background || theme.palette.background.paper,
-        }
+        },
       }}
     >
       <DialogTitle sx={{ pb: spacingMUI.sm }}>
-        <Box display="flex" alignItems="center" justifyContent="space-between">
-          <Box display="flex" alignItems="center" gap={spacingMUI.sm}>
+        <Box
+          display='flex'
+          alignItems='center'
+          justifyContent='space-between'
+        >
+          <Box
+            display='flex'
+            alignItems='center'
+            gap={spacingMUI.sm}
+          >
             {uploadResults.length > 0 ? (
               <SuccessIcon sx={{ color: theme.palette.success.main }} />
             ) : (
-              <UploadIcon color="primary" />
+              <UploadIcon color='primary' />
             )}
-            <Typography variant="h6" component="span" fontWeight={600}>
+            <Typography
+              variant='h6'
+              component='span'
+              fontWeight={600}
+            >
               {uploadResults.length > 0 ? "Upload Complete" : "Upload to Storage"}
             </Typography>
           </Box>
           <IconButton
             onClick={handleClose}
             disabled={uploading}
-            size="small"
+            size='small'
             sx={{
               color: theme.palette.text.secondary,
-              '&:hover': {
+              "&:hover": {
                 backgroundColor: alpha(theme.palette.text.primary, 0.05),
-              }
+              },
             }}
           >
-            <CloseIcon fontSize="small" />
+            <CloseIcon fontSize='small' />
           </IconButton>
         </Box>
       </DialogTitle>
@@ -267,10 +314,18 @@ export default function StorageUploadDialog({
             <>
               {/* Files list with thumbnails, rename, and drag & drop */}
               <Box>
-                <Typography variant="body2" color="text.secondary" fontWeight={500} gutterBottom>
+                <Typography
+                  variant='body2'
+                  color='text.secondary'
+                  fontWeight={500}
+                  gutterBottom
+                >
                   Files to upload ({orderedFiles.length}):
                 </Typography>
-                <Stack spacing={spacingMUI.sm} mt={spacingMUI.sm}>
+                <Stack
+                  spacing={spacingMUI.sm}
+                  mt={spacingMUI.sm}
+                >
                   {orderedFiles.map((file, index) => (
                     <Box
                       key={file.id}
@@ -284,28 +339,31 @@ export default function StorageUploadDialog({
                         gap: spacingMUI.sm,
                         p: spacingMUI.sm,
                         borderRadius: `${borderRadius.sm}px`,
-                        backgroundColor: draggedIndex === index
-                          ? alpha(theme.palette.primary.main, 0.15)
-                          : alpha(theme.palette.background.paper, 0.5),
+                        backgroundColor:
+                          draggedIndex === index
+                            ? alpha(theme.palette.primary.main, 0.15)
+                            : alpha(theme.palette.background.paper, 0.5),
                         border: `1px solid ${draggedIndex === index ? theme.palette.primary.main : theme.palette.divider}`,
-                        cursor: uploading ? 'default' : 'grab',
-                        transition: 'all 0.2s ease',
-                        '&:active': {
-                          cursor: uploading ? 'default' : 'grabbing',
+                        cursor: uploading ? "default" : "grab",
+                        transition: "all 0.2s ease",
+                        "&:active": {
+                          cursor: uploading ? "default" : "grabbing",
                         },
-                        '&:hover': uploading ? {} : {
-                          backgroundColor: alpha(theme.palette.primary.main, 0.08),
-                          borderColor: theme.palette.primary.light,
-                        },
+                        "&:hover": uploading
+                          ? {}
+                          : {
+                              backgroundColor: alpha(theme.palette.primary.main, 0.08),
+                              borderColor: theme.palette.primary.light,
+                            },
                       }}
                     >
                       {/* Drag Handle */}
                       <DragIcon
                         sx={{
                           color: theme.palette.text.disabled,
-                          cursor: uploading ? 'default' : 'grab',
-                          '&:active': {
-                            cursor: uploading ? 'default' : 'grabbing',
+                          cursor: uploading ? "default" : "grab",
+                          "&:active": {
+                            cursor: uploading ? "default" : "grabbing",
                           },
                         }}
                       />
@@ -317,7 +375,7 @@ export default function StorageUploadDialog({
                             width: 48,
                             height: 48,
                             borderRadius: `${borderRadius.sm}px`,
-                            overflow: 'hidden',
+                            overflow: "hidden",
                             flexShrink: 0,
                             border: `1px solid ${theme.palette.divider}`,
                             backgroundColor: alpha(theme.palette.background.default, 0.5),
@@ -327,9 +385,9 @@ export default function StorageUploadDialog({
                             src={file.path}
                             alt={file.name}
                             style={{
-                              width: '100%',
-                              height: '100%',
-                              objectFit: 'cover',
+                              width: "100%",
+                              height: "100%",
+                              objectFit: "cover",
                             }}
                           />
                         </Box>
@@ -338,7 +396,7 @@ export default function StorageUploadDialog({
                       {/* Index Chip */}
                       <Chip
                         label={`#${index + 1}`}
-                        size="small"
+                        size='small'
                         sx={{
                           minWidth: 36,
                           fontWeight: 700,
@@ -349,129 +407,159 @@ export default function StorageUploadDialog({
 
                       {/* Name Input */}
                       <TextField
-                        size="small"
+                        size='small'
                         fullWidth
-                        placeholder={file.name.replace(/\.[^/.]+$/, '')}
-                        value={customNames[file.id] || ''}
+                        placeholder={file.name.replace(/\.[^/.]+$/, "")}
+                        value={customNames[file.id] || ""}
                         onChange={(e) => {
-                          const value = e.target.value
-                            .replace(/[^a-zA-Z0-9-_]/g, '')
-                            .toLowerCase();
+                          const value = e.target.value.replace(/[^a-zA-Z0-9-_]/g, "").toLowerCase();
                           setCustomNames((prev) => ({
                             ...prev,
                             [file.id]: value,
                           }));
                         }}
                         disabled={uploading}
-                        helperText={customNames[file.id] ? `${customNames[file.id]}.jpg` : file.name}
+                        helperText={
+                          customNames[file.id] ? `${customNames[file.id]}.jpg` : file.name
+                        }
                         sx={{
-                          '& .MuiOutlinedInput-root': {
+                          "& .MuiOutlinedInput-root": {
                             borderRadius: `${borderRadius.sm}px`,
-                            '&.Mui-focused': {
-                              backgroundColor: 'transparent',
+                            "&.Mui-focused": {
+                              backgroundColor: "transparent",
                             },
                           },
-                          '& .MuiFormHelperText-root': {
-                            fontFamily: 'monospace',
-                            fontSize: '0.7rem',
+                          "& .MuiFormHelperText-root": {
+                            fontFamily: "monospace",
+                            fontSize: "0.7rem",
                           },
                         }}
                       />
                     </Box>
                   ))}
                 </Stack>
-          </Box>
+              </Box>
 
-          {/* Category Selection */}
-          <FormControl component="fieldset">
-            <FormLabel
-              component="legend"
-              sx={{
-                fontWeight: 500,
-                mb: spacingMUI.sm,
-                color: theme.palette.text.primary,
-              }}
-            >
-              Category
-            </FormLabel>
-            <RadioGroup
-              row
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-            >
-              <FormControlLabel value="finance" control={<Radio />} label="Finance" />
-              <FormControlLabel value="health" control={<Radio />} label="Health" />
-            </RadioGroup>
-          </FormControl>
+              {/* Category Selection */}
+              {showCategory ? (
+                <FormControl component='fieldset'>
+                  <FormLabel
+                    component='legend'
+                    sx={{
+                      fontWeight: 500,
+                      mb: spacingMUI.sm,
+                      color: theme.palette.text.primary,
+                    }}
+                  >
+                    Category
+                  </FormLabel>
+                  <RadioGroup
+                    row
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                  >
+                    {categories.map((c) => (
+                      <FormControlLabel
+                        key={c}
+                        value={c}
+                        control={<Radio />}
+                        label={c}
+                      />
+                    ))}
+                  </RadioGroup>
+                </FormControl>
+              ) : (
+                <Alert
+                  severity='info'
+                  sx={{ borderRadius: `${borderRadius.md}px` }}
+                >
+                  AlfaOne: категорія не використовується (root:{" "}
+                  <code>{providerCfg.publicRootPrefix}/</code>)
+                </Alert>
+              )}
 
-          {/* Folder Name Input */}
-          <TextField
-            label="Folder Name"
-            placeholder="e.g., ABCD123"
-            value={folderName}
-            onChange={(e) => setFolderName(e.target.value)}
-            fullWidth
-            disabled={uploading}
-            helperText="Format: Letters + Numbers (e.g., ABCD123, Finance456)"
-            autoFocus
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                borderRadius: `${borderRadius.md}px`,
-                '&.Mui-focused': {
-                  backgroundColor: 'transparent',
-                },
-              }
-            }}
-          />
+              {/* Folder Name Input */}
+              <TextField
+                label='Folder Name'
+                placeholder='e.g., ABCD123'
+                value={folderName}
+                onChange={(e) => setFolderName(e.target.value)}
+                fullWidth
+                disabled={uploading}
+                helperText='Format: Letters + Numbers (e.g., ABCD123, Finance456)'
+                autoFocus
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: `${borderRadius.md}px`,
+                    "&.Mui-focused": {
+                      backgroundColor: "transparent",
+                    },
+                  },
+                }}
+              />
 
-          {/* Upload Path Preview */}
-          {folderName && /[a-zA-Z]+\d+/.test(folderName) && (
-            <Alert
-              severity="info"
-              sx={{
-                borderRadius: `${borderRadius.md}px`,
-                '& .MuiAlert-message': {
-                  width: '100%',
-                }
-              }}
-            >
-              <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
-                <strong>Upload path:</strong>
-                <br />
-                {`Promo/${category}/${folderName
-                  .replace(/[^a-zA-Z]/g, "")
-                  .toLowerCase()}/lift-${folderName.replace(/[^0-9]/g, "")}/`}
-              </Typography>
-            </Alert>
-          )}
+              {/* Upload Path Preview */}
+              {folderName && /[a-zA-Z]+\d+/.test(folderName) && (
+                <Alert
+                  severity='info'
+                  sx={{
+                    borderRadius: `${borderRadius.md}px`,
+                    "& .MuiAlert-message": {
+                      width: "100%",
+                    },
+                  }}
+                >
+                  <Typography
+                    variant='caption'
+                    sx={{ fontFamily: "monospace" }}
+                  >
+                    <strong>Upload path:</strong>
+                    <br />
+                    {(() => {
+                      const letters = folderName.replace(/[^a-zA-Z]/g, "").toLowerCase();
+                      const digits = folderName.replace(/[^0-9]/g, "");
+                      const parts = [providerCfg.publicRootPrefix];
+                      if (showCategory) parts.push(category);
+                      parts.push(letters, `lift-${digits}`);
+                      return `${parts.filter(Boolean).join("/")}/`;
+                    })()}
+                  </Typography>
+                </Alert>
+              )}
 
-          {/* Progress */}
-          {uploading && (
-            <Box
-              sx={{
-                p: spacingMUI.base,
-                borderRadius: `${borderRadius.md}px`,
-                backgroundColor: alpha(theme.palette.primary.main, 0.05),
-                border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-              }}
-            >
-              <LinearProgress sx={{ mb: spacingMUI.sm, borderRadius: `${borderRadius.sm}px` }} />
-              <Typography variant="body2" color="text.secondary" align="center">
-                Uploading files...
-              </Typography>
-            </Box>
-          )}
+              {/* Progress */}
+              {uploading && (
+                <Box
+                  sx={{
+                    p: spacingMUI.base,
+                    borderRadius: `${borderRadius.md}px`,
+                    backgroundColor: alpha(theme.palette.primary.main, 0.05),
+                    border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                  }}
+                >
+                  <LinearProgress
+                    sx={{ mb: spacingMUI.sm, borderRadius: `${borderRadius.sm}px` }}
+                  />
+                  <Typography
+                    variant='body2'
+                    color='text.secondary'
+                    align='center'
+                  >
+                    Uploading files...
+                  </Typography>
+                </Box>
+              )}
 
-          {/* Error Message */}
-          {error && (
-            <Alert
-              icon={<ErrorIcon />}
-              severity="error"
-              sx={{ borderRadius: `${borderRadius.md}px` }}
-            >
-              {error}
-            </Alert>
-          )}
+              {/* Error Message */}
+              {error && (
+                <Alert
+                  icon={<ErrorIcon />}
+                  severity='error'
+                  sx={{ borderRadius: `${borderRadius.md}px` }}
+                >
+                  {error}
+                </Alert>
+              )}
             </>
           )}
 
@@ -481,46 +569,71 @@ export default function StorageUploadDialog({
               sx={{
                 p: spacingMUI.base,
                 borderRadius: `${borderRadius.lg}px`,
-                backgroundColor: componentStyles.card.background || alpha(theme.palette.background.paper, 0.5),
+                backgroundColor:
+                  componentStyles.card.background || alpha(theme.palette.background.paper, 0.5),
                 backdropFilter: componentStyles.card.backdropFilter,
                 WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
                 border: `1px solid ${alpha(theme.palette.success.main, 0.2)}`,
               }}
             >
-              <Box display="flex" alignItems="center" justifyContent="space-between" mb={spacingMUI.base}>
-                <Box display="flex" alignItems="center" gap={spacingMUI.xs}>
+              <Box
+                display='flex'
+                alignItems='center'
+                justifyContent='space-between'
+                mb={spacingMUI.base}
+              >
+                <Box
+                  display='flex'
+                  alignItems='center'
+                  gap={spacingMUI.xs}
+                >
                   <SuccessIcon sx={{ color: theme.palette.success.main, fontSize: 20 }} />
-                  <Typography variant="subtitle2" fontWeight={600}>
-                    Uploaded Files ({uploadResults.filter(r => r.success).length}/{uploadResults.length})
+                  <Typography
+                    variant='subtitle2'
+                    fontWeight={600}
+                  >
+                    Uploaded Files ({uploadResults.filter((r) => r.success).length}/
+                    {uploadResults.length})
                   </Typography>
                 </Box>
-                {uploadResults.filter(r => r.success).length > 0 && (
-                  <Box display="flex" gap={spacingMUI.xs}>
-                    <Tooltip title="Copy all full URLs" arrow placement="top">
+                {uploadResults.filter((r) => r.success).length > 0 && (
+                  <Box
+                    display='flex'
+                    gap={spacingMUI.xs}
+                  >
+                    <Tooltip
+                      title='Copy all full URLs'
+                      arrow
+                      placement='top'
+                    >
                       <Button
-                        size="small"
+                        size='small'
                         onClick={() => handleCopyAllUrls(false)}
                         startIcon={copiedUrl === "all" ? <CheckIcon /> : <LinkIcon />}
                         sx={{
-                          textTransform: 'none',
+                          textTransform: "none",
                           borderRadius: `${borderRadius.md}px`,
-                          fontSize: '0.75rem',
+                          fontSize: "0.75rem",
                           fontWeight: 600,
                         }}
                       >
                         {copiedUrl === "all" ? "✓" : "Copy URLs"}
                       </Button>
                     </Tooltip>
-                    <Tooltip title="Copy all short paths" arrow placement="top">
+                    <Tooltip
+                      title='Copy all short paths'
+                      arrow
+                      placement='top'
+                    >
                       <Button
-                        size="small"
+                        size='small'
                         onClick={() => handleCopyAllUrls(true)}
                         startIcon={copiedUrl === "all-short" ? <CheckIcon /> : <CopyIcon />}
-                        variant="outlined"
+                        variant='outlined'
                         sx={{
-                          textTransform: 'none',
+                          textTransform: "none",
                           borderRadius: `${borderRadius.md}px`,
-                          fontSize: '0.75rem',
+                          fontSize: "0.75rem",
                           fontWeight: 600,
                         }}
                       >
@@ -541,18 +654,20 @@ export default function StorageUploadDialog({
                       backgroundColor: result.success
                         ? alpha(theme.palette.success.main, 0.05)
                         : alpha(theme.palette.error.main, 0.05),
-                      border: `1px solid ${result.success
-                        ? alpha(theme.palette.success.main, 0.15)
-                        : alpha(theme.palette.error.main, 0.15)}`,
-                      display: 'flex',
-                      alignItems: 'center',
+                      border: `1px solid ${
+                        result.success
+                          ? alpha(theme.palette.success.main, 0.15)
+                          : alpha(theme.palette.error.main, 0.15)
+                      }`,
+                      display: "flex",
+                      alignItems: "center",
                       gap: spacingMUI.sm,
-                      transition: 'all 0.2s ease',
-                      '&:hover': {
+                      transition: "all 0.2s ease",
+                      "&:hover": {
                         backgroundColor: result.success
                           ? alpha(theme.palette.success.main, 0.08)
                           : alpha(theme.palette.error.main, 0.08),
-                      }
+                      },
                     }}
                   >
                     <ImageIcon
@@ -560,81 +675,106 @@ export default function StorageUploadDialog({
                         fontSize: 18,
                         color: result.success
                           ? theme.palette.success.main
-                          : theme.palette.error.main
+                          : theme.palette.error.main,
                       }}
                     />
-                    <Box flex={1} minWidth={0}>
+                    <Box
+                      flex={1}
+                      minWidth={0}
+                    >
                       <Typography
-                        variant="body2"
+                        variant='body2'
                         fontWeight={500}
                         sx={{
                           mb: 0.25,
-                          color: theme.palette.text.primary
+                          color: theme.palette.text.primary,
                         }}
                       >
                         {result.filename}
                       </Typography>
-                      {result.success && (
+                      {result.success ? (
                         <Typography
-                          variant="caption"
+                          variant='caption'
                           sx={{
-                            fontFamily: 'monospace',
+                            fontFamily: "monospace",
                             color: theme.palette.text.secondary,
-                            display: 'block',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
+                            display: "block",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
                           }}
                         >
                           {result.url}
                         </Typography>
+                      ) : (
+                        <Typography
+                          variant='caption'
+                          color='error.main'
+                        >
+                          {result.error || "Upload failed"}
+                        </Typography>
                       )}
                     </Box>
                     {result.success && (
-                      <Box display="flex" gap={spacingMUI.xs}>
-                        <Tooltip title="Copy full URL" arrow placement="top">
+                      <Box
+                        display='flex'
+                        gap={spacingMUI.xs}
+                      >
+                        <Tooltip
+                          title='Copy full URL'
+                          arrow
+                          placement='top'
+                        >
                           <Button
-                            size="small"
+                            size='small'
                             onClick={() => handleCopyUrl(result.url, false)}
                             startIcon={copiedUrl === result.url ? <CheckIcon /> : <LinkIcon />}
                             sx={{
-                              minWidth: 'auto',
+                              minWidth: "auto",
                               px: spacingMUI.sm,
                               py: spacingMUI.xs,
-                              textTransform: 'none',
+                              textTransform: "none",
                               borderRadius: `${borderRadius.sm}px`,
-                              fontSize: '0.7rem',
+                              fontSize: "0.7rem",
                               fontWeight: 600,
-                              color: copiedUrl === result.url
-                                ? theme.palette.success.main
-                                : theme.palette.primary.main,
-                              '&:hover': {
+                              color:
+                                copiedUrl === result.url
+                                  ? theme.palette.success.main
+                                  : theme.palette.primary.main,
+                              "&:hover": {
                                 backgroundColor: alpha(theme.palette.primary.main, 0.08),
-                              }
+                              },
                             }}
                           >
                             {copiedUrl === result.url ? "✓" : "URL"}
                           </Button>
                         </Tooltip>
-                        <Tooltip title="Copy short path" arrow placement="top">
+                        <Tooltip
+                          title='Copy short path'
+                          arrow
+                          placement='top'
+                        >
                           <Button
-                            size="small"
+                            size='small'
                             onClick={() => handleCopyUrl(result.url, true)}
-                            startIcon={copiedUrl === `${result.url}-short` ? <CheckIcon /> : <CopyIcon />}
+                            startIcon={
+                              copiedUrl === `${result.url}-short` ? <CheckIcon /> : <CopyIcon />
+                            }
                             sx={{
-                              minWidth: 'auto',
+                              minWidth: "auto",
                               px: spacingMUI.sm,
                               py: spacingMUI.xs,
-                              textTransform: 'none',
+                              textTransform: "none",
                               borderRadius: `${borderRadius.sm}px`,
-                              fontSize: '0.7rem',
+                              fontSize: "0.7rem",
                               fontWeight: 600,
-                              color: copiedUrl === `${result.url}-short`
-                                ? theme.palette.success.main
-                                : theme.palette.text.secondary,
-                              '&:hover': {
+                              color:
+                                copiedUrl === `${result.url}-short`
+                                  ? theme.palette.success.main
+                                  : theme.palette.text.secondary,
+                              "&:hover": {
                                 backgroundColor: alpha(theme.palette.text.secondary, 0.08),
-                              }
+                              },
                             }}
                           >
                             {copiedUrl === `${result.url}-short` ? "✓" : "Path"}
@@ -655,10 +795,10 @@ export default function StorageUploadDialog({
           // After upload is complete
           <Button
             fullWidth
-            variant="contained"
+            variant='contained'
             onClick={handleClose}
             sx={{
-              textTransform: 'none',
+              textTransform: "none",
               fontWeight: 600,
               borderRadius: `${borderRadius.md}px`,
             }}
@@ -673,7 +813,7 @@ export default function StorageUploadDialog({
               color={uploading ? "error" : "inherit"}
               variant={uploading ? "outlined" : "text"}
               sx={{
-                textTransform: 'none',
+                textTransform: "none",
                 borderRadius: `${borderRadius.md}px`,
                 fontWeight: uploading ? 600 : 400,
               }}
@@ -681,12 +821,12 @@ export default function StorageUploadDialog({
               {uploading ? "Скасувати" : "Cancel"}
             </Button>
             <Button
-              variant="contained"
+              variant='contained'
               onClick={handleUpload}
               disabled={uploading || !folderName.trim()}
               startIcon={<UploadIcon />}
               sx={{
-                textTransform: 'none',
+                textTransform: "none",
                 fontWeight: 600,
                 borderRadius: `${borderRadius.md}px`,
               }}

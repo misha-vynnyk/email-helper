@@ -2,6 +2,8 @@
  * Constants for HTML Converter module
  */
 
+import storageProvidersConfig from "./storageProviders.json";
+
 // LocalStorage keys
 export const STORAGE_KEYS = {
   IMAGE_SETTINGS: "html-converter-image-settings",
@@ -44,3 +46,41 @@ export const STORAGE_URL_PREFIX = "https://storage.5th-elementagency.com/";
 
 /** Exclude images with alt containing this (e.g. Signature, sign-i) from extraction & URL replacement */
 export const IMAGE_EXCLUSION_ALT_REGEX = /Signature/i;
+
+/**
+ * Storage providers config (single source of truth for:
+ * - consoleBaseUrl (MinIO Console)
+ * - bucket/root prefixes
+ * - public URL base
+ * - Brave profiles (ports + userDataDir)
+ *
+ * Edit `src/htmlConverter/storageProviders.json` when you need to tweak paths/domains.
+ */
+export const STORAGE_PROVIDERS_CONFIG = storageProvidersConfig as {
+  consoleBaseUrl: string;
+  providers: Record<
+    string,
+    {
+      bucket: string;
+      usesCategory: boolean;
+      consoleRootPrefix: string;
+      loginWaitMs?: number;
+      bootstrapWaitMs?: number;
+      categories?: string[];
+      defaultCategory?: string;
+      closeTabAfterBatch?: boolean;
+      publicBaseUrl: string;
+      publicPathPrefix: string;
+      publicRootPrefix: string;
+    }
+  >;
+  browserProfiles?: Record<
+    string,
+    {
+      debugPort: number;
+      userDataDir: string;
+      autoCloseTab?: boolean;
+    }
+  >;
+};
+export type StorageProviderKey = keyof typeof storageProvidersConfig.providers;

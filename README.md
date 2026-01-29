@@ -38,27 +38,31 @@ npm run dev
 
 ### Що треба змінити на **Mac**
 
-Після клонування нічого міняти не треба. У репо вже зашиті шляхи для Mac (Brave у стандартному місці). Просто встанови залежності й запускай `npm run dev`.
+Після клонування зазвичай нічого міняти не треба: Brave у стандартному місці, а профілі вже налаштовані.
 
-Якщо Brave встановлено в інше місце — відредагуй файл `automation/config.json`: рядки `executablePath` і `userDataDir` (шлях до Brave і папка профілю).
+Якщо Brave встановлено в інше місце — задай змінну середовища `BRAVE_EXECUTABLE_PATH` **або** відредагуй `automation/config.json` → `browser.executablePath`.
+
+Якщо Upload відкриває Brave “без логіну” або ламається профіль — перевір `src/htmlConverter/storageProviders.json` → `browserProfiles.*.userDataDir` (це окремі профілі для різних storage-провайдерів).
 
 ---
 
 ### Що треба змінити на **Windows**
 
-У репо за замовчуванням шляхи під Mac. На Windows треба один раз вказати, де у тебе Brave.
+У репо за замовчуванням шляхи під Mac. На Windows треба один раз вказати, де у тебе Brave, і (опційно) куди складати профіль(і).
 
 **Варіант 1 — через змінні середовища (зручно, не чіпаєш файли):**
 
 Перед `npm run dev` у тому ж терміналі виконай (встав свої шляхи):
 
 У **cmd** (Командний рядок):
+
 ```cmd
 set BRAVE_EXECUTABLE_PATH=C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe
 set BRAVE_USER_DATA_DIR=%TEMP%\brave-debug
 ```
 
 У **PowerShell**:
+
 ```powershell
 $env:BRAVE_EXECUTABLE_PATH = "C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"
 $env:BRAVE_USER_DATA_DIR = "$env:TEMP\brave-debug"
@@ -75,6 +79,8 @@ $env:BRAVE_USER_DATA_DIR = "$env:TEMP\brave-debug"
 
 Збережи файл. Далі просто запускай `npm run dev`.
 
+> Примітка: для нового “multi-provider” Upload (default/alphaone) основні налаштування вже винесені в `src/htmlConverter/storageProviders.json`. Якщо ти хочеш **різні профілі** Brave для різних storage — редагуй саме `storageProviders.json` → `browserProfiles.default` / `browserProfiles.alphaone`.
+
 ---
 
 **Коротко:** на Mac нічого міняти не треба. На Windows один раз вказати шлях до Brave (файлом або змінними), далі скрізь однаково: `npm install` у корені, server і automation — потім `npm run dev`.
@@ -86,6 +92,23 @@ $env:BRAVE_USER_DATA_DIR = "$env:TEMP\brave-debug"
 - **Відправка листів:** Gmail App Password (Google Account → Security → App Passwords). У додатку вводити цей пароль, не основний.
 - **GIF:** див. [GIF_OPTIMIZATION.md](src/imageConverter/GIF_OPTIMIZATION.md).
 - **Збірка:** `npm run build`, деплой — `npm run deploy`.
+
+### Storage Upload (default / alphaone) — де налаштовувати
+
+Головний конфіг тепер тут: `src/htmlConverter/storageProviders.json` (використовується і фронтом, і automation).
+
+- **providers.default**: класичний storage (`storage.5th-elementagency.com`) з категоріями `finance|health`
+- **providers.alphaone**: AlfaOne (`alphaonest.com`), без категорій (категорія в UI ховається)
+- **browserProfiles.default / browserProfiles.alphaone**: окремі CDP порти та профілі Brave, щоб сесії логіну не змішувались
+- **systemNotifications**:
+  - `enabled`: показувати macOS нотифікації
+  - `soundsEnabled`: лишити звук без нотифікацій
+
+Корисні параметри (там же):
+
+- **`loginWaitMs`**: скільки чекати ручний логін (якщо storage просить залогінитись)
+- **`bootstrapWaitMs`**: скільки чекати появи UI (login або upload) після відкриття сторінки
+- **`closeTabAfterBatch`**: закрити вкладку Brave **після** успішного upload всього batch’у
 
 ### Template Library — шляхи до папок з шаблонами
 

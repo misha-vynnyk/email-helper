@@ -10,7 +10,10 @@
 
 - **Конвертація:** div-based HTML → table-based HTML / MJML, збереження стилів.
 - **Зображення:** екстракція з HTML, конвертація (JPEG/WebP), нумерація (image-1, image-2 тощо).
-- **Storage Upload:** завантаження на storage.5th-elementagency.com, категорії Finance/Health, авто-назва папки з імені файлу.
+- **Storage Upload:** завантаження на різні storage-провайдери:
+  - **default** → `storage.5th-elementagency.com` (категорії `finance|health`)
+  - **alphaone** → `alphaonest.com` (без категорій)
+    Налаштування в `src/htmlConverter/storageProviders.json`.
 - **Історія:** останні 50 сесій у LocalStorage, копіювання URL, заміна посилань у вихідному коді.
 
 ---
@@ -25,8 +28,11 @@
 
 1. **Extract Images** (або вставити HTML) → зображення зʼявляться в списку.
 2. **Налаштування** — Format (JPEG/WebP), Quality, Max Width, Auto Process, Preserve Format.
-3. **Upload to Storage** — обрати Category (Finance/Health), Folder Name (авто з імені файлу), запустити завантаження.
-4. **Замінити в Output** — після завантаження підставити отримані URLs у згенерований HTML/MJML.
+3. **Storage provider** — у верхніх чекбоксах є **AlfaOne**:
+   - вимкнено → `default`
+   - увімкнено → `alphaone`
+4. **Upload to Storage** — в `default` обрати Category (Finance/Health), у `alphaone` категорія схована; Folder Name (авто з імені файлу), запустити завантаження.
+5. **Замінити в Output** — після завантаження підставити отримані URLs у згенерований HTML/MJML.
 
 ## Деталі
 
@@ -36,10 +42,13 @@
 - **Нумерація:** image-1, image-2 … по порядку зʼявлення в HTML.
 - **Процес:** Prepare (файл на backend) → backend викликає automation/run-upload.js → Playwright завантажує на storage → URL в історії. Детально: [AUTOMATION.md](AUTOMATION.md).
 - **Помилки:** timeout (30s prepare, 180s upload), скасування, продовження з іншими файлами при помилці одного.
+- **Batch UX:** вкладка Brave **не має** закриватися після кожного файлу. За замовчуванням вона закривається **один раз після успішного batch** (`closeTabAfterBatch: true` + `/api/storage-upload/finalize`).
 
 ### Заміна URL у Output
 
 URLs підставляються по позиції: перше зображення → перший `src`, друге → другий тощо. Кнопка «Замінити в Output» активна, коли є завантажені зображення і експортований Output; після заміни показує success. При новій генерації HTML/MJML або очищенні — скидається.
+
+Додатковий захист: “Замінити” не застосує **старі** URLs (з попереднього документа або попереднього upload). Після нового Extract/Upload мапа URL-ів прив’язана до поточної сесії.
 
 ### Історія
 
@@ -52,13 +61,19 @@ LocalStorage, ключ `html-converter-upload-history`, до 50 останніх
 **API (backend):**
 
 - `POST /api/storage-upload/prepare` — FormData з файлом → `{ tempPath, filename }`.
-- `POST /api/storage-upload` — `{ filePath: tempPath, category, folderName, skipConfirmation: true }` → `{ filePath, url }`.
+- `POST /api/storage-upload` — `{ filePath: tempPath, provider?, category?, folderName, skipConfirmation: true }` → `{ filePath, publicUrl? }`.
+- `POST /api/storage-upload/finalize` — `{ provider? }` (закриває вкладку Brave після успішного batch).
 
-**Константи (frontend):** `PREPARE_TIMEOUT` 30s, `STORAGE_TIMEOUT` 180s, `MAX_HISTORY_SESSIONS` 50. Storage URL — `https://storage.5th-elementagency.com/`.
+**API (image converter / cross-origin):**
+
+- `POST /api/image-converter/convert-from-url` — `{ url, format, quality, preset, resizeMode, preserveAspectRatio, compressionMode }` → image blob + header `X-Original-Size`.
+
+**Константи (frontend):** `PREPARE_TIMEOUT` 30s, `STORAGE_TIMEOUT` 180s, `MAX_HISTORY_SESSIONS` 50. Базові URL-и storage беруться з `src/htmlConverter/storageProviders.json`.
 
 ## 🐛 Troubleshooting
 
 - **Завантаження не працює** — перевір: запущений `npm run dev` (backend), Brave з `--remote-debugging-port=9222` (див. AUTOMATION.md), на Windows — шляхи Brave (README). Інтернет і доступ до storage.
+- **502 на `convert-from-url`** — backend не зміг скачати картинку з URL (часто hotlink/403/UA/Referer). Дивись error текст у відповіді та server log `convert-from-url: fetch failed (...) <url>`.
 - **URLs не замінюються** — Output має бути експортований, є завантажені зображення, кнопка «Замінити в Output» активна.
 - **Історія не зберігається** — LocalStorage доступний, не приватний режим, квота не перевищена.
 
@@ -75,6 +90,7 @@ LocalStorage, ключ `html-converter-upload-history`, до 50 останніх
 **HTML to Table Converter** - адаптація та інтеграція коду від [Kateryna](https://github.com/katerynakey).
 
 Основний код конвертації створений [@katerynakey](https://github.com/katerynakey). В цьому проекті:
+
 - Інтеграція в React application
 - UI/UX адаптація під загальний дизайн
 - Додаткові features (history, URL replacement, error handling)

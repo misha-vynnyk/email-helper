@@ -37,6 +37,7 @@ export interface UploadResult {
   filename: string;
   url: string;
   success: boolean;
+  error?: string;
 }
 
 export interface StorageUploadResponse {
