@@ -284,6 +284,77 @@ router.post('/convert', upload.single('image'), async (req, res) => {
 });
 
 /**
+ * Convert image from URL (for cross-origin; server fetches, no CORS)
+ * Body: { url, format, quality, preset (maxWidth), resizeMode, preserveAspectRatio, compressionMode }
+ */
+router.post('/convert-from-url', async (req, res) => {
+  try {
+    const { url } = req.body || {};
+    if (!url || typeof url !== 'string') {
+      return res.status(400).json({ error: 'url required' });
+    }
+    let parsed;
+    try {
+      parsed = new URL(url);
+      if (!['http:', 'https:'].includes(parsed.protocol)) {
+        return res.status(400).json({ error: 'url must be http or https' });
+      }
+    } catch {
+      return res.status(400).json({ error: 'invalid url' });
+    }
+
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'Email-Helper/1.0' },
+      signal: AbortSignal.timeout(60000),
+    });
+    if (!response.ok) {
+      return res.status(502).json({ error: `Failed to fetch image: ${response.status}` });
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    const inputBuffer = Buffer.from(arrayBuffer);
+    const contentType = (response.headers.get('content-type') || '').toLowerCase();
+    const isGif = contentType.includes('gif') || /\.gif(\?|$)/i.test(url);
+
+    const {
+      format = 'jpeg',
+      quality = '85',
+      resizeMode = 'preset',
+      preset,
+      preserveAspectRatio = 'true',
+      compressionMode = 'balanced',
+    } = req.body || {};
+
+    if (isGif && (contentType.includes('gif') || format === 'gif')) {
+      const { optimizeGifWithQuality } = require('../utils/gifOptimizer');
+      const result = await optimizeGifWithQuality(inputBuffer, parseInt(quality, 10), null);
+      res.set('Content-Type', 'image/gif');
+      return res.send(result.buffer);
+    }
+
+    let pipeline = sharp(inputBuffer);
+    const presetNum = preset ? parseInt(preset, 10) : undefined;
+    if (resizeMode === 'preset' && presetNum) {
+      pipeline = pipeline.resize(presetNum, presetNum, {
+        fit: 'inside',
+        withoutEnlargement: true,
+      });
+    }
+    if (format === 'jpeg') {
+      pipeline = pipeline.flatten({ background: '#FFFFFF' });
+    }
+    const qualityNum = parseInt(quality, 10) || 85;
+    const outputOptions = getCompressionOptions(format, qualityNum, compressionMode);
+    pipeline = pipeline.toFormat(format, outputOptions);
+    const buffer = await pipeline.toBuffer();
+    res.set('Content-Type', `image/${format}`);
+    res.send(buffer);
+  } catch (error) {
+    console.error('convert-from-url error:', error);
+    res.status(500).json({ error: error.message || 'Failed to convert image from URL' });
+  }
+});
+
+/**
  * Convert multiple images
  */
 router.post('/convert-batch', upload.array('images', 50), async (req, res) => {
