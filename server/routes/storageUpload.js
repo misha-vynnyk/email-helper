@@ -80,6 +80,71 @@ router.post("/api/storage-upload/prepare", upload.single("file"), async (req, re
 });
 
 /**
+ * POST /api/storage-upload/prepare-from-url
+ * Fetch image from URL (cross-origin) and save to temp for later storage-upload.
+ * Body: { url: string, filename: string }
+ */
+router.post("/api/storage-upload/prepare-from-url", async (req, res) => {
+  const { url, filename: requestedFilename } = req.body || {};
+  if (!url || typeof url !== "string") {
+    return res.status(400).json({ success: false, error: "url required" });
+  }
+  let urlParsed;
+  try {
+    urlParsed = new URL(url);
+    if (!["http:", "https:"].includes(urlParsed.protocol)) {
+      return res.status(400).json({ success: false, error: "url must be http or https" });
+    }
+  } catch {
+    return res.status(400).json({ success: false, error: "invalid url" });
+  }
+
+  const safeName = path.basename(requestedFilename || urlParsed.pathname || "image.png");
+  const ext = path.extname(safeName) || ".png";
+  const base = path.basename(safeName, ext) || "image";
+  let finalPath = path.join(tempDir, `${base}${ext}`);
+  let counter = 1;
+  while (fs.existsSync(finalPath)) {
+    finalPath = path.join(tempDir, `${base}-${counter}${ext}`);
+    counter++;
+  }
+
+  try {
+    const response = await fetch(url, {
+      headers: { "User-Agent": "Email-Helper/1.0" },
+      signal: AbortSignal.timeout(60000),
+    });
+    if (!response.ok) {
+      return res.status(502).json({
+        success: false,
+        error: `Failed to fetch image: ${response.status} ${response.statusText}`,
+      });
+    }
+    const buf = Buffer.from(await response.arrayBuffer());
+    fs.writeFileSync(finalPath, buf);
+    console.log(`📁 Prepared from URL: ${path.basename(finalPath)}`);
+    return res.json({
+      success: true,
+      tempPath: finalPath,
+      filename: path.basename(finalPath),
+    });
+  } catch (err) {
+    if (fs.existsSync(finalPath)) {
+      try {
+        fs.unlinkSync(finalPath);
+      } catch (_) {
+        /* cleanup best-effort */
+      }
+    }
+    console.error("prepare-from-url error:", err);
+    return res.status(500).json({
+      success: false,
+      error: err.message || "Failed to fetch image from URL",
+    });
+  }
+});
+
+/**
  * POST /api/storage-upload
  * Upload converted images to storage using automation script
  *

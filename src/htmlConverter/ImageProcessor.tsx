@@ -43,8 +43,30 @@ import { STORAGE_KEYS, UI_TIMINGS, UPLOAD_CONFIG, IMAGE_DEFAULTS, STORAGE_URL_PR
 import type { ProcessedImage, ImageFormat, ImageFormatOverride, ImageSettings } from "./types";
 import API_URL, { isApiAvailable } from "../config/api";
 
+const isCrossOrigin = (src: string): boolean => {
+  try {
+    if (src.startsWith("data:") || src.startsWith("blob:")) return false;
+    return new URL(src, window.location.href).origin !== window.location.origin;
+  } catch {
+    return false;
+  }
+};
+
 // Utility function to detect transparency in image
 const detectTransparency = async (src: string): Promise<boolean> => {
+  try {
+    if (src.startsWith("data:") || src.startsWith("blob:")) {
+      // локальні до сторінки — перевіряємо як завжди
+    } else {
+      const urlOrigin = new URL(src, window.location.href).origin;
+      if (urlOrigin !== window.location.origin) {
+        return false;
+      }
+    }
+  } catch {
+    return false;
+  }
+
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -330,6 +352,34 @@ export default function ImageProcessor({
       opts: { quality: number; maxWidth: number }
     ): Promise<{ blob: Blob; originalSize: number }> => {
       const { quality: q, maxWidth: mw } = opts;
+      const isCrossOriginUrl = isCrossOrigin(src);
+
+      if (isCrossOriginUrl && isApiAvailable()) {
+        const convertRes = await fetch(`${API_URL}/api/image-converter/convert-from-url`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            url: src,
+            format: targetFormat,
+            quality: q,
+            preset: mw,
+            resizeMode: "preset",
+            preserveAspectRatio: "true",
+            compressionMode: "balanced",
+          }),
+        });
+        if (convertRes.ok) {
+          const blob = await convertRes.blob();
+          return { blob, originalSize: 0 };
+        }
+        const errData = await convertRes.json().catch(() => ({}));
+        throw new Error(errData.error || `convert-from-url: ${convertRes.status}`);
+      }
+      if (isCrossOriginUrl) {
+        throw new Error(
+          "Зображення з іншого домену: потрібен backend (npm run dev) для конвертації, або вставте як data URL."
+        );
+      }
 
       // For PNG, use server-side conversion to properly handle compression
       if (targetFormat === "png") {
@@ -437,17 +487,18 @@ export default function ImageProcessor({
 
   const processImage = useCallback(
     async (id: string) => {
-      setImages((prev) =>
-        prev.map((img) =>
-          img.id === id ? { ...img, status: "processing" as const } : img
-        )
-      );
-
       const image = images.find((img) => img.id === id);
       if (!image) {
         log(`⚠️ Зображення з id ${id} не знайдено в state`);
         return;
       }
+
+
+      setImages((prev) =>
+        prev.map((img) =>
+          img.id === id ? { ...img, status: "processing" as const } : img
+        )
+      );
 
       // Determine format for this specific image
       const imageFormat = getImageFormat(image, format);
@@ -509,7 +560,10 @@ export default function ImageProcessor({
 
   const handleUploadToStorage = useCallback(
     async (category: string, folderName: string, customNames: Record<string, string> = {}, fileOrder?: string[]): Promise<{ results: Array<{ filename: string; url: string; success: boolean }>; category: string; folderName: string }> => {
-      let completed = images.filter((img) => img.status === "done" && img.convertedBlob);
+      let completed = images.filter(
+        (img) =>
+          (img.status === "done" && img.convertedBlob) || (img.status === "pending" && isCrossOrigin(img.src))
+      );
 
       // Sort by order if provided
       if (fileOrder && fileOrder.length > 0) {
@@ -521,7 +575,7 @@ export default function ImageProcessor({
       }
 
       if (completed.length === 0) {
-        throw new Error("Немає оброблених зображень для завантаження");
+        throw new Error("Немає зображень для завантаження (оброблені з blob або cross-origin URL)");
       }
 
       if (!isApiAvailable()) {
@@ -544,14 +598,52 @@ export default function ImageProcessor({
       const results: Array<{ filename: string; url: string; success: boolean }> = [];
       let successCount = 0;
 
+      const prepareTimeout = () =>
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("Timeout: сервер не відповідає (30s)")), UPLOAD_CONFIG.PREPARE_TIMEOUT)
+        );
+
+      const getTempPath = async (image: ProcessedImage, fname: string): Promise<string> => {
+        const signal = uploadAbortControllerRef.current?.signal;
+        if (image.convertedBlob) {
+          const formData = new FormData();
+          formData.append("file", image.convertedBlob, fname);
+          formData.append("category", category);
+          formData.append("folderName", folderName);
+          const res = await Promise.race([
+            fetch(`${API_URL}/api/storage-upload/prepare`, { method: "POST", body: formData, signal }),
+            prepareTimeout(),
+          ]);
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || `HTTP ${res.status}`);
+          }
+          const data = await res.json();
+          return data.tempPath;
+        }
+        const res = await Promise.race([
+          fetch(`${API_URL}/api/storage-upload/prepare-from-url`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url: image.src, filename: fname }),
+            signal,
+          }),
+          prepareTimeout(),
+        ]);
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || `prepare-from-url: ${res.status}`);
+        }
+        const data = await res.json();
+        return data.tempPath;
+      };
+
       try {
         for (let i = 0; i < completed.length; i++) {
           const img = completed[i];
-          // Determine format for this specific image
-          const imageFormat = getImageFormat(img, format);
-          const ext = getFileExtension(imageFormat);
-          // Use custom name if provided, otherwise use default name
           const baseName = customNames[img.id] || img.name;
+          const imageFormat = img.convertedBlob ? getImageFormat(img, format) : "png";
+          const ext = img.convertedBlob ? getFileExtension(imageFormat) : `.${/\.(png|jpe?g|webp|gif)(?=\?|$)/i.exec(img.src)?.[1] || "png"}`;
           const filename = `${baseName}${ext}`;
 
           // Check if upload was cancelled
@@ -563,30 +655,7 @@ export default function ImageProcessor({
           try {
             log(`📤 [${i + 1}/${completed.length}] Завантаження ${filename}...`);
 
-            // Prepare file (upload blob to server) with timeout
-            const formData = new FormData();
-            formData.append("file", img.convertedBlob!, filename);
-            formData.append("category", category);
-            formData.append("folderName", folderName);
-
-            // Backend: prepare → run automation/run-upload.js → Playwright
-            const prepareResponse = await Promise.race([
-              fetch(`${API_URL}/api/storage-upload/prepare`, {
-                method: "POST",
-                body: formData,
-                signal: uploadAbortControllerRef.current.signal,
-              }),
-              new Promise<never>((_, reject) =>
-                setTimeout(() => reject(new Error("Timeout: сервер не відповідає (30s)")), UPLOAD_CONFIG.PREPARE_TIMEOUT)
-              ),
-            ]);
-
-            if (!prepareResponse.ok) {
-              const errorData = await prepareResponse.json().catch(() => ({}));
-              throw new Error(errorData.error || `HTTP ${prepareResponse.status}`);
-            }
-
-            const { tempPath } = await prepareResponse.json();
+            const tempPath = await getTempPath(img, filename);
 
             // Upload to storage with longer timeout (for slow internet)
             const storageResponse = await Promise.race([
@@ -641,13 +710,12 @@ export default function ImageProcessor({
               throw error;
             }
 
-            const errorPrefix = errorMsg.includes("Failed to fetch") || errorMsg === "Network request failed"
-              ? "Немає з'єднання з сервером"
-              : errorMsg.includes("Timeout")
-              ? errorMsg
-              : errorMsg;
+            const displayMsg =
+              errorMsg.includes("Failed to fetch") || errorMsg === "Network request failed"
+                ? "Немає з'єднання з сервером"
+                : errorMsg;
 
-            log(`❌ ${filename}: ${errorPrefix}`);
+            log(`❌ ${filename}: ${displayMsg}`);
 
             // Continue with next file instead of stopping everything
             continue;
@@ -767,7 +835,9 @@ export default function ImageProcessor({
 
   const totalOriginal = images.reduce((sum, img) => sum + img.originalSize, 0);
   const totalConverted = images.reduce((sum, img) => sum + (img.convertedSize || 0), 0);
-  const doneCount = images.filter((img) => img.status === "done").length;
+  const uploadable = (img: ProcessedImage) =>
+    (img.status === "done" && img.convertedBlob) || (img.status === "pending" && isCrossOrigin(img.src));
+  const doneCount = images.filter(uploadable).length;
   const pendingCount = images.filter((img) => img.status === "pending").length;
   const lastUploadedCount = Object.keys(lastUploadedUrls).length;
 
@@ -1082,7 +1152,7 @@ export default function ImageProcessor({
         open={uploadDialogOpen}
         onClose={() => setUploadDialogOpen(false)}
         files={images
-          .filter((img) => img.status === "done")
+          .filter(uploadable)
           .map((img) => ({ id: img.id, name: img.name, path: img.previewUrl }))}
         onUpload={handleUploadToStorage}
         onCancel={() => {
