@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import React, { useCallback, useRef, useState } from "react";
 
 import {
@@ -9,17 +9,18 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
-} from '@dnd-kit/core';
+} from "@dnd-kit/core";
 import {
-  arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   rectSortingStrategy,
-} from '@dnd-kit/sortable';
+} from "@dnd-kit/sortable";
 
-import { CloudUpload as UploadIcon } from "@mui/icons-material";
-import { Box, Button, Grid, IconButton, Typography } from "@mui/material";
+import { CloudUpload as UploadIcon, Add as AddIcon } from "@mui/icons-material";
+import { alpha, Box, Button, Grid, Typography, useTheme } from "@mui/material";
 
+import { useThemeMode } from "../../theme";
+import { getComponentStyles } from "../../theme/componentStyles";
 import { MAX_FILE_SIZE_CLIENT, MAX_FILE_SIZE_SERVER } from "../constants";
 import { useImageConverter } from "../context/ImageConverterContext";
 import { validateImageFiles } from "../utils/validators";
@@ -28,7 +29,11 @@ import BulkActions from "./BulkActions";
 import SortableImageItem from "./SortableImageItem";
 
 export default function FileUploadZone() {
-  const { addFiles, settings, files, removeFile, downloadFile, reorderFiles, toggleSelection } = useImageConverter();
+  const theme = useTheme();
+  const { mode, style } = useThemeMode();
+  const componentStyles = getComponentStyles(mode, style);
+  const { addFiles, settings, files, removeFile, downloadFile, reorderFiles, toggleSelection } =
+    useImageConverter();
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -46,7 +51,7 @@ export default function FileUploadZone() {
     if (over && active.id !== over.id) {
       const oldIndex = files.findIndex((f) => f.id === active.id);
       const newIndex = files.findIndex((f) => f.id === over.id);
-      
+
       if (oldIndex !== -1 && newIndex !== -1) {
         reorderFiles(oldIndex, newIndex);
       }
@@ -105,7 +110,6 @@ export default function FileUploadZone() {
         addFiles(validFiles);
       }
 
-      // Reset input
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -119,84 +123,126 @@ export default function FileUploadZone() {
   }, []);
 
   return (
-    <Box>
+    <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/jpg,image/webp"
+        multiple
+        style={{ display: "none" }}
+        onChange={handleFileSelect}
+      />
+
+      {/* Drop Zone */}
       <Box
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
+        onClick={!hasFiles ? handleBrowseClick : undefined}
         sx={{
-          border: isDragging ? "3px dashed #1976d2" : "2px dashed #ccc",
-          boxShadow: isDragging ? "0 0 10px 0 rgba(25, 118, 210, 0.5)" : "none",
-          borderRadius: 5,
-          padding: 3,
-          backgroundColor: isDragging ? "#e3f2fd" : "#fafafa",
+          flex: 1,
+          border: isDragging
+            ? `3px dashed ${theme.palette.primary.main}`
+            : componentStyles.card.border,
+          boxShadow: isDragging
+            ? `0 0 20px ${alpha(theme.palette.primary.main, 0.3)}`
+            : componentStyles.card.boxShadow,
+          borderRadius: componentStyles.card.borderRadius,
+          backgroundColor: isDragging
+            ? alpha(theme.palette.primary.main, 0.06)
+            : alpha(theme.palette.background.paper, 0.6),
+          backdropFilter: "blur(10px)",
+          WebkitBackdropFilter: "blur(10px)",
           cursor: hasFiles ? "default" : "pointer",
-          transition: "all 0.3s ease",
-          minHeight: hasFiles ? 300 : 200,
+          transition: "all 0.25s ease",
+          minHeight: hasFiles ? 400 : 300,
           position: "relative",
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
           "&:hover": {
-            borderColor: "#1976d2",
-            backgroundColor: hasFiles ? "#fafafa" : "#f5f5f5",
+            borderColor: hasFiles ? theme.palette.divider : theme.palette.primary.main,
+            backgroundColor: alpha(theme.palette.background.paper, 0.7),
+            boxShadow: componentStyles.card.hover?.boxShadow || componentStyles.card.boxShadow,
           },
         }}
-        onClick={!hasFiles ? handleBrowseClick : undefined}
       >
-        <input
-          ref={fileInputRef}
-          type='file'
-          accept='image/png,image/jpeg,image/jpg,image/webp'
-          multiple
-          style={{ display: "none" }}
-          onChange={handleFileSelect}
-        />
-
-        {/* Empty State - shows only when there are no files */}
+        {/* Empty State */}
         {!hasFiles && (
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            style={{ textAlign: "center" }}
+            transition={{ duration: 0.4 }}
+            style={{
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: theme.spacing(4),
+            }}
           >
-            <IconButton onClick={handleBrowseClick}>
-              <UploadIcon sx={{ fontSize: 64, color: isDragging ? "#1976d2" : "#bbb", mb: 1 }} />
-            </IconButton>
-
-            <Typography
-              variant='caption'
-              display='block'
-              color='text.secondary'
+            <Box
+              sx={{
+                width: 80,
+                height: 80,
+                borderRadius: "50%",
+                backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                mb: 3,
+              }}
             >
-              Supports: PNG, JPG, JPEG, WebP
-              <br />
-              Max size: {maxFileSize / (1024 * 1024)}MB ({settings.processingMode} mode)
+              <UploadIcon
+                sx={{
+                  fontSize: 40,
+                  color: isDragging ? theme.palette.primary.main : theme.palette.text.secondary,
+                  transition: "color 0.2s",
+                }}
+              />
+            </Box>
+
+            <Typography variant="h6" fontWeight={600} gutterBottom>
+              Drop images here
+            </Typography>
+
+            <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 3 }}>
+              or click to browse your files
+            </Typography>
+
+            <Button
+              variant="contained"
+              startIcon={<UploadIcon />}
+              onClick={handleBrowseClick}
+              sx={{ textTransform: "none", px: 4 }}
+            >
+              Browse Files
+            </Button>
+
+            <Typography variant="caption" color="text.disabled" sx={{ mt: 3 }}>
+              Supports: PNG, JPG, JPEG, WebP • Max: {maxFileSize / (1024 * 1024)}MB
             </Typography>
           </motion.div>
         )}
 
-        {/* Grid with Images - shows when there are files */}
+        {/* Files Grid */}
         {hasFiles && (
-          <Box>
-            {/* Bulk Actions */}
-            <BulkActions />
-
-            {/* Compact header */}
+          <Box sx={{ flex: 1, p: 2, overflow: "auto" }}>
+            {/* Header with count and add button */}
             <Box
-              display='flex'
-              justifyContent='space-between'
-              alignItems='center'
+              display="flex"
+              justifyContent="space-between"
+              alignItems="center"
               sx={{ mb: 2 }}
             >
-              <Typography
-                variant='body2'
-                color='text.secondary'
-                fontWeight={500}
-              >
+              <Typography variant="body2" color="text.secondary" fontWeight={500}>
                 {files.length} {files.length === 1 ? "image" : "images"}
               </Typography>
               <Button
-                size='small'
-                variant='outlined'
-                startIcon={<UploadIcon />}
+                size="small"
+                variant="outlined"
+                startIcon={<AddIcon />}
                 onClick={handleBrowseClick}
                 sx={{ textTransform: "none" }}
               >
@@ -204,20 +250,17 @@ export default function FileUploadZone() {
               </Button>
             </Box>
 
+            {/* Bulk Actions */}
+            <BulkActions />
+
             {/* Image Grid with Drag & Drop */}
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
               onDragEnd={handleDragEnd}
             >
-              <SortableContext
-                items={files.map(f => f.id)}
-                strategy={rectSortingStrategy}
-              >
-                <Grid
-                  container
-                  spacing={2}
-                >
+              <SortableContext items={files.map((f) => f.id)} strategy={rectSortingStrategy}>
+                <Grid container spacing={2}>
                   {files.map((file, index) => (
                     <SortableImageItem
                       key={file.id}
@@ -234,31 +277,38 @@ export default function FileUploadZone() {
           </Box>
         )}
 
-        {/* Drop Overlay - shows when dragging over existing files */}
+        {/* Drop Overlay */}
         {isDragging && hasFiles && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             style={{
               position: "absolute",
               top: 0,
               left: 0,
               right: 0,
               bottom: 0,
-              backgroundColor: "rgba(25, 118, 210, 0.1)",
-              borderRadius: "8px",
+              backgroundColor: alpha(theme.palette.primary.main, 0.15),
+              backdropFilter: "blur(4px)",
+              borderRadius: theme.spacing(1.5),
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               pointerEvents: "none",
+              zIndex: 10,
             }}
           >
-            <Box textAlign='center'>
-              <UploadIcon sx={{ fontSize: 64, color: "#1976d2" }} />
-              <Typography
-                variant='h6'
-                color='primary'
-              >
+            <Box
+              sx={{
+                textAlign: "center",
+                p: 4,
+                borderRadius: 3,
+                backgroundColor: alpha(theme.palette.background.paper, 0.9),
+              }}
+            >
+              <UploadIcon sx={{ fontSize: 48, color: theme.palette.primary.main, mb: 1 }} />
+              <Typography variant="h6" color="primary" fontWeight={600}>
                 Drop to add more images
               </Typography>
             </Box>
@@ -266,12 +316,9 @@ export default function FileUploadZone() {
         )}
       </Box>
 
+      {/* Error Message */}
       {error && (
-        <Typography
-          variant='body2'
-          color='error'
-          sx={{ mt: 1 }}
-        >
+        <Typography variant="body2" color="error" sx={{ mt: 1 }}>
           {error}
         </Typography>
       )}

@@ -1,21 +1,19 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Box, Typography } from "@mui/material";
+import { alpha, Box, Typography, useTheme } from "@mui/material";
+
+import { brandColors } from "../../theme/tokens";
 
 interface SplashLoaderProps {
   onComplete: () => void;
   duration?: number;
 }
 
-// Theme colors from theme.ts
-const BRAND_BLUE = "#0079CC";
-const BRAND_NAVY = "#212443";
-const BG_COLOR = "#f2f5f7";
-
 const SplashLoader: React.FC<SplashLoaderProps> = ({
   onComplete,
   duration = 2500
 }) => {
+  const theme = useTheme();
   const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
@@ -33,18 +31,19 @@ const SplashLoader: React.FC<SplashLoaderProps> = ({
   return (
     <AnimatePresence onExitComplete={handleExitComplete}>
       {isVisible && (
-        <motion.div
+        <Box
+          component={motion.div}
           initial={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.4, ease: "easeOut" }}
-          style={{
+          sx={{
             position: "fixed",
             inset: 0,
             zIndex: 9999,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: BG_COLOR,
+            backgroundColor: "background.default",
           }}
         >
           {/* Subtle background pattern */}
@@ -53,8 +52,8 @@ const SplashLoader: React.FC<SplashLoaderProps> = ({
               position: "absolute",
               inset: 0,
               opacity: 0.5,
-              background: `radial-gradient(circle at 20% 30%, rgba(0, 121, 204, 0.08) 0%, transparent 50%),
-                           radial-gradient(circle at 80% 70%, rgba(0, 121, 204, 0.06) 0%, transparent 50%)`,
+              background: `radial-gradient(circle at 20% 30%, ${alpha(theme.palette.primary.main, 0.08)} 0%, transparent 50%),
+                           radial-gradient(circle at 80% 70%, ${alpha(theme.palette.primary.main, 0.06)} 0%, transparent 50%)`,
             }}
           />
 
@@ -76,12 +75,12 @@ const SplashLoader: React.FC<SplashLoaderProps> = ({
                   width: 80,
                   height: 80,
                   margin: "0 auto 24px",
-                  background: `linear-gradient(135deg, ${BRAND_BLUE} 0%, ${BRAND_NAVY} 100%)`,
+                  background: `linear-gradient(135deg, ${brandColors.blue} 0%, ${brandColors.navy} 100%)`,
                   borderRadius: "20px",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  boxShadow: `0 12px 40px rgba(0, 121, 204, 0.25)`,
+                  boxShadow: theme.shadows[4],
                 }}
               >
                 <svg
@@ -110,7 +109,7 @@ const SplashLoader: React.FC<SplashLoaderProps> = ({
                 variant="h4"
                 sx={{
                   fontWeight: 600,
-                  color: BRAND_NAVY,
+                  color: "text.primary",
                   letterSpacing: "-0.02em",
                   mb: 0.5,
                 }}
@@ -128,7 +127,7 @@ const SplashLoader: React.FC<SplashLoaderProps> = ({
               <Typography
                 variant="body2"
                 sx={{
-                  color: "#6A8BA4",
+                  color: "text.secondary",
                   fontWeight: 500,
                   letterSpacing: "0.05em",
                   textTransform: "uppercase",
@@ -150,7 +149,7 @@ const SplashLoader: React.FC<SplashLoaderProps> = ({
                 sx={{
                   width: 160,
                   height: 3,
-                  backgroundColor: "rgba(0, 121, 204, 0.15)",
+                  backgroundColor: alpha(theme.palette.primary.main, 0.15),
                   borderRadius: 2,
                   margin: "0 auto",
                   overflow: "hidden",
@@ -167,14 +166,14 @@ const SplashLoader: React.FC<SplashLoaderProps> = ({
                   style={{
                     width: "40%",
                     height: "100%",
-                    background: `linear-gradient(90deg, transparent, ${BRAND_BLUE}, transparent)`,
+                    background: `linear-gradient(90deg, transparent, ${brandColors.blue}, transparent)`,
                     borderRadius: 2,
                   }}
                 />
               </Box>
             </motion.div>
           </Box>
-        </motion.div>
+        </Box>
       )}
     </AnimatePresence>
   );

@@ -1,5 +1,3 @@
-import React from "react";
-
 import {
   Compress as CompressIcon,
   HighQuality as QualityIcon,
@@ -7,6 +5,8 @@ import {
 } from "@mui/icons-material";
 import { Box, MenuItem, Select, Tooltip, Typography } from "@mui/material";
 
+import { useThemeMode } from "../../theme";
+import { getComponentStyles } from "../../theme/componentStyles";
 import { useImageConverter } from "../context/ImageConverterContext";
 import { CompressionMode } from "../types";
 
@@ -15,14 +15,14 @@ const compressionModes = [
     value: "balanced" as CompressionMode,
     label: "Balanced",
     icon: <BalancedIcon />,
-    description: "Good balance, manual quality control",
+    description: "Manual quality control",
     details: "Standard compression. You can adjust quality manually with slider below.",
   },
   {
     value: "maximum-quality" as CompressionMode,
     label: "Maximum Quality",
     icon: <QualityIcon />,
-    description: "Best visual quality (auto quality: 90%+)",
+    description: "(auto quality: 90%+)",
     details:
       "Uses advanced algorithms (mozjpeg, near-lossless). Quality automatically set to 90%+.",
   },
@@ -30,7 +30,7 @@ const compressionModes = [
     value: "maximum-compression" as CompressionMode,
     label: "Maximum Compression",
     icon: <CompressIcon />,
-    description: "Smallest file size (auto quality: ~75%)",
+    description: "(auto quality: ~75%)",
     details: "Aggressive compression. Quality automatically optimized for maximum size reduction.",
   },
   {
@@ -43,6 +43,8 @@ const compressionModes = [
 ];
 
 export default function CompressionModeSelector() {
+  const { mode, style } = useThemeMode();
+  const componentStyles = getComponentStyles(mode, style);
   const { settings, updateSettings } = useImageConverter();
 
   const currentMode = compressionModes.find((m) => m.value === settings.compressionMode);
@@ -51,18 +53,12 @@ export default function CompressionModeSelector() {
 
   return (
     <Box>
-      <Typography
-        variant='subtitle2'
-        gutterBottom
-      >
-        Compression Mode
-      </Typography>
       <Select
         value={settings.compressionMode}
         onChange={(e) => updateSettings({ compressionMode: e.target.value as CompressionMode })}
         fullWidth
         size='small'
-        sx={{ borderRadius: 5 }}
+        sx={{ borderRadius: componentStyles.card.borderRadius }}
       >
         {compressionModes.map((mode) => (
           <MenuItem
@@ -76,16 +72,26 @@ export default function CompressionModeSelector() {
               gap={1}
             >
               {mode.icon}
-              <Box>
+              <Box sx={{ minWidth: 0 }}>
                 <Typography
                   variant='body2'
                   fontWeight={500}
+                  sx={{
+                    whiteSpace: "normal",
+                    wordBreak: "break-word",
+                    overflowWrap: "anywhere",
+                  }}
                 >
                   {mode.label}
                 </Typography>
                 <Typography
                   variant='caption'
                   color='text.secondary'
+                  sx={{
+                    whiteSpace: "normal",
+                    wordBreak: "break-word",
+                    overflowWrap: "anywhere",
+                  }}
                 >
                   {mode.description}
                 </Typography>
@@ -102,7 +108,7 @@ export default function CompressionModeSelector() {
             color='text.secondary'
             sx={{ mt: 1, display: "block" }}
           >
-            ℹ️ {currentMode.details}
+            {currentMode.details}
           </Typography>
         </Tooltip>
       )}

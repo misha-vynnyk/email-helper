@@ -18,6 +18,10 @@ export const STORAGE_KEYS = {
   EMAIL_FORM_DATA: "emailSenderForm",
   EMAIL_STORAGE_TOGGLE: "emailSenderUseStorageToggle",
   EMAIL_CREDENTIALS_EXPANDED: "emailCredentialsExpanded",
+
+  // Theme
+  THEME_MODE: "themeMode",
+  THEME_STYLE: "themeStyle",
 } as const;
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];

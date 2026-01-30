@@ -13,7 +13,6 @@ import { useSamplesDrawerOpen } from "../contexts/AppState";
 import { useRegistrationStatus } from "../hooks/useRegistrationStatus";
 
 import SamplesDrawer, { SAMPLES_DRAWER_WIDTH } from "./SamplesDrawer";
-import ToggleSamplesPanelButton from "./SamplesDrawer/ToggleSamplesPanelButton";
 import TemplatePanel from "./TemplatePanel";
 
 function ErrorFallback({
@@ -91,20 +90,6 @@ export default function App() {
       >
         <TemplatePanel />
       </Stack>
-
-      {/* Fixed burger menu button when drawer is closed */}
-      {!samplesDrawerOpen && (
-        <Box
-          sx={{
-            position: "fixed",
-            left: 8,
-            top: 8,
-            zIndex: 1300, // Above drawer but below modals
-          }}
-        >
-          <ToggleSamplesPanelButton />
-        </Box>
-      )}
 
       <ToastContainer
         position='top-right'

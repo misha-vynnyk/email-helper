@@ -1,6 +1,8 @@
 import React from "react";
-import { Box, Typography, LinearProgress, Chip } from "@mui/material";
+import { Box, Typography, Chip, useTheme } from "@mui/material";
 import { TrendingDown as TrendingDownIcon, TrendingUp as TrendingUpIcon } from "@mui/icons-material";
+import { useThemeMode } from "../../theme";
+import { getComponentStyles } from "../../theme/componentStyles";
 import { ConversionSettings } from "../types";
 import {
   estimateOutputSize,
@@ -21,25 +23,27 @@ const EstimatedSizeIndicator: React.FC<EstimatedSizeIndicatorProps> = ({
   settings,
   disabled = false,
 }) => {
+  const theme = useTheme();
+  const { mode, style } = useThemeMode();
+  const componentStyles = getComponentStyles(mode, style);
+
   // If disabled (multiple files selected), show disabled state
   if (disabled) {
     return (
       <Box
         sx={{
           p: 2,
-          borderRadius: 2,
-          background: "linear-gradient(135deg, #9ca3af 0%, #6b7280 100%)",
-          color: "white",
-          opacity: 0.5,
-          filter: "grayscale(100%)",
-          transition: "all 0.3s ease",
+          borderRadius: componentStyles.card.borderRadius,
+          backgroundColor: theme.palette.action.disabledBackground,
+          border: componentStyles.card.border,
+          opacity: 0.6,
         }}
       >
-        <Typography variant="caption" sx={{ opacity: 0.9, display: "block", mb: 1 }}>
-          💡 Estimated Output Size
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
+          Estimated Output Size
         </Typography>
-        <Typography variant="body2" sx={{ mt: 1 }}>
-          ℹ️ Select only ONE file to see size estimation
+        <Typography variant="body2" color="text.secondary">
+          Select only ONE file to see size estimation
         </Typography>
       </Box>
     );
@@ -51,54 +55,29 @@ const EstimatedSizeIndicator: React.FC<EstimatedSizeIndicatorProps> = ({
       <Box
         sx={{
           p: 2,
-          borderRadius: 2,
-          background: "linear-gradient(135deg, #9ca3af 0%, #6b7280 100%)",
-          color: "white",
-          opacity: 0.5,
-          transition: "all 0.3s ease",
+          borderRadius: componentStyles.card.borderRadius,
+          backgroundColor: theme.palette.action.disabledBackground,
+          border: componentStyles.card.border,
+          opacity: 0.6,
         }}
       >
-        <Typography variant="caption" sx={{ opacity: 0.9, display: "block", mb: 1 }}>
-          💡 Estimated Output Size
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
+          Estimated Output Size
         </Typography>
-        <Typography variant="body2" sx={{ mt: 1 }}>
-          ℹ️ Select a file to see size estimation
+        <Typography variant="body2" color="text.secondary">
+          Select a file to see size estimation
         </Typography>
       </Box>
     );
   }
 
   // Handle missing originalFormat with fallback
-  let effectiveFormat = originalFormat;
-  if (!effectiveFormat || effectiveFormat.length === 0) {
-    console.warn("[EstimatedSizeIndicator] Missing originalFormat, using fallback to settings format");
-    effectiveFormat = `image/${settings.format}`; // e.g., "image/jpeg"
-  }
-
-  console.log('[EstimatedSizeIndicator] Calculating estimation:', {
-    originalSize,
-    originalFormat: effectiveFormat,
-    outputFormat: settings.format,
-    quality: settings.quality,
-    compressionMode: settings.compressionMode
-  });
+  const effectiveFormat = originalFormat || `image/${settings.format}`;
 
   const estimatedSize = estimateOutputSize(originalSize, effectiveFormat, settings);
 
-  console.log('[EstimatedSizeIndicator] Result:', {
-    originalSize,
-    estimatedSize,
-    reduction: ((originalSize - estimatedSize) / originalSize * 100).toFixed(1) + '%'
-  });
-
   // Validate estimation result
   if (!estimatedSize || estimatedSize === 0 || isNaN(estimatedSize)) {
-    console.error("[EstimatedSizeIndicator] Invalid estimation result:", {
-      originalSize,
-      originalFormat,
-      estimatedSize,
-      settings: { format: settings.format, quality: settings.quality }
-    });
     return null;
   }
 
@@ -111,67 +90,92 @@ const EstimatedSizeIndicator: React.FC<EstimatedSizeIndicatorProps> = ({
   const isLikelyAnimated = originalFormat.includes("gif") && originalSize > 1024 * 1024;
   const hasTargetSize = settings.targetFileSize !== undefined;
 
-  // Determine background gradient based on compression quality
-  const getGradient = () => {
-    if (compressionRatio > 50) return "linear-gradient(135deg, #10b981 0%, #059669 100%)"; // Excellent
-    if (compressionRatio > 30) return "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"; // Good
-    if (compressionRatio > 0) return "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)"; // Moderate
-    return "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)"; // Warning (larger)
+  // Determine background gradient based on compression quality using theme colors
+  const getBackgroundColor = () => {
+    if (compressionRatio > 50) {
+      // Excellent compression - success gradient
+      return `linear-gradient(135deg, ${theme.palette.success.main} 0%, ${theme.palette.success.dark} 100%)`;
+    }
+    if (compressionRatio > 30) {
+      // Good compression - primary gradient
+      return `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`;
+    }
+    if (compressionRatio > 0) {
+      // Moderate compression - warning gradient
+      return `linear-gradient(135deg, ${theme.palette.warning.main} 0%, ${theme.palette.warning.dark} 100%)`;
+    }
+    // Larger file - error gradient
+    return `linear-gradient(135deg, ${theme.palette.error.main} 0%, ${theme.palette.error.dark} 100%)`;
   };
 
   return (
     <Box
       sx={{
         p: 2,
-        borderRadius: 2,
-        background: getGradient(),
-        color: "white",
+        borderRadius: componentStyles.card.borderRadius,
+        background: getBackgroundColor(),
+        color: theme.palette.common.white,
         transition: "all 0.3s ease",
+        boxShadow: componentStyles.card.boxShadow,
+        border: componentStyles.card.border,
       }}
     >
-      <Typography variant="caption" sx={{ opacity: 0.9, display: "block", mb: 1 }}>
-        💡 Estimated Output Size
+      <Typography variant="caption" sx={{ opacity: 0.95, display: "block", mb: 1.5, fontWeight: 500 }}>
+        Estimated Output Size
       </Typography>
 
-      <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
+      <Box display="flex" alignItems="center" justifyContent="space-between" mb={1.5}>
         <Box>
-          <Typography variant="h5" fontWeight={700}>
+          <Typography variant="h5" fontWeight={700} sx={{ lineHeight: 1.2 }}>
             {formatFileSize(estimatedSize)}
           </Typography>
-          <Typography variant="caption" sx={{ opacity: 0.8 }}>
+          <Typography variant="caption" sx={{ opacity: 0.9, display: "block", mt: 0.5 }}>
             from {formatFileSize(originalSize)}
           </Typography>
         </Box>
 
         {isSmaller ? (
           <Chip
-            icon={<TrendingDownIcon />}
+            icon={<TrendingDownIcon fontSize="small" />}
             label={`-${compressionRatio}%`}
             size="small"
             sx={{
               backgroundColor: "rgba(255, 255, 255, 0.25)",
-              color: "white",
+              backdropFilter: "blur(4px)",
+              color: theme.palette.common.white,
               fontWeight: 700,
               fontSize: "0.875rem",
+              height: 28,
             }}
           />
         ) : (
           <Chip
-            icon={<TrendingUpIcon />}
+            icon={<TrendingUpIcon fontSize="small" />}
             label={`+${Math.abs(compressionRatio)}%`}
             size="small"
             sx={{
               backgroundColor: "rgba(255, 255, 255, 0.25)",
-              color: "white",
+              backdropFilter: "blur(4px)",
+              color: theme.palette.common.white,
               fontWeight: 700,
               fontSize: "0.875rem",
+              height: 28,
             }}
           />
         )}
       </Box>
 
       {/* Visual size comparison bar */}
-      <Box sx={{ position: "relative", height: 8, backgroundColor: "rgba(255, 255, 255, 0.2)", borderRadius: 2, overflow: "hidden" }}>
+      <Box
+        sx={{
+          position: "relative",
+          height: 8,
+          backgroundColor: "rgba(255, 255, 255, 0.25)",
+          borderRadius: 1,
+          overflow: "hidden",
+          mb: 1.5,
+        }}
+      >
         <Box
           sx={{
             position: "absolute",
@@ -179,26 +183,29 @@ const EstimatedSizeIndicator: React.FC<EstimatedSizeIndicatorProps> = ({
             top: 0,
             height: "100%",
             width: `${Math.min(100, (estimatedSize / originalSize) * 100)}%`,
-            backgroundColor: "white",
-            borderRadius: 2,
+            backgroundColor: theme.palette.common.white,
+            borderRadius: 1,
             transition: "width 0.5s ease",
           }}
         />
       </Box>
 
-      <Box display="flex" justifyContent="space-between" mt={1}>
-        <Typography variant="caption" sx={{ opacity: 0.8 }}>
+      <Box display="flex" justifyContent="space-between" mb={1}>
+        <Typography variant="caption" sx={{ opacity: 0.9 }}>
           {isSmaller ? `You'll save ${formatFileSize(sizeDiff)}` : `Size increases by ${formatFileSize(sizeDiff)}`}
         </Typography>
       </Box>
 
       {isGif && isLikelyAnimated && !hasTargetSize ? (
-        <Typography variant="caption" sx={{ opacity: 0.8, mt: 1, display: "block", fontStyle: "italic" }}>
-          ⚠️ <strong>Animated GIF:</strong> Compression varies greatly (±20-40% variance).
-          Use "Target File Size" for more predictable results.
+        <Typography
+          variant="caption"
+          sx={{ opacity: 0.9, display: "block", fontStyle: "italic", fontSize: "0.7rem" }}
+        >
+          ⚠️ <strong>Animated GIF:</strong> Compression varies greatly (±20-40% variance). Use "Target File Size" for
+          more predictable results.
         </Typography>
       ) : (
-        <Typography variant="caption" sx={{ opacity: 0.7, mt: 1, display: "block", fontStyle: "italic" }}>
+        <Typography variant="caption" sx={{ opacity: 0.85, display: "block", fontStyle: "italic", fontSize: "0.7rem" }}>
           ⚠️ Estimate based on format, quality & settings. Actual may vary ±10-20%.
         </Typography>
       )}

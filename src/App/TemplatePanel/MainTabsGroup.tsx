@@ -1,6 +1,12 @@
 import React from "react";
 
-import { EmailOutlined, FolderOpen, Image as ImageIcon, ViewModule } from "@mui/icons-material";
+import {
+  EmailOutlined,
+  FolderOpen,
+  Image as ImageIcon,
+  ViewModule,
+  TableChart as TableIcon
+} from "@mui/icons-material";
 import { Tab, Tabs, Tooltip } from "@mui/material";
 
 import { setSelectedMainTab, useSelectedMainTab } from "../../contexts/AppState";
@@ -10,13 +16,16 @@ export default function MainTabsGroup() {
 
   const handleChange = (
     _: React.SyntheticEvent,
-    v: "email" | "blocks" | "templates" | "images"
+    v: "email" | "blocks" | "templates" | "images" | "converter"
   ) => {
-    if (v === "email" || v === "blocks" || v === "templates" || v === "images") {
-      setSelectedMainTab(v);
-    } else {
-      setSelectedMainTab("email");
-    }
+    // Використовуємо startTransition для не блокуючої зміни табу
+    React.startTransition(() => {
+      if (v === "email" || v === "blocks" || v === "templates" || v === "images" || v === "converter") {
+        setSelectedMainTab(v);
+      } else {
+        setSelectedMainTab("email");
+      }
+    });
   };
 
   return (
@@ -53,6 +62,14 @@ export default function MainTabsGroup() {
         label={
           <Tooltip title='Image Converter'>
             <ImageIcon fontSize='small' />
+          </Tooltip>
+        }
+      />
+      <Tab
+        value='converter'
+        label={
+          <Tooltip title='HTML to Table Converter'>
+            <TableIcon fontSize='small' />
           </Tooltip>
         }
       />

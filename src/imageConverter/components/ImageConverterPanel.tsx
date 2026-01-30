@@ -1,58 +1,135 @@
-import React from "react";
+import { Box, useTheme, useMediaQuery } from "@mui/material";
 
-import { Box, Container, Paper } from "@mui/material";
-
+import { useThemeMode } from "../../theme";
 import { ImageConverterProvider } from "../context/ImageConverterContext";
 
-import AutoConvertToggle from "./AutoConvertToggle";
+import GeometricBackground from "./GeometricBackground";
 import BatchProcessor from "./BatchProcessor";
-import ConversionSettings from "./ConversionSettings";
 import FileUploadZone from "./FileUploadZone";
-import ProcessingModeToggle from "./ProcessingModeToggle";
+import SettingsSidebar from "./SettingsSidebar";
+
+const SIDEBAR_WIDTH = 340;
 
 function ImageConverterContent() {
-  return (
-    <Container
-      maxWidth='lg'
-      sx={{ py: 3, height: "100%", overflow: "auto" }}
-    >
+  const theme = useTheme();
+  const { style } = useThemeMode();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const showAnimatedBackground = style !== "default";
+
+  if (isMobile) {
+    // Mobile: Stack layout with Settings on top
+    return (
       <Box
-        mb={2}
         sx={{
+          height: "100%",
+          minHeight: 0,
           display: "flex",
-          flexDirection: { xs: "column", md: "row" },
-          alignItems: { xs: "stretch", md: "center" },
-          justifyContent: { xs: "stretch", md: "space-between" },
-          gap: 3,
+          flexDirection: "column",
+          overflow: "hidden",
+          position: "relative",
         }}
       >
-        {/* Auto-Convert Toggle */}
-        <AutoConvertToggle />
+        {/* Animated Background - only for non-default styles */}
+        {showAnimatedBackground && <GeometricBackground />}
 
-        {/* Processing Mode */}
-        <Paper
-          elevation={2}
-          sx={{ p: 2, borderRadius: 5 }}
+        {/* Settings Sidebar on top */}
+        <Box
+          sx={{
+            maxHeight: "40%",
+            minHeight: 0,
+            borderBottom: `1px solid ${theme.palette.divider}`,
+            overflow: "hidden",
+          }}
         >
-          <ProcessingModeToggle />
-        </Paper>
-      </Box>
+          <SettingsSidebar />
+        </Box>
 
+        {/* Main Content */}
+        <Box
+          data-app-scroll='true'
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: "auto",
+            overflowX: "hidden",
+            p: 2,
+            position: "relative",
+            zIndex: 1,
+          }}
+        >
+          <FileUploadZone />
+        </Box>
+
+        {/* Sticky Footer */}
+        <Box
+          sx={{
+            borderTop: `1px solid ${theme.palette.divider}`,
+            backgroundColor: theme.palette.background.paper,
+            flexShrink: 0,
+          }}
+        >
+          <BatchProcessor />
+        </Box>
+      </Box>
+    );
+  }
+
+  // Desktop: Two-panel layout
+  return (
+    <Box sx={{ height: "100%", display: "flex", overflow: "hidden" }}>
+      {/* Left Panel: Settings Sidebar */}
       <Box
-        display='flex'
-        flexDirection='column'
-        gap={3}
+        sx={{
+          width: SIDEBAR_WIDTH,
+          minWidth: SIDEBAR_WIDTH,
+          height: "100%",
+          minHeight: 0,
+          flexShrink: 0,
+        }}
       >
-        {/* Upload Zone */}
-        <FileUploadZone />
-
-        {/* Batch Processor - Under upload zone */}
-        <BatchProcessor />
-
-        {/* Settings */}
-        <ConversionSettings />
+        <SettingsSidebar />
       </Box>
-    </Container>
+
+      {/* Right Panel: Upload Zone + Grid + Footer */}
+      <Box
+        sx={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          backgroundColor: theme.palette.background.default,
+          position: "relative",
+        }}
+      >
+        {/* Animated Background - only for non-default styles */}
+        {showAnimatedBackground && <GeometricBackground />}
+
+        {/* Main Content Area */}
+        <Box
+          data-app-scroll='true'
+          sx={{
+            flex: 1,
+            overflow: "auto",
+            p: 3,
+            position: "relative",
+            zIndex: 1,
+          }}
+        >
+          <FileUploadZone />
+        </Box>
+
+        {/* Sticky Footer: Batch Actions */}
+        <Box
+          sx={{
+            borderTop: `1px solid ${theme.palette.divider}`,
+            backgroundColor: theme.palette.background.paper,
+            boxShadow: `0 -2px 10px ${theme.palette.mode === "dark" ? "rgba(0,0,0,0.3)" : "rgba(0,0,0,0.05)"}`,
+          }}
+        >
+          <BatchProcessor />
+        </Box>
+      </Box>
+    </Box>
   );
 }
 

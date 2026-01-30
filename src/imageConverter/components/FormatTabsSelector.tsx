@@ -1,5 +1,7 @@
 import React from "react";
-import { Box, ToggleButton, ToggleButtonGroup, Chip, Tooltip } from "@mui/material";
+import { Box, Button, Chip, Stack, Tooltip, useTheme, alpha } from "@mui/material";
+import { useThemeMode } from "../../theme";
+import { getComponentStyles } from "../../theme/componentStyles";
 import { ImageFormat } from "../types";
 
 interface FormatTabsSelectorProps {
@@ -34,83 +36,104 @@ const FORMAT_INFO: Record<ImageFormat, { label: string; description: string; rec
 };
 
 const FormatTabsSelector: React.FC<FormatTabsSelectorProps> = ({ value, onChange, disabled = false }) => {
-  // Explicit format order to ensure consistency
+  const theme = useTheme();
+  const { mode, style } = useThemeMode();
+  const componentStyles = getComponentStyles(mode, style);
   const formats: ImageFormat[] = ["jpeg", "webp", "avif", "png", "gif"];
 
-  const handleChange = (_event: React.SyntheticEvent, newValue: string) => {
-    // Ensure newValue is a valid ImageFormat
-    if (formats.includes(newValue as ImageFormat)) {
-      onChange(newValue as ImageFormat);
-    }
-  };
-
   return (
-    <Box sx={{ mb: 2 }}>
-      <ToggleButtonGroup
-        value={value}
-        exclusive
-        onChange={(_, newValue) => newValue && handleChange(null as any, newValue)}
-        fullWidth
-        sx={{
-          "& .MuiToggleButton-root": {
-            textTransform: "none",
-            fontWeight: 500,
-            fontSize: "0.875rem",
-            py: 1.5,
-            transition: "all 0.2s",
-            border: "1px solid",
-            borderColor: "divider",
-            "&:hover": {
-              backgroundColor: "action.hover",
-            },
-            "&.Mui-selected": {
-              fontWeight: 600,
-              backgroundColor: "primary.main",
-              color: "primary.contrastText",
-              "&:hover": {
-                backgroundColor: "primary.dark",
-              },
-            },
-          },
-        }}
-      >
-        {formats.map((format) => {
-          const info = FORMAT_INFO[format];
-          return (
-            <Tooltip
-              key={format}
-              title={info.description}
-              placement="top"
-              arrow
-              enterDelay={300}
+    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+      {formats.map((format) => {
+        const info = FORMAT_INFO[format];
+        const isSelected = value === format;
+
+        return (
+          <Tooltip key={format} title={info.description} placement="top" arrow enterDelay={300}>
+            <Button
+              variant={isSelected ? "contained" : "outlined"}
+              onClick={() => !disabled && onChange(format)}
+              disabled={disabled}
+              size="small"
+              sx={{
+                textTransform: "none",
+                fontWeight: isSelected ? 600 : 500,
+                fontSize: "0.8125rem",
+                px: 2,
+                py: 0.75,
+                borderRadius: componentStyles.card.borderRadius,
+                minWidth: "auto",
+                position: "relative",
+                border: isSelected
+                  ? `1px solid ${theme.palette.primary.main}`
+                  : `1px solid ${theme.palette.divider}`,
+                backgroundColor: isSelected
+                  ? theme.palette.primary.main
+                  : "transparent",
+                color: isSelected
+                  ? theme.palette.primary.contrastText
+                  : theme.palette.text.primary,
+                boxShadow: isSelected
+                  ? `0 2px 8px ${alpha(theme.palette.primary.main, 0.3)}`
+                  : "none",
+                transition: "all 0.2s ease",
+                "&:hover": {
+                  backgroundColor: isSelected
+                    ? theme.palette.primary.dark
+                    : alpha(theme.palette.action.hover, 0.5),
+                  borderColor: isSelected
+                    ? theme.palette.primary.dark
+                    : theme.palette.primary.main,
+                  transform: "translateY(-1px)",
+                  boxShadow: isSelected
+                    ? `0 4px 12px ${alpha(theme.palette.primary.main, 0.4)}`
+                    : `0 2px 4px ${alpha(theme.palette.action.hover, 0.3)}`,
+                },
+                "&:active": {
+                  transform: "translateY(0)",
+                },
+                "&.Mui-disabled": {
+                  opacity: 0.5,
+                },
+              }}
             >
-              <ToggleButton
-                value={format}
-                disabled={disabled}
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0.75,
+                  position: "relative",
+                }}
               >
-                <Box display="flex" alignItems="center" gap={0.5}>
-                  {info.label}
-                  {info.recommended && (
-                    <Chip
-                      label="Best"
-                      size="small"
-                      color="success"
-                      sx={{
-                        height: 16,
-                        fontSize: "0.625rem",
-                        "& .MuiChip-label": {
-                          px: 0.5,
-                        },
-                      }}
-                    />
-                  )}
-                </Box>
-              </ToggleButton>
-            </Tooltip>
-          );
-        })}
-      </ToggleButtonGroup>
-    </Box>
+                {info.label}
+                {info.recommended && (
+                  <Chip
+                    label="Best"
+                    size="small"
+                    color={isSelected ? "default" : "success"}
+                    sx={{
+                      height: 18,
+                      fontSize: "0.625rem",
+                      fontWeight: 600,
+                      px: 0.5,
+                      backgroundColor: isSelected
+                        ? alpha(theme.palette.common.white, 0.2)
+                        : theme.palette.success.main,
+                      color: isSelected
+                        ? theme.palette.common.white
+                        : theme.palette.success.contrastText,
+                      "& .MuiChip-label": {
+                        px: 0.75,
+                        lineHeight: 1.2,
+                      },
+                    }}
+                  />
+                )}
+              </Box>
+            </Button>
+          </Tooltip>
+        );
+      })}
+    </Stack>
   );
 };
 

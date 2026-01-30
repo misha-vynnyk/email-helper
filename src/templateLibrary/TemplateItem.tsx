@@ -21,6 +21,7 @@ import {
   Visibility,
 } from "@mui/icons-material";
 import {
+  alpha,
   Alert,
   Box,
   Button,
@@ -38,11 +39,14 @@ import {
   TextField,
   Tooltip,
   Typography,
+  useTheme,
 } from "@mui/material";
 import CodeMirror from "@uiw/react-codemirror";
 
 import { EmailSenderContext } from "../emailSender/EmailSenderContext";
+import { useThemeMode } from "../theme";
 import { EmailTemplate, TEMPLATE_CATEGORIES, TemplateCategory } from "../types/template";
+import { createCodeMirrorTheme } from "../utils/codemirrorTheme";
 import { preloadImages } from "../utils/imageUrlReplacer";
 
 import { PreviewConfig } from "./PreviewSettings";
@@ -52,6 +56,7 @@ import { getTemplateContent, removeTemplate, syncTemplate, updateTemplate } from
 import { getCategoryIcon } from "./templateCategoryIcons";
 import { templateContentCache } from "./templateContentCache";
 import { filterMarkedSections } from "./utils/htmlSectionFilter";
+import { getComponentStyles } from "../theme/componentStyles";
 
 interface TemplateItemProps {
   template: EmailTemplate;
@@ -68,7 +73,7 @@ interface TemplateItemProps {
   savedScrollPosition?: number;
 }
 
-export default function TemplateItem({
+function TemplateItem({
   template,
   previewConfig,
   onDelete,
@@ -82,6 +87,10 @@ export default function TemplateItem({
   onNavigate,
   savedScrollPosition: savedScrollPositionProp = 0,
 }: TemplateItemProps) {
+  const theme = useTheme();
+  const { mode, style } = useThemeMode();
+  const componentStyles = getComponentStyles(mode, style);
+  const codeMirrorTheme = createCodeMirrorTheme(theme, mode, style);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -695,7 +704,25 @@ export default function TemplateItem({
     <>
       <Card
         ref={cardRef}
-        sx={{ height: "100%", display: "flex", flexDirection: "column" }}
+        sx={{
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          borderRadius: `${componentStyles.card.borderRadius}px`,
+          background: componentStyles.card.background || theme.palette.background.paper,
+          backdropFilter: componentStyles.card.backdropFilter,
+          WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
+          border: componentStyles.card.border,
+          boxShadow: componentStyles.card.boxShadow,
+          transition: "transform 0.2s ease, box-shadow 0.2s ease",
+          "&:hover": componentStyles.card.hover
+            ? {
+                transform: componentStyles.card.hover.transform,
+                boxShadow: componentStyles.card.hover.boxShadow,
+                border: componentStyles.card.hover.border || componentStyles.card.border,
+              }
+            : {},
+        }}
       >
         {/* Preview Area */}
         <Box
@@ -703,7 +730,7 @@ export default function TemplateItem({
             position: "relative",
             height: previewConfig.containerHeight,
             minHeight: 150, // Minimum height for usability
-            backgroundColor: "#f5f5f5",
+            backgroundColor: theme.palette.action.hover,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -1154,21 +1181,24 @@ export default function TemplateItem({
                 onWidthChange={setViewportWidth}
                 zoom={zoom}
               >
-                <Box
+                {/*
+                  iframe ширина = 100% контейнера (який = viewportWidth)
+                  Media queries реагують на ширину iframe
+                  Zoom застосовується через transform: scale() в ResizablePreview
+                */}
+                <iframe
                   key={`dialog-preview-${template.id}-${renderKey}`}
-                  sx={{
-                    transform: `scale(${zoom})`,
-                    transformOrigin: "top center",
-                    transition: "transform 0.2s ease",
-                    border: "1px solid",
-                    borderColor: "divider",
-                    borderRadius: 1,
+                  srcDoc={sanitizePreviewHtml(previewHtml)}
+                  title={`Preview of ${template.name}`}
+                  style={{
+                    width: "100%",
+                    height: "70vh",
+                    minHeight: 500,
+                    border: "none",
+                    borderRadius: 4,
                     backgroundColor: "#fff",
-                    minHeight: 200,
-                    p: 2,
-                    boxShadow: 2,
+                    display: "block",
                   }}
-                  dangerouslySetInnerHTML={{ __html: sanitizePreviewHtml(previewHtml) }}
                 />
               </ResizablePreview>
             </Box>
@@ -1215,27 +1245,27 @@ export default function TemplateItem({
               borderColor: "divider",
               borderRadius: 1,
               overflow: "hidden",
-              "& .cm-editor": {
-                fontSize: "14px",
+              "& .cm-selectionLayer .cm-selectionBackground": {
+                backgroundColor: `${alpha(theme.palette.primary.main, 0.25)} !important`,
               },
-              "& .cm-focused": {
-                outline: "none",
+              "& .cm-selectionBackground": {
+                backgroundColor: `${alpha(theme.palette.primary.main, 0.25)} !important`,
               },
-              "& .cm-editor .cm-scroller": {
-                fontFamily: "monospace",
+              "& .cm-content ::selection": {
+                backgroundColor: `${alpha(theme.palette.primary.main, 0.25)} !important`,
               },
             }}
           >
             <CodeMirror
               value={codeLoading ? "Loading..." : codeContent || "No content available"}
               height='60vh'
-              extensions={[html()]}
+              extensions={[html(), ...codeMirrorTheme]}
               theme={undefined}
               editable={false}
               basicSetup={{
                 lineNumbers: true,
                 foldGutter: true,
-                dropCursor: false,
+                dropCursor: true,
                 allowMultipleSelections: false,
                 indentOnInput: true,
                 bracketMatching: true,
@@ -1418,3 +1448,16 @@ export default function TemplateItem({
     </>
   );
 }
+
+// Мемоізуємо компонент для запобігання зайвих ре-рендерів
+export default React.memo(TemplateItem, (prevProps, nextProps) => {
+  // Shallow порівняння - ре-рендер тільки якщо змінилися важливі пропси
+  return (
+    prevProps.template.id === nextProps.template.id &&
+    prevProps.template.name === nextProps.template.name &&
+    prevProps.template.lastModified === nextProps.template.lastModified &&
+    prevProps.isOpen === nextProps.isOpen &&
+    prevProps.currentIndex === nextProps.currentIndex &&
+    prevProps.previewConfig === nextProps.previewConfig
+  );
+});

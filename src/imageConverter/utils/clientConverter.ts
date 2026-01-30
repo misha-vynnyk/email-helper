@@ -85,10 +85,14 @@ export async function convertImageClient(
         // Get format to use (original or specified)
         const outputFormat = getConversionFormat(file, settings);
 
-        // Fill background for formats that don't support transparency
+        // Handle background based on format
         if (outputFormat === "jpeg") {
+          // JPEG doesn't support transparency - fill with background color
           ctx.fillStyle = settings.backgroundColor;
           ctx.fillRect(0, 0, width, height);
+        } else {
+          // PNG/WebP/AVIF support transparency - ensure canvas is transparent
+          ctx.clearRect(0, 0, width, height);
         }
 
         // Draw image
