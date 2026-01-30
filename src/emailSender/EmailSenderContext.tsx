@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
 
-import API_URL from "../config/api";
+import API_URL, { isApiAvailable } from "../config/api";
 import { preloadImages } from "../utils/imageUrlReplacer";
 
 interface EmailSenderContextType {
@@ -73,6 +73,12 @@ export const EmailSenderProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   // Перевірка стану сервера
   const checkServerStatus = useCallback(async () => {
+    // If API is not available, set status to offline without making a request
+    if (!isApiAvailable()) {
+      setServerStatus("offline");
+      return;
+    }
+
     try {
       const response = await fetch(`${API_URL}/api/health`);
       setServerStatus(response.ok ? "online" : "offline");

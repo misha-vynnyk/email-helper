@@ -7,9 +7,16 @@
 
 import { logger } from "../utils/logger";
 
+// In production, only use API if VITE_API_URL is explicitly set
+// Otherwise, disable API calls to avoid CORS errors
 const API_URL = import.meta.env.PROD
-  ? import.meta.env.VITE_API_URL || "https://email-helper-backend.onrender.com"
-  : "http://localhost:3001";
+  ? import.meta.env.VITE_API_URL || ""
+  : import.meta.env.VITE_API_URL || "http://localhost:3001";
+
+// Check if API is available
+export const isApiAvailable = () => {
+  return !!API_URL;
+};
 
 export default API_URL;
 export { API_URL };

@@ -1,0 +1,66 @@
+{
+  "browser": {
+    "executablePath": "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
+    "debugPort": 9222,
+    "userDataDir": "/Users/mykhailo.vynnyk/Library/Application Support/BravePlaywright",
+    "autoCloseTab": true,
+    "closeDelaySuccess": 0,
+    "closeDelayCancel": 3000
+  },
+  "browserProfiles": {
+    "default": {
+      "debugPort": 9222,
+      "userDataDir": "/Users/mykhailo.vynnyk/Library/Application Support/BravePlaywright"
+    },
+    "alphaone": {
+      "debugPort": 9223,
+      "userDataDir": "/Users/mykhailo.vynnyk/Library/Application Support/BravePlaywright-AlfaOne"
+    }
+  },
+  "storage": {
+    "baseUrl": "https://storage.epcnetwork.dev",
+    "publicUrl": "https://storage.5th-elementagency.com",
+    "basePath": "Promo"
+  },
+  "storageProviders": {
+    "default": {
+      "bucket": "files",
+      "usesCategory": true,
+      "consoleRootPrefix": "Promo",
+      "publicBaseUrl": "https://storage.5th-elementagency.com",
+      "publicPathPrefix": "files",
+      "publicRootPrefix": "Promo"
+    },
+    "alphaone": {
+      "bucket": "alphaone",
+      "usesCategory": false,
+      "consoleRootPrefix": "promo",
+      "publicBaseUrl": "https://alphaonest.com",
+      "publicPathPrefix": "files",
+      "publicRootPrefix": "promo"
+    }
+  },
+  "ui": {
+    "formServerPort": 3838,
+    "interactiveMode": true
+  },
+  "timeouts": {
+    "browserStart": 1500,
+    "pageLoad": 10000,
+    "elementWait": 5000,
+    "uploadRetry": 2000,
+    "interfaceCheck": 200,
+    "interfaceMaxChecks": 10
+  },
+  "retries": {
+    "uploadAttempts": 2
+  },
+  "notifications": {
+    "enabled": true,
+    "sounds": {
+      "success": "/System/Library/Sounds/Blow.aiff",
+      "error": "/System/Library/Sounds/Basso.aiff",
+      "warning": "/System/Library/Sounds/Sosumi.aiff"
+    }
+  }
+}

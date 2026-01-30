@@ -1,136 +1,136 @@
-# Email Helper - Professional Email Builder
+# Email Helper
 
-Professional email template builder with drag-and-drop block system, live preview, and local file management.
+Email template builder: блоки, превʼю, HTML Converter, конвертер зображень, валідація, відправка листів.
 
-## 🎨 Demo
+**Демо:** https://misha-vynnyk.github.io/email-helper/ (лише інтерфейс; повний функціонал — локально).
 
-**Live Preview:** https://misha-vynnyk.github.io/email-helper/
+> ⚠️ GitHub Pages показує лише інтерфейс. Повний функціонал (бекенд, automation/upload, робота з папками на диску) — локально.
 
-> ⚠️ **Note:** The GitHub Pages demo shows only the interface. For full functionality (block/template management, email sending, image conversion), run the app locally.
+Потрібно: Node.js 18+, npm.
 
-## 🚀 Features
+---
 
-- **Block Library** - Manage and customize email blocks with drag-and-drop
-- **Live Preview** - Real-time email rendering with responsive design preview
-- **Template Management** - Save and reuse email templates
-- **Image Converter** - Convert and optimize images (JPEG, WebP, AVIF, PNG, GIF) with advanced compression
-- **Email Validation** - Built-in HTML validator for email compatibility
-- **Email Sender** - Send test emails directly from the editor
-- **Modern UI** - Customizable themes (light/dark) with glassmorphism effects
+## 👵 Як запустити після клонування (простими словами)
 
-## 📦 Tech Stack
+### Що зробити один раз після клонування
 
-**Frontend:**
-- React 18 + TypeScript
-- Vite
-- Material-UI (MUI)
-- CodeMirror (HTML Editor)
-- Framer Motion (Animations)
+1. Відкрий термінал (на Mac — «Термінал», на Windows — «Командний рядок» або PowerShell).
+2. Перейди в папку проєкту: `cd email-helper` (або як у тебе називається папка).
+3. Встанови залежності:
+   ```bash
+   npm install
+   cd server && npm install && cd ..
+   cd automation && npm install && cd ..
+   ```
+4. Готово. Це треба зробити лише один раз після клонування (або після `git pull`, якщо змінили залежності).
 
-**Backend:**
-- Node.js + Express
-- TypeScript
-- Sharp (Image Processing)
-- Gifsicle (GIF Optimization)
-- Nodemailer (Email Sending)
+### Як запускати щодня
 
-## 🛠️ Quick Start
-
-### Prerequisites
-
-- Node.js >= 18.0.0
-- npm or yarn
-
-### Installation
+У терміналі в папці проєкту напиши:
 
 ```bash
-# 1. Clone repository
-git clone https://github.com/misha-vynnyk/email-helper.git
-cd email-helper
-
-# 2. Install dependencies
-npm install
-cd server && npm install && cd ..
-
-# 3. Start development (both frontend & backend)
 npm run dev
-
-# Or start separately:
-# Terminal 1: Backend
-npm run dev-backend
-
-# Terminal 2: Frontend
-npm run dev-frontend
 ```
 
-**Access:**
-- Frontend: http://localhost:5173
-- Backend: http://localhost:3001
+Відкрий у браузері: **http://localhost:5173** — це твій додаток.
 
-## 📧 Email Setup
+Зупинити: у тому ж терміналі натисни `Ctrl+C`.
 
-To send test emails, you need a Gmail App Password:
+---
 
-1. Enable 2FA on your Google Account
-2. Go to Google Account → Security → App Passwords
-3. Generate a password for "Mail"
-4. Use this password in the Email Sender panel (not your regular Gmail password)
+### Що треба змінити на **Mac**
 
-## 🖼️ Image Conversion
+Після клонування зазвичай нічого міняти не треба: Brave у стандартному місці, а профілі вже налаштовані.
 
-The image converter supports:
-- Multiple formats: JPEG, WebP, AVIF, PNG, GIF
-- Advanced compression with quality optimization
-- Batch processing
-- Client-side and server-side conversion
-- GIF optimization with target file size control
+Якщо Brave встановлено в інше місце — задай змінну середовища `BRAVE_EXECUTABLE_PATH` **або** відредагуй `automation/config.json` → `browser.executablePath`.
 
-## 📁 Project Structure
+Якщо Upload відкриває Brave “без логіну” або ламається профіль — перевір `src/htmlConverter/storageProviders.json` → `browserProfiles.*.userDataDir` (це окремі профілі для різних storage-провайдерів).
 
-```
-email-helper/
-├── src/                    # Frontend source
-│   ├── App/               # Main app layout
-│   ├── blockLibrary/      # Block management
-│   ├── components/        # Shared components
-│   ├── emailSender/       # Email sending
-│   ├── emailValidator/    # HTML validation
-│   ├── imageConverter/    # Image processing
-│   ├── templateLibrary/   # Template management
-│   └── theme/             # Theme system
-├── server/                # Backend API
-│   ├── routes/           # API endpoints
-│   └── utils/            # Utilities
-└── dist/                 # Production build
+---
+
+### Що треба змінити на **Windows**
+
+У репо за замовчуванням шляхи під Mac. На Windows треба один раз вказати, де у тебе Brave, і (опційно) куди складати профіль(і).
+
+**Варіант 1 — через змінні середовища (зручно, не чіпаєш файли):**
+
+Перед `npm run dev` у тому ж терміналі виконай (встав свої шляхи):
+
+У **cmd** (Командний рядок):
+
+```cmd
+set BRAVE_EXECUTABLE_PATH=C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe
+set BRAVE_USER_DATA_DIR=%TEMP%\brave-debug
 ```
 
-## 🎨 Themes
+У **PowerShell**:
 
-The app includes a customizable theme system:
-- Light/Dark mode toggle
-- Multiple component styles (floating, glassmorphism, neomorphic)
-- Consistent design tokens
-
-## 🚀 Development
-
-```bash
-# Build frontend for production
-npm run build
-
-# Deploy to GitHub Pages
-npm run deploy
-
-# Build backend
-cd server && npm run build
-
-# Run backend in production
-cd server && npm start
+```powershell
+$env:BRAVE_EXECUTABLE_PATH = "C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"
+$env:BRAVE_USER_DATA_DIR = "$env:TEMP\brave-debug"
 ```
 
-## 📝 License
+Потім запускай `npm run dev` у цьому ж вікні терміналу.
 
-MIT
+**Варіант 2 — через файл:**
 
-## 👤 Author
+Відкрий `automation/config.json`. Знайди блок `"browser"`. Зміни два рядки:
 
-Mykhailo Vynnyk
+- `"executablePath"` — повний шлях до `brave.exe` (зазвичай `C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe`).
+- `"userDataDir"` — будь-яка папка для тимчасового профілю, наприклад `C:\Users\ТВІЙ_ЛОГІН\AppData\Local\Temp\brave-debug`.
+
+Збережи файл. Далі просто запускай `npm run dev`.
+
+> Примітка: для нового “multi-provider” Upload (default/alphaone) основні налаштування вже винесені в `src/htmlConverter/storageProviders.json`. Якщо ти хочеш **різні профілі** Brave для різних storage — редагуй саме `storageProviders.json` → `browserProfiles.default` / `browserProfiles.alphaone`.
+
+---
+
+**Коротко:** на Mac нічого міняти не треба. На Windows один раз вказати шлях до Brave (файлом або змінними), далі скрізь однаково: `npm install` у корені, server і automation — потім `npm run dev`.
+
+---
+
+## Додатково
+
+- **Відправка листів:** Gmail App Password (Google Account → Security → App Passwords). У додатку вводити цей пароль, не основний.
+- **GIF:** див. [GIF_OPTIMIZATION.md](src/imageConverter/GIF_OPTIMIZATION.md).
+- **Збірка:** `npm run build`, деплой — `npm run deploy`.
+
+### Storage Upload (default / alphaone) — де налаштовувати
+
+Головний конфіг тепер тут: `src/htmlConverter/storageProviders.json` (використовується і фронтом, і automation).
+
+- **providers.default**: класичний storage (`storage.5th-elementagency.com`) з категоріями `finance|health`
+- **providers.alphaone**: AlfaOne (`alphaonest.com`), без категорій (категорія в UI ховається)
+- **browserProfiles.default / browserProfiles.alphaone**: окремі CDP порти та профілі Brave, щоб сесії логіну не змішувались
+- **systemNotifications**:
+  - `enabled`: показувати macOS нотифікації
+  - `soundsEnabled`: лишити звук без нотифікацій
+
+Корисні параметри (там же):
+
+- **`loginWaitMs`**: скільки чекати ручний логін (якщо storage просить залогінитись)
+- **`bootstrapWaitMs`**: скільки чекати появи UI (login або upload) після відкриття сторінки
+- **`closeTabAfterBatch`**: закрити вкладку Brave **після** успішного upload всього batch’у
+
+### Template Library — шляхи до папок з шаблонами
+
+Щоб додаток бачив твої шаблони, потрібно один раз прописати папку, де вони лежать:
+
+1. Відкрий **Template Library** (розділ з шаблонами в додатку).
+2. Натисни кнопку **Storage** (біля Sync New).
+3. У вікні натисни **Add location** (або «Додати»).
+4. Заповни:
+   - **Name** — будь-яка назва (наприклад «Мої шаблони»);
+   - **Path** — **абсолютний шлях** до папки на диску, де зберігаються шаблони.
+5. Збережи. Список локацій зберігається в браузері (localStorage).
+
+**Приклади шляхів:**
+
+- **Mac:** `/Users/твій_логін/Documents/templates`
+- **Windows:** шлях має починатися з `/`; можна спробувати формат на кшталт `/C:/Users/твій_логін/Documents/templates` (корінь диска C — як `/C:/`).
+
+Якщо папок кілька — додай їх усі окремими локаціями. Потім у Template Library зʼявляться шаблони з усіх цих папок.
+
+---
+
+MIT · Mykhailo Vynnyk
