@@ -40,6 +40,7 @@ class PerformanceMonitor {
    * Start tracking a conversion
    */
   startConversion(fileId: string): number {
+    void fileId;
     return Date.now();
   }
 

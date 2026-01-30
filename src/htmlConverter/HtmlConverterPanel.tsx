@@ -38,11 +38,14 @@ import { useThemeMode } from "../theme";
 import { getComponentStyles } from "../theme/componentStyles";
 import { borderRadius, opacity, spacingMUI } from "../theme/tokens";
 import { formatHtml, formatMjml } from "./formatter";
-import { setupPasteHandler, isSignatureImageTag } from "./imageUtils";
+import { isSignatureImageTag } from "./imageUtils";
 import ImageProcessor from "./ImageProcessor";
 import UploadHistory from "./UploadHistory";
 import { STORAGE_KEYS, UPLOAD_CONFIG, IMAGE_DEFAULTS } from "./constants";
 import type { UploadSession } from "./types";
+
+const LOG_LIMIT = 500;
+const IMAGE_DETECT_DEBOUNCE_MS = 250;
 
 interface SectionHeaderProps {
   icon: React.ReactNode;
@@ -133,8 +136,13 @@ export default function HtmlConverterPanel() {
   const [fileName, setFileName] = useState("promo-1");
   const [approveNeeded, setApproveNeeded] = useState(true);
   const [useAlfaOne, setUseAlfaOne] = useState(false);
+  const logBufferRef = useRef<string[]>([]);
   const [log, setLog] = useState<string[]>([]);
+  const [unseenLogCount, setUnseenLogCount] = useState(0);
+  const showLogsPanelRef = useRef(true);
   const [showImageProcessor, setShowImageProcessor] = useState(false);
+  const showImageProcessorRef = useRef(false);
+  const imageDetectTimerRef = useRef<number | null>(null);
   const [inputHtml, setInputHtml] = useState<string>("");
   const [triggerExtract, setTriggerExtract] = useState(0);
   const [uploadedUrlMap, setUploadedUrlMap] = useState<Record<string, string>>({});
@@ -196,6 +204,23 @@ export default function HtmlConverterPanel() {
   const [uiAnchorEl, setUiAnchorEl] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
+    showLogsPanelRef.current = ui.showLogsPanel;
+    // When opening logs panel: render full buffered logs and clear unseen counter.
+    if (ui.showLogsPanel) {
+      setLog([...logBufferRef.current]);
+      setUnseenLogCount(0);
+    } else {
+      // When hiding logs panel: stop rendering logs entirely to save CPU/DOM.
+      setLog([]);
+      setUnseenLogCount(0);
+    }
+  }, [ui.showLogsPanel]);
+
+  useEffect(() => {
+    showImageProcessorRef.current = showImageProcessor;
+  }, [showImageProcessor]);
+
+  useEffect(() => {
     try {
       if (!ui.rememberUiLayout) {
         localStorage.removeItem(STORAGE_KEYS.UI_SETTINGS);
@@ -207,9 +232,20 @@ export default function HtmlConverterPanel() {
     }
   }, [ui]);
 
-  const addLog = (message: string) => {
-    setLog((prev) => [...prev, message]);
-  };
+  const addLog = useCallback((message: string) => {
+    const next = [...logBufferRef.current, message];
+    const bounded = next.length <= LOG_LIMIT ? next : next.slice(next.length - LOG_LIMIT);
+    logBufferRef.current = bounded;
+
+    // Only update React state (and thus rerender) when logs panel is visible.
+    if (showLogsPanelRef.current) {
+      setLog([...bounded]);
+      return;
+    }
+
+    // When logs panel is hidden, keep a cheap counter for the badge.
+    setUnseenLogCount((prev) => Math.min(prev + 1, LOG_LIMIT));
+  }, []);
 
   const handleAddToHistory = useCallback(
     (
@@ -317,46 +353,50 @@ export default function HtmlConverterPanel() {
         return;
       }
 
-      // Prefer exact mapping first (oldUrl -> newUrl)
+      // Prefer exact mapping first (oldUrl -> newUrl).
+      // Fallback to positional replacement ONLY if mapping replaced nothing.
       if (outputHtmlRef.current?.value) {
-        const { replaced, count } = replaceUrlsInContentByMap(
-          outputHtmlRef.current.value,
+        const original = outputHtmlRef.current.value;
+        const mapped = replaceUrlsInContentByMap(
+          original,
           /(<img[^>]+src=["'])([^"']+)(["'][^>]*>)/gi,
           urlMap
         );
-        outputHtmlRef.current.value = replaced;
-        if (count > 0) addLog(`🔄 Замінено ${count} посилань в Output HTML`);
+
+        if (mapped.count > 0) {
+          outputHtmlRef.current.value = mapped.replaced;
+          addLog(`🔄 Замінено ${mapped.count} посилань в Output HTML`);
+        } else {
+          const positional = replaceUrlsInContent(
+            original,
+            /(<img[^>]+src=["'])([^"']+)(["'][^>]*>)/gi,
+            storageUrls
+          );
+          outputHtmlRef.current.value = positional.replaced;
+          if (positional.count > 0) addLog(`🔄 Замінено ${positional.count} посилань в Output HTML`);
+        }
       }
 
       if (outputMjmlRef.current?.value) {
-        const { replaced, count } = replaceUrlsInContentByMap(
-          outputMjmlRef.current.value,
+        const original = outputMjmlRef.current.value;
+        const mapped = replaceUrlsInContentByMap(
+          original,
           /(<(?:mj-image|img)[^>]+src=["'])([^"']+)(["'][^>]*>)/gi,
           urlMap
         );
-        outputMjmlRef.current.value = replaced;
-        if (count > 0) addLog(`🔄 Замінено ${count} посилань в Output MJML`);
-      }
 
-      // Fallback to positional replacement (legacy behavior)
-      if (outputHtmlRef.current?.value) {
-        const { replaced, count } = replaceUrlsInContent(
-          outputHtmlRef.current.value,
-          /(<img[^>]+src=["'])([^"']+)(["'][^>]*>)/gi,
-          storageUrls
-        );
-        outputHtmlRef.current.value = replaced;
-        if (count > 0) addLog(`🔄 Замінено ${count} посилань в Output HTML`);
-      }
-
-      if (outputMjmlRef.current?.value) {
-        const { replaced, count } = replaceUrlsInContent(
-          outputMjmlRef.current.value,
-          /(<(?:mj-image|img)[^>]+src=["'])([^"']+)(["'][^>]*>)/gi,
-          storageUrls
-        );
-        outputMjmlRef.current.value = replaced;
-        if (count > 0) addLog(`🔄 Замінено ${count} посилань в Output MJML`);
+        if (mapped.count > 0) {
+          outputMjmlRef.current.value = mapped.replaced;
+          addLog(`🔄 Замінено ${mapped.count} посилань в Output MJML`);
+        } else {
+          const positional = replaceUrlsInContent(
+            original,
+            /(<(?:mj-image|img)[^>]+src=["'])([^"']+)(["'][^>]*>)/gi,
+            storageUrls
+          );
+          outputMjmlRef.current.value = positional.replaced;
+          if (positional.count > 0) addLog(`🔄 Замінено ${positional.count} посилань в Output MJML`);
+        }
       }
     },
     [addLog, replaceUrlsInContent, replaceUrlsInContentByMap]
@@ -365,7 +405,25 @@ export default function HtmlConverterPanel() {
   // Setup paste handler and auto-detect images
   useEffect(() => {
     if (editorRef.current) {
-      setupPasteHandler(editorRef.current, addLog);
+      const scheduleImageSync = () => {
+        if (imageDetectTimerRef.current) {
+          window.clearTimeout(imageDetectTimerRef.current);
+        }
+        imageDetectTimerRef.current = window.setTimeout(() => {
+          if (!editorRef.current) return;
+
+          const hasImages = editorRef.current.querySelector("img") !== null;
+          if (hasImages) {
+            setShowImageProcessor(true);
+          }
+
+          // Trigger extraction when images exist OR when image processor was previously visible
+          // (so it can clear stale state after images are removed).
+          if (hasImages || showImageProcessorRef.current) {
+            setTriggerExtract((prev) => prev + 1);
+          }
+        }, IMAGE_DETECT_DEBOUNCE_MS);
+      };
 
       // Capture original HTML from clipboard on paste
       const handlePaste = (e: ClipboardEvent) => {
@@ -381,35 +439,11 @@ export default function HtmlConverterPanel() {
           // Save cleaned HTML for display
           setInputHtml(cleanHtml);
         }
-
-        // Small delay to ensure DOM is updated after paste
-        setTimeout(() => {
-          if (!editorRef.current) return;
-          const imgElements = editorRef.current.querySelectorAll("img");
-          const hasImages = imgElements.length > 0;
-
-          if (hasImages) {
-            setShowImageProcessor(true);
-          }
-
-          // Always trigger extraction to clear old images if needed
-          setTimeout(() => {
-            setTriggerExtract((prev) => prev + 1);
-          }, 100);
-        }, 300);
+        scheduleImageSync();
       };
 
       const handleInput = () => {
-        if (!editorRef.current) return;
-
-        // Check if there are still images in the editor
-        const imgElements = editorRef.current.querySelectorAll("img");
-        const hasImages = imgElements.length > 0;
-
-        if (!hasImages && showImageProcessor) {
-          // No images found, trigger extraction to clear
-          setTriggerExtract((prev) => prev + 1);
-        }
+        scheduleImageSync();
       };
 
       editorRef.current.addEventListener("paste", handlePaste as EventListener);
@@ -420,9 +454,13 @@ export default function HtmlConverterPanel() {
           editorRef.current.removeEventListener("paste", handlePaste as EventListener);
           editorRef.current.removeEventListener("input", handleInput);
         }
+        if (imageDetectTimerRef.current) {
+          window.clearTimeout(imageDetectTimerRef.current);
+          imageDetectTimerRef.current = null;
+        }
       };
     }
-  }, [showImageProcessor]);
+  }, [addLog]);
 
   const changeFileNumber = (delta: number) => {
     const match = fileName.match(/(\D*)(\d+)/);
@@ -590,6 +628,10 @@ export default function HtmlConverterPanel() {
   ]);
 
   const handleClear = () => {
+    if (imageDetectTimerRef.current) {
+      window.clearTimeout(imageDetectTimerRef.current);
+      imageDetectTimerRef.current = null;
+    }
     if (editorRef.current) {
       editorRef.current.innerHTML = "";
     }
@@ -599,7 +641,9 @@ export default function HtmlConverterPanel() {
     if (outputMjmlRef.current) {
       outputMjmlRef.current.value = "";
     }
+    logBufferRef.current = [];
     setLog([]);
+    setUnseenLogCount(0);
     setInputHtml("");
     setShowImageProcessor(false);
     setTriggerExtract(0);
@@ -611,6 +655,7 @@ export default function HtmlConverterPanel() {
       resetReplacementRef.current();
     }
 
+    // Avoid re-adding "cleared" into freshly cleared logs when logs panel is hidden.
     addLog("🧹 Очищено");
   };
 
@@ -670,7 +715,7 @@ export default function HtmlConverterPanel() {
             >
               <Badge
                 color='primary'
-                badgeContent={!ui.showLogsPanel && log.length > 0 ? log.length : 0}
+                badgeContent={!ui.showLogsPanel && unseenLogCount > 0 ? unseenLogCount : 0}
                 max={99}
               >
                 <SettingsIcon fontSize='small' />

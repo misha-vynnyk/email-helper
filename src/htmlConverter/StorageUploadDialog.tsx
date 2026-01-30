@@ -261,7 +261,12 @@ export default function StorageUploadDialog({
       PaperProps={{
         sx: {
           borderRadius: `${borderRadius.lg}px`,
-          backgroundColor: componentStyles.card.background || theme.palette.background.paper,
+          background:
+            componentStyles.card.background || alpha(theme.palette.background.paper, 0.92),
+          backdropFilter: componentStyles.card.backdropFilter,
+          WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
+          border: componentStyles.card.border,
+          boxShadow: componentStyles.card.boxShadow,
         },
       }}
     >

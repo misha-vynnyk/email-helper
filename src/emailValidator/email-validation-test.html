@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Comprehensive Email Validation Test</title>
+    <style>
+        .test-section {
+            border: 1px solid #ccc;
+            margin: 10px 0;
+            padding: 10px;
+            background: #f9f9f9;
+        }
+        .test-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Comprehensive Email Validation Test Cases</h1>
+
+    <!-- FORBIDDEN TAGS TEST CASES -->
+    <div class="test-section">
+        <div class="test-title">1. FORBIDDEN TAGS - All variants</div>
+
+        <!-- Basic forbidden elements -->
+        <div class="container">This is a div container</div>
+        <p class="paragraph">This is a paragraph</p>
+
+        <!-- Heading tags (all levels) -->
+        <h1 style="color: red;">Main Heading H1</h1>
+        <h2 class="subtitle">Subtitle H2</h2>
+        <h3>Sub-subtitle H3</h3>
+        <h4>Minor heading H4</h4>
+        <h5>Smaller heading H5</h5>
+        <h6>Smallest heading H6</h6>
+
+        <!-- Semantic elements -->
+        <section class="hero">
+            <article>
+                <header>
+                    <nav>Navigation menu</nav>
+                </header>
+                <main>
+                    <aside>Sidebar content</aside>
+                    <figure>
+                        <figcaption>Image caption</figcaption>
+                    </figure>
+                </main>
+                <footer>Footer content</footer>
+            </article>
+        </section>
+
+        <!-- Interactive elements -->
+        <form action="/submit">
+            <fieldset>
+                <legend>Form Legend</legend>
+                <label for="input1">Input Label:</label>
+                <input type="text" id="input1" name="input1" />
+                <textarea name="comments">Comments</textarea>
+                <select name="options">
+                    <option value="1">Option 1</option>
+                </select>
+                <button type="submit">Submit</button>
+            </fieldset>
+        </form>
+
+        <!-- Media elements -->
+        <video src="video.mp4">Video content</video>
+        <audio src="audio.mp3">Audio content</audio>
+        <canvas>Canvas content</canvas>
+        <svg>SVG content</svg>
+        <iframe src="frame.html">Frame content</iframe>
+        <embed src="content.swf" />
+        <object data="object.pdf">Object content</object>
+        <script>alert('script');</script>
+    </div>
+
+    <!-- EMAIL-SAFE TAGS TEST CASES -->
+    <div class="test-section">
+        <div class="test-title">2. EMAIL-SAFE TAGS - All variants</div>
+
+        <!-- Wrong BR tag formats -->
+        <br></br>
+        <br/>
+        <br />
+        <br class="break" />
+        <br style="clear: both"></br>
+
+        <!-- Wrong HR tag formats -->
+        <hr></hr>
+        <hr/>
+        <hr />
+        <hr class="divider" />
+        <hr style="border: none"></hr>
+
+        <!-- Wrong IMG tag formats -->
+        <img src="image1.jpg"></img>
+        <img src="image2.jpg" alt="Image 2"></img>
+        <img src="image3.jpg" class="responsive"></img>
+        <img src="image4.jpg" style="width: 100%"></img>
+
+        <!-- Other self-closing tags -->
+        <area shape="rect" coords="0,0,100,100"></area>
+        <base href="http://example.com"></base>
+        <col span="2"></col>
+        <input type="text" name="test"></input>
+
+        <!-- Correct formats (should not trigger errors) -->
+        <br>
+        <hr>
+        <img src="correct.jpg" alt="Correct" />
+        <area shape="rect" coords="0,0,50,50" />
+        <base href="http://test.com" />
+        <col span="1" />
+        <input type="email" name="email" />
+    </div>
+
+    <!-- TABLE ATTRIBUTES TEST CASES -->
+    <div class="test-section">
+        <div class="test-title">3. TABLE ATTRIBUTES - All variants</div>
+
+        <!-- Tables missing required attributes -->
+        <table>
+            <tr><td>Missing all attributes</td></tr>
+        </table>
+
+        <table cellpadding="5">
+            <tr><td>Missing cellspacing and border</td></tr>
+        </table>
+
+        <table cellspacing="2">
+            <tr><td>Missing cellpadding and border</td></tr>
+        </table>
+
+        <table border="1">
+            <tr><td>Missing cellpadding and cellspacing</td></tr>
+        </table>
+
+        <table cellpadding="0" cellspacing="0">
+            <tr><td>Missing border</td></tr>
+        </table>
+
+        <!-- TD elements missing valign -->
+        <table cellpadding="0" cellspacing="0" border="0">
+            <tr>
+                <td>Missing valign</td>
+                <td valign="middle">Wrong valign value</td>
+                <td valign="bottom">Another wrong valign</td>
+            </tr>
+        </table>
+
+        <!-- Images missing attributes -->
+        <img src="no-alt.jpg">
+        <img src="has-alt.jpg" alt="">
+        <img src="no-display-block.jpg" alt="No display block">
+        <img src="wrong-style.jpg" alt="Wrong style" style="border: 1px solid;">
+        <img src="missing-dimensions.jpg" alt="Missing dimensions" style="display:block">
+
+        <!-- Links missing attributes -->
+        <a>Link without href</a>
+        <a href="http://example.com">Link without target</a>
+        <a href="http://example.com" target="_self">Link with wrong target</a>
+
+        <!-- Correct formats (should not trigger errors) -->
+        <table cellpadding="0" cellspacing="0" border="0">
+            <tr>
+                <td valign="top">Correct table</td>
+                <td valign="top">All attributes present</td>
+            </tr>
+        </table>
+
+        <img src="correct-image.jpg" alt="Correct image" style="display:block" />
+        <a href="http://example.com" target="_blank">Correct link</a>
+    </div>
+
+    <!-- COMPLEX NESTED CASES -->
+    <div class="test-section">
+        <div class="test-title">4. COMPLEX NESTED CASES</div>
+
+        <!-- Multiple nesting levels -->
+        <div class="outer">
+            <section class="middle">
+                <article class="inner">
+                    <header>
+                        <h1>Nested heading</h1>
+                        <nav>
+                            <div class="menu">
+                                <p>Menu item 1</p>
+                                <p>Menu item 2</p>
+                            </div>
+                        </nav>
+                    </header>
+                    <main>
+                        <div class="content">
+                            <h2>Content heading</h2>
+                            <p>Content paragraph with <br></br> wrong break</p>
+                            <img src="nested.jpg"></img>
+                            <table>
+                                <tr><td>Nested table without attributes</td></tr>
+                            </table>
+                        </div>
+                    </main>
+                    <footer>
+                        <div class="footer-content">
+                            <h3>Footer heading</h3>
+                            <p>Footer text</p>
+                        </div>
+                    </footer>
+                </article>
+            </section>
+        </div>
+    </div>
+
+    <!-- EDGE CASES -->
+    <div class="test-section">
+        <div class="test-title">5. EDGE CASES</div>
+
+        <!-- Empty elements -->
+        <div></div>
+        <p></p>
+        <h1></h1>
+        <table><tr><td></td></tr></table>
+
+        <!-- Elements with only whitespace -->
+        <div>   </div>
+        <p>
+        </p>
+        <h2>	</h2>
+
+        <!-- Malformed tags -->
+        <br/ />
+        <br / />
+        <br////>
+        <img src="malformed.jpg" / alt="test" / />
+        <hr/ />
+        <hr / />
+
+        <!-- Mixed case tags -->
+        <DIV>Mixed case div</DIV>
+        <P>Mixed case paragraph</P>
+        <BR></BR>
+        <IMG SRC="mixed.jpg"></IMG>
+
+        <!-- Tags with unusual attributes -->
+        <div data-custom="value" onclick="alert()">Div with data and onclick</div>
+        <p contenteditable="true" draggable="true">Editable paragraph</p>
+        <h1 id="special" class="heading" style="color: blue; font-size: 24px;">Styled heading</h1>
+
+        <!-- Self-closing variations -->
+        <br/>
+        <br />
+        <br  />
+        <br	/>
+        <img src="test.jpg" />
+        <img src="test.jpg"/>
+        <img src="test.jpg"  />
+        <img src="test.jpg"	/>
+    </div>
+
+    <!-- ATTRIBUTES STRESS TEST -->
+    <div class="test-section">
+        <div class="test-title">6. ATTRIBUTES STRESS TEST</div>
+
+        <!-- Tables with partial attributes -->
+        <table cellpadding="0">
+            <tr><td>Only cellpadding</td></tr>
+        </table>
+
+        <table cellspacing="0">
+            <tr><td>Only cellspacing</td></tr>
+        </table>
+
+        <table border="0">
+            <tr><td>Only border</td></tr>
+        </table>
+
+        <table cellpadding="10" cellspacing="5" border="1">
+            <tr><td>Wrong values</td></tr>
+        </table>
+
+        <!-- Images with partial attributes -->
+        <img src="partial1.jpg" alt="">
+        <img src="partial2.jpg" style="display:block">
+        <img src="partial3.jpg" alt="Test" width="100">
+        <img src="partial4.jpg" alt="Test" height="50">
+        <img src="partial5.jpg" alt="Test" style="border: none;">
+
+        <!-- Links with variations -->
+        <a href="">Empty href</a>
+        <a href="#anchor">Anchor link</a>
+        <a href="mailto:test@example.com">Mailto link</a>
+        <a href="tel:+1234567890">Tel link</a>
+        <a href="http://example.com" target="_parent">Wrong target parent</a>
+        <a href="http://example.com" target="_top">Wrong target top</a>
+    </div>
+</body>
+</html>

@@ -54,6 +54,14 @@ export default function ImageGridItem({
   const theme = useTheme();
   const { mode, style } = useThemeMode();
   const componentStyles = getComponentStyles(mode, style);
+  const dialogPaperSx = {
+    borderRadius: `${componentStyles.card.borderRadius}px`,
+    background: componentStyles.card.background || alpha(theme.palette.background.paper, 0.92),
+    backdropFilter: componentStyles.card.backdropFilter,
+    WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
+    border: componentStyles.card.border,
+    boxShadow: componentStyles.card.boxShadow,
+  } as const;
   const [compareOpen, setCompareOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
@@ -447,8 +455,9 @@ export default function ImageGridItem({
         onClose={() => setCompareOpen(false)}
         maxWidth='lg'
         fullWidth
+        PaperProps={{ sx: dialogPaperSx }}
       >
-        <Box sx={{ p: 2, bgcolor: "background.paper" }}>
+        <Box sx={{ p: 2 }}>
           <Typography
             variant='h6'
             gutterBottom

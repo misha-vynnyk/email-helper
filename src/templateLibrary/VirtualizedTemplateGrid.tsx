@@ -4,10 +4,11 @@
  * Uses react-window v2 API
  */
 
-import React, { useMemo, CSSProperties, ReactElement } from "react";
-import { List } from "react-window";
+import { useMemo } from "react";
+import type { CSSProperties, ReactElement } from "react";
 import { Box, useMediaQuery, useTheme } from "@mui/material";
 
+import { VirtualList } from "../components/VirtualList";
 import { useContainerDimensions } from "../hooks";
 import { EmailTemplate } from "../types/template";
 import { PreviewConfig } from "./PreviewSettings";
@@ -164,8 +165,8 @@ export default function VirtualizedTemplateGrid({
   return (
     <Box ref={containerRef} sx={{ width: "100%", height: "100%", pt: `${GAP}px` }}>
       {dimensions.width > 0 && dimensions.height > 0 && (
-        <List
-          key={`${previewConfig.containerHeight}-${columns}`}
+        <VirtualList
+          listKey={`${previewConfig.containerHeight}-${columns}`}
           rowComponent={RowComponent}
           rowCount={rowCount}
           rowHeight={rowHeight}

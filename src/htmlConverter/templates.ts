@@ -214,7 +214,9 @@ export const htmlTemplates = {
 
   footerCenterBlock: (content: string) => createHtmlBlock(content, { align: 'center', fontSize: '12px', paddingTop: '34px' }),
 
-  signatureImg: (content: string) => `
+  signatureImg: (_content: string) => {
+    void _content;
+    return `
             </span>
                 </td>
             </tr>
@@ -229,9 +231,12 @@ export const htmlTemplates = {
             <tr>
                <td style="font-family:${config.fontFamily};font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;padding-top: 14px; padding-bottom: 14px;">
                   <span style="font-family:${config.fontFamily};font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;">
-        `,
+        `;
+  },
 
-  wrapImg: (content: string) => `            </span>
+  wrapImg: (_content: string) => {
+    void _content;
+    return `            </span>
                        </td>
                    </tr>
                    <tr>
@@ -246,7 +251,8 @@ export const htmlTemplates = {
                     </tr>
                     <tr>
                        <td style="font-family:${config.fontFamily};font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;padding-top: 14px; padding-bottom: 14px;">
-                            <span style="font-family:${config.fontFamily};font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;">`,
+                            <span style="font-family:${config.fontFamily};font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;">`;
+  },
 
   fullStructure: (content: string) => `
     <table width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="max-width: 100%;">
@@ -371,7 +377,9 @@ export const mjmlTemplates = {
                         <div style="font-family:${config.fontFamily};font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;">
         `,
 
-  signatureImg: (content: string) => `
+  signatureImg: (_content: string) => {
+    void _content;
+    return `
                         </div>
                       </td>
                     </tr>
@@ -391,13 +399,16 @@ export const mjmlTemplates = {
                     <tr>
                       <td align="left" style="font-size:0px;padding:10px 25px;word-break:break-word;">
                         <div style="font-family:${config.fontFamily};font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;">
-        `,
+        `;
+  },
 
   footerBlock: (content: string) => createMjmlBlock(content, { fontSize: '12px', paddingTop: '30px', paddingBottom: '10px' }),
 
   footerCenterBlock: (content: string) => createMjmlBlock(content, { align: 'center', fontSize: '12px', paddingTop: '30px', paddingBottom: '10px' }),
 
-  wrapImg: (content: string) => `       </div>
+  wrapImg: (_content: string) => {
+    void _content;
+    return `       </div>
                        </td>
                      </tr>
                     <tr>
@@ -418,7 +429,8 @@ export const mjmlTemplates = {
                      <tr>
                        <td align="left" style="font-size:0px;padding:10px 25px;word-break:break-word;">
                          <div style="font-family:${config.fontFamily};font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;">
-                 `,
+                 `;
+  },
 
   fullStructure: (content: string) => `
     <div style="background-color:#FFFFFF;">

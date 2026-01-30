@@ -6,7 +6,8 @@ import { alpha, Alert, Box, Button, Stack, TextField, Typography, useTheme } fro
 import CodeMirror from "@uiw/react-codemirror";
 
 import EmailValidationPanel from "../emailValidator/EmailValidationPanel";
-import { useThemeMode } from "../theme";
+import { StyledPaper, useThemeMode } from "../theme";
+import { getComponentStyles } from "../theme/componentStyles";
 import { createCodeMirrorTheme } from "../utils/codemirrorTheme";
 
 import { useEmailSender } from "./EmailSenderContext";
@@ -14,6 +15,7 @@ import { useEmailSender } from "./EmailSenderContext";
 const EmailHtmlEditor: React.FC = () => {
   const theme = useTheme();
   const { mode, style } = useThemeMode();
+  const componentStyles = React.useMemo(() => getComponentStyles(mode, style), [mode, style]);
   const codeMirrorTheme = createCodeMirrorTheme(theme, mode, style);
   const {
     editorHtml,
@@ -89,13 +91,13 @@ const EmailHtmlEditor: React.FC = () => {
             >
               HTML Content:
             </Typography>
-            <Box
+            <StyledPaper
+              backgroundAlpha={0.85}
               sx={{
-                border: "2px solid",
-                borderColor: "divider",
-                borderRadius: 2,
                 overflow: "hidden",
-                boxShadow: theme.shadows[2],
+                border:
+                  componentStyles.card.border === "none" ? "1px solid" : componentStyles.card.border,
+                borderColor: componentStyles.card.border === "none" ? "divider" : undefined,
                 "& .cm-selectionLayer .cm-selectionBackground": {
                   backgroundColor: `${alpha(theme.palette.primary.main, 0.25)} !important`,
                 },
@@ -126,24 +128,26 @@ const EmailHtmlEditor: React.FC = () => {
                   searchKeymap: true,
                 }}
               />
-            </Box>
+            </StyledPaper>
           </Box>
         </Stack>
       </Box>
 
       {/* Sticky панель з усіма кнопками */}
-      <Box
+      <StyledPaper
+        backgroundAlpha={0.9}
         sx={{
           position: "sticky",
           bottom: 0,
-          backgroundColor: "background.paper",
-          borderTop: 1,
-          borderColor: "divider",
           p: 2,
           mx: -2,
           mt: 2,
-          boxShadow: theme.shadows[2],
           zIndex: 10,
+          // look like a bar, not a floating card
+          borderRadius: 0,
+          borderLeft: "none",
+          borderRight: "none",
+          borderBottom: "none",
         }}
       >
         <Box
@@ -208,7 +212,7 @@ const EmailHtmlEditor: React.FC = () => {
             </Button>
           </Box>
         </Box>
-      </Box>
+      </StyledPaper>
     </Box>
   );
 };

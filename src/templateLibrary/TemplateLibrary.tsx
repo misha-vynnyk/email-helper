@@ -19,7 +19,6 @@ import {
   Alert,
   Box,
   Button,
-  Card,
   CardContent,
   Chip,
   Grid,
@@ -32,11 +31,11 @@ import {
 } from "@mui/material";
 
 import { EmailTemplate, TemplateCategory } from "../types/template";
+import { StyledCard } from "../theme";
 
 import PreviewSettings, { loadPreviewConfig, PreviewConfig } from "./PreviewSettings";
 import { listTemplates, syncAllTemplates, getTemplateContent } from "./templateApi";
 import { getCategoryIcon } from "./templateCategoryIcons";
-import TemplateItem from "./TemplateItem";
 import TemplateStorageModal from "./TemplateStorageModal";
 import VirtualizedTemplateGrid from "./VirtualizedTemplateGrid";
 import { getTemplateStorageLocations } from "./templateStorageConfig";
@@ -473,7 +472,7 @@ export default function TemplateLibrary() {
                 md={4}
                 key={i}
               >
-                <Card>
+                <StyledCard enableHover={false} sx={{ overflow: "hidden" }}>
                   <Skeleton
                     variant='rectangular'
                     height={180}
@@ -496,7 +495,7 @@ export default function TemplateLibrary() {
                       height={20}
                     />
                   </CardContent>
-                </Card>
+                </StyledCard>
               </Grid>
             ))}
           </Grid>
