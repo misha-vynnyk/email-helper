@@ -6,14 +6,18 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   alpha,
+  Badge,
   Box,
   Button,
   Checkbox,
   Divider,
   FormControlLabel,
+  FormGroup,
   IconButton,
   Paper,
+  Popover,
   Stack,
+  Switch,
   TextField,
   Tooltip,
   Typography,
@@ -26,6 +30,7 @@ import {
   ContentCopy as CopyIcon,
   Download as DownloadIcon,
   Remove as RemoveIcon,
+  Settings as SettingsIcon,
   SwapHoriz as ConvertIcon,
 } from "@mui/icons-material";
 
@@ -132,6 +137,8 @@ export default function HtmlConverterPanel() {
   const [showImageProcessor, setShowImageProcessor] = useState(false);
   const [inputHtml, setInputHtml] = useState<string>("");
   const [triggerExtract, setTriggerExtract] = useState(0);
+  const [uploadedUrlMap, setUploadedUrlMap] = useState<Record<string, string>>({});
+  const [isAutoExporting, setIsAutoExporting] = useState(false);
   const [uploadHistory, setUploadHistory] = useState<UploadSession[]>(() => {
     // Load from localStorage
     try {
@@ -155,6 +162,50 @@ export default function HtmlConverterPanel() {
     }
     return IMAGE_DEFAULTS.AUTO_PROCESS;
   });
+
+  type UiSettings = {
+    showLogsPanel: boolean;
+    showInputHtml: boolean;
+    showUploadHistory: boolean;
+    rememberUiLayout: boolean;
+    compactMode: boolean;
+    stickyActions: boolean;
+  };
+
+  const DEFAULT_UI_SETTINGS: UiSettings = {
+    showLogsPanel: true,
+    showInputHtml: true,
+    showUploadHistory: true,
+    rememberUiLayout: true,
+    compactMode: false,
+    stickyActions: false,
+  };
+
+  const loadUiSettings = (): UiSettings => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.UI_SETTINGS);
+      if (!raw) return DEFAULT_UI_SETTINGS;
+      const parsed = JSON.parse(raw);
+      return { ...DEFAULT_UI_SETTINGS, ...(parsed || {}) };
+    } catch {
+      return DEFAULT_UI_SETTINGS;
+    }
+  };
+
+  const [ui, setUi] = useState<UiSettings>(() => loadUiSettings());
+  const [uiAnchorEl, setUiAnchorEl] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    try {
+      if (!ui.rememberUiLayout) {
+        localStorage.removeItem(STORAGE_KEYS.UI_SETTINGS);
+        return;
+      }
+      localStorage.setItem(STORAGE_KEYS.UI_SETTINGS, JSON.stringify(ui));
+    } catch {
+      // ignore storage errors (private mode/quota)
+    }
+  }, [ui]);
 
   const addLog = (message: string) => {
     setLog((prev) => [...prev, message]);
@@ -209,6 +260,34 @@ export default function HtmlConverterPanel() {
     resetReplacementRef.current = resetFn;
   }, []);
 
+  const replaceUrlsInContentByMap = useCallback(
+    (content: string, pattern: RegExp, urlMap: Record<string, string>) => {
+      let replacedCount = 0;
+      const replaced = content.replace(pattern, (match, prefix, oldUrl, suffix) => {
+        if (isSignatureImageTag(match)) return match;
+
+        const candidates: string[] = [String(oldUrl)];
+        try {
+          candidates.push(new URL(String(oldUrl), window.location.href).toString());
+        } catch {
+          // ignore
+        }
+
+        for (const c of candidates) {
+          const next = urlMap[c];
+          if (next) {
+            replacedCount++;
+            return `${prefix}${next}${suffix}`;
+          }
+        }
+        return match;
+      });
+
+      return { replaced, count: replacedCount };
+    },
+    []
+  );
+
   const replaceUrlsInContent = useCallback(
     (content: string, pattern: RegExp, storageUrls: string[]) => {
       let imageIndex = 0;
@@ -238,6 +317,28 @@ export default function HtmlConverterPanel() {
         return;
       }
 
+      // Prefer exact mapping first (oldUrl -> newUrl)
+      if (outputHtmlRef.current?.value) {
+        const { replaced, count } = replaceUrlsInContentByMap(
+          outputHtmlRef.current.value,
+          /(<img[^>]+src=["'])([^"']+)(["'][^>]*>)/gi,
+          urlMap
+        );
+        outputHtmlRef.current.value = replaced;
+        if (count > 0) addLog(`🔄 Замінено ${count} посилань в Output HTML`);
+      }
+
+      if (outputMjmlRef.current?.value) {
+        const { replaced, count } = replaceUrlsInContentByMap(
+          outputMjmlRef.current.value,
+          /(<(?:mj-image|img)[^>]+src=["'])([^"']+)(["'][^>]*>)/gi,
+          urlMap
+        );
+        outputMjmlRef.current.value = replaced;
+        if (count > 0) addLog(`🔄 Замінено ${count} посилань в Output MJML`);
+      }
+
+      // Fallback to positional replacement (legacy behavior)
       if (outputHtmlRef.current?.value) {
         const { replaced, count } = replaceUrlsInContent(
           outputHtmlRef.current.value,
@@ -258,7 +359,7 @@ export default function HtmlConverterPanel() {
         if (count > 0) addLog(`🔄 Замінено ${count} посилань в Output MJML`);
       }
     },
-    [addLog, replaceUrlsInContent]
+    [addLog, replaceUrlsInContent, replaceUrlsInContentByMap]
   );
 
   // Setup paste handler and auto-detect images
@@ -449,6 +550,45 @@ export default function HtmlConverterPanel() {
     }
   };
 
+  const handleAutoExportAll = useCallback(() => {
+    if (!editorRef.current) return;
+
+    const editorContent = editorRef.current.innerHTML;
+    if (!editorContent.trim()) {
+      addLog("⚠️ Редактор порожній, нічого експортувати");
+      return;
+    }
+
+    try {
+      setIsAutoExporting(true);
+
+      // Export outputs
+      handleExportHTML();
+      handleExportMJML();
+
+      // Replace URLs if we have a mapping for this session
+      if (Object.keys(uploadedUrlMap).length > 0) {
+        handleReplaceUrls(uploadedUrlMap);
+      } else {
+        addLog("ℹ️ Немає завантажених URLs для підстановки — пропускаю replace");
+      }
+
+      // Download both files
+      handleDownloadHTML();
+      handleDownloadMJML();
+    } finally {
+      setIsAutoExporting(false);
+    }
+  }, [
+    addLog,
+    handleDownloadHTML,
+    handleDownloadMJML,
+    handleExportHTML,
+    handleExportMJML,
+    handleReplaceUrls,
+    uploadedUrlMap,
+  ]);
+
   const handleClear = () => {
     if (editorRef.current) {
       editorRef.current.innerHTML = "";
@@ -464,6 +604,7 @@ export default function HtmlConverterPanel() {
     setShowImageProcessor(false);
     setTriggerExtract(0);
     setHasOutput(false);
+    setUploadedUrlMap({});
 
     // Reset replacement state
     if (resetReplacementRef.current) {
@@ -480,8 +621,8 @@ export default function HtmlConverterPanel() {
         width: "100%",
         display: "flex",
         flexDirection: "column",
-        p: spacingMUI.xl,
-        gap: spacingMUI.lg,
+        p: ui.compactMode ? spacingMUI.base : spacingMUI.xl,
+        gap: ui.compactMode ? spacingMUI.base : spacingMUI.lg,
       }}
     >
       {/* Header */}
@@ -522,6 +663,20 @@ export default function HtmlConverterPanel() {
           alignItems='center'
           spacing={spacingMUI.sm}
         >
+          <Tooltip title='UI налаштування'>
+            <IconButton
+              size='small'
+              onClick={(e) => setUiAnchorEl(e.currentTarget)}
+            >
+              <Badge
+                color='primary'
+                badgeContent={!ui.showLogsPanel && log.length > 0 ? log.length : 0}
+                max={99}
+              >
+                <SettingsIcon fontSize='small' />
+              </Badge>
+            </IconButton>
+          </Tooltip>
           <Tooltip title='Очистити все'>
             <IconButton
               onClick={handleClear}
@@ -533,6 +688,147 @@ export default function HtmlConverterPanel() {
           </Tooltip>
         </Stack>
       </Stack>
+
+      <Popover
+        open={Boolean(uiAnchorEl)}
+        anchorEl={uiAnchorEl}
+        onClose={() => setUiAnchorEl(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+      >
+        <Box sx={{ p: spacingMUI.base, minWidth: 320 }}>
+          <Typography
+            variant='subtitle2'
+            fontWeight={600}
+            mb={spacingMUI.sm}
+          >
+            Налаштування інтерфейсу
+          </Typography>
+          <FormGroup>
+            <FormControlLabel
+              control={
+                <Switch
+                  size='small'
+                  checked={ui.showLogsPanel}
+                  onChange={(e) => setUi((prev) => ({ ...prev, showLogsPanel: e.target.checked }))}
+                />
+              }
+              label={<Typography variant='body2'>Показувати лог</Typography>}
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  size='small'
+                  checked={ui.showInputHtml}
+                  onChange={(e) => setUi((prev) => ({ ...prev, showInputHtml: e.target.checked }))}
+                />
+              }
+              label={<Typography variant='body2'>Показувати вхідний HTML</Typography>}
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  size='small'
+                  checked={ui.showUploadHistory}
+                  onChange={(e) =>
+                    setUi((prev) => ({ ...prev, showUploadHistory: e.target.checked }))
+                  }
+                />
+              }
+              label={<Typography variant='body2'>Показувати історію завантажень</Typography>}
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  size='small'
+                  checked={ui.rememberUiLayout}
+                  onChange={(e) =>
+                    setUi((prev) => ({ ...prev, rememberUiLayout: e.target.checked }))
+                  }
+                />
+              }
+              label={<Typography variant='body2'>Запамʼятовувати вигляд (layout)</Typography>}
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  size='small'
+                  checked={ui.compactMode}
+                  onChange={(e) => setUi((prev) => ({ ...prev, compactMode: e.target.checked }))}
+                />
+              }
+              label={<Typography variant='body2'>Компактний режим</Typography>}
+            />
+            <FormControlLabel
+              control={
+                <Switch
+                  size='small'
+                  checked={ui.stickyActions}
+                  onChange={(e) => setUi((prev) => ({ ...prev, stickyActions: e.target.checked }))}
+                />
+              }
+              label={<Typography variant='body2'>Закріпити кнопки зверху</Typography>}
+            />
+          </FormGroup>
+          <Typography
+            variant='caption'
+            color='text.secondary'
+            display='block'
+            mt={spacingMUI.sm}
+          >
+            Якщо вимкнути «Запамʼятовувати вигляд» — ці налаштування не збережуться після
+            перезавантаження.
+          </Typography>
+        </Box>
+      </Popover>
+
+      {ui.stickyActions && (
+        <StyledPaper
+          sx={{
+            position: "sticky",
+            top: spacingMUI.sm,
+            zIndex: 10,
+          }}
+        >
+          <Stack
+            direction='row'
+            spacing={spacingMUI.sm}
+            flexWrap='wrap'
+            alignItems='center'
+          >
+            <Button
+              variant='contained'
+              size='small'
+              onClick={handleExportHTML}
+              startIcon={<ConvertIcon />}
+              disabled={isAutoExporting}
+              sx={{ textTransform: "none", whiteSpace: "nowrap" }}
+            >
+              Експортувати HTML
+            </Button>
+            <Button
+              variant='contained'
+              size='small'
+              onClick={handleExportMJML}
+              startIcon={<ConvertIcon />}
+              disabled={isAutoExporting}
+              sx={{ textTransform: "none", whiteSpace: "nowrap" }}
+            >
+              Експортувати MJML
+            </Button>
+            <Button
+              variant='contained'
+              size='small'
+              onClick={handleAutoExportAll}
+              startIcon={<DownloadIcon fontSize='small' />}
+              disabled={isAutoExporting}
+              sx={{ textTransform: "none", whiteSpace: "nowrap", ml: "auto" }}
+            >
+              {isAutoExporting ? "Готую..." : "Зробити все"}
+            </Button>
+          </Stack>
+        </StyledPaper>
+      )}
 
       {/* Editor */}
       <StyledPaper>
@@ -548,10 +844,10 @@ export default function HtmlConverterPanel() {
           contentEditable
           suppressContentEditableWarning
           sx={{
-            minHeight: 200,
-            maxHeight: 400,
+            minHeight: ui.compactMode ? 160 : 200,
+            maxHeight: ui.compactMode ? 320 : 400,
             overflow: "auto",
-            p: spacingMUI.base,
+            p: ui.compactMode ? spacingMUI.sm : spacingMUI.base,
             borderRadius: `${borderRadius.md}px`,
             backgroundColor: theme.palette.action.hover,
             fontFamily: "monospace",
@@ -654,6 +950,21 @@ export default function HtmlConverterPanel() {
             }
             label={<Typography variant='body2'>AlfaOne</Typography>}
           />
+
+          <Tooltip title='Експортувати HTML+MJML → підставити storage URLs (якщо є) → скачати два файли'>
+            <span>
+              <Button
+                variant='contained'
+                size='small'
+                onClick={handleAutoExportAll}
+                disabled={isAutoExporting}
+                startIcon={<DownloadIcon fontSize='small' />}
+                sx={{ textTransform: "none", whiteSpace: "nowrap", ml: "auto" }}
+              >
+                {isAutoExporting ? "Готую..." : "Зробити все"}
+              </Button>
+            </span>
+          </Tooltip>
         </Stack>
       </StyledPaper>
 
@@ -667,6 +978,7 @@ export default function HtmlConverterPanel() {
         fileName={fileName}
         onHistoryAdd={handleAddToHistory}
         onReplaceUrls={handleReplaceUrls}
+        onUploadedUrlsChange={setUploadedUrlMap}
         onResetReplacement={handleResetReplacement}
         hasOutput={hasOutput}
         autoProcess={autoProcess}
@@ -697,6 +1009,7 @@ export default function HtmlConverterPanel() {
               size='small'
               onClick={handleExportHTML}
               startIcon={<ConvertIcon />}
+              disabled={isAutoExporting}
             >
               Експортувати HTML
             </Button>
@@ -766,6 +1079,7 @@ export default function HtmlConverterPanel() {
               size='small'
               onClick={handleExportMJML}
               startIcon={<ConvertIcon />}
+              disabled={isAutoExporting}
             >
               Експортувати MJML
             </Button>
@@ -818,17 +1132,17 @@ export default function HtmlConverterPanel() {
       </Stack>
 
       {/* Input HTML & Log */}
-      {(inputHtml || log.length > 0) && (
+      {((ui.showInputHtml && inputHtml) || (ui.showLogsPanel && log.length > 0)) && (
         <Stack
           direction={{ xs: "column", lg: "row" }}
           spacing={spacingMUI.lg}
         >
           {/* Input HTML */}
-          {inputHtml && (
+          {ui.showInputHtml && inputHtml && (
             <StyledPaper
               sx={{
                 flex: 1,
-                maxHeight: 300,
+                maxHeight: ui.compactMode ? 220 : 300,
                 overflow: "auto",
               }}
             >
@@ -872,11 +1186,11 @@ export default function HtmlConverterPanel() {
           )}
 
           {/* Log */}
-          {log.length > 0 && (
+          {ui.showLogsPanel && log.length > 0 && (
             <StyledPaper
               sx={{
                 flex: 1,
-                maxHeight: 300,
+                maxHeight: ui.compactMode ? 220 : 300,
                 overflow: "auto",
               }}
             >
@@ -909,10 +1223,12 @@ export default function HtmlConverterPanel() {
       )}
 
       {/* Upload History - Always visible when there are sessions */}
-      <UploadHistory
-        sessions={uploadHistory}
-        onClear={handleClearHistory}
-      />
+      {ui.showUploadHistory && (
+        <UploadHistory
+          sessions={uploadHistory}
+          onClear={handleClearHistory}
+        />
+      )}
     </Box>
   );
 }

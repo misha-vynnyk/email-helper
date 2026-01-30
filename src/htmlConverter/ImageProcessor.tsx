@@ -146,6 +146,7 @@ interface ImageProcessorProps {
     results: Array<{ filename: string; url: string; success: boolean }>
   ) => void;
   onReplaceUrls?: (urlMap: Record<string, string>) => void;
+  onUploadedUrlsChange?: (urlMap: Record<string, string>) => void;
   onResetReplacement?: (resetFn: () => void) => void;
   hasOutput?: boolean;
   autoProcess?: boolean;
@@ -187,6 +188,7 @@ export default function ImageProcessor({
   fileName = "",
   onHistoryAdd,
   onReplaceUrls,
+  onUploadedUrlsChange,
   onResetReplacement,
   hasOutput = false,
   autoProcess: autoProcessProp,
@@ -249,8 +251,9 @@ export default function ImageProcessor({
     setImagesSessionId((s) => s + 1);
     setLastUploadedSessionId(null);
     setLastUploadedUrls({});
+    onUploadedUrlsChange?.({});
     setReplacementDone(false);
-  }, [fileName]);
+  }, [fileName, onUploadedUrlsChange]);
 
   const log = useCallback(
     (message: string) => {
@@ -316,6 +319,7 @@ export default function ImageProcessor({
       setImagesSessionId((s) => s + 1);
       setLastUploadedSessionId(null);
       setLastUploadedUrls({});
+      onUploadedUrlsChange?.({});
       setReplacementDone(false);
 
       const imgElements = editorRef.current.querySelectorAll("img");
@@ -646,6 +650,7 @@ export default function ImageProcessor({
       setLastUploadedSessionId(null);
       setLastUploadedUrls({});
       setReplacementDone(false);
+      onUploadedUrlsChange?.({});
 
       setIsUploading(true);
       uploadAbortControllerRef.current = new AbortController();
@@ -828,6 +833,7 @@ export default function ImageProcessor({
           setLastUploadedUrls(uploadedUrls);
           setLastUploadedSessionId(sessionIdAtStart);
           setReplacementDone(false);
+          onUploadedUrlsChange?.(uploadedUrls);
           const urlsList = Object.values(uploadedUrls).join("\n");
           const ok = await copyToClipboard(urlsList);
           log(ok ? "📋 URLs скопійовано в буфер" : `📋 URLs: ${urlsList.split("\n").join(", ")}`);
@@ -911,9 +917,10 @@ export default function ImageProcessor({
     setLastUploadedSessionId(null);
     setReplacementDone(false);
     setImagesSessionId((s) => s + 1);
+    onUploadedUrlsChange?.({});
     onVisibilityChange(false);
     log("🗑️ Очищено");
-  }, [clearImagesAndRevoke, log, onVisibilityChange]);
+  }, [clearImagesAndRevoke, log, onVisibilityChange, onUploadedUrlsChange]);
 
   const handleReplaceInOutput = useCallback(() => {
     if (isUploading) {
