@@ -1,6 +1,7 @@
 // Cache classes for email validation to avoid circular dependencies
 
 import { CACHE_SCORING_WEIGHTS, EMAIL_DEFAULTS, PERFORMANCE_CONSTANTS } from "./EMAIL_CONSTANTS";
+import { logger } from "../utils/logger";
 
 /**
  * Enhanced RegexCache with better memory management
@@ -34,7 +35,7 @@ export class RegexCache {
         }
       } catch (error) {
         // If regex is invalid, return safe fallback
-        console.warn(`Invalid regex pattern: ${pattern}`, error);
+        logger.warn("RegexCache", `Invalid regex pattern: ${pattern}`, error);
         this.cache.set(key, new RegExp("(?:)", flags));
         this.accessCount.set(key, 1);
         this.lastAccess.set(key, Date.now());
@@ -299,7 +300,7 @@ export class StringBatcher {
         result = result.replace(op.pattern, op.replacement);
       }
     } catch (error) {
-      console.warn("StringBatcher execution error:", error);
+      logger.warn("StringBatcher", "Execution error", error);
       // Return original HTML on error
       return html;
     } finally {

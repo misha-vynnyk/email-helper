@@ -3,7 +3,7 @@
  * Manage storage locations for new blocks with add/remove capabilities
  */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import {
   Add as AddIcon,
@@ -32,6 +32,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
 
 import {
   addStorageLocation,
@@ -41,6 +42,8 @@ import {
   StorageLocation,
   toggleLocationVisibility,
 } from "./blockStorageConfig";
+import { useThemeMode } from "../theme";
+import { getComponentStyles } from "../theme/componentStyles";
 
 interface BlockStorageModalProps {
   open: boolean;
@@ -49,6 +52,10 @@ interface BlockStorageModalProps {
 }
 
 export default function BlockStorageModal({ open, onClose, onSave }: BlockStorageModalProps) {
+  const theme = useTheme();
+  const { mode, style } = useThemeMode();
+  const componentStyles = useMemo(() => getComponentStyles(mode, style), [mode, style]);
+
   const [locations, setLocations] = useState<StorageLocation[]>(getStorageLocations(true)); // Include hidden
   const [newLocationName, setNewLocationName] = useState("");
   const [newLocationPath, setNewLocationPath] = useState("");
@@ -141,6 +148,17 @@ export default function BlockStorageModal({ open, onClose, onSave }: BlockStorag
       onClose={handleClose}
       maxWidth='md'
       fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: `${componentStyles.card.borderRadius}px`,
+          background:
+            componentStyles.card.background || alpha(theme.palette.background.paper, 0.9),
+          backdropFilter: componentStyles.card.backdropFilter,
+          WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
+          border: componentStyles.card.border,
+          boxShadow: componentStyles.card.boxShadow,
+        },
+      }}
     >
       <DialogTitle>
         <Box

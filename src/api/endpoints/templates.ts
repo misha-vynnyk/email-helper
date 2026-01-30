@@ -34,8 +34,18 @@ export interface CreateTemplatePayload {
 }
 
 export const templateEndpoints = {
-  list: (filters?: TemplateFilters) =>
-    apiClient.get<TemplateFile[]>('/api/templates/list', { params: filters } as any),
+  list: (filters?: TemplateFilters) => {
+    const qs = new URLSearchParams();
+    if (filters?.search) qs.set("search", filters.search);
+    if (filters?.category) qs.set("category", filters.category);
+    if (filters?.keywords?.length) {
+      for (const kw of filters.keywords) {
+        if (kw) qs.append("keywords", kw);
+      }
+    }
+    const suffix = qs.toString();
+    return apiClient.get<TemplateFile[]>(`/api/templates/list${suffix ? `?${suffix}` : ""}`);
+  },
 
   getById: (id: string) =>
     apiClient.get<TemplateFile>(`/api/templates/${id}`),

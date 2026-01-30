@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { Suspense, lazy, useEffect, useMemo, useState } from "react";
 
 import {
   Accessibility,
@@ -20,6 +20,7 @@ import {
   Speed,
   Warning,
 } from "@mui/icons-material";
+import { alpha } from "@mui/material/styles";
 import {
   Accordion,
   AccordionDetails,
@@ -58,11 +59,19 @@ import {
   TextField,
   Tooltip,
   Typography,
+  useTheme,
 } from "@mui/material";
 
+import { useThemeMode } from "../theme";
+import { getComponentStyles } from "../theme/componentStyles";
 import { EmailHTMLValidator } from "./EmailHTMLValidator";
 import { EmailValidationReport, ValidationResult, ValidationSeverity } from "./types";
 import { EMAIL_VALIDATION_RULES } from "./validationRules";
+import { logger } from "../utils/logger";
+
+const EmailValidationDevTools = import.meta.env.DEV
+  ? lazy(() => import("./EmailValidationDevTools"))
+  : null;
 
 interface EmailValidationPanelProps {
   html: string;
@@ -77,6 +86,21 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
   validator: propValidator,
   showCompactView = false,
 }) => {
+  const theme = useTheme();
+  const { mode, style } = useThemeMode();
+  const componentStyles = useMemo(() => getComponentStyles(mode, style), [mode, style]);
+  const surfaceSx = useMemo(
+    () => ({
+      borderRadius: `${componentStyles.card.borderRadius}px`,
+      background: componentStyles.card.background || alpha(theme.palette.background.paper, 0.8),
+      backdropFilter: componentStyles.card.backdropFilter,
+      WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
+      border: componentStyles.card.border,
+      boxShadow: componentStyles.card.boxShadow,
+    }),
+    [componentStyles, theme.palette.background.paper]
+  );
+
   const [validationReport, setValidationReport] = useState<EmailValidationReport | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -91,308 +115,6 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
   const validator = useMemo(() => {
     return propValidator || new EmailHTMLValidator();
   }, [propValidator]);
-
-  // Test HTML for debugging auto-fix
-  const testHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Comprehensive Email Validation Test</title>
-    <style>
-        .test-section {
-            border: 1px solid #ccc;
-            margin: 10px 0;
-            padding: 10px;
-            background: #f9f9f9;
-        }
-        .test-title {
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 10px;
-        }
-    </style>
-</head>
-<body>
-    <h1>Comprehensive Email Validation Test Cases</h1>
-
-    <!-- FORBIDDEN TAGS TEST CASES -->
-    <div class="test-section">
-        <div class="test-title">1. FORBIDDEN TAGS - All variants</div>
-
-        <!-- Basic forbidden elements -->
-        <div class="container">This is a div container</div>
-        <p class="paragraph">This is a paragraph</p>
-
-        <!-- Heading tags (all levels) -->
-        <h1 style="color: red;">Main Heading H1</h1>
-        <h2 class="subtitle">Subtitle H2</h2>
-        <h3>Sub-subtitle H3</h3>
-        <h4>Minor heading H4</h4>
-        <h5>Smaller heading H5</h5>
-        <h6>Smallest heading H6</h6>
-
-        <!-- Semantic elements -->
-        <section class="hero">
-            <article>
-                <header>
-                    <nav>Navigation menu</nav>
-                </header>
-                <main>
-                    <aside>Sidebar content</aside>
-                    <figure>
-                        <figcaption>Image caption</figcaption>
-                    </figure>
-                </main>
-                <footer>Footer content</footer>
-            </article>
-        </section>
-
-        <!-- Interactive elements -->
-        <form action="/submit">
-            <fieldset>
-                <legend>Form Legend</legend>
-                <label for="input1">Input Label:</label>
-                <input type="text" id="input1" name="input1" />
-                <textarea name="comments">Comments</textarea>
-                <select name="options">
-                    <option value="1">Option 1</option>
-                </select>
-                <button type="submit">Submit</button>
-            </fieldset>
-        </form>
-
-        <!-- Media elements -->
-        <video src="video.mp4">Video content</video>
-        <audio src="audio.mp3">Audio content</audio>
-        <canvas>Canvas content</canvas>
-        <svg>SVG content</svg>
-        <iframe src="frame.html">Frame content</iframe>
-        <embed src="content.swf" />
-        <object data="object.pdf">Object content</object>
-        <script>alert('script');</script>
-    </div>
-
-    <!-- EMAIL-SAFE TAGS TEST CASES -->
-    <div class="test-section">
-        <div class="test-title">2. EMAIL-SAFE TAGS - All variants</div>
-
-        <!-- Wrong BR tag formats -->
-        <br></br>
-        <br/>
-        <br />
-        <br class="break" />
-        <br style="clear: both"></br>
-
-        <!-- Wrong HR tag formats -->
-        <hr></hr>
-        <hr/>
-        <hr />
-        <hr class="divider" />
-        <hr style="border: none"></hr>
-
-        <!-- Wrong IMG tag formats -->
-        <img src="image1.jpg"></img>
-        <img src="image2.jpg" alt="Image 2"></img>
-        <img src="image3.jpg" class="responsive"></img>
-        <img src="image4.jpg" style="width: 100%"></img>
-
-        <!-- Other self-closing tags -->
-        <area shape="rect" coords="0,0,100,100"></area>
-        <base href="http://example.com"></base>
-        <col span="2"></col>
-        <input type="text" name="test"></input>
-
-        <!-- Correct formats (should not trigger errors) -->
-        <br>
-        <hr>
-        <img src="correct.jpg" alt="Correct" />
-        <area shape="rect" coords="0,0,50,50" />
-        <base href="http://test.com" />
-        <col span="1" />
-        <input type="email" name="email" />
-    </div>
-
-    <!-- TABLE ATTRIBUTES TEST CASES -->
-    <div class="test-section">
-        <div class="test-title">3. TABLE ATTRIBUTES - All variants</div>
-
-        <!-- Tables missing required attributes -->
-        <table>
-            <tr><td>Missing all attributes</td></tr>
-        </table>
-
-        <table cellpadding="5">
-            <tr><td>Missing cellspacing and border</td></tr>
-        </table>
-
-        <table cellspacing="2">
-            <tr><td>Missing cellpadding and border</td></tr>
-        </table>
-
-        <table border="1">
-            <tr><td>Missing cellpadding and cellspacing</td></tr>
-        </table>
-
-        <table cellpadding="0" cellspacing="0">
-            <tr><td>Missing border</td></tr>
-        </table>
-
-        <!-- TD elements missing valign -->
-        <table cellpadding="0" cellspacing="0" border="0">
-            <tr>
-                <td>Missing valign</td>
-                <td valign="middle">Wrong valign value</td>
-                <td valign="bottom">Another wrong valign</td>
-            </tr>
-        </table>
-
-        <!-- Images missing attributes -->
-        <img src="no-alt.jpg">
-        <img src="has-alt.jpg" alt="">
-        <img src="no-display-block.jpg" alt="No display block">
-        <img src="wrong-style.jpg" alt="Wrong style" style="border: 1px solid;">
-        <img src="missing-dimensions.jpg" alt="Missing dimensions" style="display:block">
-
-        <!-- Links missing attributes -->
-        <a>Link without href</a>
-        <a href="http://example.com">Link without target</a>
-        <a href="http://example.com" target="_self">Link with wrong target</a>
-
-        <!-- Correct formats (should not trigger errors) -->
-        <table cellpadding="0" cellspacing="0" border="0">
-            <tr>
-                <td valign="top">Correct table</td>
-                <td valign="top">All attributes present</td>
-            </tr>
-        </table>
-
-        <img src="correct-image.jpg" alt="Correct image" style="display:block" />
-        <a href="http://example.com" target="_blank">Correct link</a>
-    </div>
-
-    <!-- COMPLEX NESTED CASES -->
-    <div class="test-section">
-        <div class="test-title">4. COMPLEX NESTED CASES</div>
-
-        <!-- Multiple nesting levels -->
-        <div class="outer">
-            <section class="middle">
-                <article class="inner">
-                    <header>
-                        <h1>Nested heading</h1>
-                        <nav>
-                            <div class="menu">
-                                <p>Menu item 1</p>
-                                <p>Menu item 2</p>
-                            </div>
-                        </nav>
-                    </header>
-                    <main>
-                        <div class="content">
-                            <h2>Content heading</h2>
-                            <p>Content paragraph with <br></br> wrong break</p>
-                            <img src="nested.jpg"></img>
-                            <table>
-                                <tr><td>Nested table without attributes</td></tr>
-                            </table>
-                        </div>
-                    </main>
-                    <footer>
-                        <div class="footer-content">
-                            <h3>Footer heading</h3>
-                            <p>Footer text</p>
-                        </div>
-                    </footer>
-                </article>
-            </section>
-        </div>
-    </div>
-
-    <!-- EDGE CASES -->
-    <div class="test-section">
-        <div class="test-title">5. EDGE CASES</div>
-
-        <!-- Empty elements -->
-        <div></div>
-        <p></p>
-        <h1></h1>
-        <table><tr><td></td></tr></table>
-
-        <!-- Elements with only whitespace -->
-        <div>   </div>
-        <p>
-        </p>
-        <h2>	</h2>
-
-        <!-- Malformed tags -->
-        <br/ />
-        <br / />
-        <br////>
-        <img src="malformed.jpg" / alt="test" / />
-        <hr/ />
-        <hr / />
-
-        <!-- Mixed case tags -->
-        <DIV>Mixed case div</DIV>
-        <P>Mixed case paragraph</P>
-        <BR></BR>
-        <IMG SRC="mixed.jpg"></IMG>
-
-        <!-- Tags with unusual attributes -->
-        <div data-custom="value" onclick="alert()">Div with data and onclick</div>
-        <p contenteditable="true" draggable="true">Editable paragraph</p>
-        <h1 id="special" class="heading" style="color: blue; font-size: 24px;">Styled heading</h1>
-
-        <!-- Self-closing variations -->
-        <br/>
-        <br />
-        <br  />
-        <br	/>
-        <img src="test.jpg" />
-        <img src="test.jpg"/>
-        <img src="test.jpg"  />
-        <img src="test.jpg"	/>
-    </div>
-
-    <!-- ATTRIBUTES STRESS TEST -->
-    <div class="test-section">
-        <div class="test-title">6. ATTRIBUTES STRESS TEST</div>
-
-        <!-- Tables with partial attributes -->
-        <table cellpadding="0">
-            <tr><td>Only cellpadding</td></tr>
-        </table>
-
-        <table cellspacing="0">
-            <tr><td>Only cellspacing</td></tr>
-        </table>
-
-        <table border="0">
-            <tr><td>Only border</td></tr>
-        </table>
-
-        <table cellpadding="10" cellspacing="5" border="1">
-            <tr><td>Wrong values</td></tr>
-        </table>
-
-        <!-- Images with partial attributes -->
-        <img src="partial1.jpg" alt="">
-        <img src="partial2.jpg" style="display:block">
-        <img src="partial3.jpg" alt="Test" width="100">
-        <img src="partial4.jpg" alt="Test" height="50">
-        <img src="partial5.jpg" alt="Test" style="border: none;">
-
-        <!-- Links with variations -->
-        <a href="">Empty href</a>
-        <a href="#anchor">Anchor link</a>
-        <a href="mailto:test@example.com">Mailto link</a>
-        <a href="tel:+1234567890">Tel link</a>
-        <a href="http://example.com" target="_parent">Wrong target parent</a>
-        <a href="http://example.com" target="_top">Wrong target top</a>
-    </div>
-</body>
-</html>
-  `;
 
   // Validate HTML
   useEffect(() => {
@@ -409,7 +131,7 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
         const report = validator.validate(html);
         setValidationReport(report);
       } catch (error: unknown) {
-        console.error("Validation error", error);
+        logger.error("EmailValidationPanel", "Validation error", error);
         const errorMessage =
           error && typeof error === "object" && "message" in error
             ? (error as Error).message
@@ -447,11 +169,7 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
 
   const handleAutoFix = async () => {
     if (!validationReport?.autoFixAvailable || !onHtmlChange) {
-      console.warn(
-        "Auto-fix not available or no onHtmlChange callback",
-        {},
-        "EmailValidationPanel"
-      );
+      logger.warn("EmailValidationPanel", "Auto-fix not available or no onHtmlChange callback");
       return;
     }
 
@@ -665,6 +383,19 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
 
     const severityColor =
       severity === "error" ? "error" : severity === "warning" ? "warning" : "info";
+    const severityPalette =
+      severityColor === "error"
+        ? theme.palette.error
+        : severityColor === "warning"
+          ? theme.palette.warning
+          : theme.palette.info;
+    const severityRing = alpha(severityPalette.main, theme.palette.mode === "dark" ? 0.6 : 0.35);
+    const accordionBorder =
+      componentStyles.card.border === "none" ? "none" : `1px solid ${severityRing}`;
+    const accordionBoxShadow =
+      componentStyles.card.border === "none"
+        ? `${componentStyles.card.boxShadow}, 0 0 0 1px ${severityRing}`
+        : componentStyles.card.boxShadow;
 
     return (
       <Accordion
@@ -672,21 +403,19 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
         sx={{
           mb: 2,
           "&:before": { display: "none" },
-          boxShadow: "none",
-          border: `1px solid ${severityColor === "error" ? "#ffcdd2" : severityColor === "warning" ? "#fff3e0" : "#e3f2fd"}`,
-          borderRadius: 2,
+          borderRadius: `${componentStyles.card.borderRadius}px`,
+          background: componentStyles.card.background || alpha(theme.palette.background.paper, 0.8),
+          backdropFilter: componentStyles.card.backdropFilter,
+          WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
+          border: accordionBorder,
+          boxShadow: accordionBoxShadow,
         }}
       >
         <AccordionSummary
           expandIcon={<ExpandMore />}
           sx={{
-            backgroundColor:
-              severityColor === "error"
-                ? "#ffebee"
-                : severityColor === "warning"
-                  ? "#fff8e1"
-                  : "#f3e5f5",
-            borderRadius: "8px 8px 0 0",
+            backgroundColor: alpha(severityPalette.main, theme.palette.mode === "dark" ? 0.22 : 0.08),
+            borderRadius: `${componentStyles.card.borderRadius}px ${componentStyles.card.borderRadius}px 0 0`,
           }}
         >
           <Box sx={{ display: "flex", alignItems: "center", gap: 2, width: "100%" }}>
@@ -730,7 +459,8 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
                 sx={{
                   px: 2,
                   py: 1,
-                  borderBottom: index < results.length - 1 ? "1px solid #f0f0f0" : "none",
+                  borderBottom: index < results.length - 1 ? "1px solid" : "none",
+                  borderBottomColor: "divider",
                   "&:last-child": { borderBottom: "none" },
                 }}
               >
@@ -768,10 +498,11 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
                           sx={{
                             mt: 0.5,
                             fontStyle: "italic",
-                            backgroundColor: "#f8f9fa",
+                            backgroundColor: "action.hover",
                             p: 1,
                             borderRadius: 1,
-                            border: "1px solid #e9ecef",
+                            border: "1px solid",
+                            borderColor: "divider",
                           }}
                         >
                           💡 {result.suggestion}
@@ -871,17 +602,51 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
               key={category.key}
             >
               <Card
-                className='category-card'
                 variant='outlined'
                 onClick={() => setFilterCategory(category.key)}
                 sx={{
-                  borderColor: count > 0 ? `${category.color}.main` : "divider",
-                  backgroundColor: count > 0 ? `${category.color}.50` : "background.paper",
-                  transition: "all 0.3s ease-in-out",
+                  borderRadius: `${componentStyles.card.borderRadius}px`,
+                  background: (() => {
+                    const base =
+                      componentStyles.card.background || alpha(theme.palette.background.paper, 0.8);
+                    if (count <= 0) return base;
+
+                    const main =
+                      ((theme.palette as any)[category.color]?.main as string | undefined) ??
+                      theme.palette.primary.main;
+                    const overlay = alpha(main, theme.palette.mode === "dark" ? 0.18 : 0.06);
+                    return `linear-gradient(0deg, ${overlay}, ${overlay}), ${base}`;
+                  })(),
+                  backdropFilter: componentStyles.card.backdropFilter,
+                  WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
+                  border: (() => {
+                    if (count <= 0) return componentStyles.card.border;
+                    const main =
+                      ((theme.palette as any)[category.color]?.main as string | undefined) ??
+                      theme.palette.primary.main;
+                    const ring = alpha(main, theme.palette.mode === "dark" ? 0.7 : 0.45);
+                    return componentStyles.card.border === "none"
+                      ? componentStyles.card.border
+                      : `1px solid ${ring}`;
+                  })(),
+                  boxShadow: (() => {
+                    if (count <= 0) return componentStyles.card.boxShadow;
+                    if (componentStyles.card.border !== "none") return componentStyles.card.boxShadow;
+                    const main =
+                      ((theme.palette as any)[category.color]?.main as string | undefined) ??
+                      theme.palette.primary.main;
+                    const ring = alpha(main, theme.palette.mode === "dark" ? 0.7 : 0.45);
+                    return `${componentStyles.card.boxShadow}, 0 0 0 1px ${ring}`;
+                  })(),
+                  transition: (theme) =>
+                    theme.transitions.create(["transform", "box-shadow", "border"], {
+                      duration: theme.transitions.duration.short,
+                    }),
                   cursor: "pointer",
                   "&:hover": {
-                    transform: "translateY(-4px)",
-                    boxShadow: "0 8px 25px rgba(0,0,0,0.15)",
+                    transform: componentStyles.card.hover?.transform || "translateY(-4px)",
+                    boxShadow: componentStyles.card.hover?.boxShadow || ((theme) => theme.shadows[4]),
+                    border: componentStyles.card.hover?.border || undefined,
                   },
                 }}
               >
@@ -924,9 +689,9 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
                           borderRadius: 2,
                           textTransform: "none",
                           fontWeight: 500,
-                          boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                          boxShadow: (theme) => theme.shadows[1],
                           "&:hover": {
-                            boxShadow: "0 4px 8px rgba(0,0,0,0.15)",
+                            boxShadow: (theme) => theme.shadows[3],
                           },
                         }}
                       >
@@ -951,10 +716,7 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
         sx={{
           mb: 3,
           p: 3,
-          backgroundColor: "#f8f9fa",
-          borderRadius: 2,
-          border: "1px solid #e9ecef",
-          boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+          ...surfaceSx,
         }}
       >
         <Typography
@@ -966,7 +728,7 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
             display: "flex",
             alignItems: "center",
             gap: 1,
-            color: "#495057",
+            color: "text.primary",
           }}
         >
           <FilterList fontSize='small' />
@@ -1058,9 +820,10 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
             alignItems: "center",
             justifyContent: "space-between",
             p: 1,
-            backgroundColor: "#ffffff",
+            backgroundColor: "background.paper",
             borderRadius: 1,
-            border: "1px solid #dee2e6",
+            border: "1px solid",
+            borderColor: "divider",
           }}
         >
           <Typography
@@ -1161,7 +924,7 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
         </Box>
       );
     } catch (error) {
-      console.error("Error generating compatibility report", error, "EmailValidationPanel");
+      logger.error("EmailValidationPanel", "Error generating compatibility report", error);
       return (
         <Box sx={{ mt: 2 }}>
           <Typography
@@ -1224,7 +987,7 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
   }
 
   return (
-    <Paper sx={{ p: 2, mb: 2, borderRadius: 2, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
+    <Paper sx={{ p: 2, mb: 2, ...surfaceSx }}>
       {/* CSS Animations */}
       <style>
         {`
@@ -1240,11 +1003,6 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
 
           .tab-content {
             animation: slideIn 0.3s ease-out;
-          }
-
-          .category-card:hover {
-            transform: translateY(-4px);
-            boxShadow: 0 8px 25px rgba(0,0,0,0.15);
           }
         `}
       </style>
@@ -1317,22 +1075,12 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
           </IconButton>
         </Tooltip>
 
-        {/* Test Auto-fix Button */}
-        <Tooltip title='Test Auto-fix with sample HTML'>
-          <Button
-            size='small'
-            variant='outlined'
-            onClick={() => {
-              if (onHtmlChange) {
-                onHtmlChange(testHtml);
-                alert("🧪 Test HTML loaded! Now try auto-fix to see it in action.");
-              }
-            }}
-            sx={{ ml: 1 }}
-          >
-            Test HTML
-          </Button>
-        </Tooltip>
+        {/* DEV-only: isolated dev tools (lazy-loaded) */}
+        {EmailValidationDevTools && onHtmlChange && (
+          <Suspense fallback={null}>
+            <EmailValidationDevTools onHtmlChange={onHtmlChange} />
+          </Suspense>
+        )}
 
         {validationReport?.autoFixAvailable && onHtmlChange && (
           <Tooltip title='Auto-fix All Issues'>
@@ -1347,9 +1095,9 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
                 borderRadius: 2,
                 textTransform: "none",
                 fontWeight: 500,
-                boxShadow: "0 2px 4px rgba(25, 118, 210, 0.2)",
+                boxShadow: (theme) => theme.shadows[2],
                 "&:hover": {
-                  boxShadow: "0 4px 8px rgba(25, 118, 210, 0.3)",
+                  boxShadow: (theme) => theme.shadows[4],
                 },
               }}
             >
@@ -1367,11 +1115,11 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
             borderRadius: 2,
             textTransform: "none",
             fontWeight: 500,
-            borderColor: "#e0e0e0",
-            color: "#666",
+            borderColor: "divider",
+            color: "text.secondary",
             "&:hover": {
-              borderColor: "#999",
-              backgroundColor: "#f5f5f5",
+              borderColor: "text.primary",
+              backgroundColor: "action.hover",
             },
           }}
         >
@@ -1421,8 +1169,11 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
         <Box
           sx={{
             mb: 2,
-            borderBottom: "1px solid #e0e0e0",
-            backgroundColor: "#fafafa",
+            borderBottom: "1px solid",
+            borderBottomColor: "divider",
+            background: componentStyles.card.background || alpha(theme.palette.background.paper, 0.7),
+            backdropFilter: componentStyles.card.backdropFilter,
+            WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
             borderRadius: "8px 8px 0 0",
             p: 1,
           }}
@@ -1444,16 +1195,18 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
               "& .Mui-selected": {
                 fontWeight: 600,
                 color: "primary.main",
-                backgroundColor: "rgba(25, 118, 210, 0.08)",
+                backgroundColor: (theme) =>
+                  alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.24 : 0.08),
               },
               "& .MuiTabs-indicator": {
                 height: 4,
                 borderRadius: "4px 4px 0 0",
                 backgroundColor: "primary.main",
-                boxShadow: "0 2px 4px rgba(25, 118, 210, 0.3)",
+                boxShadow: (theme) => theme.shadows[2],
               },
               "& .MuiTab-root:hover": {
-                backgroundColor: "rgba(25, 118, 210, 0.04)",
+                backgroundColor: (theme) =>
+                  alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.16 : 0.04),
                 transform: "translateY(-1px)",
               },
             }}
@@ -1511,9 +1264,12 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
             minHeight: 200,
             position: "relative",
             p: 2,
-            backgroundColor: "#ffffff",
-            borderRadius: "0 0 8px 8px",
-            border: "1px solid #e0e0e0",
+            background: componentStyles.card.background || alpha(theme.palette.background.paper, 0.8),
+            backdropFilter: componentStyles.card.backdropFilter,
+            WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
+            borderRadius: `0 0 ${componentStyles.card.borderRadius}px ${componentStyles.card.borderRadius}px`,
+            border: componentStyles.card.border,
+            boxShadow: componentStyles.card.boxShadow,
             borderTop: "none",
           }}
         >
@@ -1528,12 +1284,15 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
                   alignItems: "center",
                   gap: 1,
                   p: 2,
-                  backgroundColor: "#fce4ec",
+                  backgroundColor: (theme) =>
+                    alpha(theme.palette.error.main, theme.palette.mode === "dark" ? 0.22 : 0.08),
                   borderRadius: 2,
-                  border: "1px solid #e91e63",
-                  color: "#ad1457",
+                  border: "1px solid",
+                  borderColor: (theme) =>
+                    alpha(theme.palette.error.main, theme.palette.mode === "dark" ? 0.6 : 0.35),
+                  color: "error.main",
                   fontWeight: 600,
-                  boxShadow: "0 2px 4px rgba(233, 30, 99, 0.1)",
+                  boxShadow: (theme) => theme.shadows[1],
                 }}
               >
                 <BugReport color='error' />
@@ -1583,10 +1342,13 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
                   alignItems: "center",
                   gap: 1,
                   p: 2,
-                  backgroundColor: "#e3f2fd",
+                  backgroundColor: (theme) =>
+                    alpha(theme.palette.info.main, theme.palette.mode === "dark" ? 0.22 : 0.08),
                   borderRadius: 2,
-                  border: "1px solid #2196f3",
-                  color: "#1565c0",
+                  border: "1px solid",
+                  borderColor: (theme) =>
+                    alpha(theme.palette.info.main, theme.palette.mode === "dark" ? 0.6 : 0.35),
+                  color: "info.main",
                 }}
               >
                 <Computer color='info' />
@@ -1599,9 +1361,12 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
                 sx={{
                   mt: 3,
                   p: 2,
-                  backgroundColor: "#e3f2fd",
+                  backgroundColor: (theme) =>
+                    alpha(theme.palette.info.main, theme.palette.mode === "dark" ? 0.18 : 0.08),
                   borderRadius: 2,
-                  border: "1px solid #2196f3",
+                  border: "1px solid",
+                  borderColor: (theme) =>
+                    alpha(theme.palette.info.main, theme.palette.mode === "dark" ? 0.6 : 0.35),
                 }}
               >
                 <Typography
@@ -1647,12 +1412,15 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
                   alignItems: "center",
                   gap: 1,
                   p: 2,
-                  backgroundColor: "#fff3e0",
+                  backgroundColor: (theme) =>
+                    alpha(theme.palette.warning.main, theme.palette.mode === "dark" ? 0.22 : 0.08),
                   borderRadius: 2,
-                  border: "1px solid #ff9800",
-                  color: "#e65100",
+                  border: "1px solid",
+                  borderColor: (theme) =>
+                    alpha(theme.palette.warning.main, theme.palette.mode === "dark" ? 0.6 : 0.35),
+                  color: "warning.main",
                   fontWeight: 600,
-                  boxShadow: "0 2px 4px rgba(255, 152, 0, 0.1)",
+                  boxShadow: (theme) => theme.shadows[1],
                 }}
               >
                 <Speed color='warning' />
@@ -1673,7 +1441,7 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
                   >
                     <Card
                       variant='outlined'
-                      sx={{ p: 2 }}
+                      sx={{ p: 2, ...surfaceSx }}
                     >
                       <Typography
                         variant='subtitle2'
@@ -1708,7 +1476,7 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
                   >
                     <Card
                       variant='outlined'
-                      sx={{ p: 2 }}
+                      sx={{ p: 2, ...surfaceSx }}
                     >
                       <Typography
                         variant='subtitle2'
@@ -1750,9 +1518,12 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
               <Box
                 sx={{
                   p: 2,
-                  backgroundColor: "#fff3e0",
+                  backgroundColor: (theme) =>
+                    alpha(theme.palette.warning.main, theme.palette.mode === "dark" ? 0.18 : 0.08),
                   borderRadius: 2,
-                  border: "1px solid #ff9800",
+                  border: "1px solid",
+                  borderColor: (theme) =>
+                    alpha(theme.palette.warning.main, theme.palette.mode === "dark" ? 0.6 : 0.35),
                 }}
               >
                 <Typography
@@ -1805,12 +1576,15 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
                   alignItems: "center",
                   gap: 1,
                   p: 2,
-                  backgroundColor: "#e8f5e8",
+                  backgroundColor: (theme) =>
+                    alpha(theme.palette.success.main, theme.palette.mode === "dark" ? 0.22 : 0.08),
                   borderRadius: 2,
-                  border: "1px solid #4caf50",
-                  color: "#2e7d32",
+                  border: "1px solid",
+                  borderColor: (theme) =>
+                    alpha(theme.palette.success.main, theme.palette.mode === "dark" ? 0.6 : 0.35),
+                  color: "success.main",
                   fontWeight: 600,
-                  boxShadow: "0 2px 4px rgba(76, 175, 80, 0.1)",
+                  boxShadow: (theme) => theme.shadows[1],
                 }}
               >
                 <Settings color='primary' />
@@ -1845,9 +1619,9 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
                         borderRadius: 2,
                         textTransform: "none",
                         fontWeight: 500,
-                        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                        boxShadow: (theme) => theme.shadows[2],
                         "&:hover": {
-                          boxShadow: "0 4px 8px rgba(0,0,0,0.15)",
+                          boxShadow: (theme) => theme.shadows[4],
                         },
                       }}
                     >
@@ -1872,11 +1646,11 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
                         borderRadius: 2,
                         textTransform: "none",
                         fontWeight: 500,
-                        borderColor: "#e0e0e0",
-                        color: "#666",
+                        borderColor: "divider",
+                        color: "text.secondary",
                         "&:hover": {
-                          borderColor: "#999",
-                          backgroundColor: "#f5f5f5",
+                          borderColor: "text.primary",
+                          backgroundColor: "action.hover",
                         },
                       }}
                     >
@@ -1887,7 +1661,7 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
               </Box>
 
               {/* Current configuration summary */}
-              <Box sx={{ p: 2, backgroundColor: "#f5f5f5", borderRadius: 2 }}>
+              <Box sx={{ p: 2, backgroundColor: "action.hover", borderRadius: 2 }}>
                 <Typography
                   variant='subtitle2'
                   component='div'
@@ -1950,6 +1724,10 @@ const ValidationSettingsDialog: React.FC<ValidationSettingsDialogProps> = ({
   onClose,
   validator,
 }) => {
+  const theme = useTheme();
+  const { mode, style } = useThemeMode();
+  const componentStyles = useMemo(() => getComponentStyles(mode, style), [mode, style]);
+
   const [config, setConfig] = useState(validator.getConfig());
   const availableRules = validator.getAvailableRules();
 
@@ -1958,7 +1736,7 @@ const ValidationSettingsDialog: React.FC<ValidationSettingsDialogProps> = ({
       validator.updateConfig(config);
       onClose();
     } catch (error) {
-      console.error("Error saving validation config", error, "ValidationSettingsDialog");
+      logger.error("ValidationSettingsDialog", "Error saving validation config", error);
     }
   };
 
@@ -1983,15 +1761,20 @@ const ValidationSettingsDialog: React.FC<ValidationSettingsDialogProps> = ({
       fullWidth
       PaperProps={{
         sx: {
-          borderRadius: 3,
-          boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
+          borderRadius: `${componentStyles.card.borderRadius}px`,
+          background: componentStyles.card.background || alpha(theme.palette.background.paper, 0.9),
+          backdropFilter: componentStyles.card.backdropFilter,
+          WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
+          border: componentStyles.card.border,
+          boxShadow: componentStyles.card.boxShadow,
         },
       }}
     >
       <DialogTitle
         sx={{
-          backgroundColor: "#f8f9fa",
-          borderBottom: "1px solid #e9ecef",
+          backgroundColor: "background.default",
+          borderBottom: "1px solid",
+          borderBottomColor: "divider",
           fontWeight: 600,
         }}
       >
@@ -2005,10 +1788,13 @@ const ValidationSettingsDialog: React.FC<ValidationSettingsDialogProps> = ({
             sx={{
               mb: 2,
               p: 2,
-              backgroundColor: "#e3f2fd",
+              backgroundColor: (theme) =>
+                alpha(theme.palette.info.main, theme.palette.mode === "dark" ? 0.22 : 0.08),
               borderRadius: 2,
-              border: "1px solid #2196f3",
-              color: "#1565c0",
+              border: "1px solid",
+              borderColor: (theme) =>
+                alpha(theme.palette.info.main, theme.palette.mode === "dark" ? 0.6 : 0.35),
+              color: "info.main",
               fontWeight: 600,
               display: "flex",
               alignItems: "center",
@@ -2033,9 +1819,10 @@ const ValidationSettingsDialog: React.FC<ValidationSettingsDialogProps> = ({
                   <Box
                     sx={{
                       p: 1,
-                      backgroundColor: "#f8f9fa",
+                      backgroundColor: "action.hover",
                       borderRadius: 1,
-                      border: "1px solid #e9ecef",
+                      border: "1px solid",
+                      borderColor: "divider",
                       flex: 1,
                     }}
                   >
@@ -2061,7 +1848,7 @@ const ValidationSettingsDialog: React.FC<ValidationSettingsDialogProps> = ({
                   p: 1,
                   borderRadius: 1,
                   "&:hover": {
-                    backgroundColor: "#f8f9fa",
+                    backgroundColor: "action.hover",
                   },
                 }}
               />
@@ -2076,10 +1863,13 @@ const ValidationSettingsDialog: React.FC<ValidationSettingsDialogProps> = ({
             sx={{
               mb: 2,
               p: 2,
-              backgroundColor: "#fff3e0",
+              backgroundColor: (theme) =>
+                alpha(theme.palette.warning.main, theme.palette.mode === "dark" ? 0.22 : 0.08),
               borderRadius: 2,
-              border: "1px solid #ff9800",
-              color: "#e65100",
+              border: "1px solid",
+              borderColor: (theme) =>
+                alpha(theme.palette.warning.main, theme.palette.mode === "dark" ? 0.6 : 0.35),
+              color: "warning.main",
               fontWeight: 600,
               display: "flex",
               alignItems: "center",
@@ -2112,9 +1902,10 @@ const ValidationSettingsDialog: React.FC<ValidationSettingsDialogProps> = ({
                   <Box
                     sx={{
                       p: 1,
-                      backgroundColor: "#f8f9fa",
+                      backgroundColor: "action.hover",
                       borderRadius: 1,
-                      border: "1px solid #e9ecef",
+                      border: "1px solid",
+                      borderColor: "divider",
                       flex: 1,
                     }}
                   >
@@ -2133,7 +1924,7 @@ const ValidationSettingsDialog: React.FC<ValidationSettingsDialogProps> = ({
                   p: 1,
                   borderRadius: 1,
                   "&:hover": {
-                    backgroundColor: "#f8f9fa",
+                    backgroundColor: "action.hover",
                   },
                 }}
               />
@@ -2144,9 +1935,12 @@ const ValidationSettingsDialog: React.FC<ValidationSettingsDialogProps> = ({
         <Box
           sx={{
             p: 2,
-            backgroundColor: "#f3e5f5",
+            backgroundColor: (theme) =>
+              alpha(theme.palette.secondary.main, theme.palette.mode === "dark" ? 0.22 : 0.08),
             borderRadius: 2,
-            border: "1px solid #9c27b0",
+            border: "1px solid",
+            borderColor: (theme) =>
+              alpha(theme.palette.secondary.main, theme.palette.mode === "dark" ? 0.6 : 0.35),
           }}
         >
           <Typography
@@ -2154,7 +1948,7 @@ const ValidationSettingsDialog: React.FC<ValidationSettingsDialogProps> = ({
             component='div'
             sx={{
               mb: 2,
-              color: "#6a1b9a",
+              color: "secondary.main",
               fontWeight: 600,
               display: "flex",
               alignItems: "center",
@@ -2202,9 +1996,10 @@ const ValidationSettingsDialog: React.FC<ValidationSettingsDialogProps> = ({
               <Box
                 sx={{
                   p: 1,
-                  backgroundColor: "#f8f9fa",
+                  backgroundColor: "action.hover",
                   borderRadius: 1,
-                  border: "1px solid #e9ecef",
+                  border: "1px solid",
+                  borderColor: "divider",
                   flex: 1,
                 }}
               >
@@ -2222,13 +2017,13 @@ const ValidationSettingsDialog: React.FC<ValidationSettingsDialogProps> = ({
               p: 1,
               borderRadius: 1,
               "&:hover": {
-                backgroundColor: "#f8f9fa",
+                backgroundColor: "action.hover",
               },
             }}
           />
         </Box>
       </DialogContent>
-      <DialogActions sx={{ p: 3, borderTop: "1px solid #e9ecef" }}>
+      <DialogActions sx={{ p: 3, borderTop: "1px solid", borderTopColor: "divider" }}>
         <Button
           onClick={onClose}
           sx={{
@@ -2248,9 +2043,9 @@ const ValidationSettingsDialog: React.FC<ValidationSettingsDialogProps> = ({
             textTransform: "none",
             fontWeight: 500,
             px: 3,
-            boxShadow: "0 2px 4px rgba(25, 118, 210, 0.2)",
+            boxShadow: (theme) => theme.shadows[2],
             "&:hover": {
-              boxShadow: "0 4px 8px rgba(25, 118, 210, 0.3)",
+              boxShadow: (theme) => theme.shadows[4],
             },
           }}
         >

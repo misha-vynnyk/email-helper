@@ -163,14 +163,15 @@ export class WorkerPool {
       // Convert file to ArrayBuffer and send to worker
       const reader = new FileReader();
       reader.onload = () => {
+        const fileData = reader.result as ArrayBuffer;
         worker.postMessage({
           type: 'convert',
           id: task.id,
-          fileData: reader.result,
+          fileData,
           fileName: task.file.name,
           fileType: task.file.type,
           settings: task.settings,
-        });
+        }, [fileData]);
       };
       reader.onerror = () => {
         if (!resolved) {

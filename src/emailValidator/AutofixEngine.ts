@@ -1,6 +1,7 @@
 import { ERROR_MESSAGES, PERFORMANCE_CONSTANTS, TIME_CONSTANTS } from "./EMAIL_CONSTANTS";
 import { EmailValidatorConfig, ValidationRule, ValidationSeverity } from "./types";
 import { EMAIL_VALIDATION_RULES } from "./validationRules";
+import { logger } from "../utils/logger";
 
 /**
  * Handles HTML autofix logic separately from validation functionality
@@ -63,10 +64,10 @@ export class AutofixEngine {
     }
 
     if (cleared > 0) {
-      console.log(
-        `AutofixEngine cleanup completed. Cleared ${cleared} history entries`,
-        {},
-        "AutofixEngine"
+      logger.debug(
+        "AutofixEngine",
+        `Cleanup completed. Cleared ${cleared} history entries`,
+        { cleared }
       );
     }
   }
@@ -83,10 +84,10 @@ export class AutofixEngine {
     if (html.length > this.config.maxHtmlSize) {
       const maxSizeKB = Math.round(this.config.maxHtmlSize / 1024);
       const currentSizeKB = Math.round(html.length / 1024);
-      console.warn(
+      logger.warn(
+        "AutofixEngine",
         `${ERROR_MESSAGES.HTML_TOO_LARGE_FOR_AUTOFIX} (${currentSizeKB}KB > ${maxSizeKB}KB), skipping to prevent freezing`,
-        { size: html.length, limit: this.config.maxHtmlSize },
-        "AutofixEngine"
+        { size: html.length, limit: this.config.maxHtmlSize }
       );
       return { html, fixed: [] };
     }
@@ -145,10 +146,10 @@ export class AutofixEngine {
               fixedHtml.length >
               html.length * PERFORMANCE_CONSTANTS.MAX_HTML_SIZE_INCREASE_MULTIPLIER
             ) {
-              console.warn(
+              logger.warn(
+                "AutofixEngine",
                 `HTML size increased too much during autofix, stopping pass ${pass + 1}`,
-                { originalSize: html.length, newSize: fixedHtml.length, pass: pass + 1 },
-                "AutofixEngine"
+                { originalSize: html.length, newSize: fixedHtml.length, pass: pass + 1 }
               );
               break;
             }
@@ -180,18 +181,18 @@ export class AutofixEngine {
           totalChanges += customFixes.iterations;
         }
 
-        console.log(
+        logger.debug(
+          "AutofixEngine",
           `Pass ${pass + 1}: Applied ${passChanges} fixes`,
-          { pass: pass + 1, changes: passChanges },
-          "AutofixEngine"
+          { pass: pass + 1, changes: passChanges }
         );
 
         // If no changes in this pass, we're done
         if (passChanges === 0 || fixedHtml === previousHtml) {
-          console.log(
+          logger.debug(
+            "AutofixEngine",
             `No more changes after pass ${pass + 1}, stopping`,
-            { totalPasses: pass + 1 },
-            "AutofixEngine"
+            { totalPasses: pass + 1 }
           );
           break;
         }
@@ -201,13 +202,13 @@ export class AutofixEngine {
       this.recordFixHistory(html, fixedRules, totalChanges, true);
 
       if (fixedRules.length > 0) {
-        console.log(
+        logger.debug(
+          "AutofixEngine",
           `Auto-fix completed with ${totalChanges} total changes. Fixed ${fixedRules.length} rule types: ${fixedRules.join(", ")}`,
-          { totalChanges, fixedRules },
-          "AutofixEngine"
+          { totalChanges, fixedRules }
         );
       } else {
-        console.log("No auto-fixes were applied", {}, "AutofixEngine");
+        logger.debug("AutofixEngine", "No auto-fixes were applied");
       }
 
       return {
@@ -215,7 +216,7 @@ export class AutofixEngine {
         fixed: fixedRules,
       };
     } catch (error) {
-      console.error("Critical auto-fix error", error, "AutofixEngine");
+      logger.error("AutofixEngine", "Critical auto-fix error", error);
       this.recordFixHistory(html, fixedRules, totalChanges, false);
       return { html, fixed: [] };
     }
@@ -245,48 +246,16 @@ export class AutofixEngine {
         if (this.isValidHTMLStructure(afterFix)) {
           return { html: afterFix, fixed: true };
         } else {
-          console.warn(
-            `Fix for rule ${ruleName} produced invalid HTML, reverting`,
-            {},
-            "AutofixEngine"
-          );
+          logger.warn("AutofixEngine", `Fix for rule ${ruleName} produced invalid HTML, reverting`);
           return { html, fixed: false };
         }
       }
 
       return { html, fixed: false };
     } catch (error) {
-      console.error(`Error applying auto-fix for rule ${ruleName}`, error, "AutofixEngine");
+      logger.error("AutofixEngine", `Error applying auto-fix for rule ${ruleName}`, error);
       return { html, fixed: false };
     }
-  }
-
-  /**
-   * Apply fixes in specific order with iteration limit
-   */
-  private applyOrderedFixes(
-    html: string,
-    ruleOrder: string[],
-    fixedRules: string[],
-    maxIterations: number
-  ): { html: string; iterations: number } {
-    let fixedHtml = html;
-    let iterations = 0;
-
-    for (const ruleName of ruleOrder) {
-      if (iterations >= maxIterations) break;
-
-      const { html: resultHtml, fixed } = this.applySingleFix(fixedHtml, ruleName);
-
-      if (fixed) {
-        fixedHtml = resultHtml;
-        fixedRules.push(ruleName);
-        iterations++;
-        console.log(`Applied auto-fix for rule: ${ruleName}`, {}, "AutofixEngine");
-      }
-    }
-
-    return { html: fixedHtml, iterations };
   }
 
   /**
@@ -337,27 +306,22 @@ export class AutofixEngine {
             }
             iterations++;
             hasChanges = true;
-            console.log(
+            logger.debug(
+              "AutofixEngine",
               `Applied remaining auto-fix for rule: ${ruleName} (pass ${pass})`,
-              { pass, rule: ruleName },
-              "AutofixEngine"
+              { pass, rule: ruleName }
             );
           }
         } catch (error) {
-          console.error(
-            `Error applying remaining auto-fix for rule ${ruleName}`,
-            error,
-            "AutofixEngine"
-          );
+          logger.error("AutofixEngine", `Error applying remaining auto-fix for rule ${ruleName}`, error);
         }
       }
 
       if (hasChanges) {
-        console.log(
-          `Remaining fixes pass ${pass} completed with changes`,
-          { pass, iterations },
-          "AutofixEngine"
-        );
+        logger.debug("AutofixEngine", `Remaining fixes pass ${pass} completed with changes`, {
+          pass,
+          iterations,
+        });
       }
     }
 
@@ -394,14 +358,10 @@ export class AutofixEngine {
           fixedHtml = resultHtml;
           fixedRules.push(ruleName);
           iterations++;
-          console.log(`Applied custom auto-fix for rule: ${ruleName}`, {}, "AutofixEngine");
+          logger.debug("AutofixEngine", `Applied custom auto-fix for rule: ${ruleName}`);
         }
       } catch (error) {
-        console.error(
-          `Error applying custom auto-fix for rule ${ruleName}`,
-          error,
-          "AutofixEngine"
-        );
+        logger.error("AutofixEngine", `Error applying custom auto-fix for rule ${ruleName}`, error);
       }
     }
 
@@ -479,12 +439,12 @@ export class AutofixEngine {
       const rule = EMAIL_VALIDATION_RULES[ruleName] || this.customRules.get(ruleName);
 
       if (!rule) {
-        console.warn(`Rule ${ruleName} not found`, {}, "AutofixEngine");
+        logger.warn("AutofixEngine", `Rule ${ruleName} not found`);
         return { html, fixed: false };
       }
 
       if (!rule.autofix) {
-        console.warn(`Rule ${ruleName} has no autofix function`, {}, "AutofixEngine");
+        logger.warn("AutofixEngine", `Rule ${ruleName} has no autofix function`);
         return { html, fixed: false };
       }
 
@@ -492,7 +452,7 @@ export class AutofixEngine {
       const ruleConfig = this.config.rules[ruleName];
       const isRuleEnabled = ruleConfig ? ruleConfig.enabled : rule.enabled;
       if (!isRuleEnabled) {
-        console.warn(`Rule ${ruleName} is disabled`, {}, "AutofixEngine");
+        logger.warn("AutofixEngine", `Rule ${ruleName} is disabled`);
         return { html, fixed: false };
       }
 
@@ -514,21 +474,17 @@ export class AutofixEngine {
             totalFixed = true;
             iterations++;
 
-            console.log(
+            logger.debug(
+              "AutofixEngine",
               `Applied fix for rule ${ruleName}, iteration ${iterations}`,
-              { iteration: iterations, changed: true },
-              "AutofixEngine"
+              { iteration: iterations, changed: true }
             );
           } else {
             // Немає більше змін
             break;
           }
         } catch (error) {
-          console.error(
-            `Error in iteration ${iterations + 1} for rule ${ruleName}`,
-            error,
-            "AutofixEngine"
-          );
+          logger.error("AutofixEngine", `Error in iteration ${iterations + 1} for rule ${ruleName}`, error);
           break;
         }
 
@@ -537,28 +493,27 @@ export class AutofixEngine {
           fixedHtml.length >
           html.length * PERFORMANCE_CONSTANTS.MAX_HTML_SIZE_INCREASE_MULTIPLIER
         ) {
-          console.warn(
-            `HTML size increased too much for rule ${ruleName}, stopping`,
-            { originalSize: html.length, newSize: fixedHtml.length },
-            "AutofixEngine"
-          );
+          logger.warn("AutofixEngine", `HTML size increased too much for rule ${ruleName}, stopping`, {
+            originalSize: html.length,
+            newSize: fixedHtml.length,
+          });
           break;
         }
       }
 
       if (totalFixed) {
-        console.log(
+        logger.debug(
+          "AutofixEngine",
           `Successfully fixed issue with rule ${ruleName} in ${iterations} iterations`,
-          { iterations, sizeBefore: html.length, sizeAfter: fixedHtml.length },
-          "AutofixEngine"
+          { iterations, sizeBefore: html.length, sizeAfter: fixedHtml.length }
         );
         return { html: fixedHtml, fixed: true };
       } else {
-        console.log(`No changes made for rule ${ruleName}`, {}, "AutofixEngine");
+        logger.debug("AutofixEngine", `No changes made for rule ${ruleName}`);
         return { html, fixed: false };
       }
     } catch (error) {
-      console.error(`Error applying auto-fix for rule ${ruleName}`, error, "AutofixEngine");
+      logger.error("AutofixEngine", `Error applying auto-fix for rule ${ruleName}`, error);
       return { html, fixed: false };
     }
   }
@@ -593,10 +548,10 @@ export class AutofixEngine {
           }
         }
 
-        console.log(
+        logger.debug(
+          "AutofixEngine",
           `Multiple fixes pass ${pass + 1}: ${passChanges ? "changes made" : "no changes"}`,
-          { pass: pass + 1, hasChanges: passChanges },
-          "AutofixEngine"
+          { pass: pass + 1, hasChanges: passChanges }
         );
 
         // Якщо немає змін, зупиняємось
@@ -605,10 +560,10 @@ export class AutofixEngine {
         }
       }
 
-      console.log(
+      logger.debug(
+        "AutofixEngine",
         `Multiple auto-fixes completed. Fixed ${fixedRules.length} rule types: ${fixedRules.join(", ")}`,
-        { fixedCount: fixedRules.length, rules: fixedRules },
-        "AutofixEngine"
+        { fixedCount: fixedRules.length, rules: fixedRules }
       );
 
       return {
@@ -616,7 +571,7 @@ export class AutofixEngine {
         fixed: fixedRules,
       };
     } catch (error) {
-      console.error("Error applying multiple auto-fixes", error, "AutofixEngine");
+      logger.error("AutofixEngine", "Error applying multiple auto-fixes", error);
       return { html, fixed: [] };
     }
   }
@@ -640,7 +595,7 @@ export class AutofixEngine {
       // Apply fixes for all applicable rules with iteration limit
       return this.autoFixMultipleIssues(html, targetRules);
     } catch (error) {
-      console.error(`Error fixing all ${severity} issues`, error, "AutofixEngine");
+      logger.error("AutofixEngine", `Error fixing all ${severity} issues`, error);
       return { html, fixed: [] };
     }
   }
@@ -664,7 +619,7 @@ export class AutofixEngine {
       // Apply fixes for all applicable rules with iteration limit
       return this.autoFixMultipleIssues(html, targetRules);
     } catch (error) {
-      console.error(`Error fixing all ${category} issues`, error, "AutofixEngine");
+      logger.error("AutofixEngine", `Error fixing all ${category} issues`, error);
       return { html, fixed: [] };
     }
   }
@@ -755,7 +710,7 @@ export class AutofixEngine {
    */
   addRule(rule: ValidationRule): void {
     if (!rule || !rule.name) {
-      console.warn("Invalid validation rule provided", rule, "AutofixEngine");
+      logger.warn("AutofixEngine", "Invalid validation rule provided", rule);
       return;
     }
 
@@ -767,7 +722,7 @@ export class AutofixEngine {
    */
   removeRule(ruleName: string): void {
     if (!ruleName) {
-      console.warn("Invalid rule name provided for removal", ruleName, "AutofixEngine");
+      logger.warn("AutofixEngine", "Invalid rule name provided for removal", ruleName);
       return;
     }
 
@@ -786,7 +741,7 @@ export class AutofixEngine {
    */
   updateConfig(newConfig: Partial<EmailValidatorConfig>): void {
     if (!newConfig) {
-      console.warn("Invalid config provided for update", newConfig, "AutofixEngine");
+      logger.warn("AutofixEngine", "Invalid config provided for update", newConfig);
       return;
     }
 
@@ -809,7 +764,7 @@ export class AutofixEngine {
    */
   setRuleEnabled(ruleName: string, enabled: boolean): void {
     if (!ruleName) {
-      console.warn("Invalid rule name provided for enable/disable", ruleName, "AutofixEngine");
+      logger.warn("AutofixEngine", "Invalid rule name provided for enable/disable", ruleName);
       return;
     }
 
@@ -825,11 +780,7 @@ export class AutofixEngine {
    */
   setRuleSeverity(ruleName: string, severity: ValidationSeverity): void {
     if (!ruleName || !severity) {
-      console.warn(
-        "Invalid rule name or severity provided",
-        { ruleName, severity },
-        "AutofixEngine"
-      );
+      logger.warn("AutofixEngine", "Invalid rule name or severity provided", { ruleName, severity });
       return;
     }
 
@@ -885,6 +836,6 @@ export class AutofixEngine {
       this.cleanupTimer = undefined;
     }
 
-    console.log("AutofixEngine disposed and all caches cleared", {}, "AutofixEngine");
+    logger.debug("AutofixEngine", "Disposed and all caches cleared");
   }
 }

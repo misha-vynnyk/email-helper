@@ -3,7 +3,7 @@
  * Manage storage locations for template synchronization with add/remove capabilities
  */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import {
   Add as AddIcon,
@@ -32,6 +32,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
 
 import {
   addTemplateStorageLocation,
@@ -41,6 +42,8 @@ import {
   TemplateStorageLocation,
   toggleTemplateLocationVisibility,
 } from "./templateStorageConfig";
+import { useThemeMode } from "../theme";
+import { getComponentStyles } from "../theme/componentStyles";
 
 interface TemplateStorageModalProps {
   open: boolean;
@@ -49,6 +52,10 @@ interface TemplateStorageModalProps {
 }
 
 export default function TemplateStorageModal({ open, onClose, onSave }: TemplateStorageModalProps) {
+  const theme = useTheme();
+  const { mode, style } = useThemeMode();
+  const componentStyles = useMemo(() => getComponentStyles(mode, style), [mode, style]);
+
   const [locations, setLocations] = useState<TemplateStorageLocation[]>(
     getTemplateStorageLocations(true)
   ); // Include hidden
@@ -149,6 +156,17 @@ export default function TemplateStorageModal({ open, onClose, onSave }: Template
       onClose={handleClose}
       maxWidth='md'
       fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: `${componentStyles.card.borderRadius}px`,
+          background:
+            componentStyles.card.background || alpha(theme.palette.background.paper, 0.9),
+          backdropFilter: componentStyles.card.backdropFilter,
+          WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
+          border: componentStyles.card.border,
+          boxShadow: componentStyles.card.boxShadow,
+        },
+      }}
     >
       <DialogTitle>
         <Box

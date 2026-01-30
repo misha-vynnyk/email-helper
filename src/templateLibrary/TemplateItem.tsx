@@ -90,6 +90,14 @@ function TemplateItem({
   const theme = useTheme();
   const { mode, style } = useThemeMode();
   const componentStyles = getComponentStyles(mode, style);
+  const dialogPaperSx = {
+    borderRadius: `${componentStyles.card.borderRadius}px`,
+    background: componentStyles.card.background || alpha(theme.palette.background.paper, 0.92),
+    backdropFilter: componentStyles.card.backdropFilter,
+    WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
+    border: componentStyles.card.border,
+    boxShadow: componentStyles.card.boxShadow,
+  } as const;
   const codeMirrorTheme = createCodeMirrorTheme(theme, mode, style);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -1049,6 +1057,7 @@ function TemplateItem({
         maxWidth={previewConfig.dialogMaxWidth}
         fullWidth
         disableRestoreFocus
+        PaperProps={{ sx: dialogPaperSx }}
       >
         <DialogTitle>
           <Box
@@ -1235,6 +1244,7 @@ function TemplateItem({
         maxWidth='lg'
         fullWidth
         disableRestoreFocus
+        PaperProps={{ sx: dialogPaperSx }}
       >
         <DialogTitle>HTML Code - {template.name}</DialogTitle>
         <DialogContent>
@@ -1332,6 +1342,7 @@ function TemplateItem({
         maxWidth='sm'
         fullWidth
         disableRestoreFocus
+        PaperProps={{ sx: dialogPaperSx }}
       >
         <DialogTitle>Edit Template Metadata</DialogTitle>
         <DialogContent>
@@ -1403,6 +1414,7 @@ function TemplateItem({
         maxWidth='xs'
         fullWidth
         disableRestoreFocus
+        PaperProps={{ sx: dialogPaperSx }}
       >
         <DialogTitle>Remove Template?</DialogTitle>
         <DialogContent>

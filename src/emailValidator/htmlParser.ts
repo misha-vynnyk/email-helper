@@ -1,5 +1,6 @@
 import { PERFORMANCE_CONSTANTS } from "./EMAIL_CONSTANTS";
 import { HTMLNode } from "./types";
+import { logger } from "../utils/logger";
 
 export class SimpleHTMLParser {
   private html: string;
@@ -34,12 +35,16 @@ export class SimpleHTMLParser {
 
         // Additional safety check
         if (iterations >= maxIterations) {
-          console.warn("HTML parser reached max iterations, stopping to prevent infinite loop");
+          logger.warn(
+            "SimpleHTMLParser",
+            "Reached max iterations, stopping to prevent infinite loop",
+            { iterations, maxIterations }
+          );
           break;
         }
       }
     } catch (error) {
-      console.warn("HTML parser error:", error);
+      logger.warn("SimpleHTMLParser", "Parser error", error);
       // Return what we have so far
     }
 

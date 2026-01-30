@@ -207,6 +207,7 @@ export default function ImageProcessor({
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const uploadAbortControllerRef = useRef<AbortController | null>(null);
+  const convertAbortControllerRef = useRef<AbortController | null>(null);
   const isExtractingRef = useRef(false);
   const [lastUploadedUrls, setLastUploadedUrls] = useState<Record<string, string>>({});
   // Prevent applying "old" uploaded URLs to a new editor/output state
@@ -262,6 +263,37 @@ export default function ImageProcessor({
     [onLog]
   );
 
+  const isAbortError = (e: unknown): boolean => {
+    return (
+      (e instanceof DOMException && e.name === "AbortError") ||
+      (typeof e === "object" &&
+        e !== null &&
+        "name" in e &&
+        (e as { name?: unknown }).name === "AbortError")
+    );
+  };
+
+  const abortConversions = useCallback(() => {
+    if (convertAbortControllerRef.current) {
+      convertAbortControllerRef.current.abort();
+      convertAbortControllerRef.current = null;
+    }
+  }, []);
+
+  const abortUploads = useCallback(() => {
+    if (uploadAbortControllerRef.current) {
+      uploadAbortControllerRef.current.abort();
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      // Prevent setState after unmount + stop network activity
+      abortConversions();
+      abortUploads();
+    };
+  }, [abortConversions, abortUploads]);
+
   // Sync autoProcess with prop if provided
   useEffect(() => {
     if (autoProcessProp !== undefined && autoProcessProp !== autoProcess) {
@@ -282,6 +314,8 @@ export default function ImageProcessor({
 
   // Re-process when quality/maxWidth changes so slider actually affects output
   useEffect(() => {
+    // Cancel in-flight conversions; they are now stale for the new settings.
+    abortConversions();
     setImages((prev) => {
       const hasProcessed = prev.some((img) => img.status === "done" || img.status === "error");
       if (!hasProcessed) return prev;
@@ -298,7 +332,7 @@ export default function ImageProcessor({
       );
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quality, maxWidth]);
+  }, [quality, maxWidth, abortConversions]);
 
   // Extract images from HTML
   const extractImages = useCallback(async () => {
@@ -315,6 +349,9 @@ export default function ImageProcessor({
     isExtractingRef.current = true;
 
     try {
+      // New extraction invalidates previous conversion requests
+      abortConversions();
+
       // New extraction => previous upload mapping is unsafe
       setImagesSessionId((s) => s + 1);
       setLastUploadedSessionId(null);
@@ -391,7 +428,8 @@ export default function ImageProcessor({
     async (
       src: string,
       targetFormat: ImageFormat,
-      opts: { quality: number; maxWidth: number }
+      opts: { quality: number; maxWidth: number },
+      signal?: AbortSignal
     ): Promise<{ blob: Blob; originalSize: number }> => {
       const { quality: q, maxWidth: mw } = opts;
       const isCrossOriginUrl = isCrossOrigin(src);
@@ -400,6 +438,7 @@ export default function ImageProcessor({
         const convertRes = await fetch(`${API_URL}/api/image-converter/convert-from-url`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          signal,
           body: JSON.stringify({
             url: src,
             format: targetFormat,
@@ -428,7 +467,7 @@ export default function ImageProcessor({
       // For PNG, use server-side conversion to properly handle compression
       if (targetFormat === "png") {
         try {
-          const response = await fetch(src);
+          const response = await fetch(src, { signal });
           if (!response.ok) throw new Error("Failed to fetch image");
 
           const originalBlob = await response.blob();
@@ -453,6 +492,7 @@ export default function ImageProcessor({
           const convertResponse = await fetch(`${API_URL}/api/image-converter/convert`, {
             method: "POST",
             body: formData,
+            signal,
           });
 
           if (!convertResponse.ok) {
@@ -474,6 +514,10 @@ export default function ImageProcessor({
 
         img.onload = () => {
           try {
+            if (signal?.aborted) {
+              reject(new DOMException("Aborted", "AbortError"));
+              return;
+            }
             const canvas = document.createElement("canvas");
             const ctx = canvas.getContext("2d");
 
@@ -513,6 +557,10 @@ export default function ImageProcessor({
 
             canvas.toBlob(
               (blob) => {
+                if (signal?.aborted) {
+                  reject(new DOMException("Aborted", "AbortError"));
+                  return;
+                }
                 if (blob) resolve({ blob, originalSize });
                 else reject(new Error("Failed to create blob"));
               },
@@ -524,7 +572,13 @@ export default function ImageProcessor({
           }
         };
 
-        img.onerror = () => reject(new Error("Failed to load image"));
+        img.onerror = () => {
+          if (signal?.aborted) {
+            reject(new DOMException("Aborted", "AbortError"));
+            return;
+          }
+          reject(new Error("Failed to load image"));
+        };
         img.src = src;
       });
     },
@@ -539,6 +593,12 @@ export default function ImageProcessor({
         return;
       }
 
+      // Ensure there is an active controller for in-flight conversions
+      if (!convertAbortControllerRef.current || convertAbortControllerRef.current.signal.aborted) {
+        convertAbortControllerRef.current = new AbortController();
+      }
+      const signal = convertAbortControllerRef.current.signal;
+
       setImages((prev) =>
         prev.map((img) => (img.id === id ? { ...img, status: "processing" as const } : img))
       );
@@ -547,7 +607,7 @@ export default function ImageProcessor({
       const imageFormat = getImageFormat(image, format);
 
       try {
-        const result = await convertImage(image.src, imageFormat, { quality, maxWidth });
+        const result = await convertImage(image.src, imageFormat, { quality, maxWidth }, signal);
         const originalSize = result.originalSize || image.originalSize;
 
         setImages((prev) =>
@@ -573,6 +633,24 @@ export default function ImageProcessor({
           log(`✅ ${image.name}: оброблено → ${formatSize(result.blob.size)}`);
         }
       } catch (error) {
+        if (isAbortError(error)) {
+          // Silent cancel: keep as pending (no error spam) so user can restart.
+          setImages((prev) =>
+            prev.map((img) =>
+              img.id === id
+                ? {
+                    ...img,
+                    status: "pending" as const,
+                    convertedBlob: undefined,
+                    convertedSize: undefined,
+                    error: undefined,
+                  }
+                : img
+            )
+          );
+          return;
+        }
+
         const message = error instanceof Error ? error.message : "Unknown error";
         setImages((prev) =>
           prev.map((img) =>
@@ -912,6 +990,8 @@ export default function ImageProcessor({
   }, []);
 
   const handleClear = useCallback(() => {
+    abortConversions();
+    abortUploads();
     clearImagesAndRevoke();
     setLastUploadedUrls({});
     setLastUploadedSessionId(null);
@@ -920,7 +1000,7 @@ export default function ImageProcessor({
     onUploadedUrlsChange?.({});
     onVisibilityChange(false);
     log("🗑️ Очищено");
-  }, [clearImagesAndRevoke, log, onVisibilityChange, onUploadedUrlsChange]);
+  }, [abortConversions, abortUploads, clearImagesAndRevoke, log, onVisibilityChange, onUploadedUrlsChange]);
 
   const handleReplaceInOutput = useCallback(() => {
     if (isUploading) {

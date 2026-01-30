@@ -15,6 +15,7 @@ import {
   ValidationRule,
 } from "./types";
 import { EMAIL_VALIDATION_RULES } from "./validationRules";
+import { logger } from "../utils/logger";
 
 /**
  * Handles HTML validation logic separately from autofix functionality
@@ -86,11 +87,9 @@ export class ValidationEngine {
     }
 
     if (totalCleared > 0) {
-      console.log(
-        `Cache cleanup completed. Cleared ${totalCleared} entries`,
-        {},
-        "ValidationEngine"
-      );
+      logger.debug("ValidationEngine", `Cache cleanup completed. Cleared ${totalCleared} entries`, {
+        totalCleared,
+      });
     }
   }
 
@@ -112,7 +111,7 @@ export class ValidationEngine {
       }
       return ast;
     } catch (error) {
-      console.error("Error parsing HTML to AST", error, "ValidationEngine");
+      logger.error("ValidationEngine", "Error parsing HTML to AST", error);
       return null;
     }
   }
@@ -171,7 +170,7 @@ export class ValidationEngine {
         }
       }
     } catch (error) {
-      console.error(`Error in traversal operation ${operation}`, error, "ValidationEngine");
+      logger.error("ValidationEngine", `Error in traversal operation ${operation}`, error);
       result = [];
     }
 
@@ -336,7 +335,9 @@ export class ValidationEngine {
     this.cacheLastAccess.clear();
 
     if (cacheSize > 0) {
-      console.log(`Cleared traversal cache with ${cacheSize} operations`, {}, "ValidationEngine");
+      logger.debug("ValidationEngine", `Cleared traversal cache with ${cacheSize} operations`, {
+        cacheSize,
+      });
     }
   }
 
@@ -392,7 +393,7 @@ export class ValidationEngine {
         score,
       };
     } catch (error) {
-      console.error("Critical validation error", error, "ValidationEngine");
+      logger.error("ValidationEngine", "Critical validation error", error);
       return this.createEmptyReport(
         `Validation system error: ${error instanceof Error ? error.message : "Unknown error"}`,
         "validation-system-error",
@@ -465,7 +466,7 @@ export class ValidationEngine {
 
         results.push(...ruleResults);
       } catch (error) {
-        console.error(`Error running validation rule ${ruleName}`, error, "ValidationEngine");
+        logger.error("ValidationEngine", `Error running validation rule ${ruleName}`, error);
         results.push({
           rule: ruleName,
           severity: "error",
@@ -509,11 +510,7 @@ export class ValidationEngine {
 
         results.push(...ruleResults);
       } catch (error) {
-        console.error(
-          `Error running custom validation rule ${ruleName}`,
-          error,
-          "ValidationEngine"
-        );
+        logger.error("ValidationEngine", `Error running custom validation rule ${ruleName}`, error);
       }
     }
 
@@ -600,7 +597,7 @@ export class ValidationEngine {
    */
   addRule(rule: ValidationRule): void {
     if (!rule || !rule.name) {
-      console.warn("Invalid validation rule provided", rule, "ValidationEngine");
+      logger.warn("ValidationEngine", "Invalid validation rule provided", rule);
       return;
     }
 
@@ -612,7 +609,7 @@ export class ValidationEngine {
    */
   removeRule(ruleName: string): void {
     if (!ruleName) {
-      console.warn("Invalid rule name provided for removal", ruleName, "ValidationEngine");
+      logger.warn("ValidationEngine", "Invalid rule name provided for removal", ruleName);
       return;
     }
 
@@ -637,11 +634,10 @@ export class ValidationEngine {
    */
   testRule(ruleName: string, html: string): ValidationResult[] {
     if (!ruleName || !html) {
-      console.warn(
-        "Invalid parameters for testRule",
-        { ruleName, html: typeof html },
-        "ValidationEngine"
-      );
+      logger.warn("ValidationEngine", "Invalid parameters for testRule", {
+        ruleName,
+        html: typeof html,
+      });
       return [];
     }
 
@@ -766,6 +762,6 @@ export class ValidationEngine {
       this.cacheCleanupTimer = undefined;
     }
 
-    console.log("ValidationEngine disposed and all caches cleared", {}, "ValidationEngine");
+    logger.debug("ValidationEngine", "Disposed and all caches cleared");
   }
 }

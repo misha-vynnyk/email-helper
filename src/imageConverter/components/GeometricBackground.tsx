@@ -9,7 +9,7 @@ import { useThemeMode } from "../../theme";
 
 export default function GeometricBackground() {
   const theme = useTheme();
-  const { style } = useThemeMode();
+  useThemeMode();
   const isDark = theme.palette.mode === "dark";
 
   const primaryColor = theme.palette.primary.main;

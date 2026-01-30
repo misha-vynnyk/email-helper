@@ -3,7 +3,7 @@
  * Allows users to configure preview dimensions and scale
  */
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Add as AddIcon, Settings as SettingsIcon } from "@mui/icons-material";
 import {
@@ -21,9 +21,12 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
 
 import { logger } from "../utils/logger";
 import { STORAGE_KEYS } from "../utils/storageKeys";
+import { useThemeMode } from "../theme";
+import { getComponentStyles } from "../theme/componentStyles";
 
 export interface PreviewConfig {
   cardWidth: number;
@@ -69,6 +72,10 @@ interface PreviewSettingsProps {
 }
 
 export default function PreviewSettings({ config, onChange }: PreviewSettingsProps) {
+  const theme = useTheme();
+  const { mode, style } = useThemeMode();
+  const componentStyles = useMemo(() => getComponentStyles(mode, style), [mode, style]);
+
   const [open, setOpen] = useState(false);
   const [tempConfig, setTempConfig] = useState<PreviewConfig>(config);
   const [newSectionName, setNewSectionName] = useState("");
@@ -135,6 +142,17 @@ export default function PreviewSettings({ config, onChange }: PreviewSettingsPro
         maxWidth='sm'
         fullWidth
         disableRestoreFocus
+        PaperProps={{
+          sx: {
+            borderRadius: `${componentStyles.card.borderRadius}px`,
+            background:
+              componentStyles.card.background || alpha(theme.palette.background.paper, 0.9),
+            backdropFilter: componentStyles.card.backdropFilter,
+            WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
+            border: componentStyles.card.border,
+            boxShadow: componentStyles.card.boxShadow,
+          },
+        }}
       >
         <DialogTitle>Preview Settings</DialogTitle>
         <DialogContent>

@@ -36,6 +36,7 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 
 import { useThemeMode } from "../theme";
 import { getComponentStyles } from "../theme/componentStyles";
@@ -67,6 +68,17 @@ function BlockItem({
   const theme = useTheme();
   const { mode, style } = useThemeMode();
   const componentStyles = getComponentStyles(mode, style);
+  const dialogPaperSx = useMemo(
+    () => ({
+      borderRadius: `${componentStyles.card.borderRadius}px`,
+      background: componentStyles.card.background || alpha(theme.palette.background.paper, 0.92),
+      backdropFilter: componentStyles.card.backdropFilter,
+      WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
+      border: componentStyles.card.border,
+      boxShadow: componentStyles.card.boxShadow,
+    }),
+    [componentStyles, theme.palette.background.paper]
+  );
 
   // ✅ useMemo: Wrap HTML only when block.html changes
   const wrappedPreviewHtml = useMemo(() => wrapInTemplate(block.html), [block.html]);
@@ -524,6 +536,7 @@ function BlockItem({
         onClose={() => setCodeDialogOpen(false)}
         maxWidth='md'
         fullWidth
+        PaperProps={{ sx: dialogPaperSx }}
       >
         <DialogTitle>
           <Box
@@ -602,6 +615,7 @@ function BlockItem({
         }}
         maxWidth='lg'
         fullWidth
+        PaperProps={{ sx: dialogPaperSx }}
       >
         <DialogTitle>
           <Box
@@ -718,6 +732,7 @@ function BlockItem({
         onClose={() => setDeleteDialogOpen(false)}
         maxWidth='xs'
         fullWidth
+        PaperProps={{ sx: dialogPaperSx }}
       >
         <DialogTitle>Delete Block?</DialogTitle>
         <DialogContent>

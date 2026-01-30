@@ -3,7 +3,7 @@
  * Modal for adding custom email blocks
  */
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 
 import { Add as AddIcon, Close as CloseIcon } from "@mui/icons-material";
 import {
@@ -26,8 +26,11 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
 
 import { BlockCategory, EmailBlock } from "../types/block";
+import { useThemeMode } from "../theme";
+import { getComponentStyles } from "../theme/componentStyles";
 
 import { blockFileApi } from "./blockFileApi";
 import { addCustomBlock } from "./blockLoader";
@@ -52,6 +55,10 @@ const CATEGORIES: BlockCategory[] = [
 ];
 
 export default function AddBlockModal({ open, onClose, onBlockAdded }: AddBlockModalProps) {
+  const theme = useTheme();
+  const { mode, style } = useThemeMode();
+  const componentStyles = useMemo(() => getComponentStyles(mode, style), [mode, style]);
+
   const [name, setName] = useState("");
   const [category, setCategory] = useState<BlockCategory>("Custom");
   const [html, setHtml] = useState("");
@@ -213,6 +220,17 @@ export default function AddBlockModal({ open, onClose, onBlockAdded }: AddBlockM
       onClose={handleClose}
       maxWidth='md'
       fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: `${componentStyles.card.borderRadius}px`,
+          background:
+            componentStyles.card.background || alpha(theme.palette.background.paper, 0.9),
+          backdropFilter: componentStyles.card.backdropFilter,
+          WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
+          border: componentStyles.card.border,
+          boxShadow: componentStyles.card.boxShadow,
+        },
+      }}
     >
       <DialogTitle>Add Custom Email Block</DialogTitle>
       <DialogContent>
