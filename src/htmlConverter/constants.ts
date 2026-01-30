@@ -8,6 +8,7 @@ import storageProvidersConfig from "./storageProviders.json";
 export const STORAGE_KEYS = {
   IMAGE_SETTINGS: "html-converter-image-settings",
   UPLOAD_HISTORY: "html-converter-upload-history",
+  UI_SETTINGS: "html-converter-ui-settings",
 } as const;
 
 // Symbols
