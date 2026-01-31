@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const { chromium } = require("playwright");
+const { chromium } = require("playwright-core");
 const fs = require("fs");
 const pathModule = require("path");
 const { execSync, exec, execFileSync } = require("child_process");
