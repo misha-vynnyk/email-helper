@@ -50,3 +50,21 @@ server/data/.workspaces.json
 
 # OS files
 Thumbs.db
+.DS_Store
+
+# Python / AI Backend
+server/ai/venv/
+server/ai/__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+# Common Model Weights (prevent accidental commit)
+*.pt
+*.pth
+*.onnx
+*.bin
+*.pdparams
+*.pdopt
+*.pdmodel

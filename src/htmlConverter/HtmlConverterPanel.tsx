@@ -246,6 +246,7 @@ export default function HtmlConverterPanel() {
     roiH: 1,
     ocrMinWidth: 1000,
     ocrMaxWidth: 1200,
+    useAiBackend: false,
     autoAnalyzeMaxFiles: 0,
   };
 
@@ -1133,11 +1134,38 @@ export default function HtmlConverterPanel() {
                         }
                         disabled={!imageAnalysis.enabled}
                       >
-                        <MenuItem value='ocr'>OCR (tesseract.js)</MenuItem>
                         <MenuItem value='off'>Вимкнено</MenuItem>
+                        <MenuItem value='ocr'>Tesseract.js (Browser)</MenuItem>
                       </TextField>
                     </FormControl>
 
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={imageAnalysis.useAiBackend || false}
+                          onChange={(e) =>
+                            setImageAnalysis((prev) => ({
+                              ...prev,
+                              useAiBackend: e.target.checked,
+                            }))
+                          }
+                          color="secondary"
+                        />
+                      }
+                      label={
+                        <Box>
+                          <Typography variant="body2" fontWeight={600}>
+                            AI Backend 🐍
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            PaddleOCR + BLIP + CLIP
+                          </Typography>
+                        </Box>
+                      }
+                    />
+                  </Stack>
+
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={spacingMUI.base}>
                     <FormControl sx={{ flex: 1 }}>
                       <TextField
                         select

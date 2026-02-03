@@ -149,6 +149,11 @@ export interface ImageAnalysisSettings {
    */
   ocrMaxWidth: number;
   /**
+   * If true, use the local Python AI Backend (PaddleOCR + BLIP + CLIP).
+   * Requires `npm run dev:ai`.
+   */
+  useAiBackend: boolean;
+  /**
    * Safety limit for auto-run mode. 0 disables auto-run even if runMode="auto".
    */
   autoAnalyzeMaxFiles: number;
