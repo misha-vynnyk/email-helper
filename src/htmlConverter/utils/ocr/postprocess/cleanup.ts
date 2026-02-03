@@ -26,6 +26,8 @@ export function truncateAlt(text: string, maxLen = 130): string {
   return (lastSpace > 30 ? sliced.slice(0, lastSpace) : sliced).trim();
 }
 
+import { ALLOWED_SHORT_ALL_CAPS } from "../constants";
+
 /**
  * Clean up an alt text candidate by removing trailing junk tokens
  */
@@ -45,8 +47,7 @@ export function cleanupAltCandidate(text: string): string {
   const isAllCaps = letters.length > 0 && letters === letters.toUpperCase();
 
   // Drop trailing 1–2 letter non-caps tokens (e.g. "Jo") but keep "AI", "OF".
-  const allowedShortAllCaps = new Set(["AI", "OF", "TO", "IN", "ON", "UP", "BY", "NO"]);
-  if (letters.length > 0 && letters.length <= 2 && (!isAllCaps || !allowedShortAllCaps.has(letters))) {
+  if (letters.length > 0 && letters.length <= 2 && (!isAllCaps || !ALLOWED_SHORT_ALL_CAPS.has(letters))) {
     words.pop();
     return words.join(" ").trim();
   }

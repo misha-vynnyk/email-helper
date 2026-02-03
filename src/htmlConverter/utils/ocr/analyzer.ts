@@ -80,6 +80,12 @@ function getAnalysisConfigKey(s: ImageAnalysisSettings): string {
 /**
  * Compute quality score for OCR text output
  */
+import { ALLOWED_SHORT_ALL_CAPS, COMMON_3_LETTER_WORDS } from "./constants";
+import { isAllCapsLike } from "./postprocess/cleanup";
+
+/**
+ * Compute quality score for OCR text output
+ */
 function qualityScore(text: string): number {
   const cleaned = cleanOcrText(text);
   if (!cleaned) return -999;
@@ -90,16 +96,6 @@ function qualityScore(text: string): number {
   const nonWord = (joined.match(/[^a-zA-Z0-9\s]/g) || []).length;
   const punctRatio = alphaNum > 0 ? nonWord / (alphaNum + nonWord) : 1;
 
-  const allowed2 = new Set([
-    "AI", "AN", "AS", "AT", "BY", "DO", "GO", "IF", "IN", "IS", "IT", "MY",
-    "NO", "OF", "OK", "ON", "OR", "TO", "UP", "US", "WE",
-  ]);
-  const common3 = new Set([
-    "ALL", "AND", "ANY", "ARE", "BUT", "BUY", "CAN", "DID", "FOR", "GET", "HIS",
-    "HER", "HOW", "NEW", "NOT", "NOW", "OUR", "OUT", "SEE", "THE", "TOP", "TRY",
-    "USE", "WHY", "WIN", "YOU",
-  ]);
-
   const isWordLikeToken = (token: string): boolean => {
     const core = token.replace(/[^A-Za-z0-9]/g, "");
     if (!core) return false;
@@ -107,8 +103,8 @@ function qualityScore(text: string): number {
     if (/^\d+$/.test(core)) return false;
     const up = core.toUpperCase();
     if (up.length >= 4) return true;
-    if (up.length === 3) return common3.has(up);
-    if (up.length === 2) return allowed2.has(up);
+    if (up.length === 3) return COMMON_3_LETTER_WORDS.has(up);
+    if (up.length === 2) return ALLOWED_SHORT_ALL_CAPS.has(up);
     return false;
   };
 
@@ -116,7 +112,7 @@ function qualityScore(text: string): number {
   const shortTok = tokens.filter((x) => x.replace(/[^A-Za-z0-9]/g, "").length <= 2).length;
 
   // Penalize repeated glyph noise like "RRRRR" / "=====" / etc.
-  const repeatPenalty = /(.)\\1{5,}/.test(joined) ? 40 : 0;
+  const repeatPenalty = /(.)\1{5,}/.test(joined) ? 40 : 0;
 
   // If we have lots of tokens but few letters, it's probably garbage.
   const sparsePenalty = tokens.length >= 10 && letters < 20 ? 35 : 0;
@@ -288,7 +284,7 @@ export function createOcrAnalyzer(): OcrAnalyzer {
         const blur = Boolean(settings.preprocessBlur);
         const blurRadius = settings.preprocessBlurRadius ?? 1;
 
-        const worker = await engine.getWorker(signal);
+        await engine.getWorker(signal);
 
         // Apply base OCR parameters
         const basePsm = String(settings.ocrPsm ?? "11");
@@ -370,12 +366,7 @@ export function createOcrAnalyzer(): OcrAnalyzer {
             .filter((w) => BANNER_DICT.has(w)).length;
         const isCtaLike = (l: string) => /\bclick\b/i.test(l) || /\blearn\b/i.test(l) || /\bsubscribe\b/i.test(l);
         const isYearLike = (l: string) => /\b(19|20)\d{2}\b/.test(l);
-        const isAllCapsLike = (text: string): boolean => {
-          const letters = text.replace(/[^a-zA-Z]/g, "");
-          if (letters.length < 4) return false;
-          const upper = letters.replace(/[^A-Z]/g, "").length;
-          return upper / letters.length >= 0.85;
-        };
+
 
         const pushLinesFromText = (t: string, opts: { onlyImportant?: boolean }) => {
           const normalized = normalizeTextForMerge(t);
