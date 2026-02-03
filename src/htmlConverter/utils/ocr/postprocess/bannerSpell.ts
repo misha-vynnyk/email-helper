@@ -46,6 +46,10 @@ export const BANNER_DICT = new Set<string>([
   "APOCALYPSE",
   "HORSEMEN",
   "FOUR",
+  // Marketing extras
+  "FREE", "SAVE", "DEAL", "OFFER", "LIMITED", "EXCLUSIVE",
+  "WATCH", "DISCOVER", "JOIN", "START", "GET",
+  "IS", "IT", "AT", "BY", "OR", "AS",
 ]);
 
 /**

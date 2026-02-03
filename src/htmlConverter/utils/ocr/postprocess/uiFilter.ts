@@ -3,6 +3,7 @@
  */
 
 import { cleanOcrText, normalizeOcrLine, cleanupAltCandidate, truncateAlt, isAllCapsLike, isTitleCaseLike } from "./cleanup";
+import { ALLOWED_SHORT_ALL_CAPS, COMMON_3_LETTER_WORDS } from "../constants";
 
 /**
  * Filter OCR text for UI display by removing noise and junk
@@ -15,59 +16,6 @@ export function filterOcrTextForUi(text: string): string {
 
   const out: string[] = [];
   const seen = new Set<string>();
-  const allowedShortAllCaps = new Set([
-    "AI",
-    "AN",
-    "AS",
-    "AT",
-    "BE",
-    "BY",
-    "DO",
-    "EX",
-    "GO",
-    "IF",
-    "IN",
-    "IS",
-    "IT",
-    "MY",
-    "NO",
-    "OF",
-    "OK",
-    "ON",
-    "OR",
-    "TO",
-    "UP",
-    "US",
-    "WE",
-  ]);
-  const common3 = new Set([
-    "ALL",
-    "AND",
-    "ANY",
-    "ARE",
-    "BUT",
-    "BUY",
-    "CAN",
-    "DID",
-    "FOR",
-    "GET",
-    "HIS",
-    "HER",
-    "HOW",
-    "NEW",
-    "NOT",
-    "NOW",
-    "OUR",
-    "OUT",
-    "SEE",
-    "THE",
-    "TOP",
-    "TRY",
-    "USE",
-    "WHY",
-    "WIN",
-    "YOU",
-  ]);
 
   const isWordLikeToken = (token: string): boolean => {
     const core = token.replace(/[^A-Za-z0-9]/g, "");
@@ -76,8 +24,8 @@ export function filterOcrTextForUi(text: string): string {
     if (/^\d+$/.test(core)) return false; // other numbers are not "words"
     const up = core.toUpperCase();
     if (up.length >= 4) return true;
-    if (up.length === 3) return common3.has(up);
-    if (up.length === 2) return allowedShortAllCaps.has(up);
+    if (up.length === 3) return COMMON_3_LETTER_WORDS.has(up);
+    if (up.length === 2) return ALLOWED_SHORT_ALL_CAPS.has(up);
     return false;
   };
 
@@ -96,8 +44,8 @@ export function filterOcrTextForUi(text: string): string {
       ) {
         const up = letters.toUpperCase();
         const keep =
-          (letters.length === 2 && isAllCaps && allowedShortAllCaps.has(up)) ||
-          (letters.length === 3 && common3.has(up)) ||
+          (letters.length === 2 && isAllCaps && ALLOWED_SHORT_ALL_CAPS.has(up)) ||
+          (letters.length === 3 && COMMON_3_LETTER_WORDS.has(up)) ||
           /^\d{4}$/.test(letters);
         if (keep) break;
         parts.pop();
@@ -115,7 +63,7 @@ export function filterOcrTextForUi(text: string): string {
     if (!/[a-zA-Z0-9]/.test(line)) continue;
     if (/^[|_.,\-–—=]+$/.test(line)) continue;
     if (/^[ilI|]{1,6}$/.test(line)) continue;
-    if (/(.)\\1{5,}/.test(line)) continue; // "RRRRRR"
+    if (/(.)\1{5,}/.test(line)) continue; // "RRRRRR"
 
     const tokens = line.split(/\s+/).filter(Boolean);
     const letters = (line.match(/[A-Za-z]/g) || []).length;
