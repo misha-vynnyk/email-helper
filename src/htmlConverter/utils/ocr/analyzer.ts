@@ -9,6 +9,7 @@ import { cleanOcrText } from "./postprocess/cleanup";
 import { spellCorrectBannerText, postFixBannerText } from "./postprocess/bannerSpell";
 import { OcrEngine, pickOcrParamsForRoi } from "./engine";
 import { processOcrOutput } from "./postprocess/processor";
+import { AiBackendClient } from "./aiClient";
 
 export type OcrSkipReason = "lowTextLikelihood";
 
@@ -146,19 +147,7 @@ function qualityScore(text: string): number {
 export function createOcrAnalyzer(): OcrAnalyzer {
   const engine = new OcrEngine();
 
-  const cache = new Map<
-    string,
-    {
-      configKey: string;
-      ocrText?: string;
-      ocrTextRaw?: string;
-      altSuggestions: string[];
-      ctaSuggestions?: string[];
-      nameSuggestions: string[];
-      textLikelihood?: number;
-      skippedReason?: OcrSkipReason;
-    }
-  >();
+  const cache = new Map<string, { configKey: string } & OcrAnalyzeResult>();
 
   return {
     clearCache: () => cache.clear(),
@@ -177,7 +166,34 @@ export function createOcrAnalyzer(): OcrAnalyzer {
         const blob = await res.blob();
         onProgress?.(0.1); // Downloaded
 
-        const configKey = getAnalysisConfigKey(settings);
+      // 0. CHECK: AI Backend Mode
+      if (settings.useAiBackend) {
+        try {
+          if (onProgress) onProgress(0.1); // Connecting...
+
+          // Optional: Check availability first? Or just try-catch?
+          // Let's just try call.
+
+          if (onProgress) onProgress(0.3); // Uploading...
+          const result = await AiBackendClient.analyzeImage(blob, "detailed");
+          if (onProgress) onProgress(1); // Done
+
+          // Cache this result?
+          // For now, let's cache it using the same hash key so future calls are instant
+          const configKey = getAnalysisConfigKey(settings);
+          const hash = await sha256Hex(blob);
+
+          // result fits OcrAnalyzeResult, just add cache info
+          cache.set(hash, { configKey, ...result, cacheHit: true });
+
+          return result;
+        } catch (e) {
+          console.warn("AI Backend failed, falling back to local Tesseract:", e);
+          // Fallthrough to local Tesseract logic
+        }
+      }
+
+      const configKey = getAnalysisConfigKey(settings);
         const hash = await sha256Hex(blob);
         const cached = cache.get(hash);
         if (cached && cached.configKey === configKey && !(force && cached.skippedReason)) {

@@ -6,10 +6,11 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "dev": "concurrently \"vite\" \"cd server && npm run dev\"",
+    "dev": "concurrently \"vite\" \"cd server && npm run dev\" \"npm run dev:ai\"",
     "dev-host": "concurrently \"vite --host 0.0.0.0 --port 5173\" \"cd server && ALLOW_ALL_CORS_DEV=1 npm run dev\"",
     "dev-frontend": "vite --open",
     "dev-backend": "cd server && npm run dev",
+    "dev:ai": "cd server/ai && python3 -m venv venv && . venv/bin/activate && pip install -r requirements.txt && python start.py",
     "build": "vite build",
     "preview": "vite preview",
     "predeploy": "npm run build",
