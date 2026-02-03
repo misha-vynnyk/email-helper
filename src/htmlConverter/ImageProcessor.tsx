@@ -47,7 +47,13 @@ import {
   STORAGE_URL_PREFIX,
   STORAGE_PROVIDERS_CONFIG,
 } from "./constants";
-import type { ProcessedImage, ImageFormat, ImageFormatOverride, ImageSettings } from "./types";
+import type {
+  ImageAnalysisSettings,
+  ProcessedImage,
+  ImageFormat,
+  ImageFormatOverride,
+  ImageSettings,
+} from "./types";
 import API_URL, { isApiAvailable } from "../config/api";
 
 const isCrossOrigin = (src: string): boolean => {
@@ -151,6 +157,7 @@ interface ImageProcessorProps {
   hasOutput?: boolean;
   autoProcess?: boolean;
   storageProvider?: "default" | "alphaone";
+  imageAnalysisSettings?: ImageAnalysisSettings;
 }
 
 function loadSettings(): ImageSettings {
@@ -193,6 +200,7 @@ export default function ImageProcessor({
   hasOutput = false,
   autoProcess: autoProcessProp,
   storageProvider = "default",
+  imageAnalysisSettings,
 }: ImageProcessorProps) {
   const theme = useTheme();
   const { mode, style } = useThemeMode();
@@ -1459,6 +1467,7 @@ export default function ImageProcessor({
         }}
         initialFolderName={initialFolderName}
         onHistoryAdd={onHistoryAdd}
+        imageAnalysisSettings={imageAnalysisSettings}
       />
 
       {/* Snackbar for notifications */}
