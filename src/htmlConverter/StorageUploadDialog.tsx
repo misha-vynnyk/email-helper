@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -39,9 +39,11 @@ import { useThemeMode } from "../theme";
 import { getComponentStyles } from "../theme/componentStyles";
 import { spacingMUI, borderRadius } from "../theme/tokens";
 import { copyToClipboard } from "./utils/clipboard";
+import { normalizeCustomNameInput } from "./utils/imageAnalysis";
+import { useOcrAnalysis } from "./utils/useOcrAnalysis";
 import { UI_TIMINGS } from "./constants";
 import { STORAGE_PROVIDERS_CONFIG } from "./constants";
-import type { UploadResult } from "./types";
+import type { ImageAnalysisSettings, UploadResult } from "./types";
 import type { StorageProviderKey } from "./constants";
 
 function toShortPath(url: string): string {
@@ -67,6 +69,7 @@ interface StorageUploadDialogProps {
   onCancel?: () => void;
   initialFolderName?: string;
   onHistoryAdd?: (category: string, folderName: string, results: UploadResult[]) => void;
+  imageAnalysisSettings?: ImageAnalysisSettings;
 }
 
 export default function StorageUploadDialog({
@@ -78,6 +81,7 @@ export default function StorageUploadDialog({
   onCancel,
   initialFolderName = "",
   onHistoryAdd,
+  imageAnalysisSettings,
 }: StorageUploadDialogProps) {
   const theme = useTheme();
   const { mode, style } = useThemeMode();
@@ -104,13 +108,58 @@ export default function StorageUploadDialog({
   const [uploadResults, setUploadResults] = useState<UploadResult[]>([]);
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
   const [customNames, setCustomNames] = useState<Record<string, string>>({});
+  const [customAlts, setCustomAlts] = useState<Record<string, string>>({});
   const [orderedFiles, setOrderedFiles] = useState(files);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [showOcrTextById, setShowOcrTextById] = useState<Record<string, boolean>>({});
+
+  const analysisEnabled = Boolean(
+    imageAnalysisSettings?.enabled && imageAnalysisSettings.engine === "ocr"
+  );
+
+  // AI (step 1): OCR-based suggestions (configured globally in HtmlConverterPanel)
+  const { aiById, analyzeFile, reset: resetOcrState, dispose: disposeOcr } = useOcrAnalysis({
+    enabled: analysisEnabled,
+    settings: imageAnalysisSettings,
+    files: orderedFiles,
+  });
+
+  const handleAnalyzeFile = useCallback(
+    async (file: { id: string; name: string; path?: string }, opts?: { force?: boolean }) => {
+      const result = await analyzeFile(file, { force: opts?.force });
+      if (!result) return;
+
+      // Auto-apply (global settings)
+      const bestAlt = result.altSuggestions[0] || result.ctaSuggestions?.[0];
+      if (imageAnalysisSettings?.autoApplyAlt === "ifEmpty" && bestAlt) {
+        setCustomAlts((prev) => (prev[file.id] ? prev : { ...prev, [file.id]: bestAlt }));
+      }
+      if (imageAnalysisSettings?.autoApplyFilename === "ifEmpty" && result.nameSuggestions[0]) {
+        const normalized = normalizeCustomNameInput(result.nameSuggestions[0]);
+        if (normalized) {
+          setCustomNames((prev) => (prev[file.id] ? prev : { ...prev, [file.id]: normalized }));
+        }
+      }
+    },
+    [analyzeFile, imageAnalysisSettings?.autoApplyAlt, imageAnalysisSettings?.autoApplyFilename]
+  );
 
   // Sync orderedFiles when files prop changes
   useEffect(() => {
     setOrderedFiles(files);
   }, [files]);
+
+  // Reset per-open transient state
+  useEffect(() => {
+    if (!open) return;
+    setError(null);
+    setUploadResults([]);
+    setCopiedUrl(null);
+    setCustomNames({});
+    setCustomAlts({});
+    setShowOcrTextById({});
+    resetOcrState();
+  }, [open]);
 
   // Reset category when provider changes
   useEffect(() => {
@@ -214,6 +263,8 @@ export default function StorageUploadDialog({
       setUploadResults([]);
       setCopiedUrl(null);
       setCustomNames({});
+      setCustomAlts({});
+      disposeOcr();
     }
   };
 
@@ -340,7 +391,8 @@ export default function StorageUploadDialog({
                       onDragEnd={handleDragEnd}
                       sx={{
                         display: "flex",
-                        alignItems: "center",
+                        flexDirection: "column",
+                        alignItems: "stretch",
                         gap: spacingMUI.sm,
                         p: spacingMUI.sm,
                         borderRadius: `${borderRadius.sm}px`,
@@ -362,84 +414,305 @@ export default function StorageUploadDialog({
                             },
                       }}
                     >
-                      {/* Drag Handle */}
-                      <DragIcon
+                      <Box
                         sx={{
-                          color: theme.palette.text.disabled,
-                          cursor: uploading ? "default" : "grab",
-                          "&:active": {
-                            cursor: uploading ? "default" : "grabbing",
-                          },
+                          display: "flex",
+                          alignItems: "center",
+                          gap: spacingMUI.sm,
                         }}
-                      />
-
-                      {/* Thumbnail */}
-                      {file.path && (
-                        <Box
+                      >
+                        {/* Drag Handle */}
+                        <DragIcon
                           sx={{
-                            width: 48,
-                            height: 48,
-                            borderRadius: `${borderRadius.sm}px`,
-                            overflow: "hidden",
-                            flexShrink: 0,
-                            border: `1px solid ${theme.palette.divider}`,
-                            backgroundColor: alpha(theme.palette.background.default, 0.5),
+                            color: theme.palette.text.disabled,
+                            cursor: uploading ? "default" : "grab",
+                            "&:active": {
+                              cursor: uploading ? "default" : "grabbing",
+                            },
                           }}
-                        >
-                          <img
-                            src={file.path}
-                            alt={file.name}
-                            style={{
-                              width: "100%",
-                              height: "100%",
-                              objectFit: "cover",
+                        />
+
+                        {/* Thumbnail */}
+                        {file.path && (
+                          <Box
+                            sx={{
+                              width: 48,
+                              height: 48,
+                              borderRadius: `${borderRadius.sm}px`,
+                              overflow: "hidden",
+                              flexShrink: 0,
+                              border: `1px solid ${theme.palette.divider}`,
+                              backgroundColor: alpha(theme.palette.background.default, 0.5),
+                            }}
+                          >
+                            <img
+                              src={file.path}
+                              alt={file.name}
+                              style={{
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                              }}
+                            />
+                          </Box>
+                        )}
+
+                        {/* Index Chip */}
+                        <Chip
+                          label={`#${index + 1}`}
+                          size='small'
+                          sx={{
+                            minWidth: 36,
+                            fontWeight: 700,
+                            backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                            color: theme.palette.primary.main,
+                          }}
+                        />
+
+                        <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: spacingMUI.xs }}>
+                          {/* Name Input */}
+                          <TextField
+                            size='small'
+                            fullWidth
+                            placeholder={file.name.replace(/\.[^/.]+$/, "")}
+                            value={customNames[file.id] || ""}
+                            onChange={(e) => {
+                          const value = normalizeCustomNameInput(e.target.value);
+                              setCustomNames((prev) => ({
+                                ...prev,
+                                [file.id]: value,
+                              }));
+                            }}
+                            disabled={uploading}
+                            helperText={customNames[file.id] ? `${customNames[file.id]}.jpg` : file.name}
+                            sx={{
+                              "& .MuiOutlinedInput-root": {
+                                borderRadius: `${borderRadius.sm}px`,
+                                "&.Mui-focused": {
+                                  backgroundColor: "transparent",
+                                },
+                              },
+                              "& .MuiFormHelperText-root": {
+                                fontFamily: "monospace",
+                                fontSize: "0.7rem",
+                              },
                             }}
                           />
+
+                          {/* ALT Input */}
+                          {analysisEnabled && (
+                            <TextField
+                              size='small'
+                              fullWidth
+                              label='ALT'
+                              placeholder='Suggested from OCR…'
+                              value={customAlts[file.id] || ""}
+                              onChange={(e) => {
+                                setCustomAlts((prev) => ({ ...prev, [file.id]: e.target.value }));
+                              }}
+                              disabled={uploading}
+                            />
+                          )}
+                        </Box>
+                      </Box>
+
+                      {/* AI suggestions */}
+                      {analysisEnabled && (
+                        <Box sx={{ pl: 0, pt: spacingMUI.xs }}>
+                          <Stack
+                            direction='row'
+                            spacing={spacingMUI.xs}
+                            alignItems='center'
+                            flexWrap='wrap'
+                          >
+                            <Button
+                              size='small'
+                              variant='outlined'
+                              onClick={() => handleAnalyzeFile(file)}
+                              disabled={uploading || aiById[file.id]?.status === "running"}
+                              sx={{ textTransform: "none" }}
+                            >
+                              {aiById[file.id]?.status === "running" ? "Analyzing…" : "Analyze (OCR)"}
+                            </Button>
+
+                            {aiById[file.id]?.skippedReason === "lowTextLikelihood" && (
+                              <Button
+                                size='small'
+                                variant='text'
+                                onClick={() => handleAnalyzeFile(file, { force: true })}
+                                disabled={uploading || aiById[file.id]?.status === "running"}
+                                sx={{ textTransform: "none" }}
+                              >
+                                Force OCR
+                              </Button>
+                            )}
+
+                            {typeof aiById[file.id]?.textLikelihood === "number" && (
+                              <Chip
+                                size='small'
+                                variant='outlined'
+                                label={`TL ${Number(aiById[file.id]?.textLikelihood).toFixed(3)}`}
+                              />
+                            )}
+
+                            {aiById[file.id]?.cacheHit && (
+                              <Chip size='small' variant='outlined' label='cache' />
+                            )}
+
+                            {aiById[file.id]?.status === "error" && (
+                              <Typography variant='caption' color='error'>
+                                {aiById[file.id]?.error}
+                              </Typography>
+                            )}
+                          </Stack>
+
+                          {aiById[file.id]?.status === "running" && (
+                            <Box sx={{ mt: spacingMUI.xs }}>
+                              <LinearProgress
+                                variant={typeof aiById[file.id]?.progress === "number" ? "determinate" : "indeterminate"}
+                                value={Math.round((aiById[file.id]?.progress ?? 0) * 100)}
+                              />
+                            </Box>
+                          )}
+
+                          {aiById[file.id]?.status === "done" && (
+                            <Box sx={{ mt: spacingMUI.xs }}>
+                              {aiById[file.id]?.skippedReason === "lowTextLikelihood" && (
+                                <Typography variant='caption' color='text.secondary' display='block' sx={{ mb: 0.5 }}>
+                                  OCR пропущено (текст малоймовірний). Натисни <b>Force OCR</b>, якщо це банер/кнопка з текстом.
+                                </Typography>
+                              )}
+
+                              {(aiById[file.id]?.ocrText || aiById[file.id]?.ocrTextRaw) && (
+                                <Box sx={{ mb: spacingMUI.xs }}>
+                                  <Stack direction='row' spacing={spacingMUI.xs} alignItems='center' flexWrap='wrap'>
+                                    <Button
+                                      size='small'
+                                      variant='text'
+                                      onClick={() =>
+                                        setShowOcrTextById((prev) => ({
+                                          ...prev,
+                                          [file.id]: !prev[file.id],
+                                        }))
+                                      }
+                                      sx={{ textTransform: "none", px: 0.5 }}
+                                    >
+                                      {showOcrTextById[file.id] ? "Сховати OCR текст" : "Показати OCR текст"}
+                                    </Button>
+
+                                    <Tooltip title='Copy OCR text'>
+                                      <IconButton
+                                        size='small'
+                                        onClick={() =>
+                                          copyToClipboard(
+                                            aiById[file.id]?.ocrTextRaw ||
+                                              aiById[file.id]?.ocrText ||
+                                              ""
+                                          )
+                                        }
+                                      >
+                                        <CopyIcon fontSize='small' />
+                                      </IconButton>
+                                    </Tooltip>
+                                  </Stack>
+
+                                  {showOcrTextById[file.id] && (
+                                    <TextField
+                                      fullWidth
+                                      size='small'
+                                      multiline
+                                      minRows={3}
+                                      maxRows={10}
+                                      value={aiById[file.id]?.ocrText || ""}
+                                      label='OCR (clean)'
+                                      InputProps={{ readOnly: true }}
+                                      sx={{ mt: spacingMUI.xs }}
+                                    />
+                                  )}
+
+                                  {showOcrTextById[file.id] && aiById[file.id]?.ocrTextRaw && (
+                                    <TextField
+                                      fullWidth
+                                      size='small'
+                                      multiline
+                                      minRows={3}
+                                      maxRows={10}
+                                      value={aiById[file.id]?.ocrTextRaw || ""}
+                                      label='OCR (raw debug)'
+                                      InputProps={{ readOnly: true }}
+                                      sx={{ mt: spacingMUI.xs }}
+                                    />
+                                  )}
+                                </Box>
+                              )}
+
+                              {(aiById[file.id]?.altSuggestions?.length ?? 0) > 0 && (
+                                <>
+                                  <Typography variant='caption' color='text.secondary' display='block' sx={{ mb: 0.5 }}>
+                                    ALT suggestions
+                                  </Typography>
+                                  <Stack direction='row' spacing={spacingMUI.xs} flexWrap='wrap'>
+                                    {aiById[file.id]?.altSuggestions?.map((s) => (
+                                      <Chip
+                                        key={s}
+                                        size='small'
+                                        label={s}
+                                        onClick={() => setCustomAlts((prev) => ({ ...prev, [file.id]: s }))}
+                                        sx={{ cursor: "pointer" }}
+                                      />
+                                    ))}
+                                  </Stack>
+                                </>
+                              )}
+
+                              {(aiById[file.id]?.ctaSuggestions?.length ?? 0) > 0 && (
+                                <Box sx={{ mt: spacingMUI.xs }}>
+                                  <Typography variant='caption' color='text.secondary' display='block' sx={{ mb: 0.5 }}>
+                                    CTA text
+                                  </Typography>
+                                  <Stack direction='row' spacing={spacingMUI.xs} flexWrap='wrap'>
+                                    {aiById[file.id]?.ctaSuggestions?.map((s) => (
+                                      <Chip
+                                        key={s}
+                                        size='small'
+                                        variant='outlined'
+                                        label={s}
+                                        onClick={() => setCustomAlts((prev) => ({ ...prev, [file.id]: s }))}
+                                        sx={{ cursor: "pointer" }}
+                                      />
+                                    ))}
+                                  </Stack>
+                                </Box>
+                              )}
+
+                              {(aiById[file.id]?.nameSuggestions?.length ?? 0) > 0 && (
+                                <Box sx={{ mt: spacingMUI.xs }}>
+                                  <Typography variant='caption' color='text.secondary' display='block' sx={{ mb: 0.5 }}>
+                                    Filename (one word)
+                                  </Typography>
+                                  <Stack direction='row' spacing={spacingMUI.xs} flexWrap='wrap'>
+                                    {aiById[file.id]?.nameSuggestions?.map((s) => (
+                                      <Chip
+                                        key={s}
+                                        size='small'
+                                        variant='outlined'
+                                        label={s}
+                                        onClick={() =>
+                                          setCustomNames((prev) => ({
+                                            ...prev,
+                                            [file.id]: normalizeCustomNameInput(s),
+                                          }))
+                                        }
+                                        sx={{ cursor: "pointer" }}
+                                      />
+                                    ))}
+                                  </Stack>
+                                </Box>
+                              )}
+                            </Box>
+                          )}
                         </Box>
                       )}
-
-                      {/* Index Chip */}
-                      <Chip
-                        label={`#${index + 1}`}
-                        size='small'
-                        sx={{
-                          minWidth: 36,
-                          fontWeight: 700,
-                          backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                          color: theme.palette.primary.main,
-                        }}
-                      />
-
-                      {/* Name Input */}
-                      <TextField
-                        size='small'
-                        fullWidth
-                        placeholder={file.name.replace(/\.[^/.]+$/, "")}
-                        value={customNames[file.id] || ""}
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/[^a-zA-Z0-9-_]/g, "").toLowerCase();
-                          setCustomNames((prev) => ({
-                            ...prev,
-                            [file.id]: value,
-                          }));
-                        }}
-                        disabled={uploading}
-                        helperText={
-                          customNames[file.id] ? `${customNames[file.id]}.jpg` : file.name
-                        }
-                        sx={{
-                          "& .MuiOutlinedInput-root": {
-                            borderRadius: `${borderRadius.sm}px`,
-                            "&.Mui-focused": {
-                              backgroundColor: "transparent",
-                            },
-                          },
-                          "& .MuiFormHelperText-root": {
-                            fontFamily: "monospace",
-                            fontSize: "0.7rem",
-                          },
-                        }}
-                      />
                     </Box>
                   ))}
                 </Stack>

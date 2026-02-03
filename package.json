@@ -46,6 +46,7 @@
     "react-error-boundary": "^6.0.0",
     "react-toastify": "^11.0.5",
     "react-window": "^2.2.5",
+    "tesseract.js": "^6.0.1",
     "uuid": "^11.1.0",
     "zod": "^3.22.4",
     "zustand": "^4.5.1"
