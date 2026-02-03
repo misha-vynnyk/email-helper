@@ -54,12 +54,13 @@ export class OcrEngine {
         // ignore
       }
 
+      const abortHandler = () => {
+        w.terminate().catch(() => {});
+      };
+      signal.addEventListener("abort", abortHandler, { once: true });
+
       if (signal.aborted) {
-        try {
-          await w.terminate();
-        } catch {
-          // ignore
-        }
+        abortHandler();
         throw new DOMException("Aborted", "AbortError");
       }
 
