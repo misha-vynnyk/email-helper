@@ -131,7 +131,7 @@ export function autoDetectRoiFracs(
   if (w < 32 || h < 32) return [];
 
   const img = ctx.getImageData(0, 0, w, h);
-  const d = img.data;
+  const data32 = new Uint32Array(img.data.buffer);
   const thr = Math.max(5, Math.min(255, Math.round(edgeThreshold)));
 
   const gridX = 8;
@@ -142,26 +142,41 @@ export function autoDetectRoiFracs(
   const cnt = new Uint32Array(gridX * gridY);
 
   const step = 2;
+  // Use a local stride to avoid repeated specific multiplications
+  const wStep = w * step;
+
   for (let y = 0; y < h - step; y += step) {
     const gy = Math.min(gridY - 1, Math.floor(y / cellH));
+    const rowOffset = y * w;
+    const nextRowOffset = rowOffset + wStep; // (y + step) * w
+
     for (let x = 0; x < w - step; x += step) {
       const gx = Math.min(gridX - 1, Math.floor(x / cellW));
       const cell = gy * gridX + gx;
 
-      const i = (y * w + x) * 4;
-      const r = d[i];
-      const g = d[i + 1];
-      const b = d[i + 2];
+      // Current pixel
+      const p = data32[rowOffset + x];
+      const r = p & 0xff;
+      const g = (p >> 8) & 0xff;
+      const b = (p >> 16) & 0xff;
       const lum = (r * 3 + g * 6 + b) / 10;
 
-      const ir = (y * w + (x + step)) * 4;
-      const lumR = (d[ir] * 3 + d[ir + 1] * 6 + d[ir + 2]) / 10;
+      // Right neighbor (x + step)
+      const pr = data32[rowOffset + x + step];
+      const rr = pr & 0xff;
+      const gr = (pr >> 8) & 0xff;
+      const br = (pr >> 16) & 0xff;
+      const lumR = (rr * 3 + gr * 6 + br) / 10;
 
-      const idn = ((y + step) * w + x) * 4;
-      const lumD = (d[idn] * 3 + d[idn + 1] * 6 + d[idn + 2]) / 10;
+      // Bottom neighbor (y + step)
+      const pd = data32[nextRowOffset + x];
+      const rd = pd & 0xff;
+      const gd = (pd >> 8) & 0xff;
+      const bd = (pd >> 16) & 0xff;
+      const lumD = (rd * 3 + gd * 6 + bd) / 10;
 
       const grad = Math.abs(lum - lumR) + Math.abs(lum - lumD);
-      acc[cell] += grad >= thr ? 1 : 0;
+      if (grad >= thr) acc[cell] += 1;
       cnt[cell] += 1;
     }
   }

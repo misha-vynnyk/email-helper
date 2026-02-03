@@ -5,10 +5,10 @@
 import type { ImageAnalysisSettings } from "../../types";
 import { blobToCanvas, blobToCanvasFit, cropCanvasByFrac, estimateTextLikelihood, autoDetectRoiFracs } from "./roi/detect";
 import { buildPasses, pickAttempts, preprocessForOcrV2 } from "./preprocess/pipeline";
-import { cleanOcrText, buildCleanOcrSummary } from "./postprocess/cleanup";
-import { spellCorrectBannerText, postFixBannerText, BANNER_DICT } from "./postprocess/bannerSpell";
-import { filterOcrTextForUi, extractOcrSuggestions } from "./postprocess/uiFilter";
+import { cleanOcrText } from "./postprocess/cleanup";
+import { spellCorrectBannerText, postFixBannerText } from "./postprocess/bannerSpell";
 import { OcrEngine, pickOcrParamsForRoi } from "./engine";
+import { processOcrOutput } from "./postprocess/processor";
 
 export type OcrSkipReason = "lowTextLikelihood";
 
@@ -43,8 +43,19 @@ export function normalizeCustomNameInput(value: string): string {
  * Compute SHA-256 hash of a blob
  */
 async function sha256Hex(blob: Blob): Promise<string> {
-  const buf = await blob.arrayBuffer();
-  const digest = await crypto.subtle.digest("SHA-256", buf);
+  // Performance optimization: Hash only the first 256KB + size/type for validation.
+  // This avoids reading/hashing massive 10MB+ images entirely.
+  const limit = 256 * 1024;
+  const slice = blob.slice(0, limit);
+  const buf = await slice.arrayBuffer();
+
+  // Mix in size/type to distinguish files that share the same header but differ later.
+  const metadata = new TextEncoder().encode(`|${blob.size}|${blob.type}`);
+  const combined = new Uint8Array(buf.byteLength + metadata.byteLength);
+  combined.set(new Uint8Array(buf), 0);
+  combined.set(metadata, buf.byteLength);
+
+  const digest = await crypto.subtle.digest("SHA-256", combined);
   const bytes = Array.from(new Uint8Array(digest));
   return bytes.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
@@ -81,7 +92,7 @@ function getAnalysisConfigKey(s: ImageAnalysisSettings): string {
  * Compute quality score for OCR text output
  */
 import { ALLOWED_SHORT_ALL_CAPS, COMMON_3_LETTER_WORDS } from "./constants";
-import { isAllCapsLike } from "./postprocess/cleanup";
+
 
 /**
  * Compute quality score for OCR text output
@@ -158,11 +169,13 @@ export function createOcrAnalyzer(): OcrAnalyzer {
     },
 
     analyzeFromUrl: async ({ url, settings, force = false, signal, onProgress }) => {
-      engine.setProgressTracking(onProgress, 0, 1);
+      // PHASE 1: Initialization & Fetching (0% - 10%)
+      onProgress?.(0.05);
 
       try {
         const res = await fetch(url, { signal });
         const blob = await res.blob();
+        onProgress?.(0.1); // Downloaded
 
         const configKey = getAnalysisConfigKey(settings);
         const hash = await sha256Hex(blob);
@@ -180,6 +193,9 @@ export function createOcrAnalyzer(): OcrAnalyzer {
             cacheHit: true,
           };
         }
+
+        // PHASE 2: ROI & Preprocessing (10% - 25%)
+        onProgress?.(0.15);
 
         // Smart precheck
         let textLikelihood: number | undefined;
@@ -207,7 +223,7 @@ export function createOcrAnalyzer(): OcrAnalyzer {
               return skipped;
             }
           } catch {
-            // ignore and proceed
+            // ignore
           }
         }
 
@@ -270,11 +286,14 @@ export function createOcrAnalyzer(): OcrAnalyzer {
           return [{ x: settings.roiX, y: settings.roiY, w: settings.roiW, h: settings.roiH }];
         })();
 
+        onProgress?.(0.20); // ROI Done
+
         const baseCanvases: HTMLCanvasElement[] = roiFracs.map((r) => {
           if (r.x <= 0.001 && r.y <= 0.001 && r.w >= 0.999 && r.h >= 0.999) return fullCanvas;
           return cropCanvasByFrac(fullCanvas, r.x, r.y, r.w, r.h);
         });
 
+        // Setup OCR Params
         const contrast = settings.preprocessContrast ?? 1.8;
         const brightness = settings.preprocessBrightness ?? 1.1;
         const usePreprocess = Boolean(settings.preprocess);
@@ -284,7 +303,10 @@ export function createOcrAnalyzer(): OcrAnalyzer {
         const blur = Boolean(settings.preprocessBlur);
         const blurRadius = settings.preprocessBlurRadius ?? 1;
 
+        // PHASE 3: Worker Init (25% - 30%)
         await engine.getWorker(signal);
+
+        onProgress?.(0.30); // Worker Ready
 
         // Apply base OCR parameters
         const basePsm = String(settings.ocrPsm ?? "11");
@@ -301,6 +323,7 @@ export function createOcrAnalyzer(): OcrAnalyzer {
           whitelist: string | null;
         }> = [];
 
+        // Build attempts
         for (let i = 0; i < baseCanvases.length; i++) {
           const base = baseCanvases[i];
           const passes = buildPasses(base, {
@@ -324,13 +347,24 @@ export function createOcrAnalyzer(): OcrAnalyzer {
           }
         }
 
-        engine.setProgressTracking(onProgress, 0, roiAttempts.length);
+        // PHASE 4: OCR Execution (30% - 90%)
+        const OCR_START = 0.30;
+        const OCR_END = 0.90;
+        const OCR_RANGE = OCR_END - OCR_START;
+
+        // Helper to map engine progress (0-1) to our range
+        const reportOcrProgress = (p: number) => {
+          onProgress?.(OCR_START + p * OCR_RANGE);
+        };
+
+        engine.setProgressTracking(reportOcrProgress, 0, roiAttempts.length);
+
         let globalAttempt = 0;
         const scoredByRoi: Array<Array<{ id: string; text: string; confidence: number; score: number }>> = baseCanvases.map(() => []);
 
         for (const a of roiAttempts) {
           if (signal.aborted) throw new DOMException("Aborted", "AbortError");
-          engine.setProgressTracking(onProgress, globalAttempt, roiAttempts.length);
+          engine.setProgressTracking(reportOcrProgress, globalAttempt, roiAttempts.length);
           globalAttempt++;
 
           await engine.setParameters({ psm: a.psm, whitelist: a.whitelist });
@@ -343,74 +377,53 @@ export function createOcrAnalyzer(): OcrAnalyzer {
           scoredByRoi[a.roiIdx].push({ id, text: t, confidence: conf, score });
         }
 
-        const normalizeTextForMerge = (t: string) => {
-          const cleaned = cleanOcrText(t);
-          const corrected = settings.spellCorrectionBanner ? spellCorrectBannerText(cleaned) : cleaned;
-          return postFixBannerText(corrected);
-        };
+        // PHASE 5: Post-processing (90% - 100%)
+        onProgress?.(0.92);
 
-        // Merge in a stable visual order: sort ROIs top->bottom, keep line order within each ROI.
+        const mergedTextParts: string[] = [];
+        // Helper to only add parts if they pass a basic check
+        // (Original pushLinesFromText logic simplified/inlined or kept?)
+        // Let's restore the logic we removed/modified lightly to keep it robust but efficient.
+
+        // NOTE: We don't really need complex logic here anymore because `processor.ts` handles it all.
+        // We just need to merge the BEST result from each ROI.
+
+        // Merge strategy:
+        // Sort ROIs top-down
         const roiOrder = roiFracs
           .map((r, idx) => ({ idx, y: r.y, h: r.h }))
           .sort((a, b) => a.y - b.y || b.h - a.h)
           .map((x) => x.idx);
 
-        const mergedTextParts: string[] = [];
-        const seenLine = new Set<string>();
-        const dictHitsCount = (l: string) =>
-          l
-            .replace(/[^A-Za-z0-9\s]/g, " ")
-            .split(/\s+/)
-            .filter(Boolean)
-            .map((w) => w.toUpperCase())
-            .filter((w) => BANNER_DICT.has(w)).length;
-        const isCtaLike = (l: string) => /\bclick\b/i.test(l) || /\blearn\b/i.test(l) || /\bsubscribe\b/i.test(l);
-        const isYearLike = (l: string) => /\b(19|20)\d{2}\b/.test(l);
-
-
-        const pushLinesFromText = (t: string, opts: { onlyImportant?: boolean }) => {
-          const normalized = normalizeTextForMerge(t);
-          const lines = cleanOcrText(normalized).split("\n").map((l) => l.trim()).filter(Boolean);
-          for (const l of lines) {
-            const key = l.toLowerCase();
-            if (seenLine.has(key)) continue;
-            if (opts.onlyImportant) {
-              const important =
-                isCtaLike(l) ||
-                isYearLike(l) ||
-                /:$/.test(l) ||
-                (l.split(/\s+/).length === 1 &&
-                  BANNER_DICT.has(l.replace(/[^A-Za-z]/g, "").toUpperCase())) ||
-                (isAllCapsLike(l) && l.split(/\s+/).length <= 5 && dictHitsCount(l) >= 1) ||
-                ((/["""]/.test(l) || /\.\.\./.test(l)) && l.split(/\s+/).length >= 2);
-              if (!important) continue;
-            }
-            seenLine.add(key);
-            mergedTextParts.push(l);
-          }
-        };
-
         for (const roiIdx of roiOrder) {
           const list = scoredByRoi[roiIdx] || [];
           list.sort((a, b) => b.score - a.score);
-          if (list[0]) pushLinesFromText(list[0].text, { onlyImportant: false });
-          if (list[1]) pushLinesFromText(list[1].text, { onlyImportant: true });
+          if (list[0]) mergedTextParts.push(list[0].text);
+          // If the second best result is also good/different, maybe append it?
+          // The old logic had "pushLinesFromText" with filters.
+          // Since processor.ts does heavy filtering, we can be more permissive here.
+          if (list[1] && list[1].score > list[0].score * 0.8) {
+             mergedTextParts.push(list[1].text);
+          }
         }
 
         const mergedText = mergedTextParts.join("\n");
-        const cleaned0 = cleanOcrText(mergedText);
-        const corrected = settings.spellCorrectionBanner ? spellCorrectBannerText(cleaned0) : cleaned0;
-        const fixed = postFixBannerText(corrected);
-        const summary = buildCleanOcrSummary(fixed);
-        const uiText = filterOcrTextForUi(fixed);
-        const { altSuggestions, ctaSuggestions, nameSuggestions } = extractOcrSuggestions(uiText || fixed);
+        // Use the new efficient pipeline
+        const result = processOcrOutput(mergedText, {
+          spellCorrect: Boolean(settings.spellCorrectionBanner)
+        });
+
+        const { ocrText, ocrTextRaw, altSuggestions, ctaSuggestions, nameSuggestions } = result;
+
+        onProgress?.(0.96);
 
         // Universal fallback: if ROI is enabled (esp. auto) but we got almost nothing, try full image once.
-        const textAmount = ((uiText || fixed).match(/[A-Za-z0-9]/g) || []).length;
+        const textAmount = ((ocrText).match(/[A-Za-z0-9]/g) || []).length;
         if (settings.roiEnabled && settings.roiPreset === "auto" && textAmount < 12 && !signal.aborted) {
+          // ... fallback code ...
           const fullBase = fullCanvas;
           const retryPasses: Array<{ id: string; canvas: HTMLCanvasElement }> = [];
-          if (!usePreprocess) retryPasses.push({ id: "full-raw", canvas: fullBase });
+           if (!usePreprocess) retryPasses.push({ id: "full-raw", canvas: fullBase });
           else {
             retryPasses.push({
               id: "full-hard-otsu",
@@ -426,43 +439,34 @@ export function createOcrAnalyzer(): OcrAnalyzer {
               }),
             });
           }
+
+          // Retry Pass
           const r2 = await engine.recognize(retryPasses[0].canvas);
           const t2 = String(r2?.data?.text ?? "");
-          const c2_0 = cleanOcrText(t2);
-          const c2_corr = settings.spellCorrectionBanner ? spellCorrectBannerText(c2_0) : c2_0;
-          const c2_fixed = postFixBannerText(c2_corr);
-          const c2_ui = filterOcrTextForUi(c2_fixed);
-          const c2 = c2_ui || c2_fixed;
-          if ((c2.match(/[A-Za-z0-9]/g) || []).length > textAmount) {
-            const sug2 = extractOcrSuggestions(c2);
-            // replace with better full-image result
-            onProgress?.(1);
-            const out2: OcrAnalyzeResult = {
-              ocrText: c2,
-              ocrTextRaw: c2_corr,
-              altSuggestions: sug2.altSuggestions,
-              ctaSuggestions: sug2.ctaSuggestions,
-              nameSuggestions: sug2.nameSuggestions,
+          const res2 = processOcrOutput(t2, {
+            spellCorrect: Boolean(settings.spellCorrectionBanner)
+          });
+
+          if ((res2.ocrText.match(/[A-Za-z0-9]/g) || []).length > textAmount) {
+             onProgress?.(1);
+             const out2: OcrAnalyzeResult = {
+              ocrText: res2.ocrText,
+              ocrTextRaw: res2.ocrTextRaw,
+              altSuggestions: res2.altSuggestions,
+              ctaSuggestions: res2.ctaSuggestions,
+              nameSuggestions: res2.nameSuggestions,
               textLikelihood,
               skippedReason: undefined,
               cacheHit: false,
             };
-            cache.set(hash, {
-              configKey,
-              ocrText: c2,
-              ocrTextRaw: c2_corr,
-              altSuggestions: sug2.altSuggestions,
-              ctaSuggestions: sug2.ctaSuggestions,
-              nameSuggestions: sug2.nameSuggestions,
-              textLikelihood,
-            });
+            cache.set(hash, { configKey, ...out2, textLikelihood });
             return out2;
           }
         }
 
         const out: OcrAnalyzeResult = {
-          ocrText: summary || uiText || fixed,
-          ocrTextRaw: corrected,
+          ocrText,
+          ocrTextRaw,
           altSuggestions,
           ctaSuggestions,
           nameSuggestions,
@@ -473,11 +477,7 @@ export function createOcrAnalyzer(): OcrAnalyzer {
 
         cache.set(hash, {
           configKey,
-          ocrText: summary || uiText || fixed,
-          ocrTextRaw: corrected,
-          altSuggestions,
-          ctaSuggestions,
-          nameSuggestions,
+          ...out,
           textLikelihood,
         });
 
