@@ -265,6 +265,50 @@ export default function HtmlConverterPanel() {
     loadImageAnalysisSettings()
   );
 
+  // AI Backend status indicator
+  const [aiBackendStatus, setAiBackendStatus] = useState<"checking" | "online" | "offline">("offline");
+  const healthCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (!imageAnalysis.useAiBackend) {
+      setAiBackendStatus("offline");
+      if (healthCheckRef.current) {
+        clearInterval(healthCheckRef.current);
+        healthCheckRef.current = null;
+      }
+      return;
+    }
+
+    const checkHealth = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/health", {
+          method: "GET",
+          signal: AbortSignal.timeout(3000)
+        });
+        setAiBackendStatus(res.ok ? "online" : "offline");
+      } catch {
+        setAiBackendStatus("offline");
+      }
+    };
+
+    // Initial check
+    setAiBackendStatus("checking");
+    checkHealth();
+
+    // Clear any existing interval before setting new one
+    if (healthCheckRef.current) {
+      clearInterval(healthCheckRef.current);
+    }
+    healthCheckRef.current = setInterval(checkHealth, 30000); // Check every 30s
+
+    return () => {
+      if (healthCheckRef.current) {
+        clearInterval(healthCheckRef.current);
+        healthCheckRef.current = null;
+      }
+    };
+  }, [imageAnalysis.useAiBackend]);
+
   useEffect(() => {
     showLogsPanelRef.current = ui.showLogsPanel;
     // When opening logs panel: render full buffered logs and clear unseen counter.
@@ -756,6 +800,29 @@ export default function HtmlConverterPanel() {
           alignItems='center'
           spacing={spacingMUI.sm}
         >
+          {/* AI Backend Status Indicator - always visible when enabled */}
+          {imageAnalysis.useAiBackend && (
+            <Tooltip title={aiBackendStatus === "online" ? "AI сервер працює" : aiBackendStatus === "checking" ? "Перевірка AI сервера..." : "AI сервер не доступний"}>
+              <Stack direction="row" alignItems="center" spacing={0.5} sx={{ cursor: "pointer" }}>
+                <Box
+                  sx={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: "50%",
+                    backgroundColor: aiBackendStatus === "online" ? "#4caf50" : aiBackendStatus === "checking" ? "#ff9800" : "#f44336",
+                    animation: aiBackendStatus === "checking" ? "pulse 1s infinite" : "none",
+                    "@keyframes pulse": {
+                      "0%, 100%": { opacity: 1 },
+                      "50%": { opacity: 0.4 },
+                    },
+                  }}
+                />
+                <Typography variant="caption" sx={{ fontWeight: 500, color: "text.secondary" }}>
+                  AI
+                </Typography>
+              </Stack>
+            </Tooltip>
+          )}
           <Tooltip title='UI налаштування'>
             <IconButton
               size='small'
@@ -1154,9 +1221,28 @@ export default function HtmlConverterPanel() {
                       }
                       label={
                         <Box>
-                          <Typography variant="body2" fontWeight={600}>
-                            AI Backend 🐍
-                          </Typography>
+                          <Stack direction="row" alignItems="center" spacing={0.5}>
+                            <Typography variant="body2" fontWeight={600}>
+                              AI Backend 🐍
+                            </Typography>
+                            {imageAnalysis.useAiBackend && (
+                              <Tooltip title={aiBackendStatus === "online" ? "Сервер працює" : aiBackendStatus === "checking" ? "Перевірка..." : "Сервер не доступний"}>
+                                <Box
+                                  sx={{
+                                    width: 8,
+                                    height: 8,
+                                    borderRadius: "50%",
+                                    backgroundColor: aiBackendStatus === "online" ? "#4caf50" : aiBackendStatus === "checking" ? "#ff9800" : "#f44336",
+                                    animation: aiBackendStatus === "checking" ? "pulse 1s infinite" : "none",
+                                    "@keyframes pulse": {
+                                      "0%, 100%": { opacity: 1 },
+                                      "50%": { opacity: 0.4 },
+                                    },
+                                  }}
+                                />
+                              </Tooltip>
+                            )}
+                          </Stack>
                           <Typography variant="caption" color="text.secondary">
                             PaddleOCR + BLIP + CLIP
                           </Typography>

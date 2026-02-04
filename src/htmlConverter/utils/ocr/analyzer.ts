@@ -6,7 +6,7 @@ import type { ImageAnalysisSettings } from "../../types";
 import { blobToCanvas, blobToCanvasFit, cropCanvasByFrac, estimateTextLikelihood, autoDetectRoiFracs } from "./roi/detect";
 import { buildPasses, pickAttempts, preprocessForOcrV2 } from "./preprocess/pipeline";
 import { cleanOcrText } from "./postprocess/cleanup";
-import { spellCorrectBannerText, postFixBannerText } from "./postprocess/bannerSpell";
+// import { spellCorrectBannerText, postFixBannerText } from "./postprocess/bannerSpell"; // Unused - kept for potential future use
 import { OcrEngine, pickOcrParamsForRoi } from "./engine";
 import { processOcrOutput } from "./postprocess/processor";
 import { AiBackendClient } from "./aiClient";
