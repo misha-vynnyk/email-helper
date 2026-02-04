@@ -40,18 +40,19 @@ export class AiBackendClient {
       const data = await response.json();
 
       // Map Backend response to OcrAnalyzeResult
-      // Backend returns: { alt_text, filename, raw: { ocr, caption, tags } }
+      // Backend returns: { alt_text, filename, candidates: { alt_texts, filenames }, cta, raw: { ocr, caption, tags } }
 
       const ocrText = data.raw?.ocr || "";
-      const altText = data.alt_text || "";
-      const tags = data.raw?.tags || [];
+      const altCandidates = data.candidates?.alt_texts || [data.alt_text];
+      const filenameCandidates = data.candidates?.filenames || [data.filename];
+      const cta = data.cta || "";
 
       return {
         ocrText: ocrText,
         ocrTextRaw: ocrText,
-        altSuggestions: [altText], // The smart merged ALT text
-        ctaSuggestions: [], // Could try to extract CTA from tags or text?
-        nameSuggestions: [data.filename], // The smart filename
+        altSuggestions: altCandidates.filter((s: string) => s), // All ALT text candidates
+        ctaSuggestions: cta ? [cta] : [], // CTA if found
+        nameSuggestions: filenameCandidates.filter((s: string) => s), // All filename candidates
         textLikelihood: 1, // Assume 1 if backend processed it
         cacheHit: false, // Backend might cache internally, but treated as fresh here
       };

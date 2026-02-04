@@ -17,12 +17,31 @@ class OCRService:
         """Lazy load the PaddleOCR model"""
         if self._model is None:
             print("Loading PaddleOCR model... (this may take a moment)")
-            # use_angle_cls=True for detecting rotated text
-            # lang='en' for now, can be parameterized
-            # show_log=False to keep stdout clean
-            self._model = PaddleOCR(use_angle_cls=False, lang='en')
+            # use_angle_cls=False: faster
+            # lang='en': standard
+            # ocr_version='PP-OCRv4': explicitly request v4 (usually defaults to mobile)
+            # det_model_dir to None will force default download if not set, but we want to hint 'mobile'
+            # Actually, just passing ocr_version='PP-OCRv4' often defaults to mobile.
+            # To be safe, we can try structure_version or similar, but let's try standard v4 first.
+            self._model = PaddleOCR(
+                use_angle_cls=False,
+                lang='en',
+                ocr_version='PP-OCRv4'
+            )
             print("PaddleOCR model loaded.")
         return self._model
+
+    def _resize_if_needed(self, img):
+        """Resize image if it's too large to speed up processing"""
+        height, width = img.shape[:2]
+        max_dim = 2000 # Increased from 1200 for better OCR quality
+
+        if max(height, width) > max_dim:
+            scaling_factor = max_dim / float(max(height, width))
+            new_width = int(width * scaling_factor)
+            new_height = int(height * scaling_factor)
+            return cv2.resize(img, (new_width, new_height), interpolation=cv2.INTER_AREA)
+        return img
 
     def process_image(self, image_bytes: bytes) -> str:
         """
@@ -34,6 +53,8 @@ class OCRService:
 
         if img is None:
             raise ValueError("Could not decode image")
+
+        img = self._resize_if_needed(img)
 
         ocr = self._get_model()
         result = ocr.ocr(img)
@@ -72,6 +93,8 @@ class OCRService:
 
         if img is None:
             raise ValueError("Could not decode image")
+
+        img = self._resize_if_needed(img)
 
         ocr = self._get_model()
         result = ocr.ocr(img)
