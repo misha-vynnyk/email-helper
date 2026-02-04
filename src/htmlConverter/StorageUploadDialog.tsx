@@ -112,6 +112,7 @@ export default function StorageUploadDialog({
   const [orderedFiles, setOrderedFiles] = useState(files);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [showOcrTextById, setShowOcrTextById] = useState<Record<string, boolean>>({});
+  const [editingTag, setEditingTag] = useState<{ fileId: string; tagIdx: number } | null>(null);
 
   const analysisEnabled = Boolean(
     imageAnalysisSettings?.enabled && imageAnalysisSettings.engine === "ocr"
@@ -158,6 +159,7 @@ export default function StorageUploadDialog({
     setCustomNames({});
     setCustomAlts({});
     setShowOcrTextById({});
+    setEditingTag(null);
     resetOcrState();
   }, [open]);
 
@@ -499,19 +501,125 @@ export default function StorageUploadDialog({
                             }}
                           />
 
-                          {/* ALT Input */}
+                          {/* ALT Input with Tags */}
                           {analysisEnabled && (
-                            <TextField
-                              size='small'
-                              fullWidth
-                              label='ALT'
-                              placeholder='Suggested from OCR…'
-                              value={customAlts[file.id] || ""}
-                              onChange={(e) => {
-                                setCustomAlts((prev) => ({ ...prev, [file.id]: e.target.value }));
+                            <Box
+                              sx={{
+                                border: `1px solid ${theme.palette.divider}`,
+                                borderRadius: `${borderRadius.sm}px`,
+                                p: spacingMUI.xs,
+                                minHeight: 40,
+                                display: "flex",
+                                flexWrap: "wrap",
+                                gap: 0.5,
+                                alignItems: "center",
+                                backgroundColor: alpha(theme.palette.background.paper, 0.5),
+                                "&:focus-within": {
+                                  borderColor: theme.palette.primary.main,
+                                },
                               }}
-                              disabled={uploading}
-                            />
+                            >
+                              {/* Selected ALT tags as removable/editable chips */}
+                              {(customAlts[file.id] || "").split(" | ").filter(Boolean).map((tag, idx) => {
+                                const isEditing = editingTag?.fileId === file.id && editingTag?.tagIdx === idx;
+
+                                if (isEditing) {
+                                  return (
+                                    <TextField
+                                      key={`edit-${idx}`}
+                                      size="small"
+                                      variant="standard"
+                                      defaultValue={tag}
+                                      autoFocus
+                                      onBlur={(e) => {
+                                        const newValue = e.target.value.trim();
+                                        const tags = (customAlts[file.id] || "").split(" | ").filter(Boolean);
+                                        if (newValue) {
+                                          tags[idx] = newValue;
+                                        } else {
+                                          tags.splice(idx, 1);
+                                        }
+                                        setCustomAlts((prev) => ({ ...prev, [file.id]: tags.join(" | ") }));
+                                        setEditingTag(null);
+                                      }}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          (e.target as HTMLInputElement).blur();
+                                        } else if (e.key === "Escape") {
+                                          setEditingTag(null);
+                                        }
+                                      }}
+                                      sx={{
+                                        width: "auto",
+                                        minWidth: 60,
+                                        "& .MuiInputBase-input": {
+                                          fontSize: "0.8125rem",
+                                          padding: "2px 4px",
+                                        },
+                                      }}
+                                      InputProps={{ disableUnderline: true }}
+                                    />
+                                  );
+                                }
+
+                                return (
+                                  <Chip
+                                    key={`${tag}-${idx}`}
+                                    size="small"
+                                    label={tag}
+                                    onDoubleClick={() => setEditingTag({ fileId: file.id, tagIdx: idx })}
+                                    onDelete={() => {
+                                      const tags = (customAlts[file.id] || "").split(" | ").filter(Boolean);
+                                      tags.splice(idx, 1);
+                                      setCustomAlts((prev) => ({ ...prev, [file.id]: tags.join(" | ") }));
+                                    }}
+                                    sx={{
+                                      cursor: "pointer",
+                                      backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                                      "& .MuiChip-deleteIcon": {
+                                        color: theme.palette.text.secondary,
+                                        "&:hover": { color: theme.palette.error.main },
+                                      },
+                                      "&:hover": {
+                                        backgroundColor: alpha(theme.palette.primary.main, 0.2),
+                                      },
+                                    }}
+                                  />
+                                );
+                              })}
+                              {/* Inline input for adding custom text */}
+                              <TextField
+                                size="small"
+                                variant="standard"
+                                placeholder={customAlts[file.id] ? "Add more..." : "Type or click suggestions below..."}
+                                disabled={uploading}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" && (e.target as HTMLInputElement).value.trim()) {
+                                    e.preventDefault();
+                                    const newTag = (e.target as HTMLInputElement).value.trim();
+                                    const existing = (customAlts[file.id] || "").split(" | ").filter(Boolean);
+                                    if (!existing.includes(newTag)) {
+                                      setCustomAlts((prev) => ({
+                                        ...prev,
+                                        [file.id]: [...existing, newTag].join(" | "),
+                                      }));
+                                    }
+                                    (e.target as HTMLInputElement).value = "";
+                                  }
+                                }}
+                                sx={{
+                                  flex: 1,
+                                  minWidth: 120,
+                                  "& .MuiInput-underline:before": { borderBottom: "none" },
+                                  "& .MuiInput-underline:after": { borderBottom: "none" },
+                                  "& .MuiInput-underline:hover:before": { borderBottom: "none" },
+                                }}
+                                InputProps={{
+                                  disableUnderline: true,
+                                  sx: { fontSize: "0.875rem" },
+                                }}
+                              />
+                            </Box>
                           )}
                         </Box>
                       </Box>
@@ -647,65 +755,127 @@ export default function StorageUploadDialog({
                               )}
 
                               {(aiById[file.id]?.altSuggestions?.length ?? 0) > 0 && (
-                                <>
-                                  <Typography variant='caption' color='text.secondary' display='block' sx={{ mb: 0.5 }}>
-                                    ALT suggestions
+                                <Box sx={{ mt: spacingMUI.sm }}>
+                                  <Typography variant='caption' color='text.secondary' display='block' sx={{ mb: 0.75 }}>
+                                    ALT suggestions (click to add)
                                   </Typography>
-                                  <Stack direction='row' spacing={spacingMUI.xs} flexWrap='wrap'>
-                                    {aiById[file.id]?.altSuggestions?.map((s) => (
-                                      <Chip
-                                        key={s}
-                                        size='small'
-                                        label={s}
-                                        onClick={() => setCustomAlts((prev) => ({ ...prev, [file.id]: s }))}
-                                        sx={{ cursor: "pointer" }}
-                                      />
-                                    ))}
+                                  <Stack direction='row' spacing={0.75} flexWrap='wrap' useFlexGap sx={{ gap: 0.75 }}>
+                                    {aiById[file.id]?.altSuggestions?.map((s) => {
+                                      const existing = (customAlts[file.id] || "").split(" | ").filter(Boolean);
+                                      const isSelected = existing.includes(s);
+                                      return (
+                                        <Chip
+                                          key={s}
+                                          size='small'
+                                          label={s}
+                                          onClick={() => {
+                                            if (isSelected) {
+                                              // Remove if already selected
+                                              setCustomAlts((prev) => ({
+                                                ...prev,
+                                                [file.id]: existing.filter((t) => t !== s).join(" | "),
+                                              }));
+                                            } else {
+                                              // Append
+                                              setCustomAlts((prev) => ({
+                                                ...prev,
+                                                [file.id]: [...existing, s].join(" | "),
+                                              }));
+                                            }
+                                          }}
+                                          sx={{
+                                            cursor: "pointer",
+                                            backgroundColor: isSelected
+                                              ? alpha(theme.palette.primary.main, 0.2)
+                                              : alpha(theme.palette.background.paper, 0.8),
+                                            border: isSelected
+                                              ? `1px solid ${theme.palette.primary.main}`
+                                              : `1px solid ${theme.palette.divider}`,
+                                            "&:hover": {
+                                              backgroundColor: alpha(theme.palette.primary.main, 0.15),
+                                            },
+                                          }}
+                                        />
+                                      );
+                                    })}
                                   </Stack>
-                                </>
+                                </Box>
                               )}
 
                               {(aiById[file.id]?.ctaSuggestions?.length ?? 0) > 0 && (
-                                <Box sx={{ mt: spacingMUI.xs }}>
-                                  <Typography variant='caption' color='text.secondary' display='block' sx={{ mb: 0.5 }}>
-                                    CTA text
+                                <Box sx={{ mt: spacingMUI.sm }}>
+                                  <Typography variant='caption' color='text.secondary' display='block' sx={{ mb: 0.75 }}>
+                                    CTA text (click to add)
                                   </Typography>
-                                  <Stack direction='row' spacing={spacingMUI.xs} flexWrap='wrap'>
-                                    {aiById[file.id]?.ctaSuggestions?.map((s) => (
-                                      <Chip
-                                        key={s}
-                                        size='small'
-                                        variant='outlined'
-                                        label={s}
-                                        onClick={() => setCustomAlts((prev) => ({ ...prev, [file.id]: s }))}
-                                        sx={{ cursor: "pointer" }}
-                                      />
-                                    ))}
+                                  <Stack direction='row' spacing={0.75} flexWrap='wrap' useFlexGap sx={{ gap: 0.75 }}>
+                                    {aiById[file.id]?.ctaSuggestions?.map((s) => {
+                                      const existing = (customAlts[file.id] || "").split(" | ").filter(Boolean);
+                                      const isSelected = existing.includes(s);
+                                      return (
+                                        <Chip
+                                          key={s}
+                                          size='small'
+                                          variant='outlined'
+                                          label={s}
+                                          onClick={() => {
+                                            if (isSelected) {
+                                              setCustomAlts((prev) => ({
+                                                ...prev,
+                                                [file.id]: existing.filter((t) => t !== s).join(" | "),
+                                              }));
+                                            } else {
+                                              setCustomAlts((prev) => ({
+                                                ...prev,
+                                                [file.id]: [...existing, s].join(" | "),
+                                              }));
+                                            }
+                                          }}
+                                          sx={{
+                                            cursor: "pointer",
+                                            borderColor: isSelected ? theme.palette.secondary.main : theme.palette.divider,
+                                            backgroundColor: isSelected ? alpha(theme.palette.secondary.main, 0.15) : "transparent",
+                                            "&:hover": {
+                                              backgroundColor: alpha(theme.palette.secondary.main, 0.1),
+                                            },
+                                          }}
+                                        />
+                                      );
+                                    })}
                                   </Stack>
                                 </Box>
                               )}
 
                               {(aiById[file.id]?.nameSuggestions?.length ?? 0) > 0 && (
-                                <Box sx={{ mt: spacingMUI.xs }}>
-                                  <Typography variant='caption' color='text.secondary' display='block' sx={{ mb: 0.5 }}>
-                                    Filename (one word)
+                                <Box sx={{ mt: spacingMUI.sm }}>
+                                  <Typography variant='caption' color='text.secondary' display='block' sx={{ mb: 0.75 }}>
+                                    Filename suggestions
                                   </Typography>
-                                  <Stack direction='row' spacing={spacingMUI.xs} flexWrap='wrap'>
-                                    {aiById[file.id]?.nameSuggestions?.map((s) => (
-                                      <Chip
-                                        key={s}
-                                        size='small'
-                                        variant='outlined'
-                                        label={s}
-                                        onClick={() =>
-                                          setCustomNames((prev) => ({
-                                            ...prev,
-                                            [file.id]: normalizeCustomNameInput(s),
-                                          }))
-                                        }
-                                        sx={{ cursor: "pointer" }}
-                                      />
-                                    ))}
+                                  <Stack direction='row' spacing={0.75} flexWrap='wrap' useFlexGap sx={{ gap: 0.75 }}>
+                                    {aiById[file.id]?.nameSuggestions?.map((s) => {
+                                      const isSelected = customNames[file.id] === normalizeCustomNameInput(s);
+                                      return (
+                                        <Chip
+                                          key={s}
+                                          size='small'
+                                          variant='outlined'
+                                          label={s}
+                                          onClick={() =>
+                                            setCustomNames((prev) => ({
+                                              ...prev,
+                                              [file.id]: normalizeCustomNameInput(s),
+                                            }))
+                                          }
+                                          sx={{
+                                            cursor: "pointer",
+                                            borderColor: isSelected ? theme.palette.success.main : theme.palette.divider,
+                                            backgroundColor: isSelected ? alpha(theme.palette.success.main, 0.15) : "transparent",
+                                            "&:hover": {
+                                              backgroundColor: alpha(theme.palette.success.main, 0.1),
+                                            },
+                                          }}
+                                        />
+                                      );
+                                    })}
                                   </Stack>
                                 </Box>
                               )}

@@ -30,10 +30,10 @@ class CLIPService:
             print("CLIP model loaded.")
         return self._processor, self._model
 
-    def generate_tags(self, image_bytes: bytes, candidates: list = None) -> list:
+    def generate_tags_from_pil(self, image: Image.Image, candidates: list = None) -> list:
         """
-        Generate tags for the image using zero-shot classification.
-        Returns a list of tags sorted by confidence.
+        Generate tags from PIL Image directly (avoids re-decode).
+        Image should be pre-resized to 224px for optimal performance.
         """
         try:
             processor, model = self._get_model()
@@ -41,7 +41,9 @@ class CLIPService:
             if candidates is None:
                 candidates = self.DEFAULT_CANDIDATES
 
-            image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
+            # Ensure RGB
+            if image.mode != 'RGB':
+                image = image.convert('RGB')
 
             inputs = processor(
                 text=candidates,
@@ -51,19 +53,13 @@ class CLIPService:
             )
 
             outputs = model(**inputs)
-            # logits_per_image: [1, len(candidates)]
             logits_per_image = outputs.logits_per_image
             probs = logits_per_image.softmax(dim=1)
-
-            # Get top tags (e.g., threshold > 20% or top 3)
-            # Flatten to 1D
             probs_list = probs.detach().numpy().flatten()
 
-            # Zip with candidates and sort
             scored_tags = list(zip(candidates, probs_list))
             scored_tags.sort(key=lambda x: x[1], reverse=True)
 
-            # Return tags with > 0.1 confidence, or top 3 if none match
             relevant_tags = [tag for tag, score in scored_tags if score > 0.1]
             if not relevant_tags:
                 relevant_tags = [tag for tag, score in scored_tags[:3]]
@@ -73,5 +69,10 @@ class CLIPService:
         except Exception as e:
             print(f"CLIP Tagging Error: {e}")
             return []
+
+    # Legacy method for backward compatibility
+    def generate_tags(self, image_bytes: bytes, candidates: list = None) -> list:
+        image = Image.open(io.BytesIO(image_bytes)).convert('RGB')
+        return self.generate_tags_from_pil(image, candidates)
 
 clip_service = CLIPService.get_instance()
