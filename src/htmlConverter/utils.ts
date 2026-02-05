@@ -53,6 +53,11 @@ export function cleanEmptyHtmlTags(htmlContent: string): string {
   return htmlContent;
 }
 
+export function isSignatureImageTag(imgTag: string): boolean {
+  // Simple check: if alt contains "signature", skip replacement
+  return /alt=["'].*signature.*["']/i.test(imgTag);
+}
+
 export function addOneBr(htmlContent: string): string {
   return htmlContent.replace(new RegExp(SYMBOLS.ONE_BR, "gi"), function (_match, _content) {
     return `
@@ -63,10 +68,7 @@ export function addOneBr(htmlContent: string): string {
 
 export function replaceTripleBrWithSingle(htmlContent: string): string {
   const BR = `<br>\n`;
-  htmlContent = htmlContent.replace(
-    /<\w+[^>]*>\s*<\w+[^>]*>\s*<br\s*\/?>\s*<\/\w+>\s*<\/\w+>/gi,
-    BR
-  );
+  htmlContent = htmlContent.replace(/<\w+[^>]*>\s*<\w+[^>]*>\s*<br\s*\/?>\s*<\/\w+>\s*<\/\w+>/gi, BR);
 
   htmlContent = htmlContent.replace(/<\w+[^>]*>\s*<br\s*\/?>\s*<\/\w+>/gi, BR);
 
@@ -88,16 +90,13 @@ export function addBrAfterClosingP(htmlContent: string): string {
 
   // Handle sequences of empty paragraphs (p tags with only br inside)
   // Replace sequences of empty paragraphs with a marker
-  htmlContent = htmlContent.replace(
-    /(<p[^>]*>[\s\S]*?<\/p>)(\s*<p[^>]*>\s*<br\s*\/?>\s*<\/p>\s*){2,}(<p[^>]*>[\s\S]*?<\/p>)/gi,
-    (_match, beforeP, emptyPs, afterP) => {
-      // Count how many empty paragraphs we have
-      const emptyCount = (emptyPs.match(/<p[^>]*>\s*<br\s*\/?>\s*<\/p>/gi) || []).length;
-      // For 2+ empty paragraphs between text, we want <br><br> (2 line breaks)
-      // Mark this sequence for later processing
-      return beforeP + `[[EMPTY_P_SEQ_${emptyCount}]]` + afterP;
-    }
-  );
+  htmlContent = htmlContent.replace(/(<p[^>]*>[\s\S]*?<\/p>)(\s*<p[^>]*>\s*<br\s*\/?>\s*<\/p>\s*){2,}(<p[^>]*>[\s\S]*?<\/p>)/gi, (_match, beforeP, emptyPs, afterP) => {
+    // Count how many empty paragraphs we have
+    const emptyCount = (emptyPs.match(/<p[^>]*>\s*<br\s*\/?>\s*<\/p>/gi) || []).length;
+    // For 2+ empty paragraphs between text, we want <br><br> (2 line breaks)
+    // Mark this sequence for later processing
+    return beforeP + `[[EMPTY_P_SEQ_${emptyCount}]]` + afterP;
+  });
 
   // Delete extra <br>
   htmlContent = htmlContent.replace(/<br\s*\/?>/gi, "");
@@ -105,10 +104,7 @@ export function addBrAfterClosingP(htmlContent: string): string {
   // Add <br><br> after each </p> (but not inside lists - they're already processed)
   // Use negative lookahead to skip </p> that are inside <li> elements
   // Pattern: </p> that is NOT followed by </li> and is NOT inside an open <li>
-  htmlContent = htmlContent.replace(
-    /<\/p>(?!\s*\[\[EMPTY_P_SEQ)(?!\s*<\/li>)/gi,
-    "</p>\n<br><br>\n"
-  );
+  htmlContent = htmlContent.replace(/<\/p>(?!\s*\[\[EMPTY_P_SEQ)(?!\s*<\/li>)/gi, "</p>\n<br><br>\n");
 
   // Replace empty paragraph sequence markers with <br><br>
   htmlContent = htmlContent.replace(/\[\[EMPTY_P_SEQ_\d+\]\]/gi, "\n<br><br>\n");
@@ -172,21 +168,17 @@ export function mergeSimilarTags(htmlContent: string): string {
 
   // Step 2: Now merge consecutive h6 tags: <h6>content1</h6>[[BR_SEP]]<h6>content2</h6>
   // -> <h6>content1[[BR_SEP]]content2</h6>
-  const h6MergeRegex =
-    /(<h6[^>]*>)([\s\S]*?)(<\/h6>)\s*\[\[BR_SEP\]\]\s*(<h6[^>]*>)([\s\S]*?)(<\/h6>)/gi;
+  const h6MergeRegex = /(<h6[^>]*>)([\s\S]*?)(<\/h6>)\s*\[\[BR_SEP\]\]\s*(<h6[^>]*>)([\s\S]*?)(<\/h6>)/gi;
   let mergeCount = 0;
   iterations = 0;
 
   while (iterations < maxIterations) {
     const before = htmlContent;
-    htmlContent = htmlContent.replace(
-      h6MergeRegex,
-      (_match, open1, content1, close1, _open2, content2, _close2) => {
-        mergeCount++;
-        // Merge: keep first h6 tag, combine content with [[BR_SEP]], remove second h6
-        return open1 + content1 + "[[BR_SEP]]" + content2 + close1;
-      }
-    );
+    htmlContent = htmlContent.replace(h6MergeRegex, (_match, open1, content1, close1, _open2, content2, _close2) => {
+      mergeCount++;
+      // Merge: keep first h6 tag, combine content with [[BR_SEP]], remove second h6
+      return open1 + content1 + "[[BR_SEP]]" + content2 + close1;
+    });
     if (htmlContent === before) break; // No more replacements
     iterations++;
   }
