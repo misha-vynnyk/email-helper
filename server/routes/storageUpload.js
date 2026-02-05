@@ -45,17 +45,15 @@ router.post("/api/storage-upload/prepare", upload.single("file"), async (req, re
 
     // Sanitize filename to prevent path traversal
     const safeName = path.basename(originalName);
-    const tempPath = path.join(tempDir, safeName);
-
-    // Check if file already exists and create unique name if needed
-    let finalPath = tempPath;
-    let counter = 1;
-    while (fs.existsSync(finalPath)) {
-      const ext = path.extname(safeName);
-      const base = path.basename(safeName, ext);
-      finalPath = path.join(tempDir, `${base}-${counter}${ext}`);
-      counter++;
+    // Create unique temp directory to ensure no collisions (avoids stale files "banner-1.png")
+    const uniqueId = Date.now().toString(36) + Math.random().toString(36).slice(2);
+    const uniqueDir = path.join(tempDir, uniqueId);
+    if (!fs.existsSync(uniqueDir)) {
+      fs.mkdirSync(uniqueDir, { recursive: true });
     }
+    const finalPath = path.join(uniqueDir, safeName);
+
+    // No need for collision check loop as dir is unique
 
     // Rename file from hash to original filename
     fs.renameSync(req.file.path, finalPath);
@@ -107,14 +105,13 @@ router.post("/api/storage-upload/prepare-from-url", async (req, res) => {
   }
 
   const safeName = path.basename(requestedFilename || urlParsed.pathname || "image.png");
-  const ext = path.extname(safeName) || ".png";
-  const base = path.basename(safeName, ext) || "image";
-  let finalPath = path.join(tempDir, `${base}${ext}`);
-  let counter = 1;
-  while (fs.existsSync(finalPath)) {
-    finalPath = path.join(tempDir, `${base}-${counter}${ext}`);
-    counter++;
+
+  const uniqueId = Date.now().toString(36) + Math.random().toString(36).slice(2);
+  const uniqueDir = path.join(tempDir, uniqueId);
+  if (!fs.existsSync(uniqueDir)) {
+    fs.mkdirSync(uniqueDir, { recursive: true });
   }
+  const finalPath = path.join(uniqueDir, safeName);
 
   try {
     const response = await fetch(url, {
@@ -170,9 +167,7 @@ router.post("/api/storage-upload/finalize", async (req, res) => {
     const args = [];
     if (providerKey && providerKey !== "default") args.push("--provider", providerKey);
     args.push("--finalize");
-    const command = `node "${runUploadPath}" ${args
-      .map((a) => `"${String(a).replace(/"/g, '\\"')}"`)
-      .join(" ")}`;
+    const command = `node "${runUploadPath}" ${args.map((a) => `"${String(a).replace(/"/g, '\\"')}"`).join(" ")}`;
 
     exec(command, { timeout: 60000, maxBuffer: 2 * 1024 * 1024 }, (error, stdout, stderr) => {
       if (error) {
@@ -200,13 +195,7 @@ router.post("/api/storage-upload/finalize", async (req, res) => {
  * - skipConfirmation: boolean (optional)
  */
 router.post("/api/storage-upload", async (req, res) => {
-  const {
-    filePath,
-    category,
-    folderName,
-    skipConfirmation = true,
-    provider = "default",
-  } = req.body;
+  const { filePath, category, folderName, skipConfirmation = true, provider = "default" } = req.body;
 
   // Validation
   if (!filePath || !fs.existsSync(filePath)) {
@@ -219,10 +208,7 @@ router.post("/api/storage-upload", async (req, res) => {
   const providerKey = String(provider).toLowerCase();
   const isAlphaOne = providerKey === "alphaone";
 
-  const validCategories = sharedStorageProviders?.providers?.default?.categories || [
-    "finance",
-    "health",
-  ];
+  const validCategories = sharedStorageProviders?.providers?.default?.categories || ["finance", "health"];
   if (!isAlphaOne) {
     if (!category || !validCategories.includes(category.toLowerCase())) {
       return res.status(400).json({
@@ -285,39 +271,25 @@ router.post("/api/storage-upload", async (req, res) => {
           errorMessage = "Upload timeout (5 minutes). Check your internet connection.";
         } else if (stderrText.includes("ERROR:LOGIN_REQUIRED")) {
           statusCode = 401;
-          errorMessage =
-            "Потрібен логін в MinIO Console (Brave профіль для цього provider). Відкрий AlfaOne, залогінься, і повтори upload.";
+          errorMessage = "Потрібен логін в MinIO Console (Brave профіль для цього provider). Відкрий AlfaOne, залогінься, і повтори upload.";
         } else if (stderrText.includes("ERROR:LOGIN_TIMEOUT")) {
           statusCode = 408;
           errorMessage = "Timeout: користувач не залогінився вчасно.";
         } else if (stderrText.includes("ERROR:UPLOAD_UI_TIMEOUT")) {
           statusCode = 408;
-          errorMessage =
-            "Timeout: MinIO UI не завантажилось/не показало логін або Upload. Спробуй ще раз (або перевір, що сторінка доступна і ти залогінений).";
-        } else if (
-          stderrText.includes("ERROR:BROWSER_CLOSED") ||
-          stderrText.includes("Target page, context or browser has been closed")
-        ) {
+          errorMessage = "Timeout: MinIO UI не завантажилось/не показало логін або Upload. Спробуй ще раз (або перевір, що сторінка доступна і ти залогінений).";
+        } else if (stderrText.includes("ERROR:BROWSER_CLOSED") || stderrText.includes("Target page, context or browser has been closed")) {
           statusCode = 499;
           errorMessage = "Браузер було закрито — завантаження скасовано.";
-        } else if (
-          stderrText.includes("connectOverCDP") &&
-          (stderrText.includes("127.0.0.1:9222") || stderrText.includes("127.0.0.1:9223"))
-        ) {
-          errorMessage =
-            "Brave CDP порт недоступний. Закрий BravePlaywright/BravePlaywright-AlfaOne або дай скрипту запустити Brave з потрібним портом, і повтори upload.";
+        } else if (stderrText.includes("connectOverCDP") && (stderrText.includes("127.0.0.1:9222") || stderrText.includes("127.0.0.1:9223"))) {
+          errorMessage = "Brave CDP порт недоступний. Закрий BravePlaywright/BravePlaywright-AlfaOne або дай скрипту запустити Brave з потрібним портом, і повтори upload.";
         } else if (stderrText.includes("ECONNREFUSED") && stderrText.includes("127.0.0.1:")) {
-          errorMessage =
-            "Не вдалося підключитись до локального Brave CDP (remote debugging). Перевір, що Brave дозволено запускатись і порт не зайнятий.";
+          errorMessage = "Не вдалося підключитись до локального Brave CDP (remote debugging). Перевір, що Brave дозволено запускатись і порт не зайнятий.";
         } else if (stderr && stderr.includes("ENOTFOUND")) {
           errorMessage = "Storage server not found. Check your internet connection.";
-        } else if (
-          stderrText.includes("page.waitForSelector") &&
-          stderrText.includes("#upload-main")
-        ) {
+        } else if (stderrText.includes("page.waitForSelector") && stderrText.includes("#upload-main")) {
           statusCode = 401;
-          errorMessage =
-            "MinIO UI не показало Upload (ймовірно потрібен логін або інша сторінка). Відкрий AlfaOne, залогінься, і повтори upload.";
+          errorMessage = "MinIO UI не показало Upload (ймовірно потрібен логін або інша сторінка). Відкрий AlfaOne, залогінься, і повтори upload.";
         } else if (stderr) {
           errorMessage = `Upload failed: ${stderr.substring(0, 200)}`;
         }

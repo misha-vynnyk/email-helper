@@ -174,6 +174,11 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
     textTransform: "none" as const,
     fontWeight: 600,
     borderRadius: `${borderRadius.md}px`,
+    transition: "all 0.2s",
+    "&:hover": {
+      transform: "translateY(-1px)",
+      boxShadow: theme.shadows[2],
+    },
   };
 
   if (!visible) return null;

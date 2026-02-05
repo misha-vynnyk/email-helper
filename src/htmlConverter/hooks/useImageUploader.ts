@@ -168,7 +168,6 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
                   provider: storageProvider,
                   category,
                   folderName,
-                  fileName: filename, // Force explicit filename to avoid temp-file suffix issues
                   skipConfirmation: true,
                 }),
                 signal: uploadAbortControllerRef.current.signal,
@@ -284,7 +283,7 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
       onReplaceUrls(lastUploadedUrls);
       setReplacementDone(true);
       log(`✅ Замінено ${n} посилань в Output`);
-      showSnackbar(`🔄 Замінено ${n} посилань`, "success");
+      showSnackbar(`🔄 Посилання та ALT тексти замінено (${n})`, "success");
     }
   }, [isUploading, lastUploadedSessionId, imagesSessionId, lastUploadedUrls, onReplaceUrls, log, showSnackbar]);
 
