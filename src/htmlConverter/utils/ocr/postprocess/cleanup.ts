@@ -44,29 +44,29 @@ export function toSentenceCase(text: string): string {
 }
 
 /**
- * Format CTA text as an action description (Ukrainian context)
+ * Format CTA text as an action description
  */
 export function formatCtaAsAction(text: string): string {
   const lower = text.toLowerCase().trim();
 
   const ctaMap: Record<string, string> = {
-    "click here": "Перейти за посиланням",
-    "learn more": "Дізнатися більше",
-    "read more": "Читати далі",
-    "sign up": "Зареєструватися",
-    subscribe: "Підписатися",
-    "buy now": "Купити зараз",
-    "shop now": "Перейти до магазину",
-    "get started": "Розпочати",
-    "view more": "Переглянути більше",
-    download: "Завантажити",
-    "join now": "Приєднатися",
-    register: "Зареєструватися",
-    "order now": "Замовити зараз",
-    "apply now": "Подати заявку",
-    "contact us": "Зв'язатися з нами",
-    "call now": "Зателефонувати",
-    "book now": "Забронювати",
+    "click here": "Go to link",
+    "learn more": "Learn more",
+    "read more": "Read more",
+    "sign up": "Sign up",
+    subscribe: "Subscribe",
+    "buy now": "Buy now",
+    "shop now": "Shop now",
+    "get started": "Get started",
+    "view more": "View more",
+    download: "Download",
+    "join now": "Join now",
+    register: "Register",
+    "order now": "Order now",
+    "apply now": "Apply now",
+    "contact us": "Contact us",
+    "call now": "Call now",
+    "book now": "Book now",
   };
 
   for (const [pattern, action] of Object.entries(ctaMap)) {

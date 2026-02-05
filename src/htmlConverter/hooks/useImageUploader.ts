@@ -139,6 +139,8 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
         return data.tempPath;
       };
 
+      const providerCfg = STORAGE_PROVIDERS_CONFIG.providers[storageProvider] || STORAGE_PROVIDERS_CONFIG.providers.default;
+
       try {
         for (let i = 0; i < completed.length; i++) {
           const img = completed[i];
@@ -166,6 +168,7 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
                   provider: storageProvider,
                   category,
                   folderName,
+                  fileName: filename, // Force explicit filename to avoid temp-file suffix issues
                   skipConfirmation: true,
                 }),
                 signal: uploadAbortControllerRef.current.signal,
@@ -224,22 +227,13 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
         if (Object.keys(uploadedUrls).length > 0) {
           setLastUploadedUrls(uploadedUrls);
           setLastUploadedSessionId(sessionIdAtStart);
-          setReplacementDone(false); // Not replaced via button yet?
-          // Wait, above we DID replace in Editor ("Replacement in Editor" block).
-          // But original code (Line 810) logged "replaced in Editor".
-          // But line 817 sets `setReplacementDone(false)`.
-          // Why?
-          // Ah, because explicit "Replace in Output" button action (handleReplaceInOutput) is separate?
-          // The Editor replacement happens visible on screen.
-          // Output replacement (the formatted mjml/html) happens when user clicks Export?
-          // Or handleReplaceInOutput modifies the exported string?
-          // Line 927 `onReplaceUrls(lastUploadedUrls)` triggers parent's `replaceUrlsInContent`.
-          // So Editor (visual) is replaced. Output (HTML string) needs replacement too.
+          setReplacementDone(false);
           onUploadedUrlsChange?.(uploadedUrls);
 
           const altMap: Record<string, string> = {};
           completed.forEach((img) => {
-            if (customAlts[img.id] && uploadedUrls[img.src]) altMap[img.src] = customAlts[img.id];
+            const storageUrl = uploadedUrls[img.src];
+            if (customAlts[img.id] && storageUrl) altMap[storageUrl] = customAlts[img.id];
           });
 
           onUploadedAltsChange?.(altMap);
@@ -248,18 +242,9 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
           copyToClipboard(urlsList);
         }
 
-        const providerCfg = STORAGE_PROVIDERS_CONFIG.providers[storageProvider] || STORAGE_PROVIDERS_CONFIG.providers.default;
         const errorCount = results.filter((r) => !r.success).length;
         if (successCount === completed.length) {
           log(`🎉 Успішно завантажено всі ${successCount} зображень`);
-          if (providerCfg.closeTabAfterBatch && !uploadAbortControllerRef.current?.signal.aborted) {
-            // Finalize logic
-            fetch(`${API_URL}/api/storage-upload/finalize`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ provider: storageProvider }),
-            }).catch(() => log(`⚠️ finalize failed`));
-          }
         } else if (successCount > 0) {
           log(`⚠️ Завантажено ${successCount} з ${completed.length} зображень (${errorCount} помилок)`);
         } else {
@@ -268,6 +253,15 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
 
         return { results, category, folderName };
       } finally {
+        // Always attempt to finalize (close tab) if provider requires it
+        if (providerCfg.closeTabAfterBatch) {
+          fetch(`${API_URL}/api/storage-upload/finalize`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ provider: storageProvider }),
+          }).catch((e) => log(`⚠️ finalize failed: ${e.message}`));
+        }
+
         setIsUploading(false);
         uploadAbortControllerRef.current = null;
       }
@@ -300,6 +294,9 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
     setLastUploadedUrls({});
     setReplacementDone(false);
   }, []);
+  const resetReplacementOnly = useCallback(() => {
+    setReplacementDone(false);
+  }, []);
 
   return {
     isUploading,
@@ -310,5 +307,6 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
     handleUploadToStorage,
     handleReplaceInOutput,
     resetUploadState,
+    resetReplacementOnly,
   };
 }

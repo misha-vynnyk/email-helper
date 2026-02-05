@@ -55,6 +55,7 @@ export interface UploadHistoryEntry {
   shortPath: string;
   category: string;
   folderName: string;
+  alt?: string; // Alt text for accessibility
 }
 
 export interface UploadSession {
