@@ -2,7 +2,7 @@
  * Efficient Single-Pass Post-processing Pipeline
  */
 
-import { cleanOcrText, normalizeOcrLine, cleanupAltCandidate, truncateAlt, isAllCapsLike, isTitleCaseLike } from "./cleanup";
+import { cleanOcrText, normalizeOcrLine, cleanupAltCandidate, truncateAlt, isAllCapsLike, isTitleCaseLike, formatCtaAsAction } from "./cleanup";
 import { postFixBannerText, spellCorrectBannerText } from "./bannerSpell";
 import { ALLOWED_SHORT_ALL_CAPS, COMMON_3_LETTER_WORDS } from "../constants";
 
@@ -18,8 +18,8 @@ interface ProcessedLine {
 }
 
 export interface ProcessorResult {
-  ocrText: string;     // for UI (clean)
-  ocrTextRaw: string;  // raw-ish (just corrected)
+  ocrText: string; // for UI (clean)
+  ocrTextRaw: string; // raw-ish (just corrected)
   altSuggestions: string[];
   ctaSuggestions: string[];
   nameSuggestions: string[];
@@ -28,10 +28,7 @@ export interface ProcessorResult {
 /**
  * Process raw OCR output in a single pass
  */
-export function processOcrOutput(
-  rawText: string,
-  opts: { spellCorrect: boolean }
-): ProcessorResult {
+export function processOcrOutput(rawText: string, opts: { spellCorrect: boolean }): ProcessorResult {
   // 1. Initial Cleanup & correction
   const cleaned = cleanOcrText(rawText);
   const corrected = opts.spellCorrect ? spellCorrectBannerText(cleaned) : cleaned;
@@ -59,7 +56,7 @@ export function processOcrOutput(
 
   // 3. Extract Artifacts
   // UI Text: Join non-junk lines
-  const ocrText = lines.map(l => l.normalized).join("\n");
+  const ocrText = lines.map((l) => l.normalized).join("\n");
 
   // Suggestions
   const { altSuggestions, ctaSuggestions, nameSuggestions } = extractFromLines(lines);
@@ -69,7 +66,7 @@ export function processOcrOutput(
     ocrTextRaw: fixed,
     altSuggestions,
     ctaSuggestions,
-    nameSuggestions
+    nameSuggestions,
   };
 }
 
@@ -127,13 +124,7 @@ function analyzeLine(line: string): { tokens: string[]; type: LineType; score: n
   const idealLenBonus = len >= 8 && len <= 80 ? 18 : len >= 3 && len <= 120 ? 8 : -8;
   const symbols = (line.match(/[^a-zA-Z0-9\s]/g) || []).length;
 
-  const score =
-    alphaNum * 0.5 +
-    Math.min(tokens.length, 10) * 6 +
-    idealLenBonus +
-    capsBonus +
-    titleBonus -
-    symbols * 2;
+  const score = alphaNum * 0.5 + Math.min(tokens.length, 10) * 6 + idealLenBonus + capsBonus + titleBonus - symbols * 2;
 
   return { tokens, type, score, wordLikeCount };
 }
@@ -162,35 +153,38 @@ function extractFromLines(lines: ProcessedLine[]) {
   const sorted = [...lines].sort((a, b) => b.score - a.score);
 
   const altSuggestions = sorted
-    .filter(l => l.type === "content" && l.score > 0)
+    .filter((l) => l.type === "content" && l.score > 0)
     .slice(0, 3)
-    .map(l => cleanupAltCandidate(truncateAlt(l.normalized)))
+    .map((l) => cleanupAltCandidate(truncateAlt(l.normalized)))
     .filter(Boolean);
 
   const ctaSuggestions = lines
-    .filter(l => l.type === "cta")
-    .map(l => cleanupAltCandidate(truncateAlt(l.normalized)))
+    .filter((l) => l.type === "cta")
+    .map((l) => formatCtaAsAction(truncateAlt(l.normalized)))
     .filter(Boolean)
     .slice(0, 2);
 
   // CTA fallback
-  const hasStrongCta = ctaSuggestions.some(c => /\b(click here|learn more|sign up)\b/i.test(c));
-  if (!hasStrongCta && lines.some(l => /\bclick\b/i.test(l.normalized))) {
-    ctaSuggestions.unshift("CLICK HERE");
+  const hasStrongCta = ctaSuggestions.some((c) => /\b(click here|learn more|sign up|перейти|дізнатися|зареєструватися)\b/i.test(c));
+  if (!hasStrongCta && lines.some((l) => /\bclick\b/i.test(l.normalized))) {
+    ctaSuggestions.unshift("Перейти за посиланням");
   }
 
   // Combined headline for name fallback
   const topForHeadline = sorted
     .slice(0, 3)
     .sort((a, b) => lines.indexOf(a) - lines.indexOf(b)) // maintain original order
-    .map(l => l.normalized);
+    .map((l) => l.normalized);
 
   const combinedHeadline = cleanupAltCandidate(truncateAlt(topForHeadline.join(" ")));
   const pool = combinedHeadline ? [combinedHeadline, ...altSuggestions] : ctaSuggestions;
 
   const nameSuggestions: string[] = [];
   for (const cand of pool) {
-    const parts = cand.toLowerCase().split(/\s+/).filter(w => w.length >= 3);
+    const parts = cand
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((w) => w.length >= 3);
     for (const p of parts) {
       if (!nameSuggestions.includes(p)) nameSuggestions.push(p);
       if (nameSuggestions.length >= 3) break;

@@ -1,4 +1,35 @@
 import { OcrAnalyzeResult } from "./analyzer";
+import { cleanupAltCandidate, formatCtaAsAction, truncateAlt } from "./postprocess/cleanup";
+
+/**
+ * Polish AI-generated alt text to follow accessibility best practices:
+ * - Remove filler words at the start ("a", "an", "the", "there is", "this is")
+ * - Capitalize first letter
+ * - Truncate to 125 chars
+ */
+function polishAiAltText(text: string): string {
+  if (!text) return text;
+
+  let t = text.trim();
+
+  // Remove common AI caption filler patterns at the start
+  const fillerPatterns = [/^there\s+is\s+(a|an)\s+/i, /^this\s+is\s+(a|an)\s+/i, /^(a|an|the)\s+/i, /^image\s+of\s+(a|an|the)?\s*/i, /^photo\s+of\s+(a|an|the)?\s*/i, /^picture\s+of\s+(a|an|the)?\s*/i];
+
+  for (const pattern of fillerPatterns) {
+    t = t.replace(pattern, "");
+  }
+
+  // Remove trailing filler like "in the image" or "in the photo"
+  t = t.replace(/\s+(in|on)\s+(the|a|an)\s+(image|photo|picture|background)\.?$/i, "");
+
+  // Capitalize first letter (sentence case)
+  if (t.length > 0) {
+    t = t.charAt(0).toUpperCase() + t.slice(1);
+  }
+
+  // Apply standard cleanup and truncation
+  return truncateAlt(cleanupAltCandidate(t));
+}
 
 /**
  * Client for the Python AI Backend (PaddleOCR + BLIP + CLIP)
@@ -43,16 +74,25 @@ export class AiBackendClient {
       // Backend returns: { alt_text, filename, candidates: { alt_texts, filenames }, cta, raw: { ocr, caption, tags } }
 
       const ocrText = data.raw?.ocr || "";
-      const altCandidates = data.candidates?.alt_texts || [data.alt_text];
+      const rawAltCandidates = data.candidates?.alt_texts || [data.alt_text];
       const filenameCandidates = data.candidates?.filenames || [data.filename];
       const cta = data.cta || "";
+
+      // Apply accessibility best practices to alt suggestions
+      const altSuggestions = rawAltCandidates
+        .filter((s: string) => s)
+        .map((s: string) => polishAiAltText(s))
+        .filter((s: string) => s && s.length >= 3);
+
+      // Format CTA as action description
+      const ctaSuggestions = cta ? [formatCtaAsAction(cta)] : [];
 
       return {
         ocrText: ocrText,
         ocrTextRaw: ocrText,
-        altSuggestions: altCandidates.filter((s: string) => s), // All ALT text candidates
-        ctaSuggestions: cta ? [cta] : [], // CTA if found
-        nameSuggestions: filenameCandidates.filter((s: string) => s), // All filename candidates
+        altSuggestions,
+        ctaSuggestions,
+        nameSuggestions: filenameCandidates.filter((s: string) => s),
         textLikelihood: 1, // Assume 1 if backend processed it
         cacheHit: false, // Backend might cache internally, but treated as fresh here
       };
