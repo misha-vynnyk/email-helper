@@ -79,17 +79,8 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
       const result = await analyzeFile(file, { force: opts?.force });
       if (!result) return;
 
-      // Auto-apply (global settings)
-      const bestAlt = result.altSuggestions[0] || result.ctaSuggestions?.[0];
-      if (imageAnalysisSettings?.autoApplyAlt === "ifEmpty" && bestAlt) {
-        setCustomAlts((prev) => (prev[file.id] ? prev : { ...prev, [file.id]: bestAlt }));
-      }
-      if (imageAnalysisSettings?.autoApplyFilename === "ifEmpty" && result.nameSuggestions[0]) {
-        const normalized = normalizeCustomNameInput(result.nameSuggestions[0]);
-        if (normalized) {
-          setCustomNames((prev) => (prev[file.id] ? prev : { ...prev, [file.id]: normalized }));
-        }
-      }
+      // Auto-apply logic removed per user request (to prevent unwanted tag insertion)
+      // if (imageAnalysisSettings?.autoApplyAlt === "ifEmpty" && bestAlt) { ... }
     },
     [analyzeFile, imageAnalysisSettings?.autoApplyAlt, imageAnalysisSettings?.autoApplyFilename]
   );
