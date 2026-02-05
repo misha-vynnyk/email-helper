@@ -24,8 +24,8 @@ interface FileListProps {
   files: FileItem[];
   customNames: Record<string, string>;
   setCustomNames: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  customAlts: Record<string, string>;
-  setCustomAlts: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  customAlts: Record<string, string[]>;
+  setCustomAlts: React.Dispatch<React.SetStateAction<Record<string, string[]>>>;
   draggedIndex: number | null;
   onDragStart: (index: number) => void;
   onDragOver: (e: React.DragEvent, index: number) => void;
@@ -36,12 +36,8 @@ interface FileListProps {
   onAnalyze: (file: FileItem, opts?: { force?: boolean }) => void;
 }
 
-// Helper: parse pipe-separated string into array
-const parseAltTags = (str: string): string[] =>
-  str
-    .split(" | ")
-    .map((s) => s.trim())
-    .filter(Boolean);
+// Helper: case-insensitive check if tag exists
+const hasTagIgnoreCase = (tags: string[], tag: string): boolean => tags.some((t) => t.toLowerCase() === tag.toLowerCase());
 
 export function FileList({ files, customNames, setCustomNames, customAlts, setCustomAlts, draggedIndex, onDragStart, onDragOver, onDragEnd, aiById, showOcrTextById, setShowOcrTextById, onAnalyze }: FileListProps) {
   const theme = useTheme();
@@ -58,24 +54,31 @@ export function FileList({ files, customNames, setCustomNames, customAlts, setCu
   };
 
   const addTag = (fileId: string, tag: string) => {
-    if (!tag.trim()) return;
-    const existing = parseAltTags(customAlts[fileId] || "");
-    if (!existing.includes(tag.trim())) {
-      setCustomAlts((prev) => ({ ...prev, [fileId]: [...existing, tag.trim()].join(" | ") }));
+    const trimmed = tag.trim();
+    if (!trimmed) return;
+    const existing = customAlts[fileId] || [];
+    // Case-insensitive duplicate check
+    if (!hasTagIgnoreCase(existing, trimmed)) {
+      setCustomAlts((prev) => ({ ...prev, [fileId]: [...existing, trimmed] }));
     }
     setNewTagInputs((prev) => ({ ...prev, [fileId]: "" }));
   };
 
   const removeTag = (fileId: string, tagToRemove: string) => {
-    const existing = parseAltTags(customAlts[fileId] || "");
-    setCustomAlts((prev) => ({ ...prev, [fileId]: existing.filter((t) => t !== tagToRemove).join(" | ") }));
+    const existing = customAlts[fileId] || [];
+    // Case-insensitive removal
+    setCustomAlts((prev) => ({
+      ...prev,
+      [fileId]: existing.filter((t) => t.toLowerCase() !== tagToRemove.toLowerCase()),
+    }));
   };
 
   const updateTag = (fileId: string, index: number, newValue: string) => {
-    const existing = parseAltTags(customAlts[fileId] || "");
-    if (newValue.trim()) {
-      existing[index] = newValue.trim();
-      setCustomAlts((prev) => ({ ...prev, [fileId]: existing.join(" | ") }));
+    const existing = [...(customAlts[fileId] || [])];
+    const trimmed = newValue.trim();
+    if (trimmed) {
+      existing[index] = trimmed;
+      setCustomAlts((prev) => ({ ...prev, [fileId]: existing }));
     }
   };
 
@@ -85,7 +88,7 @@ export function FileList({ files, customNames, setCustomNames, customAlts, setCu
         const aiResult = aiById[file.id];
         const isAnalyzing = aiResult?.status === "running";
         const hasAiResults = aiResult && aiResult.status === "done";
-        const altTags = parseAltTags(customAlts[file.id] || "");
+        const altTags = customAlts[file.id] || [];
         const isExpanded = expandedAiPanels[file.id] ?? hasAiResults;
 
         return (
@@ -358,7 +361,7 @@ export function FileList({ files, customNames, setCustomNames, customAlts, setCu
                           </Typography>
                           <Stack direction='row' flexWrap='wrap' gap={0.5}>
                             {aiResult?.altSuggestions?.map((s) => {
-                              const isUsed = altTags.includes(s);
+                              const isUsed = hasTagIgnoreCase(altTags, s);
                               return <Chip key={s} label={s} size='small' color={isUsed ? "primary" : "default"} variant={isUsed ? "filled" : "outlined"} onClick={() => (isUsed ? removeTag(file.id, s) : addTag(file.id, s))} icon={isUsed ? <CheckIcon fontSize='small' /> : undefined} />;
                             })}
                           </Stack>
@@ -371,7 +374,7 @@ export function FileList({ files, customNames, setCustomNames, customAlts, setCu
                           </Typography>
                           <Stack direction='row' flexWrap='wrap' gap={0.5}>
                             {aiResult?.ctaSuggestions?.map((s) => {
-                              const isUsed = altTags.includes(s);
+                              const isUsed = hasTagIgnoreCase(altTags, s);
                               return <Chip key={s} label={s} size='small' color={isUsed ? "secondary" : "default"} variant={isUsed ? "filled" : "outlined"} onClick={() => (isUsed ? removeTag(file.id, s) : addTag(file.id, s))} icon={isUsed ? <CheckIcon fontSize='small' /> : undefined} />;
                             })}
                           </Stack>

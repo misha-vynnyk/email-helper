@@ -107,7 +107,7 @@ export default function HtmlConverterPanel() {
     setUnseenLogCount((prev) => Math.min(prev + 1, LOG_LIMIT));
   }, []);
 
-  const handleAddToHistory = useCallback((category: string, folderName: string, results: Array<{ filename: string; url: string; success: boolean }>) => {
+  const handleAddToHistory = useCallback((category: string, folderName: string, results: Array<{ filename: string; url: string; success: boolean }>, customAlts?: Record<string, string>) => {
     const newSession: UploadSession = {
       id: `${Date.now()}-${Math.random()}`,
       timestamp: Date.now(),
@@ -130,6 +130,7 @@ export default function HtmlConverterPanel() {
           })(),
           category,
           folderName,
+          alt: customAlts?.[r.filename] || undefined,
         })),
     };
 
@@ -460,6 +461,31 @@ export default function HtmlConverterPanel() {
     addLog("🧹 Очищено");
   };
 
+  const handleAltsUpdate = useCallback(
+    (altMap: Record<string, string>) => {
+      // 1. Update runtime state for replacement
+      setUploadedAltMap((prev) => ({ ...prev, ...altMap }));
+
+      // 2. Update history persistence
+      setUploadHistory((prev) => {
+        const updatedHistory = prev.map((session) => ({
+          ...session,
+          files: session.files.map((file) => {
+            if (altMap[file.url]) {
+              return { ...file, alt: altMap[file.url] };
+            }
+            return file;
+          }),
+        }));
+        localStorage.setItem(STORAGE_KEYS.UPLOAD_HISTORY, JSON.stringify(updatedHistory));
+        return updatedHistory;
+      });
+
+      addLog(`💾 Збережено ${Object.keys(altMap).length} оновлених Alt-текстів в історію`);
+    },
+    [addLog]
+  );
+
   return (
     <Box
       data-app-scroll='true'
@@ -575,7 +601,7 @@ export default function HtmlConverterPanel() {
       </StyledPaper>
 
       {/* Image Processor - only visible when images detected */}
-      <ImageProcessor editorRef={editorRef} onLog={addLog} visible={showImageProcessor} onVisibilityChange={setShowImageProcessor} triggerExtract={triggerExtract} fileName={fileName} onHistoryAdd={handleAddToHistory} onReplaceUrls={handleReplaceUrls} onUploadedUrlsChange={setUploadedUrlMap} onUploadedAltsChange={setUploadedAltMap} onResetReplacement={handleResetReplacement} hasOutput={hasOutput} autoProcess={autoProcess} storageProvider={useAlfaOne ? "alphaone" : "default"} imageAnalysisSettings={imageAnalysis} />
+      <ImageProcessor editorRef={editorRef} onLog={addLog} visible={showImageProcessor} onVisibilityChange={setShowImageProcessor} triggerExtract={triggerExtract} fileName={fileName} onHistoryAdd={handleAddToHistory} onReplaceUrls={handleReplaceUrls} onUploadedUrlsChange={setUploadedUrlMap} onUploadedAltsChange={handleAltsUpdate} onResetReplacement={handleResetReplacement} hasOutput={hasOutput} autoProcess={autoProcess} storageProvider={useAlfaOne ? "alphaone" : "default"} imageAnalysisSettings={imageAnalysis} />
 
       {/* Output Blocks */}
       <Stack direction={{ xs: "column", lg: "row" }} spacing={spacingMUI.lg}>

@@ -28,7 +28,7 @@ export function useUploadMetadata({ files, open, storageProvider, initialFolderN
   const [category, setCategory] = useState<string>(defaultCategory);
   const [folderName, setFolderName] = useState<string>("");
   const [customNames, setCustomNames] = useState<Record<string, string>>({});
-  const [customAlts, setCustomAlts] = useState<Record<string, string>>({});
+  const [customAlts, setCustomAlts] = useState<Record<string, string[]>>({});
   const [orderedFiles, setOrderedFiles] = useState<FileItem[]>(files);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 

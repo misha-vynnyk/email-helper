@@ -26,7 +26,7 @@ interface ImageProcessorProps {
   onVisibilityChange: (visible: boolean) => void;
   triggerExtract?: number;
   fileName?: string;
-  onHistoryAdd?: (category: string, folderName: string, results: Array<{ filename: string; url: string; success: boolean }>) => void;
+  onHistoryAdd?: (category: string, folderName: string, results: Array<{ filename: string; url: string; success: boolean }>, customAlts?: Record<string, string>) => void;
   onReplaceUrls?: (urlMap: Record<string, string>) => void;
   onUploadedUrlsChange?: (urlMap: Record<string, string>) => void;
   onUploadedAltsChange?: (altMap: Record<string, string>) => void;
@@ -70,6 +70,7 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
     handleReplaceInOutput,
     abortUploads,
     resetUploadState,
+    resetReplacementOnly,
   } = useImageUploader({
     images,
     imagesSessionId: sessionId,
@@ -143,15 +144,9 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
 
   useEffect(() => {
     if (onResetReplacement) {
-      onResetReplacement(() => resetUploadState()); // Careful, resetUploadState resets everything. parent might just want reset replacement flag? Old code: setReplacementDone(false). resetUploadState does that + more.
-      // But passing lambda: () => setReplacementDone(false).
-      // useImageUploader doesn't expose clean setter.
-      // But resetUploadState is fine as "New Document" triggers it.
-      // Wait, onResetReplacement is usually called when output changes manually?
-      // I'll assume resetUploadState is safe enough or I should expose setReplacementDone?
-      // For now resetUploadState.
+      onResetReplacement(() => resetReplacementOnly());
     }
-  }, [onResetReplacement, resetUploadState]);
+  }, [onResetReplacement, resetReplacementOnly]);
 
   useEffect(() => {
     if (!visible && images.length > 0) {
@@ -274,6 +269,14 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
         }}
         initialFolderName={initialFolderName}
         onHistoryAdd={onHistoryAdd}
+        onAltsUpdate={onUploadedAltsChange}
+        existingUrls={(() => {
+          const map: Record<string, string> = {};
+          images.forEach((img) => {
+            if (lastUploadedUrls[img.src]) map[img.id] = lastUploadedUrls[img.src];
+          });
+          return map;
+        })()}
         imageAnalysisSettings={imageAnalysisSettings}
       />
 

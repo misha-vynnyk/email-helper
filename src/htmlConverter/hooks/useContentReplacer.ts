@@ -50,16 +50,10 @@ export function useContentReplacer() {
   }, []);
 
   // Replace ALT attributes in img tags based on URL mapping
-  // altMap is originalSrc -> alt, we need to find tags by newUrl and look up via reverse urlMap
+  // altMap is storageUrl -> alt (after upload)
   // Uses regex instead of DOMParser to preserve original HTML formatting (important for email)
-  const replaceAltsInContent = useCallback((content: string, urlMap: Record<string, string>, altMap: Record<string, string>): ContentReplacerResult => {
+  const replaceAltsInContent = useCallback((content: string, _urlMap: Record<string, string>, altMap: Record<string, string>): ContentReplacerResult => {
     if (Object.keys(altMap).length === 0) return { replaced: content, count: 0 };
-
-    // Build reverse map: newUrl -> originalSrc
-    const reverseUrlMap: Record<string, string> = {};
-    Object.entries(urlMap).forEach(([original, newUrl]) => {
-      reverseUrlMap[newUrl] = original;
-    });
 
     let replacedCount = 0;
 
@@ -70,10 +64,10 @@ export function useContentReplacer() {
       if (!srcMatch) return imgTag;
 
       const src = srcMatch[1];
-      const originalSrc = reverseUrlMap[src];
-      if (!originalSrc || !altMap[originalSrc]) return imgTag;
+      // altMap now uses storage URL as key directly
+      const newAlt = altMap[src];
+      if (!newAlt) return imgTag;
 
-      const newAlt = altMap[originalSrc];
       replacedCount++;
 
       // Replace alt attribute value (handles alt before or after src)
