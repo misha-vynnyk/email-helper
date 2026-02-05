@@ -4,42 +4,8 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import {
-  alpha,
-  Alert,
-  Badge,
-  Box,
-  Button,
-  Checkbox,
-  Divider,
-  FormControl,
-  FormControlLabel,
-  FormGroup,
-  IconButton,
-  MenuItem,
-  Paper,
-  Popover,
-  Slider,
-  Stack,
-  Switch,
-  Tab,
-  Tabs,
-  TextField,
-  Tooltip,
-  Typography,
-  useTheme,
-} from "@mui/material";
-import {
-  Add as AddIcon,
-  Clear as ClearIcon,
-  Close as CloseIcon,
-  Code as CodeIcon,
-  ContentCopy as CopyIcon,
-  Download as DownloadIcon,
-  Remove as RemoveIcon,
-  Settings as SettingsIcon,
-  SwapHoriz as ConvertIcon,
-} from "@mui/icons-material";
+import { alpha, Alert, Badge, Box, Button, Checkbox, Divider, FormControl, FormControlLabel, FormGroup, IconButton, MenuItem, Paper, Popover, Slider, Stack, Switch, Tab, Tabs, TextField, Tooltip, Typography, useTheme } from "@mui/material";
+import { Add as AddIcon, Clear as ClearIcon, Close as CloseIcon, Code as CodeIcon, ContentCopy as CopyIcon, Download as DownloadIcon, Remove as RemoveIcon, Settings as SettingsIcon, SwapHoriz as ConvertIcon } from "@mui/icons-material";
 
 import { useThemeMode } from "../theme";
 import { getComponentStyles } from "../theme/componentStyles";
@@ -77,22 +43,15 @@ function SectionHeader({ icon, title, subtitle }: SectionHeaderProps) {
           borderRadius: `${componentStyles.card.borderRadius}px`,
           bgcolor: alpha(theme.palette.primary.main, opacity.selected),
           color: "primary.main",
-        }}
-      >
+        }}>
         {icon}
       </Box>
       <Box>
-        <Typography
-          variant='subtitle2'
-          fontWeight={600}
-        >
+        <Typography variant='subtitle2' fontWeight={600}>
           {title}
         </Typography>
         {subtitle && (
-          <Typography
-            variant='caption'
-            color='text.secondary'
-          >
+          <Typography variant='caption' color='text.secondary'>
             {subtitle}
           </Typography>
         )}
@@ -117,15 +76,13 @@ function StyledPaper({ children, sx = {} }: StyledPaperProps) {
       sx={{
         p: spacingMUI.base,
         borderRadius: `${componentStyles.card.borderRadius}px`,
-        backgroundColor:
-          componentStyles.card.background || alpha(theme.palette.background.paper, 0.8),
+        backgroundColor: componentStyles.card.background || alpha(theme.palette.background.paper, 0.8),
         backdropFilter: componentStyles.card.backdropFilter,
         WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
         border: componentStyles.card.border,
         boxShadow: componentStyles.card.boxShadow,
         ...sx,
-      }}
-    >
+      }}>
       {children}
     </Paper>
   );
@@ -155,6 +112,7 @@ export default function HtmlConverterPanel() {
   const [inputHtml, setInputHtml] = useState<string>("");
   const [triggerExtract, setTriggerExtract] = useState(0);
   const [uploadedUrlMap, setUploadedUrlMap] = useState<Record<string, string>>({});
+  const [uploadedAltMap, setUploadedAltMap] = useState<Record<string, string>>({});
   const [isAutoExporting, setIsAutoExporting] = useState(false);
   const [uploadHistory, setUploadHistory] = useState<UploadSession[]>(() => {
     // Load from localStorage
@@ -261,9 +219,7 @@ export default function HtmlConverterPanel() {
     }
   };
 
-  const [imageAnalysis, setImageAnalysis] = useState<ImageAnalysisSettings>(() =>
-    loadImageAnalysisSettings()
-  );
+  const [imageAnalysis, setImageAnalysis] = useState<ImageAnalysisSettings>(() => loadImageAnalysisSettings());
 
   // AI Backend status indicator
   const [aiBackendStatus, setAiBackendStatus] = useState<"checking" | "online" | "offline">("offline");
@@ -283,7 +239,7 @@ export default function HtmlConverterPanel() {
       try {
         const res = await fetch("http://localhost:8000/health", {
           method: "GET",
-          signal: AbortSignal.timeout(3000)
+          signal: AbortSignal.timeout(3000),
         });
         setAiBackendStatus(res.ok ? "online" : "offline");
       } catch {
@@ -361,45 +317,38 @@ export default function HtmlConverterPanel() {
     setUnseenLogCount((prev) => Math.min(prev + 1, LOG_LIMIT));
   }, []);
 
-  const handleAddToHistory = useCallback(
-    (
-      category: string,
-      folderName: string,
-      results: Array<{ filename: string; url: string; success: boolean }>
-    ) => {
-      const newSession: UploadSession = {
-        id: `${Date.now()}-${Math.random()}`,
-        timestamp: Date.now(),
-        category,
-        folderName,
-        files: results
-          .filter((r) => r.success)
-          .map((r) => ({
-            id: `${Date.now()}-${Math.random()}`,
-            timestamp: Date.now(),
-            filename: r.filename,
-            url: r.url,
-            shortPath: (() => {
-              try {
-                const u = new URL(r.url);
-                return u.pathname.startsWith("/") ? u.pathname.slice(1) : u.pathname;
-              } catch {
-                return r.url;
-              }
-            })(),
-            category,
-            folderName,
-          })),
-      };
+  const handleAddToHistory = useCallback((category: string, folderName: string, results: Array<{ filename: string; url: string; success: boolean }>) => {
+    const newSession: UploadSession = {
+      id: `${Date.now()}-${Math.random()}`,
+      timestamp: Date.now(),
+      category,
+      folderName,
+      files: results
+        .filter((r) => r.success)
+        .map((r) => ({
+          id: `${Date.now()}-${Math.random()}`,
+          timestamp: Date.now(),
+          filename: r.filename,
+          url: r.url,
+          shortPath: (() => {
+            try {
+              const u = new URL(r.url);
+              return u.pathname.startsWith("/") ? u.pathname.slice(1) : u.pathname;
+            } catch {
+              return r.url;
+            }
+          })(),
+          category,
+          folderName,
+        })),
+    };
 
-      setUploadHistory((prev) => {
-        const updated = [newSession, ...prev].slice(0, UPLOAD_CONFIG.MAX_HISTORY_SESSIONS);
-        localStorage.setItem(STORAGE_KEYS.UPLOAD_HISTORY, JSON.stringify(updated));
-        return updated;
-      });
-    },
-    []
-  );
+    setUploadHistory((prev) => {
+      const updated = [newSession, ...prev].slice(0, UPLOAD_CONFIG.MAX_HISTORY_SESSIONS);
+      localStorage.setItem(STORAGE_KEYS.UPLOAD_HISTORY, JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
 
   const handleClearHistory = useCallback(() => {
     setUploadHistory([]);
@@ -410,53 +359,87 @@ export default function HtmlConverterPanel() {
     resetReplacementRef.current = resetFn;
   }, []);
 
-  const replaceUrlsInContentByMap = useCallback(
-    (content: string, pattern: RegExp, urlMap: Record<string, string>) => {
-      let replacedCount = 0;
-      const replaced = content.replace(pattern, (match, prefix, oldUrl, suffix) => {
-        if (isSignatureImageTag(match)) return match;
+  const replaceUrlsInContentByMap = useCallback((content: string, pattern: RegExp, urlMap: Record<string, string>) => {
+    let replacedCount = 0;
+    const replaced = content.replace(pattern, (match, prefix, oldUrl, suffix) => {
+      if (isSignatureImageTag(match)) return match;
 
-        const candidates: string[] = [String(oldUrl)];
-        try {
-          candidates.push(new URL(String(oldUrl), window.location.href).toString());
-        } catch {
-          // ignore
-        }
+      const candidates: string[] = [String(oldUrl)];
+      try {
+        candidates.push(new URL(String(oldUrl), window.location.href).toString());
+      } catch {
+        // ignore
+      }
 
-        for (const c of candidates) {
-          const next = urlMap[c];
-          if (next) {
-            replacedCount++;
-            return `${prefix}${next}${suffix}`;
-          }
-        }
-        return match;
-      });
-
-      return { replaced, count: replacedCount };
-    },
-    []
-  );
-
-  const replaceUrlsInContent = useCallback(
-    (content: string, pattern: RegExp, storageUrls: string[]) => {
-      let imageIndex = 0;
-      let replacedCount = 0;
-
-      const replaced = content.replace(pattern, (match, prefix, _oldUrl, suffix) => {
-        if (isSignatureImageTag(match)) return match;
-        if (imageIndex < storageUrls.length) {
-          const newUrl = storageUrls[imageIndex++];
+      for (const c of candidates) {
+        const next = urlMap[c];
+        if (next) {
           replacedCount++;
-          return `${prefix}${newUrl}${suffix}`;
+          return `${prefix}${next}${suffix}`;
         }
-        return match;
-      });
+      }
+      return match;
+    });
 
-      return { replaced, count: replacedCount };
-    },
-    []
-  );
+    return { replaced, count: replacedCount };
+  }, []);
+
+  const replaceUrlsInContent = useCallback((content: string, pattern: RegExp, storageUrls: string[]) => {
+    let imageIndex = 0;
+    let replacedCount = 0;
+
+    const replaced = content.replace(pattern, (match, prefix, _oldUrl, suffix) => {
+      if (isSignatureImageTag(match)) return match;
+      if (imageIndex < storageUrls.length) {
+        const newUrl = storageUrls[imageIndex++];
+        replacedCount++;
+        return `${prefix}${newUrl}${suffix}`;
+      }
+      return match;
+    });
+
+    return { replaced, count: replacedCount };
+  }, []);
+
+  // Replace ALT attributes in img tags based on URL mapping
+  // altMap is originalSrc -> alt, we need to find tags by newUrl and look up via reverse urlMap
+  // Uses regex instead of DOMParser to preserve original HTML formatting (important for email)
+  const replaceAltsInContent = useCallback((content: string, urlMap: Record<string, string>, altMap: Record<string, string>) => {
+    if (Object.keys(altMap).length === 0) return { replaced: content, count: 0 };
+
+    // Build reverse map: newUrl -> originalSrc
+    const reverseUrlMap: Record<string, string> = {};
+    Object.entries(urlMap).forEach(([original, newUrl]) => {
+      reverseUrlMap[newUrl] = original;
+    });
+
+    let replacedCount = 0;
+
+    // Match entire <img ...> tag (handles multi-line with [\s\S])
+    const replaced = content.replace(/<img[\s\S]*?>/gi, (imgTag) => {
+      // Extract src value
+      const srcMatch = imgTag.match(/\ssrc=["']([^"']+)["']/i);
+      if (!srcMatch) return imgTag;
+
+      const src = srcMatch[1];
+      const originalSrc = reverseUrlMap[src];
+      if (!originalSrc || !altMap[originalSrc]) return imgTag;
+
+      const newAlt = altMap[originalSrc];
+      replacedCount++;
+
+      // Replace alt attribute value (handles alt before or after src)
+      if (/\salt=["'][^"']*["']/i.test(imgTag)) {
+        // Alt exists - replace it
+        return imgTag.replace(/(\salt=["'])[^"']*(["'])/i, `$1${newAlt}$2`);
+      } else {
+        // No alt - add it after <img
+        return imgTag.replace(/<img/i, `<img alt="${newAlt}"`);
+      }
+    });
+
+    return { replaced, count: replacedCount };
+  }, []);
 
   const handleReplaceUrls = useCallback(
     (urlMap: Record<string, string>) => {
@@ -470,50 +453,52 @@ export default function HtmlConverterPanel() {
       // Prefer exact mapping first (oldUrl -> newUrl).
       // Fallback to positional replacement ONLY if mapping replaced nothing.
       if (outputHtmlRef.current?.value) {
-        const original = outputHtmlRef.current.value;
-        const mapped = replaceUrlsInContentByMap(
-          original,
-          /(<img[^>]+src=["'])([^"']+)(["'][^>]*>)/gi,
-          urlMap
-        );
+        let content = outputHtmlRef.current.value;
+        const mapped = replaceUrlsInContentByMap(content, /(<img[^>]+src=["'])([^"']+)(["'][^>]*>)/gi, urlMap);
 
         if (mapped.count > 0) {
-          outputHtmlRef.current.value = mapped.replaced;
+          content = mapped.replaced;
           addLog(`🔄 Замінено ${mapped.count} посилань в Output HTML`);
         } else {
-          const positional = replaceUrlsInContent(
-            original,
-            /(<img[^>]+src=["'])([^"']+)(["'][^>]*>)/gi,
-            storageUrls
-          );
-          outputHtmlRef.current.value = positional.replaced;
+          const positional = replaceUrlsInContent(content, /(<img[^>]+src=["'])([^"']+)(["'][^>]*>)/gi, storageUrls);
+          content = positional.replaced;
           if (positional.count > 0) addLog(`🔄 Замінено ${positional.count} посилань в Output HTML`);
         }
+
+        // Replace ALT attributes
+        const altResult = replaceAltsInContent(content, urlMap, uploadedAltMap);
+        if (altResult.count > 0) {
+          content = altResult.replaced;
+          addLog(`🔄 Замінено ${altResult.count} ALT-атрибутів в Output HTML`);
+        }
+
+        outputHtmlRef.current.value = content;
       }
 
       if (outputMjmlRef.current?.value) {
-        const original = outputMjmlRef.current.value;
-        const mapped = replaceUrlsInContentByMap(
-          original,
-          /(<(?:mj-image|img)[^>]+src=["'])([^"']+)(["'][^>]*>)/gi,
-          urlMap
-        );
+        let content = outputMjmlRef.current.value;
+        const mapped = replaceUrlsInContentByMap(content, /(<(?:mj-image|img)[^>]+src=["'])([^"']+)(["'][^>]*>)/gi, urlMap);
 
         if (mapped.count > 0) {
-          outputMjmlRef.current.value = mapped.replaced;
+          content = mapped.replaced;
           addLog(`🔄 Замінено ${mapped.count} посилань в Output MJML`);
         } else {
-          const positional = replaceUrlsInContent(
-            original,
-            /(<(?:mj-image|img)[^>]+src=["'])([^"']+)(["'][^>]*>)/gi,
-            storageUrls
-          );
-          outputMjmlRef.current.value = positional.replaced;
+          const positional = replaceUrlsInContent(content, /(<(?:mj-image|img)[^>]+src=["'])([^"']+)(["'][^>]*>)/gi, storageUrls);
+          content = positional.replaced;
           if (positional.count > 0) addLog(`🔄 Замінено ${positional.count} посилань в Output MJML`);
         }
+
+        // Replace ALT attributes
+        const altResult = replaceAltsInContent(content, urlMap, uploadedAltMap);
+        if (altResult.count > 0) {
+          content = altResult.replaced;
+          addLog(`🔄 Замінено ${altResult.count} ALT-атрибутів в Output MJML`);
+        }
+
+        outputMjmlRef.current.value = content;
       }
     },
-    [addLog, replaceUrlsInContent, replaceUrlsInContentByMap]
+    [addLog, replaceUrlsInContent, replaceUrlsInContentByMap, replaceAltsInContent, uploadedAltMap]
   );
 
   // Setup paste handler and auto-detect images
@@ -731,15 +716,7 @@ export default function HtmlConverterPanel() {
     } finally {
       setIsAutoExporting(false);
     }
-  }, [
-    addLog,
-    handleDownloadHTML,
-    handleDownloadMJML,
-    handleExportHTML,
-    handleExportMJML,
-    handleReplaceUrls,
-    uploadedUrlMap,
-  ]);
+  }, [addLog, handleDownloadHTML, handleDownloadMJML, handleExportHTML, handleExportMJML, handleReplaceUrls, uploadedUrlMap]);
 
   const handleClear = () => {
     if (imageDetectTimerRef.current) {
@@ -782,28 +759,15 @@ export default function HtmlConverterPanel() {
         flexDirection: "column",
         p: ui.compactMode ? spacingMUI.base : spacingMUI.xl,
         gap: ui.compactMode ? spacingMUI.base : spacingMUI.lg,
-      }}
-    >
+      }}>
       {/* Header */}
-      <Stack
-        direction='row'
-        alignItems='center'
-        justifyContent='space-between'
-      >
-        <SectionHeader
-          icon={<CodeIcon fontSize='small' />}
-          title='HTML to Table Converter'
-          subtitle='Конвертація HTML в табличну структуру для email'
-        />
-        <Stack
-          direction='row'
-          alignItems='center'
-          spacing={spacingMUI.sm}
-        >
+      <Stack direction='row' alignItems='center' justifyContent='space-between'>
+        <SectionHeader icon={<CodeIcon fontSize='small' />} title='HTML to Table Converter' subtitle='Конвертація HTML в табличну структуру для email' />
+        <Stack direction='row' alignItems='center' spacing={spacingMUI.sm}>
           {/* AI Backend Status Indicator - always visible when enabled */}
           {imageAnalysis.useAiBackend && (
             <Tooltip title={aiBackendStatus === "online" ? "AI сервер працює" : aiBackendStatus === "checking" ? "Перевірка AI сервера..." : "AI сервер не доступний"}>
-              <Stack direction="row" alignItems="center" spacing={0.5} sx={{ cursor: "pointer" }}>
+              <Stack direction='row' alignItems='center' spacing={0.5} sx={{ cursor: "pointer" }}>
                 <Box
                   sx={{
                     width: 10,
@@ -817,7 +781,7 @@ export default function HtmlConverterPanel() {
                     },
                   }}
                 />
-                <Typography variant="caption" sx={{ fontWeight: 500, color: "text.secondary" }}>
+                <Typography variant='caption' sx={{ fontWeight: 500, color: "text.secondary" }}>
                   AI
                 </Typography>
               </Stack>
@@ -829,23 +793,14 @@ export default function HtmlConverterPanel() {
               onClick={(e) => {
                 setUiAnchorEl(e.currentTarget);
                 setSettingsTab("ui");
-              }}
-            >
-              <Badge
-                color='primary'
-                badgeContent={!ui.showLogsPanel && unseenLogCount > 0 ? unseenLogCount : 0}
-                max={99}
-              >
+              }}>
+              <Badge color='primary' badgeContent={!ui.showLogsPanel && unseenLogCount > 0 ? unseenLogCount : 0} max={99}>
                 <SettingsIcon fontSize='small' />
               </Badge>
             </IconButton>
           </Tooltip>
           <Tooltip title='Очистити все'>
-            <IconButton
-              onClick={handleClear}
-              color='error'
-              size='small'
-            >
+            <IconButton onClick={handleClear} color='error' size='small'>
               <ClearIcon />
             </IconButton>
           </Tooltip>
@@ -861,16 +816,14 @@ export default function HtmlConverterPanel() {
         PaperProps={{
           sx: {
             borderRadius: `${borderRadius.lg}px`,
-            background:
-              componentStyles.card.background || alpha(theme.palette.background.paper, 0.92),
+            background: componentStyles.card.background || alpha(theme.palette.background.paper, 0.92),
             backdropFilter: componentStyles.card.backdropFilter,
             WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
             border: componentStyles.card.border,
             boxShadow: componentStyles.card.boxShadow,
             overflow: "hidden",
           },
-        }}
-      >
+        }}>
         <Box sx={{ minWidth: 420, maxWidth: 520 }}>
           <Box
             sx={{
@@ -881,8 +834,7 @@ export default function HtmlConverterPanel() {
               alignItems: "center",
               justifyContent: "space-between",
               gap: spacingMUI.sm,
-            }}
-          >
+            }}>
             <Box>
               <Typography variant='subtitle2' fontWeight={700}>
                 Налаштування
@@ -904,8 +856,7 @@ export default function HtmlConverterPanel() {
               px: spacingMUI.xs,
               minHeight: 40,
               "& .MuiTab-root": { minHeight: 40, textTransform: "none", fontWeight: 600 },
-            }}
-          >
+            }}>
             <Tab value='ui' label='Інтерфейс' />
             <Tab value='image' label='Зображення' />
           </Tabs>
@@ -917,82 +868,19 @@ export default function HtmlConverterPanel() {
               p: spacingMUI.base,
               maxHeight: 520,
               overflowY: "auto",
-            }}
-          >
+            }}>
             {settingsTab === "ui" && (
               <>
                 <Typography variant='subtitle2' fontWeight={600} mb={spacingMUI.sm}>
                   Інтерфейс
                 </Typography>
                 <FormGroup>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        size='small'
-                        checked={ui.showLogsPanel}
-                        onChange={(e) =>
-                          setUi((prev) => ({ ...prev, showLogsPanel: e.target.checked }))
-                        }
-                      />
-                    }
-                    label={<Typography variant='body2'>Показувати лог</Typography>}
-                  />
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        size='small'
-                        checked={ui.showInputHtml}
-                        onChange={(e) =>
-                          setUi((prev) => ({ ...prev, showInputHtml: e.target.checked }))
-                        }
-                      />
-                    }
-                    label={<Typography variant='body2'>Показувати вхідний HTML</Typography>}
-                  />
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        size='small'
-                        checked={ui.showUploadHistory}
-                        onChange={(e) =>
-                          setUi((prev) => ({ ...prev, showUploadHistory: e.target.checked }))
-                        }
-                      />
-                    }
-                    label={<Typography variant='body2'>Показувати історію завантажень</Typography>}
-                  />
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        size='small'
-                        checked={ui.rememberUiLayout}
-                        onChange={(e) =>
-                          setUi((prev) => ({ ...prev, rememberUiLayout: e.target.checked }))
-                        }
-                      />
-                    }
-                    label={<Typography variant='body2'>Запамʼятовувати вигляд (layout)</Typography>}
-                  />
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        size='small'
-                        checked={ui.compactMode}
-                        onChange={(e) => setUi((prev) => ({ ...prev, compactMode: e.target.checked }))}
-                      />
-                    }
-                    label={<Typography variant='body2'>Компактний режим</Typography>}
-                  />
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        size='small'
-                        checked={ui.stickyActions}
-                        onChange={(e) => setUi((prev) => ({ ...prev, stickyActions: e.target.checked }))}
-                      />
-                    }
-                    label={<Typography variant='body2'>Закріпити кнопки зверху</Typography>}
-                  />
+                  <FormControlLabel control={<Switch size='small' checked={ui.showLogsPanel} onChange={(e) => setUi((prev) => ({ ...prev, showLogsPanel: e.target.checked }))} />} label={<Typography variant='body2'>Показувати лог</Typography>} />
+                  <FormControlLabel control={<Switch size='small' checked={ui.showInputHtml} onChange={(e) => setUi((prev) => ({ ...prev, showInputHtml: e.target.checked }))} />} label={<Typography variant='body2'>Показувати вхідний HTML</Typography>} />
+                  <FormControlLabel control={<Switch size='small' checked={ui.showUploadHistory} onChange={(e) => setUi((prev) => ({ ...prev, showUploadHistory: e.target.checked }))} />} label={<Typography variant='body2'>Показувати історію завантажень</Typography>} />
+                  <FormControlLabel control={<Switch size='small' checked={ui.rememberUiLayout} onChange={(e) => setUi((prev) => ({ ...prev, rememberUiLayout: e.target.checked }))} />} label={<Typography variant='body2'>Запамʼятовувати вигляд (layout)</Typography>} />
+                  <FormControlLabel control={<Switch size='small' checked={ui.compactMode} onChange={(e) => setUi((prev) => ({ ...prev, compactMode: e.target.checked }))} />} label={<Typography variant='body2'>Компактний режим</Typography>} />
+                  <FormControlLabel control={<Switch size='small' checked={ui.stickyActions} onChange={(e) => setUi((prev) => ({ ...prev, stickyActions: e.target.checked }))} />} label={<Typography variant='body2'>Закріпити кнопки зверху</Typography>} />
                 </FormGroup>
                 <Typography variant='caption' color='text.secondary' display='block' mt={spacingMUI.sm}>
                   Якщо вимкнути «Запамʼятовувати вигляд» — ці налаштування не збережуться після перезавантаження.
@@ -1040,23 +928,9 @@ export default function HtmlConverterPanel() {
                 </Typography>
 
                 <Stack spacing={spacingMUI.base}>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        size='small'
-                        checked={imageAnalysis.enabled}
-                        onChange={(e) =>
-                          setImageAnalysis((prev) => ({ ...prev, enabled: e.target.checked }))
-                        }
-                      />
-                    }
-                    label={<Typography variant='body2'>Увімкнути розпізнавання тексту</Typography>}
-                  />
+                  <FormControlLabel control={<Switch size='small' checked={imageAnalysis.enabled} onChange={(e) => setImageAnalysis((prev) => ({ ...prev, enabled: e.target.checked }))} />} label={<Typography variant='body2'>Увімкнути розпізнавання тексту</Typography>} />
 
-                  <FormControl
-                    fullWidth
-                    disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
-                  >
+                  <FormControl fullWidth disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}>
                     <TextField
                       select
                       size='small'
@@ -1176,8 +1050,7 @@ export default function HtmlConverterPanel() {
                           }));
                         }
                       }}
-                      helperText='Швидко = легше для ноутбука. Банер = найкраще для картинок з великим текстом. Максимально = повільніше.'
-                    >
+                      helperText='Швидко = легше для ноутбука. Банер = найкраще для картинок з великим текстом. Максимально = повільніше.'>
                       <MenuItem value='custom'>Не вибрано</MenuItem>
                       <MenuItem value='fast'>Швидко (економно)</MenuItem>
                       <MenuItem value='balanced'>Звичайно (рекомендовано)</MenuItem>
@@ -1199,8 +1072,7 @@ export default function HtmlConverterPanel() {
                             engine: e.target.value as ImageAnalysisSettings["engine"],
                           }))
                         }
-                        disabled={!imageAnalysis.enabled}
-                      >
+                        disabled={!imageAnalysis.enabled}>
                         <MenuItem value='off'>Вимкнено</MenuItem>
                         <MenuItem value='ocr'>Tesseract.js (Browser)</MenuItem>
                       </TextField>
@@ -1216,13 +1088,13 @@ export default function HtmlConverterPanel() {
                               useAiBackend: e.target.checked,
                             }))
                           }
-                          color="secondary"
+                          color='secondary'
                         />
                       }
                       label={
                         <Box>
-                          <Stack direction="row" alignItems="center" spacing={0.5}>
-                            <Typography variant="body2" fontWeight={600}>
+                          <Stack direction='row' alignItems='center' spacing={0.5}>
+                            <Typography variant='body2' fontWeight={600}>
                               AI Backend 🐍
                             </Typography>
                             {imageAnalysis.useAiBackend && (
@@ -1243,7 +1115,7 @@ export default function HtmlConverterPanel() {
                               </Tooltip>
                             )}
                           </Stack>
-                          <Typography variant="caption" color="text.secondary">
+                          <Typography variant='caption' color='text.secondary'>
                             PaddleOCR + BLIP + CLIP
                           </Typography>
                         </Box>
@@ -1264,8 +1136,7 @@ export default function HtmlConverterPanel() {
                             runMode: e.target.value as ImageAnalysisSettings["runMode"],
                           }))
                         }
-                        disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
-                      >
+                        disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}>
                         <MenuItem value='manual'>Тільки вручну</MenuItem>
                         <MenuItem value='auto'>Автоматично (обережно)</MenuItem>
                       </TextField>
@@ -1285,8 +1156,7 @@ export default function HtmlConverterPanel() {
                             autoApplyAlt: e.target.value as ImageAnalysisSettings["autoApplyAlt"],
                           }))
                         }
-                        disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
-                      >
+                        disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}>
                         <MenuItem value='off'>Ні</MenuItem>
                         <MenuItem value='ifEmpty'>Якщо поле пусте</MenuItem>
                       </TextField>
@@ -1301,475 +1171,367 @@ export default function HtmlConverterPanel() {
                         onChange={(e) =>
                           setImageAnalysis((prev) => ({
                             ...prev,
-                            autoApplyFilename:
-                              e.target.value as ImageAnalysisSettings["autoApplyFilename"],
+                            autoApplyFilename: e.target.value as ImageAnalysisSettings["autoApplyFilename"],
                           }))
                         }
-                        disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
-                      >
+                        disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}>
                         <MenuItem value='off'>Ні</MenuItem>
                         <MenuItem value='ifEmpty'>Якщо поле пусте</MenuItem>
                       </TextField>
                     </FormControl>
                   </Stack>
 
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        size='small'
-                        checked={ui.showAdvancedOcrSettings}
-                        onChange={(e) =>
-                          setUi((prev) => ({ ...prev, showAdvancedOcrSettings: e.target.checked }))
-                        }
-                        disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
-                      />
-                    }
-                    label={<Typography variant='body2'>Показати розширені налаштування</Typography>}
-                  />
+                  <FormControlLabel control={<Switch size='small' checked={ui.showAdvancedOcrSettings} onChange={(e) => setUi((prev) => ({ ...prev, showAdvancedOcrSettings: e.target.checked }))} disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"} />} label={<Typography variant='body2'>Показати розширені налаштування</Typography>} />
 
                   {!ui.showAdvancedOcrSettings && (
-                    <Alert
-                      severity='info'
-                      sx={{ borderRadius: `${borderRadius.md}px` }}
-                    >
+                    <Alert severity='info' sx={{ borderRadius: `${borderRadius.md}px` }}>
                       Якщо щось розпізнається погано — вибери «Банер з текстом». Якщо ноут слабкий — «Швидко».
                     </Alert>
                   )}
 
                   {ui.showAdvancedOcrSettings && (
                     <>
-                  <Box>
-                    <Typography variant='body2' fontWeight={600} mb={0.5}>
-                      OCR min width: {imageAnalysis.ocrMinWidth}px
-                    </Typography>
-                    <Typography variant='caption' color='text.secondary' display='block' mb={1}>
-                      Якщо картинка маленька — збільшимо перед OCR (часто сильно покращує точність).
-                    </Typography>
-                    <Slider
-                      size='small'
-                      value={imageAnalysis.ocrMinWidth}
-                      onChange={(_, v) =>
-                        setImageAnalysis((prev) => ({ ...prev, ocrMinWidth: v as number }))
-                      }
-                      min={0}
-                      max={1600}
-                      step={50}
-                      disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
-                    />
-                  </Box>
-
-                  <Box>
-                    <Typography variant='body2' fontWeight={600} mb={0.5}>
-                      OCR max width: {imageAnalysis.ocrMaxWidth}px
-                    </Typography>
-                    <Slider
-                      size='small'
-                      value={imageAnalysis.ocrMaxWidth}
-                      onChange={(_, v) =>
-                        setImageAnalysis((prev) => ({ ...prev, ocrMaxWidth: v as number }))
-                      }
-                      min={600}
-                      max={2000}
-                      step={50}
-                      disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
-                    />
-                  </Box>
-
-                  <Divider />
-
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        size='small'
-                        checked={imageAnalysis.smartPrecheck}
-                        onChange={(e) =>
-                          setImageAnalysis((prev) => ({ ...prev, smartPrecheck: e.target.checked }))
-                        }
-                        disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
-                      />
-                    }
-                    label={<Typography variant='body2'>Smart precheck (пропускати OCR якщо текст малоймовірний)</Typography>}
-                  />
-
-                  {imageAnalysis.smartPrecheck && (
-                    <>
                       <Box>
                         <Typography variant='body2' fontWeight={600} mb={0.5}>
-                          Text likelihood threshold: {imageAnalysis.textLikelihoodThreshold.toFixed(3)}
+                          OCR min width: {imageAnalysis.ocrMinWidth}px
                         </Typography>
                         <Typography variant='caption' color='text.secondary' display='block' mb={1}>
-                          Нижче = OCR запускається частіше. Вище = економить CPU, але може пропускати текст.
+                          Якщо картинка маленька — збільшимо перед OCR (часто сильно покращує точність).
                         </Typography>
-                        <Slider
-                          size='small'
-                          value={imageAnalysis.textLikelihoodThreshold}
-                          onChange={(_, v) =>
-                            setImageAnalysis((prev) => ({
-                              ...prev,
-                              textLikelihoodThreshold: v as number,
-                            }))
-                          }
-                          min={0.02}
-                          max={0.18}
-                          step={0.005}
-                          disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
-                        />
+                        <Slider size='small' value={imageAnalysis.ocrMinWidth} onChange={(_, v) => setImageAnalysis((prev) => ({ ...prev, ocrMinWidth: v as number }))} min={0} max={1600} step={50} disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"} />
                       </Box>
 
                       <Box>
                         <Typography variant='body2' fontWeight={600} mb={0.5}>
-                          Precheck edge threshold: {imageAnalysis.precheckEdgeThreshold}
+                          OCR max width: {imageAnalysis.ocrMaxWidth}px
                         </Typography>
-                        <Typography variant='caption' color='text.secondary' display='block' mb={1}>
-                          Чутливість до дрібних контрастних контурів (текст).
-                        </Typography>
-                        <Slider
-                          size='small'
-                          value={imageAnalysis.precheckEdgeThreshold}
-                          onChange={(_, v) =>
-                            setImageAnalysis((prev) => ({
-                              ...prev,
-                              precheckEdgeThreshold: v as number,
-                            }))
-                          }
-                          min={30}
-                          max={140}
-                          step={5}
-                          disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
-                        />
-                      </Box>
-                    </>
-                  )}
-
-                  <Divider />
-
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        size='small'
-                        checked={imageAnalysis.preprocess}
-                        onChange={(e) =>
-                          setImageAnalysis((prev) => ({ ...prev, preprocess: e.target.checked }))
-                        }
-                        disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
-                      />
-                    }
-                    label={<Typography variant='body2'>Preprocess перед OCR (grayscale/contrast/threshold)</Typography>}
-                  />
-
-                  {imageAnalysis.preprocess && (
-                    <>
-                      <Stack direction={{ xs: "column", sm: "row" }} spacing={spacingMUI.base}>
-                        <FormControl sx={{ flex: 1 }}>
-                          <TextField
-                            select
-                            size='small'
-                            label='PSM (page segmentation)'
-                            value={imageAnalysis.ocrPsm}
-                            onChange={(e) =>
-                              setImageAnalysis((prev) => ({
-                                ...prev,
-                                ocrPsm: e.target.value as ImageAnalysisSettings["ocrPsm"],
-                              }))
-                            }
-                            disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
-                          >
-                            <MenuItem value='11'>11 — Sparse text (банери/UI)</MenuItem>
-                            <MenuItem value='6'>6 — Single block</MenuItem>
-                            <MenuItem value='7'>7 — Single line</MenuItem>
-                            <MenuItem value='8'>8 — Single word</MenuItem>
-                            <MenuItem value='4'>4 — Single column</MenuItem>
-                            <MenuItem value='3'>3 — Auto</MenuItem>
-                          </TextField>
-                        </FormControl>
-
-                        <FormControl sx={{ flex: 1 }}>
-                          <TextField
-                            select
-                            size='small'
-                            label='Scale factor'
-                            value={imageAnalysis.ocrScaleFactor}
-                            onChange={(e) =>
-                              setImageAnalysis((prev) => ({
-                                ...prev,
-                                ocrScaleFactor: Number(e.target.value),
-                              }))
-                            }
-                            disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
-                            helperText='2× часто дає +точність, але важче для CPU'
-                          >
-                            <MenuItem value={1}>1×</MenuItem>
-                            <MenuItem value={2}>2×</MenuItem>
-                            <MenuItem value={3}>3×</MenuItem>
-                          </TextField>
-                        </FormControl>
-                      </Stack>
-
-                      <Box>
-                        <Typography variant='body2' fontWeight={600} mb={0.5}>
-                          Contrast: {imageAnalysis.preprocessContrast.toFixed(1)}×
-                        </Typography>
-                        <Slider
-                          size='small'
-                          value={imageAnalysis.preprocessContrast}
-                          onChange={(_, v) =>
-                            setImageAnalysis((prev) => ({
-                              ...prev,
-                              preprocessContrast: v as number,
-                            }))
-                          }
-                          min={1}
-                          max={3}
-                          step={0.1}
-                          disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
-                        />
+                        <Slider size='small' value={imageAnalysis.ocrMaxWidth} onChange={(_, v) => setImageAnalysis((prev) => ({ ...prev, ocrMaxWidth: v as number }))} min={600} max={2000} step={50} disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"} />
                       </Box>
 
-                      <Box>
-                        <Typography variant='body2' fontWeight={600} mb={0.5}>
-                          Brightness: {imageAnalysis.preprocessBrightness.toFixed(2)}×
-                        </Typography>
-                        <Slider
-                          size='small'
-                          value={imageAnalysis.preprocessBrightness}
-                          onChange={(_, v) =>
-                            setImageAnalysis((prev) => ({
-                              ...prev,
-                              preprocessBrightness: v as number,
-                            }))
-                          }
-                          min={0.8}
-                          max={1.4}
-                          step={0.02}
-                          disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
-                        />
-                      </Box>
+                      <Divider />
 
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={imageAnalysis.preprocessUseThreshold}
-                            onChange={(e) =>
-                              setImageAnalysis((prev) => ({
-                                ...prev,
-                                preprocessUseThreshold: e.target.checked,
-                              }))
-                            }
-                            size='small'
-                            disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
-                          />
-                        }
-                        label={<Typography variant='body2'>Threshold (binarize)</Typography>}
-                      />
+                      <FormControlLabel control={<Switch size='small' checked={imageAnalysis.smartPrecheck} onChange={(e) => setImageAnalysis((prev) => ({ ...prev, smartPrecheck: e.target.checked }))} disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"} />} label={<Typography variant='body2'>Smart precheck (пропускати OCR якщо текст малоймовірний)</Typography>} />
 
-                      {imageAnalysis.preprocessUseThreshold && (
-                        <Box>
-                          <Typography variant='body2' fontWeight={600} mb={0.5}>
-                            Threshold: {imageAnalysis.preprocessThreshold}
-                          </Typography>
-                          <Slider
-                            size='small'
-                            value={imageAnalysis.preprocessThreshold}
-                            onChange={(_, v) =>
-                              setImageAnalysis((prev) => ({
-                                ...prev,
-                                preprocessThreshold: v as number,
-                              }))
-                            }
-                            min={0}
-                            max={255}
-                            step={5}
-                            disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
-                          />
-                        </Box>
+                      {imageAnalysis.smartPrecheck && (
+                        <>
+                          <Box>
+                            <Typography variant='body2' fontWeight={600} mb={0.5}>
+                              Text likelihood threshold: {imageAnalysis.textLikelihoodThreshold.toFixed(3)}
+                            </Typography>
+                            <Typography variant='caption' color='text.secondary' display='block' mb={1}>
+                              Нижче = OCR запускається частіше. Вище = економить CPU, але може пропускати текст.
+                            </Typography>
+                            <Slider
+                              size='small'
+                              value={imageAnalysis.textLikelihoodThreshold}
+                              onChange={(_, v) =>
+                                setImageAnalysis((prev) => ({
+                                  ...prev,
+                                  textLikelihoodThreshold: v as number,
+                                }))
+                              }
+                              min={0.02}
+                              max={0.18}
+                              step={0.005}
+                              disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
+                            />
+                          </Box>
+
+                          <Box>
+                            <Typography variant='body2' fontWeight={600} mb={0.5}>
+                              Precheck edge threshold: {imageAnalysis.precheckEdgeThreshold}
+                            </Typography>
+                            <Typography variant='caption' color='text.secondary' display='block' mb={1}>
+                              Чутливість до дрібних контрастних контурів (текст).
+                            </Typography>
+                            <Slider
+                              size='small'
+                              value={imageAnalysis.precheckEdgeThreshold}
+                              onChange={(_, v) =>
+                                setImageAnalysis((prev) => ({
+                                  ...prev,
+                                  precheckEdgeThreshold: v as number,
+                                }))
+                              }
+                              min={30}
+                              max={140}
+                              step={5}
+                              disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
+                            />
+                          </Box>
+                        </>
                       )}
 
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={imageAnalysis.preprocessBlur}
-                            onChange={(e) =>
-                              setImageAnalysis((prev) => ({
-                                ...prev,
-                                preprocessBlur: e.target.checked,
-                              }))
-                            }
-                            size='small'
-                            disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
-                          />
-                        }
-                        label={<Typography variant='body2'>Blur background (reduce noise)</Typography>}
-                      />
+                      <Divider />
 
-                      {imageAnalysis.preprocessBlur && (
-                        <Box>
-                          <Typography variant='body2' fontWeight={600} mb={0.5}>
-                            Blur radius: {imageAnalysis.preprocessBlurRadius}
-                          </Typography>
-                          <Slider
-                            size='small'
-                            value={imageAnalysis.preprocessBlurRadius}
-                            onChange={(_, v) =>
-                              setImageAnalysis((prev) => ({
-                                ...prev,
-                                preprocessBlurRadius: v as number,
-                              }))
+                      <FormControlLabel control={<Switch size='small' checked={imageAnalysis.preprocess} onChange={(e) => setImageAnalysis((prev) => ({ ...prev, preprocess: e.target.checked }))} disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"} />} label={<Typography variant='body2'>Preprocess перед OCR (grayscale/contrast/threshold)</Typography>} />
+
+                      {imageAnalysis.preprocess && (
+                        <>
+                          <Stack direction={{ xs: "column", sm: "row" }} spacing={spacingMUI.base}>
+                            <FormControl sx={{ flex: 1 }}>
+                              <TextField
+                                select
+                                size='small'
+                                label='PSM (page segmentation)'
+                                value={imageAnalysis.ocrPsm}
+                                onChange={(e) =>
+                                  setImageAnalysis((prev) => ({
+                                    ...prev,
+                                    ocrPsm: e.target.value as ImageAnalysisSettings["ocrPsm"],
+                                  }))
+                                }
+                                disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}>
+                                <MenuItem value='11'>11 — Sparse text (банери/UI)</MenuItem>
+                                <MenuItem value='6'>6 — Single block</MenuItem>
+                                <MenuItem value='7'>7 — Single line</MenuItem>
+                                <MenuItem value='8'>8 — Single word</MenuItem>
+                                <MenuItem value='4'>4 — Single column</MenuItem>
+                                <MenuItem value='3'>3 — Auto</MenuItem>
+                              </TextField>
+                            </FormControl>
+
+                            <FormControl sx={{ flex: 1 }}>
+                              <TextField
+                                select
+                                size='small'
+                                label='Scale factor'
+                                value={imageAnalysis.ocrScaleFactor}
+                                onChange={(e) =>
+                                  setImageAnalysis((prev) => ({
+                                    ...prev,
+                                    ocrScaleFactor: Number(e.target.value),
+                                  }))
+                                }
+                                disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
+                                helperText='2× часто дає +точність, але важче для CPU'>
+                                <MenuItem value={1}>1×</MenuItem>
+                                <MenuItem value={2}>2×</MenuItem>
+                                <MenuItem value={3}>3×</MenuItem>
+                              </TextField>
+                            </FormControl>
+                          </Stack>
+
+                          <Box>
+                            <Typography variant='body2' fontWeight={600} mb={0.5}>
+                              Contrast: {imageAnalysis.preprocessContrast.toFixed(1)}×
+                            </Typography>
+                            <Slider
+                              size='small'
+                              value={imageAnalysis.preprocessContrast}
+                              onChange={(_, v) =>
+                                setImageAnalysis((prev) => ({
+                                  ...prev,
+                                  preprocessContrast: v as number,
+                                }))
+                              }
+                              min={1}
+                              max={3}
+                              step={0.1}
+                              disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
+                            />
+                          </Box>
+
+                          <Box>
+                            <Typography variant='body2' fontWeight={600} mb={0.5}>
+                              Brightness: {imageAnalysis.preprocessBrightness.toFixed(2)}×
+                            </Typography>
+                            <Slider
+                              size='small'
+                              value={imageAnalysis.preprocessBrightness}
+                              onChange={(_, v) =>
+                                setImageAnalysis((prev) => ({
+                                  ...prev,
+                                  preprocessBrightness: v as number,
+                                }))
+                              }
+                              min={0.8}
+                              max={1.4}
+                              step={0.02}
+                              disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
+                            />
+                          </Box>
+
+                          <FormControlLabel
+                            control={
+                              <Checkbox
+                                checked={imageAnalysis.preprocessUseThreshold}
+                                onChange={(e) =>
+                                  setImageAnalysis((prev) => ({
+                                    ...prev,
+                                    preprocessUseThreshold: e.target.checked,
+                                  }))
+                                }
+                                size='small'
+                                disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
+                              />
                             }
-                            min={1}
-                            max={3}
-                            step={1}
-                            disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
+                            label={<Typography variant='body2'>Threshold (binarize)</Typography>}
                           />
-                        </Box>
+
+                          {imageAnalysis.preprocessUseThreshold && (
+                            <Box>
+                              <Typography variant='body2' fontWeight={600} mb={0.5}>
+                                Threshold: {imageAnalysis.preprocessThreshold}
+                              </Typography>
+                              <Slider
+                                size='small'
+                                value={imageAnalysis.preprocessThreshold}
+                                onChange={(_, v) =>
+                                  setImageAnalysis((prev) => ({
+                                    ...prev,
+                                    preprocessThreshold: v as number,
+                                  }))
+                                }
+                                min={0}
+                                max={255}
+                                step={5}
+                                disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
+                              />
+                            </Box>
+                          )}
+
+                          <FormControlLabel
+                            control={
+                              <Checkbox
+                                checked={imageAnalysis.preprocessBlur}
+                                onChange={(e) =>
+                                  setImageAnalysis((prev) => ({
+                                    ...prev,
+                                    preprocessBlur: e.target.checked,
+                                  }))
+                                }
+                                size='small'
+                                disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
+                              />
+                            }
+                            label={<Typography variant='body2'>Blur background (reduce noise)</Typography>}
+                          />
+
+                          {imageAnalysis.preprocessBlur && (
+                            <Box>
+                              <Typography variant='body2' fontWeight={600} mb={0.5}>
+                                Blur radius: {imageAnalysis.preprocessBlurRadius}
+                              </Typography>
+                              <Slider
+                                size='small'
+                                value={imageAnalysis.preprocessBlurRadius}
+                                onChange={(_, v) =>
+                                  setImageAnalysis((prev) => ({
+                                    ...prev,
+                                    preprocessBlurRadius: v as number,
+                                  }))
+                                }
+                                min={1}
+                                max={3}
+                                step={1}
+                                disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
+                              />
+                            </Box>
+                          )}
+
+                          <FormControlLabel
+                            control={
+                              <Checkbox
+                                checked={imageAnalysis.preprocessSharpen}
+                                onChange={(e) =>
+                                  setImageAnalysis((prev) => ({
+                                    ...prev,
+                                    preprocessSharpen: e.target.checked,
+                                  }))
+                                }
+                                size='small'
+                                disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
+                              />
+                            }
+                            label={<Typography variant='body2'>Sharpen (edge enhance)</Typography>}
+                          />
+
+                          <TextField size='small' label='Whitelist (optional)' value={imageAnalysis.ocrWhitelist} onChange={(e) => setImageAnalysis((prev) => ({ ...prev, ocrWhitelist: e.target.value }))} disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"} placeholder='Напр: ABCDEFGHIJKLMNOPQRSTUVWXYZ' helperText='Задай, якщо знаєш формат (наприклад тільки A–Z/0–9). Порожньо = без whitelist.' />
+
+                          <FormControl sx={{ minWidth: 240 }}>
+                            <TextField
+                              select
+                              size='small'
+                              label='Text area (crop)'
+                              value={imageAnalysis.roiPreset}
+                              onChange={(e) => {
+                                const p = e.target.value as ImageAnalysisSettings["roiPreset"];
+                                setImageAnalysis((prev) => {
+                                  if (p === "full") {
+                                    return { ...prev, roiEnabled: false, roiPreset: p, roiX: 0, roiY: 0, roiW: 1, roiH: 1 };
+                                  }
+                                  if (p === "auto") {
+                                    return { ...prev, roiEnabled: true, roiPreset: p, roiX: 0, roiY: 0, roiW: 1, roiH: 1 };
+                                  }
+                                  if (p === "top60") {
+                                    return { ...prev, roiEnabled: true, roiPreset: p, roiX: 0, roiY: 0, roiW: 1, roiH: 0.6 };
+                                  }
+                                  if (p === "top60_left70") {
+                                    return { ...prev, roiEnabled: true, roiPreset: p, roiX: 0, roiY: 0, roiW: 0.7, roiH: 0.6 };
+                                  }
+                                  return { ...prev, roiEnabled: true, roiPreset: p };
+                                });
+                              }}
+                              disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
+                              helperText='Для банерів часто допомагає відрізати праву частину/низ.'>
+                              <MenuItem value='full'>Full image</MenuItem>
+                              <MenuItem value='auto'>Auto (detect text area)</MenuItem>
+                              <MenuItem value='top60'>Top 60% (full width)</MenuItem>
+                              <MenuItem value='top60_left70'>Top 60% + Left 70% (remove right)</MenuItem>
+                              <MenuItem value='custom'>Custom (manual)</MenuItem>
+                            </TextField>
+                          </FormControl>
+
+                          {imageAnalysis.roiPreset === "custom" && imageAnalysis.roiEnabled && (
+                            <Stack spacing={spacingMUI.sm}>
+                              <Typography variant='caption' color='text.secondary'>
+                                ROI fractions (0..1): X/Y (start), W/H (size)
+                              </Typography>
+                              <Stack direction={{ xs: "column", sm: "row" }} spacing={spacingMUI.base}>
+                                <TextField size='small' type='number' label='X' value={imageAnalysis.roiX} onChange={(e) => setImageAnalysis((prev) => ({ ...prev, roiX: Number(e.target.value) }))} inputProps={{ min: 0, max: 1, step: 0.05 }} />
+                                <TextField size='small' type='number' label='Y' value={imageAnalysis.roiY} onChange={(e) => setImageAnalysis((prev) => ({ ...prev, roiY: Number(e.target.value) }))} inputProps={{ min: 0, max: 1, step: 0.05 }} />
+                                <TextField size='small' type='number' label='W' value={imageAnalysis.roiW} onChange={(e) => setImageAnalysis((prev) => ({ ...prev, roiW: Number(e.target.value) }))} inputProps={{ min: 0.1, max: 1, step: 0.05 }} />
+                                <TextField size='small' type='number' label='H' value={imageAnalysis.roiH} onChange={(e) => setImageAnalysis((prev) => ({ ...prev, roiH: Number(e.target.value) }))} inputProps={{ min: 0.1, max: 1, step: 0.05 }} />
+                              </Stack>
+                            </Stack>
+                          )}
+
+                          <FormControlLabel
+                            control={
+                              <Checkbox
+                                checked={imageAnalysis.spellCorrectionBanner}
+                                onChange={(e) =>
+                                  setImageAnalysis((prev) => ({
+                                    ...prev,
+                                    spellCorrectionBanner: e.target.checked,
+                                  }))
+                                }
+                                size='small'
+                                disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
+                              />
+                            }
+                            label={<Typography variant='body2'>Spell correction (banner/CTA)</Typography>}
+                          />
+                        </>
                       )}
-
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={imageAnalysis.preprocessSharpen}
-                            onChange={(e) =>
-                              setImageAnalysis((prev) => ({
-                                ...prev,
-                                preprocessSharpen: e.target.checked,
-                              }))
-                            }
-                            size='small'
-                            disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
-                          />
-                        }
-                        label={<Typography variant='body2'>Sharpen (edge enhance)</Typography>}
-                      />
 
                       <TextField
                         size='small'
-                        label='Whitelist (optional)'
-                        value={imageAnalysis.ocrWhitelist}
-                        onChange={(e) =>
-                          setImageAnalysis((prev) => ({ ...prev, ocrWhitelist: e.target.value }))
-                        }
-                        disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
-                        placeholder='Напр: ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-                        helperText='Задай, якщо знаєш формат (наприклад тільки A–Z/0–9). Порожньо = без whitelist.'
+                        type='number'
+                        label='Ліміт авто-аналізу (файлів)'
+                        value={imageAnalysis.autoAnalyzeMaxFiles}
+                        onChange={(e) => {
+                          const n = Number(e.target.value || 0);
+                          setImageAnalysis((prev) => ({
+                            ...prev,
+                            autoAnalyzeMaxFiles: Number.isFinite(n) ? Math.max(0, Math.min(50, n)) : 0,
+                          }));
+                        }}
+                        disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off" || imageAnalysis.runMode !== "auto"}
+                        inputProps={{ min: 0, max: 50 }}
+                        helperText='0 = не запускати автоматично'
                       />
-
-                      <FormControl sx={{ minWidth: 240 }}>
-                        <TextField
-                          select
-                          size='small'
-                          label='Text area (crop)'
-                          value={imageAnalysis.roiPreset}
-                          onChange={(e) => {
-                            const p = e.target.value as ImageAnalysisSettings["roiPreset"];
-                            setImageAnalysis((prev) => {
-                              if (p === "full") {
-                                return { ...prev, roiEnabled: false, roiPreset: p, roiX: 0, roiY: 0, roiW: 1, roiH: 1 };
-                              }
-                              if (p === "auto") {
-                                return { ...prev, roiEnabled: true, roiPreset: p, roiX: 0, roiY: 0, roiW: 1, roiH: 1 };
-                              }
-                              if (p === "top60") {
-                                return { ...prev, roiEnabled: true, roiPreset: p, roiX: 0, roiY: 0, roiW: 1, roiH: 0.6 };
-                              }
-                              if (p === "top60_left70") {
-                                return { ...prev, roiEnabled: true, roiPreset: p, roiX: 0, roiY: 0, roiW: 0.7, roiH: 0.6 };
-                              }
-                              return { ...prev, roiEnabled: true, roiPreset: p };
-                            });
-                          }}
-                          disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
-                          helperText='Для банерів часто допомагає відрізати праву частину/низ.'
-                        >
-                          <MenuItem value='full'>Full image</MenuItem>
-                          <MenuItem value='auto'>Auto (detect text area)</MenuItem>
-                          <MenuItem value='top60'>Top 60% (full width)</MenuItem>
-                          <MenuItem value='top60_left70'>Top 60% + Left 70% (remove right)</MenuItem>
-                          <MenuItem value='custom'>Custom (manual)</MenuItem>
-                        </TextField>
-                      </FormControl>
-
-                      {imageAnalysis.roiPreset === "custom" && imageAnalysis.roiEnabled && (
-                        <Stack spacing={spacingMUI.sm}>
-                          <Typography variant='caption' color='text.secondary'>
-                            ROI fractions (0..1): X/Y (start), W/H (size)
-                          </Typography>
-                          <Stack direction={{ xs: "column", sm: "row" }} spacing={spacingMUI.base}>
-                            <TextField
-                              size='small'
-                              type='number'
-                              label='X'
-                              value={imageAnalysis.roiX}
-                              onChange={(e) => setImageAnalysis((prev) => ({ ...prev, roiX: Number(e.target.value) }))}
-                              inputProps={{ min: 0, max: 1, step: 0.05 }}
-                            />
-                            <TextField
-                              size='small'
-                              type='number'
-                              label='Y'
-                              value={imageAnalysis.roiY}
-                              onChange={(e) => setImageAnalysis((prev) => ({ ...prev, roiY: Number(e.target.value) }))}
-                              inputProps={{ min: 0, max: 1, step: 0.05 }}
-                            />
-                            <TextField
-                              size='small'
-                              type='number'
-                              label='W'
-                              value={imageAnalysis.roiW}
-                              onChange={(e) => setImageAnalysis((prev) => ({ ...prev, roiW: Number(e.target.value) }))}
-                              inputProps={{ min: 0.1, max: 1, step: 0.05 }}
-                            />
-                            <TextField
-                              size='small'
-                              type='number'
-                              label='H'
-                              value={imageAnalysis.roiH}
-                              onChange={(e) => setImageAnalysis((prev) => ({ ...prev, roiH: Number(e.target.value) }))}
-                              inputProps={{ min: 0.1, max: 1, step: 0.05 }}
-                            />
-                          </Stack>
-                        </Stack>
-                      )}
-
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={imageAnalysis.spellCorrectionBanner}
-                            onChange={(e) =>
-                              setImageAnalysis((prev) => ({
-                                ...prev,
-                                spellCorrectionBanner: e.target.checked,
-                              }))
-                            }
-                            size='small'
-                            disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
-                          />
-                        }
-                        label={<Typography variant='body2'>Spell correction (banner/CTA)</Typography>}
-                      />
-                    </>
-                  )}
-
-                  <TextField
-                    size='small'
-                    type='number'
-                    label='Ліміт авто-аналізу (файлів)'
-                    value={imageAnalysis.autoAnalyzeMaxFiles}
-                    onChange={(e) => {
-                      const n = Number(e.target.value || 0);
-                      setImageAnalysis((prev) => ({
-                        ...prev,
-                        autoAnalyzeMaxFiles: Number.isFinite(n)
-                          ? Math.max(0, Math.min(50, n))
-                          : 0,
-                      }));
-                    }}
-                    disabled={
-                      !imageAnalysis.enabled ||
-                      imageAnalysis.engine === "off" ||
-                      imageAnalysis.runMode !== "auto"
-                    }
-                    inputProps={{ min: 0, max: 50 }}
-                    helperText='0 = не запускати автоматично'
-                  />
                     </>
                   )}
                 </Stack>
@@ -1785,42 +1547,15 @@ export default function HtmlConverterPanel() {
             position: "sticky",
             top: spacingMUI.sm,
             zIndex: 10,
-          }}
-        >
-          <Stack
-            direction='row'
-            spacing={spacingMUI.sm}
-            flexWrap='wrap'
-            alignItems='center'
-          >
-            <Button
-              variant='contained'
-              size='small'
-              onClick={handleExportHTML}
-              startIcon={<ConvertIcon />}
-              disabled={isAutoExporting}
-              sx={{ textTransform: "none", whiteSpace: "nowrap" }}
-            >
+          }}>
+          <Stack direction='row' spacing={spacingMUI.sm} flexWrap='wrap' alignItems='center'>
+            <Button variant='contained' size='small' onClick={handleExportHTML} startIcon={<ConvertIcon />} disabled={isAutoExporting} sx={{ textTransform: "none", whiteSpace: "nowrap" }}>
               Експортувати HTML
             </Button>
-            <Button
-              variant='contained'
-              size='small'
-              onClick={handleExportMJML}
-              startIcon={<ConvertIcon />}
-              disabled={isAutoExporting}
-              sx={{ textTransform: "none", whiteSpace: "nowrap" }}
-            >
+            <Button variant='contained' size='small' onClick={handleExportMJML} startIcon={<ConvertIcon />} disabled={isAutoExporting} sx={{ textTransform: "none", whiteSpace: "nowrap" }}>
               Експортувати MJML
             </Button>
-            <Button
-              variant='contained'
-              size='small'
-              onClick={handleAutoExportAll}
-              startIcon={<DownloadIcon fontSize='small' />}
-              disabled={isAutoExporting}
-              sx={{ textTransform: "none", whiteSpace: "nowrap", ml: "auto" }}
-            >
+            <Button variant='contained' size='small' onClick={handleAutoExportAll} startIcon={<DownloadIcon fontSize='small' />} disabled={isAutoExporting} sx={{ textTransform: "none", whiteSpace: "nowrap", ml: "auto" }}>
               {isAutoExporting ? "Готую..." : "Зробити все"}
             </Button>
           </Stack>
@@ -1829,11 +1564,7 @@ export default function HtmlConverterPanel() {
 
       {/* Editor */}
       <StyledPaper>
-        <Typography
-          variant='subtitle2'
-          fontWeight={600}
-          mb={spacingMUI.base}
-        >
+        <Typography variant='subtitle2' fontWeight={600} mb={spacingMUI.base}>
           Редактор тексту ✏️
         </Typography>
         <Box
@@ -1866,26 +1597,12 @@ export default function HtmlConverterPanel() {
 
       {/* File Settings (always visible) */}
       <StyledPaper>
-        <Typography
-          variant='subtitle2'
-          fontWeight={600}
-          mb={spacingMUI.base}
-        >
+        <Typography variant='subtitle2' fontWeight={600} mb={spacingMUI.base}>
           Налаштування файлу
         </Typography>
 
-        <Stack
-          direction='row'
-          spacing={spacingMUI.base}
-          alignItems='center'
-          flexWrap='wrap'
-        >
-          <Stack
-            direction='row'
-            spacing={spacingMUI.sm}
-            alignItems='center'
-            sx={{ flex: 1, minWidth: 250 }}
-          >
+        <Stack direction='row' spacing={spacingMUI.base} alignItems='center' flexWrap='wrap'>
+          <Stack direction='row' spacing={spacingMUI.sm} alignItems='center' sx={{ flex: 1, minWidth: 250 }}>
             <TextField
               label="Ім'я файлу"
               value={fileName}
@@ -1907,57 +1624,24 @@ export default function HtmlConverterPanel() {
               }}
             />
             <Tooltip title='Зменшити номер'>
-              <IconButton
-                size='small'
-                onClick={() => changeFileNumber(-1)}
-                color='primary'
-              >
+              <IconButton size='small' onClick={() => changeFileNumber(-1)} color='primary'>
                 <RemoveIcon fontSize='small' />
               </IconButton>
             </Tooltip>
             <Tooltip title='Збільшити номер'>
-              <IconButton
-                size='small'
-                onClick={() => changeFileNumber(1)}
-                color='primary'
-              >
+              <IconButton size='small' onClick={() => changeFileNumber(1)} color='primary'>
                 <AddIcon fontSize='small' />
               </IconButton>
             </Tooltip>
           </Stack>
 
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={approveNeeded}
-                onChange={(e) => setApproveNeeded(e.target.checked)}
-                size='small'
-              />
-            }
-            label={<Typography variant='body2'>Approve needed</Typography>}
-          />
+          <FormControlLabel control={<Checkbox checked={approveNeeded} onChange={(e) => setApproveNeeded(e.target.checked)} size='small' />} label={<Typography variant='body2'>Approve needed</Typography>} />
 
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={useAlfaOne}
-                onChange={(e) => setUseAlfaOne(e.target.checked)}
-                size='small'
-              />
-            }
-            label={<Typography variant='body2'>AlfaOne</Typography>}
-          />
+          <FormControlLabel control={<Checkbox checked={useAlfaOne} onChange={(e) => setUseAlfaOne(e.target.checked)} size='small' />} label={<Typography variant='body2'>AlfaOne</Typography>} />
 
           <Tooltip title='Експортувати HTML+MJML → підставити storage URLs (якщо є) → скачати два файли'>
             <span>
-              <Button
-                variant='contained'
-                size='small'
-                onClick={handleAutoExportAll}
-                disabled={isAutoExporting}
-                startIcon={<DownloadIcon fontSize='small' />}
-                sx={{ textTransform: "none", whiteSpace: "nowrap", ml: "auto" }}
-              >
+              <Button variant='contained' size='small' onClick={handleAutoExportAll} disabled={isAutoExporting} startIcon={<DownloadIcon fontSize='small' />} sx={{ textTransform: "none", whiteSpace: "nowrap", ml: "auto" }}>
                 {isAutoExporting ? "Готую..." : "Зробити все"}
               </Button>
             </span>
@@ -1966,74 +1650,30 @@ export default function HtmlConverterPanel() {
       </StyledPaper>
 
       {/* Image Processor - only visible when images detected */}
-      <ImageProcessor
-        editorRef={editorRef}
-        onLog={addLog}
-        visible={showImageProcessor}
-        onVisibilityChange={setShowImageProcessor}
-        triggerExtract={triggerExtract}
-        fileName={fileName}
-        onHistoryAdd={handleAddToHistory}
-        onReplaceUrls={handleReplaceUrls}
-        onUploadedUrlsChange={setUploadedUrlMap}
-        onResetReplacement={handleResetReplacement}
-        hasOutput={hasOutput}
-        autoProcess={autoProcess}
-        storageProvider={useAlfaOne ? "alphaone" : "default"}
-        imageAnalysisSettings={imageAnalysis}
-      />
+      <ImageProcessor editorRef={editorRef} onLog={addLog} visible={showImageProcessor} onVisibilityChange={setShowImageProcessor} triggerExtract={triggerExtract} fileName={fileName} onHistoryAdd={handleAddToHistory} onReplaceUrls={handleReplaceUrls} onUploadedUrlsChange={setUploadedUrlMap} onUploadedAltsChange={setUploadedAltMap} onResetReplacement={handleResetReplacement} hasOutput={hasOutput} autoProcess={autoProcess} storageProvider={useAlfaOne ? "alphaone" : "default"} imageAnalysisSettings={imageAnalysis} />
 
       {/* Output Blocks */}
-      <Stack
-        direction={{ xs: "column", lg: "row" }}
-        spacing={spacingMUI.lg}
-      >
+      <Stack direction={{ xs: "column", lg: "row" }} spacing={spacingMUI.lg}>
         {/* HTML Output */}
         <StyledPaper
           sx={{
             flex: 1,
             display: "flex",
             flexDirection: "column",
-          }}
-        >
-          <Stack
-            direction='row'
-            spacing={spacingMUI.sm}
-            mb={spacingMUI.base}
-            flexWrap='wrap'
-          >
-            <Button
-              variant='contained'
-              size='small'
-              onClick={handleExportHTML}
-              startIcon={<ConvertIcon />}
-              disabled={isAutoExporting}
-            >
+          }}>
+          <Stack direction='row' spacing={spacingMUI.sm} mb={spacingMUI.base} flexWrap='wrap'>
+            <Button variant='contained' size='small' onClick={handleExportHTML} startIcon={<ConvertIcon />} disabled={isAutoExporting}>
               Експортувати HTML
             </Button>
-            <Button
-              variant='outlined'
-              size='small'
-              onClick={handleDownloadHTML}
-              startIcon={<DownloadIcon fontSize='small' />}
-            >
+            <Button variant='outlined' size='small' onClick={handleDownloadHTML} startIcon={<DownloadIcon fontSize='small' />}>
               Завантажити
             </Button>
-            <Button
-              variant='outlined'
-              size='small'
-              onClick={handleCopyHTML}
-              startIcon={<CopyIcon fontSize='small' />}
-            >
+            <Button variant='outlined' size='small' onClick={handleCopyHTML} startIcon={<CopyIcon fontSize='small' />}>
               Copy
             </Button>
           </Stack>
 
-          <Typography
-            variant='subtitle2'
-            fontWeight={600}
-            mb={spacingMUI.sm}
-          >
+          <Typography variant='subtitle2' fontWeight={600} mb={spacingMUI.sm}>
             HTML результат:
           </Typography>
           <TextField
@@ -2064,46 +1704,20 @@ export default function HtmlConverterPanel() {
             flex: 1,
             display: "flex",
             flexDirection: "column",
-          }}
-        >
-          <Stack
-            direction='row'
-            spacing={spacingMUI.sm}
-            mb={spacingMUI.base}
-            flexWrap='wrap'
-          >
-            <Button
-              variant='contained'
-              size='small'
-              onClick={handleExportMJML}
-              startIcon={<ConvertIcon />}
-              disabled={isAutoExporting}
-            >
+          }}>
+          <Stack direction='row' spacing={spacingMUI.sm} mb={spacingMUI.base} flexWrap='wrap'>
+            <Button variant='contained' size='small' onClick={handleExportMJML} startIcon={<ConvertIcon />} disabled={isAutoExporting}>
               Експортувати MJML
             </Button>
-            <Button
-              variant='outlined'
-              size='small'
-              onClick={handleDownloadMJML}
-              startIcon={<DownloadIcon fontSize='small' />}
-            >
+            <Button variant='outlined' size='small' onClick={handleDownloadMJML} startIcon={<DownloadIcon fontSize='small' />}>
               Завантажити
             </Button>
-            <Button
-              variant='outlined'
-              size='small'
-              onClick={handleCopyMJML}
-              startIcon={<CopyIcon fontSize='small' />}
-            >
+            <Button variant='outlined' size='small' onClick={handleCopyMJML} startIcon={<CopyIcon fontSize='small' />}>
               Copy
             </Button>
           </Stack>
 
-          <Typography
-            variant='subtitle2'
-            fontWeight={600}
-            mb={spacingMUI.sm}
-          >
+          <Typography variant='subtitle2' fontWeight={600} mb={spacingMUI.sm}>
             MJML результат:
           </Typography>
           <TextField
@@ -2131,10 +1745,7 @@ export default function HtmlConverterPanel() {
 
       {/* Input HTML & Log */}
       {((ui.showInputHtml && inputHtml) || (ui.showLogsPanel && log.length > 0)) && (
-        <Stack
-          direction={{ xs: "column", lg: "row" }}
-          spacing={spacingMUI.lg}
-        >
+        <Stack direction={{ xs: "column", lg: "row" }} spacing={spacingMUI.lg}>
           {/* Input HTML */}
           {ui.showInputHtml && inputHtml && (
             <StyledPaper
@@ -2142,25 +1753,13 @@ export default function HtmlConverterPanel() {
                 flex: 1,
                 maxHeight: ui.compactMode ? 220 : 300,
                 overflow: "auto",
-              }}
-            >
-              <Stack
-                direction='row'
-                justifyContent='space-between'
-                alignItems='center'
-                mb={spacingMUI.sm}
-              >
-                <Typography
-                  variant='subtitle2'
-                  fontWeight={600}
-                >
+              }}>
+              <Stack direction='row' justifyContent='space-between' alignItems='center' mb={spacingMUI.sm}>
+                <Typography variant='subtitle2' fontWeight={600}>
                   Вхідний HTML
                 </Typography>
                 <Tooltip title='Копіювати'>
-                  <IconButton
-                    size='small'
-                    onClick={handleCopyInputHtml}
-                  >
+                  <IconButton size='small' onClick={handleCopyInputHtml}>
                     <CopyIcon fontSize='small' />
                   </IconButton>
                 </Tooltip>
@@ -2176,8 +1775,7 @@ export default function HtmlConverterPanel() {
                   m: 0,
                   whiteSpace: "pre-wrap",
                   wordBreak: "break-word",
-                }}
-              >
+                }}>
                 {inputHtml}
               </Box>
             </StyledPaper>
@@ -2190,13 +1788,8 @@ export default function HtmlConverterPanel() {
                 flex: 1,
                 maxHeight: ui.compactMode ? 220 : 300,
                 overflow: "auto",
-              }}
-            >
-              <Typography
-                variant='subtitle2'
-                fontWeight={600}
-                mb={spacingMUI.sm}
-              >
+              }}>
+              <Typography variant='subtitle2' fontWeight={600} mb={spacingMUI.sm}>
                 Лог операцій
               </Typography>
               <Divider sx={{ mb: spacingMUI.sm }} />
@@ -2210,8 +1803,7 @@ export default function HtmlConverterPanel() {
                     color: "text.secondary",
                     lineHeight: 1.8,
                     py: 0.25,
-                  }}
-                >
+                  }}>
                   {entry}
                 </Typography>
               ))}
@@ -2221,12 +1813,7 @@ export default function HtmlConverterPanel() {
       )}
 
       {/* Upload History - Always visible when there are sessions */}
-      {ui.showUploadHistory && (
-        <UploadHistory
-          sessions={uploadHistory}
-          onClear={handleClearHistory}
-        />
-      )}
+      {ui.showUploadHistory && <UploadHistory sessions={uploadHistory} onClear={handleClearHistory} />}
     </Box>
   );
 }

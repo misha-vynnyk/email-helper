@@ -4,32 +4,8 @@
  */
 
 import React, { useState, useCallback, useEffect, useRef } from "react";
-import {
-  alpha,
-  Box,
-  Button,
-  Chip,
-  IconButton,
-  LinearProgress,
-  Paper,
-  Slider,
-  Stack,
-  ToggleButton,
-  ToggleButtonGroup,
-  Tooltip,
-  Typography,
-  useTheme,
-  Snackbar,
-  Alert,
-} from "@mui/material";
-import {
-  Close as CloseIcon,
-  Download as DownloadIcon,
-  PlayArrow as ProcessIcon,
-  CloudUpload as UploadIcon,
-  FindReplace as ReplaceIcon,
-  Check as CheckIcon,
-} from "@mui/icons-material";
+import { alpha, Box, Button, Chip, IconButton, LinearProgress, Paper, Slider, Stack, ToggleButton, ToggleButtonGroup, Tooltip, Typography, useTheme, Snackbar, Alert } from "@mui/material";
+import { Close as CloseIcon, Download as DownloadIcon, PlayArrow as ProcessIcon, CloudUpload as UploadIcon, FindReplace as ReplaceIcon, Check as CheckIcon } from "@mui/icons-material";
 import { saveAs } from "file-saver";
 
 import { useThemeMode } from "../theme";
@@ -39,21 +15,8 @@ import StorageUploadDialog from "./StorageUploadDialog";
 import { formatSize, extractFolderName } from "./utils/formatters";
 import { copyToClipboard } from "./utils/clipboard";
 import { isSignatureImageAlt } from "./imageUtils";
-import {
-  STORAGE_KEYS,
-  UI_TIMINGS,
-  UPLOAD_CONFIG,
-  IMAGE_DEFAULTS,
-  STORAGE_URL_PREFIX,
-  STORAGE_PROVIDERS_CONFIG,
-} from "./constants";
-import type {
-  ImageAnalysisSettings,
-  ProcessedImage,
-  ImageFormat,
-  ImageFormatOverride,
-  ImageSettings,
-} from "./types";
+import { STORAGE_KEYS, UI_TIMINGS, UPLOAD_CONFIG, IMAGE_DEFAULTS, STORAGE_URL_PREFIX, STORAGE_PROVIDERS_CONFIG } from "./constants";
+import type { ImageAnalysisSettings, ProcessedImage, ImageFormat, ImageFormatOverride, ImageSettings } from "./types";
 import API_URL, { isApiAvailable } from "../config/api";
 
 const isCrossOrigin = (src: string): boolean => {
@@ -146,13 +109,10 @@ interface ImageProcessorProps {
   onVisibilityChange: (visible: boolean) => void;
   triggerExtract?: number;
   fileName?: string;
-  onHistoryAdd?: (
-    category: string,
-    folderName: string,
-    results: Array<{ filename: string; url: string; success: boolean }>
-  ) => void;
+  onHistoryAdd?: (category: string, folderName: string, results: Array<{ filename: string; url: string; success: boolean }>) => void;
   onReplaceUrls?: (urlMap: Record<string, string>) => void;
   onUploadedUrlsChange?: (urlMap: Record<string, string>) => void;
+  onUploadedAltsChange?: (altMap: Record<string, string>) => void;
   onResetReplacement?: (resetFn: () => void) => void;
   hasOutput?: boolean;
   autoProcess?: boolean;
@@ -186,22 +146,7 @@ function saveSettings(settings: ImageSettings) {
   }
 }
 
-export default function ImageProcessor({
-  editorRef,
-  onLog,
-  visible,
-  onVisibilityChange,
-  triggerExtract = 0,
-  fileName = "",
-  onHistoryAdd,
-  onReplaceUrls,
-  onUploadedUrlsChange,
-  onResetReplacement,
-  hasOutput = false,
-  autoProcess: autoProcessProp,
-  storageProvider = "default",
-  imageAnalysisSettings,
-}: ImageProcessorProps) {
+export default function ImageProcessor({ editorRef, onLog, visible, onVisibilityChange, triggerExtract = 0, fileName = "", onHistoryAdd, onReplaceUrls, onUploadedUrlsChange, onUploadedAltsChange, onResetReplacement, hasOutput = false, autoProcess: autoProcessProp, storageProvider = "default", imageAnalysisSettings }: ImageProcessorProps) {
   const theme = useTheme();
   const { mode, style } = useThemeMode();
   const componentStyles = getComponentStyles(mode, style);
@@ -218,6 +163,7 @@ export default function ImageProcessor({
   const convertAbortControllerRef = useRef<AbortController | null>(null);
   const isExtractingRef = useRef(false);
   const [lastUploadedUrls, setLastUploadedUrls] = useState<Record<string, string>>({});
+  const [_lastUploadedAlts, setLastUploadedAlts] = useState<Record<string, string>>({});
   // Prevent applying "old" uploaded URLs to a new editor/output state
   const [imagesSessionId, setImagesSessionId] = useState(0);
   const [lastUploadedSessionId, setLastUploadedSessionId] = useState<number | null>(null);
@@ -232,12 +178,9 @@ export default function ImageProcessor({
     severity: "success",
   });
 
-  const showSnackbar = useCallback(
-    (message: string, severity: "success" | "info" | "warning" | "error" = "success") => {
-      setSnackbar({ open: true, message, severity });
-    },
-    []
-  );
+  const showSnackbar = useCallback((message: string, severity: "success" | "info" | "warning" | "error" = "success") => {
+    setSnackbar({ open: true, message, severity });
+  }, []);
 
   const clearImagesAndRevoke = useCallback(() => {
     setImages((prev) => {
@@ -272,13 +215,7 @@ export default function ImageProcessor({
   );
 
   const isAbortError = (e: unknown): boolean => {
-    return (
-      (e instanceof DOMException && e.name === "AbortError") ||
-      (typeof e === "object" &&
-        e !== null &&
-        "name" in e &&
-        (e as { name?: unknown }).name === "AbortError")
-    );
+    return (e instanceof DOMException && e.name === "AbortError") || (typeof e === "object" && e !== null && "name" in e && (e as { name?: unknown }).name === "AbortError");
   };
 
   const abortConversions = useCallback(() => {
@@ -377,9 +314,7 @@ export default function ImageProcessor({
         return;
       }
 
-      const eligible = Array.from(imgElements).filter(
-        (img) => img.src && !isSignatureImageAlt(img.getAttribute("alt"))
-      );
+      const eligible = Array.from(imgElements).filter((img) => img.src && !isSignatureImageAlt(img.getAttribute("alt")));
 
       if (eligible.length === 0) {
         log("✅ Зображень не знайдено (тільки підписи або порожні)");
@@ -389,12 +324,7 @@ export default function ImageProcessor({
         return;
       }
 
-      log(
-        `✅ Знайдено ${eligible.length} зображень` +
-          (eligible.length < imgElements.length
-            ? ` (пропущено ${imgElements.length - eligible.length} підписів)`
-            : "")
-      );
+      log(`✅ Знайдено ${eligible.length} зображень` + (eligible.length < imgElements.length ? ` (пропущено ${imgElements.length - eligible.length} підписів)` : ""));
 
       const newImages: ProcessedImage[] = [];
 
@@ -432,166 +362,154 @@ export default function ImageProcessor({
     }
   }, [editorRef, log, autoProcess, onVisibilityChange, clearImagesAndRevoke]);
 
-  const convertImage = useCallback(
-    async (
-      src: string,
-      targetFormat: ImageFormat,
-      opts: { quality: number; maxWidth: number },
-      signal?: AbortSignal
-    ): Promise<{ blob: Blob; originalSize: number }> => {
-      const { quality: q, maxWidth: mw } = opts;
-      const isCrossOriginUrl = isCrossOrigin(src);
+  const convertImage = useCallback(async (src: string, targetFormat: ImageFormat, opts: { quality: number; maxWidth: number }, signal?: AbortSignal): Promise<{ blob: Blob; originalSize: number }> => {
+    const { quality: q, maxWidth: mw } = opts;
+    const isCrossOriginUrl = isCrossOrigin(src);
 
-      if (isCrossOriginUrl && isApiAvailable()) {
-        const convertRes = await fetch(`${API_URL}/api/image-converter/convert-from-url`, {
+    if (isCrossOriginUrl && isApiAvailable()) {
+      const convertRes = await fetch(`${API_URL}/api/image-converter/convert-from-url`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal,
+        body: JSON.stringify({
+          url: src,
+          format: targetFormat,
+          quality: q,
+          preset: mw,
+          resizeMode: "preset",
+          preserveAspectRatio: "true",
+          compressionMode: "balanced",
+        }),
+      });
+      if (convertRes.ok) {
+        const originalSizeHeader = convertRes.headers.get("x-original-size");
+        const originalSize = originalSizeHeader ? Number(originalSizeHeader) : 0;
+        const blob = await convertRes.blob();
+        return { blob, originalSize: Number.isFinite(originalSize) ? originalSize : 0 };
+      }
+      const errData = await convertRes.json().catch(() => ({}));
+      throw new Error(errData.error || `convert-from-url: ${convertRes.status}`);
+    }
+    if (isCrossOriginUrl) {
+      throw new Error("Зображення з іншого домену: потрібен backend (npm run dev) для конвертації, або вставте як data URL.");
+    }
+
+    // For PNG, use server-side conversion to properly handle compression
+    if (targetFormat === "png") {
+      try {
+        const response = await fetch(src, { signal });
+        if (!response.ok) throw new Error("Failed to fetch image");
+
+        const originalBlob = await response.blob();
+        const originalSize = originalBlob.size;
+        const file = new File([originalBlob], "image.png", { type: "image/png" });
+
+        const formData = new FormData();
+        formData.append("image", file);
+        formData.append("format", "png");
+        formData.append("quality", q.toString());
+        formData.append("resizeMode", "preset");
+        formData.append("preset", mw.toString());
+        formData.append("preserveAspectRatio", "true");
+        formData.append("compressionMode", "balanced");
+
+        if (!isApiAvailable()) {
+          throw new Error("Backend server is not available. Please configure VITE_API_URL environment variable.");
+        }
+
+        const convertResponse = await fetch(`${API_URL}/api/image-converter/convert`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          body: formData,
           signal,
-          body: JSON.stringify({
-            url: src,
-            format: targetFormat,
-            quality: q,
-            preset: mw,
-            resizeMode: "preset",
-            preserveAspectRatio: "true",
-            compressionMode: "balanced",
-          }),
         });
-        if (convertRes.ok) {
-          const originalSizeHeader = convertRes.headers.get("x-original-size");
-          const originalSize = originalSizeHeader ? Number(originalSizeHeader) : 0;
-          const blob = await convertRes.blob();
-          return { blob, originalSize: Number.isFinite(originalSize) ? originalSize : 0 };
-        }
-        const errData = await convertRes.json().catch(() => ({}));
-        throw new Error(errData.error || `convert-from-url: ${convertRes.status}`);
-      }
-      if (isCrossOriginUrl) {
-        throw new Error(
-          "Зображення з іншого домену: потрібен backend (npm run dev) для конвертації, або вставте як data URL."
-        );
-      }
 
-      // For PNG, use server-side conversion to properly handle compression
-      if (targetFormat === "png") {
+        if (!convertResponse.ok) {
+          const errorData = await convertResponse.json().catch(() => ({}));
+          throw new Error(errorData.error || "Server conversion failed");
+        }
+
+        const optimizedBlob = await convertResponse.blob();
+        return { blob: optimizedBlob, originalSize };
+      } catch (error) {
+        // Fallback to client-side conversion if server fails
+      }
+    }
+
+    // Client-side conversion for JPEG or PNG fallback
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+
+      img.onload = () => {
         try {
-          const response = await fetch(src, { signal });
-          if (!response.ok) throw new Error("Failed to fetch image");
-
-          const originalBlob = await response.blob();
-          const originalSize = originalBlob.size;
-          const file = new File([originalBlob], "image.png", { type: "image/png" });
-
-          const formData = new FormData();
-          formData.append("image", file);
-          formData.append("format", "png");
-          formData.append("quality", q.toString());
-          formData.append("resizeMode", "preset");
-          formData.append("preset", mw.toString());
-          formData.append("preserveAspectRatio", "true");
-          formData.append("compressionMode", "balanced");
-
-          if (!isApiAvailable()) {
-            throw new Error(
-              "Backend server is not available. Please configure VITE_API_URL environment variable."
-            );
-          }
-
-          const convertResponse = await fetch(`${API_URL}/api/image-converter/convert`, {
-            method: "POST",
-            body: formData,
-            signal,
-          });
-
-          if (!convertResponse.ok) {
-            const errorData = await convertResponse.json().catch(() => ({}));
-            throw new Error(errorData.error || "Server conversion failed");
-          }
-
-          const optimizedBlob = await convertResponse.blob();
-          return { blob: optimizedBlob, originalSize };
-        } catch (error) {
-          // Fallback to client-side conversion if server fails
-        }
-      }
-
-      // Client-side conversion for JPEG or PNG fallback
-      return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-
-        img.onload = () => {
-          try {
-            if (signal?.aborted) {
-              reject(new DOMException("Aborted", "AbortError"));
-              return;
-            }
-            const canvas = document.createElement("canvas");
-            const ctx = canvas.getContext("2d");
-
-            if (!ctx) {
-              reject(new Error("Failed to get canvas context"));
-              return;
-            }
-
-            let width = img.width;
-            let height = img.height;
-            const maxDim = Math.max(width, height);
-            if (maxDim > mw) {
-              const scale = mw / maxDim;
-              width = Math.round(width * scale);
-              height = Math.round(height * scale);
-            }
-
-            canvas.width = width;
-            canvas.height = height;
-
-            const outputFormat: ImageFormat = targetFormat;
-
-            if (outputFormat === "jpeg") {
-              ctx.fillStyle = "#FFFFFF";
-              ctx.fillRect(0, 0, width, height);
-            } else {
-              ctx.clearRect(0, 0, width, height);
-            }
-
-            ctx.drawImage(img, 0, 0, width, height);
-
-            let originalSize = 0;
-            if (img.src.startsWith("data:")) {
-              const base64 = img.src.split(",")[1];
-              originalSize = base64 ? Math.ceil((base64.length * 3) / 4) : 0;
-            }
-
-            canvas.toBlob(
-              (blob) => {
-                if (signal?.aborted) {
-                  reject(new DOMException("Aborted", "AbortError"));
-                  return;
-                }
-                if (blob) resolve({ blob, originalSize });
-                else reject(new Error("Failed to create blob"));
-              },
-              `image/${outputFormat}`,
-              q / 100
-            );
-          } catch (error) {
-            reject(error);
-          }
-        };
-
-        img.onerror = () => {
           if (signal?.aborted) {
             reject(new DOMException("Aborted", "AbortError"));
             return;
           }
-          reject(new Error("Failed to load image"));
-        };
-        img.src = src;
-      });
-    },
-    []
-  );
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+
+          if (!ctx) {
+            reject(new Error("Failed to get canvas context"));
+            return;
+          }
+
+          let width = img.width;
+          let height = img.height;
+          const maxDim = Math.max(width, height);
+          if (maxDim > mw) {
+            const scale = mw / maxDim;
+            width = Math.round(width * scale);
+            height = Math.round(height * scale);
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          const outputFormat: ImageFormat = targetFormat;
+
+          if (outputFormat === "jpeg") {
+            ctx.fillStyle = "#FFFFFF";
+            ctx.fillRect(0, 0, width, height);
+          } else {
+            ctx.clearRect(0, 0, width, height);
+          }
+
+          ctx.drawImage(img, 0, 0, width, height);
+
+          let originalSize = 0;
+          if (img.src.startsWith("data:")) {
+            const base64 = img.src.split(",")[1];
+            originalSize = base64 ? Math.ceil((base64.length * 3) / 4) : 0;
+          }
+
+          canvas.toBlob(
+            (blob) => {
+              if (signal?.aborted) {
+                reject(new DOMException("Aborted", "AbortError"));
+                return;
+              }
+              if (blob) resolve({ blob, originalSize });
+              else reject(new Error("Failed to create blob"));
+            },
+            `image/${outputFormat}`,
+            q / 100
+          );
+        } catch (error) {
+          reject(error);
+        }
+      };
+
+      img.onerror = () => {
+        if (signal?.aborted) {
+          reject(new DOMException("Aborted", "AbortError"));
+          return;
+        }
+        reject(new Error("Failed to load image"));
+      };
+      img.src = src;
+    });
+  }, []);
 
   const processImage = useCallback(
     async (id: string) => {
@@ -607,9 +525,7 @@ export default function ImageProcessor({
       }
       const signal = convertAbortControllerRef.current.signal;
 
-      setImages((prev) =>
-        prev.map((img) => (img.id === id ? { ...img, status: "processing" as const } : img))
-      );
+      setImages((prev) => prev.map((img) => (img.id === id ? { ...img, status: "processing" as const } : img)));
 
       // Determine format for this specific image
       const imageFormat = getImageFormat(image, format);
@@ -634,9 +550,7 @@ export default function ImageProcessor({
 
         if (originalSize > 0) {
           const saved = ((1 - result.blob.size / originalSize) * 100).toFixed(0);
-          log(
-            `✅ ${image.name}: ${formatSize(originalSize)} → ${formatSize(result.blob.size)} (-${saved}%)`
-          );
+          log(`✅ ${image.name}: ${formatSize(originalSize)} → ${formatSize(result.blob.size)} (-${saved}%)`);
         } else {
           log(`✅ ${image.name}: оброблено → ${formatSize(result.blob.size)}`);
         }
@@ -660,11 +574,7 @@ export default function ImageProcessor({
         }
 
         const message = error instanceof Error ? error.message : "Unknown error";
-        setImages((prev) =>
-          prev.map((img) =>
-            img.id === id ? { ...img, status: "error" as const, error: message } : img
-          )
-        );
+        setImages((prev) => prev.map((img) => (img.id === id ? { ...img, status: "error" as const, error: message } : img)));
         log(`❌ Помилка: ${image.name}`);
       }
     },
@@ -694,17 +604,14 @@ export default function ImageProcessor({
       category: string,
       folderName: string,
       customNames: Record<string, string> = {},
+      customAlts: Record<string, string> = {},
       fileOrder?: string[]
     ): Promise<{
       results: Array<{ filename: string; url: string; success: boolean; error?: string }>;
       category: string;
       folderName: string;
     }> => {
-      let completed = images.filter(
-        (img) =>
-          (img.status === "done" && img.convertedBlob) ||
-          (img.status === "pending" && isCrossOrigin(img.src))
-      );
+      let completed = images.filter((img) => (img.status === "done" && img.convertedBlob) || (img.status === "pending" && isCrossOrigin(img.src)));
 
       // Sort by order if provided
       if (fileOrder && fileOrder.length > 0) {
@@ -720,9 +627,7 @@ export default function ImageProcessor({
       }
 
       if (!isApiAvailable()) {
-        throw new Error(
-          "Для завантаження на storage потрібен backend.\n\nЗапустіть: npm run dev\nабо налаштуйте VITE_API_URL на існуючий backend."
-        );
+        throw new Error("Для завантаження на storage потрібен backend.\n\nЗапустіть: npm run dev\nабо налаштуйте VITE_API_URL на існуючий backend.");
       }
 
       // Prevent multiple simultaneous uploads
@@ -744,8 +649,7 @@ export default function ImageProcessor({
       log(`🚀 Початок завантаження ${completed.length} зображень на storage...`);
 
       const uploadedUrls: Record<string, string> = {};
-      const results: Array<{ filename: string; url: string; success: boolean; error?: string }> =
-        [];
+      const results: Array<{ filename: string; url: string; success: boolean; error?: string }> = [];
       let successCount = 0;
 
       const fatalError = (message: string) => {
@@ -754,13 +658,7 @@ export default function ImageProcessor({
         return err;
       };
 
-      const prepareTimeout = () =>
-        new Promise<never>((_, reject) =>
-          setTimeout(
-            () => reject(new Error("Timeout: сервер не відповідає (30s)")),
-            UPLOAD_CONFIG.PREPARE_TIMEOUT
-          )
-        );
+      const prepareTimeout = () => new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Timeout: сервер не відповідає (30s)")), UPLOAD_CONFIG.PREPARE_TIMEOUT));
 
       const getTempPath = async (image: ProcessedImage, fname: string): Promise<string> => {
         const signal = uploadAbortControllerRef.current?.signal;
@@ -806,9 +704,7 @@ export default function ImageProcessor({
           const img = completed[i];
           const baseName = customNames[img.id] || img.name;
           const imageFormat = img.convertedBlob ? getImageFormat(img, format) : "png";
-          const ext = img.convertedBlob
-            ? getFileExtension(imageFormat)
-            : `.${/\.(png|jpe?g|webp|gif)(?=\?|$)/i.exec(img.src)?.[1] || "png"}`;
+          const ext = img.convertedBlob ? getFileExtension(imageFormat) : `.${/\.(png|jpe?g|webp|gif)(?=\?|$)/i.exec(img.src)?.[1] || "png"}`;
           const filename = `${baseName}${ext}`;
 
           // Check if upload was cancelled
@@ -836,12 +732,7 @@ export default function ImageProcessor({
                 }),
                 signal: uploadAbortControllerRef.current.signal,
               }),
-              new Promise<never>((_, reject) =>
-                setTimeout(
-                  () => reject(new Error("Timeout: storage не відповідає (180s)")),
-                  UPLOAD_CONFIG.STORAGE_TIMEOUT
-                )
-              ),
+              new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Timeout: storage не відповідає (180s)")), UPLOAD_CONFIG.STORAGE_TIMEOUT)),
             ]);
 
             if (!storageResponse.ok) {
@@ -880,10 +771,7 @@ export default function ImageProcessor({
               filename,
               url: "",
               success: false,
-              error:
-                errorMsg.includes("Failed to fetch") || errorMsg === "Network request failed"
-                  ? "Немає з'єднання з сервером"
-                  : errorMsg,
+              error: errorMsg.includes("Failed to fetch") || errorMsg === "Network request failed" ? "Немає з'єднання з сервером" : errorMsg,
             });
 
             // Distinguish between network errors and other errors
@@ -891,10 +779,7 @@ export default function ImageProcessor({
               throw error;
             }
 
-            const displayMsg =
-              errorMsg.includes("Failed to fetch") || errorMsg === "Network request failed"
-                ? "Немає з'єднання з сервером"
-                : errorMsg;
+            const displayMsg = errorMsg.includes("Failed to fetch") || errorMsg === "Network request failed" ? "Немає з'єднання з сервером" : errorMsg;
 
             log(`❌ ${filename}: ${displayMsg}`);
 
@@ -903,11 +788,22 @@ export default function ImageProcessor({
           }
         }
 
-        // Replace images in HTML editor with uploaded URLs
+        // Replace images in HTML editor with uploaded URLs and ALT text
         if (editorRef.current && Object.keys(uploadedUrls).length > 0) {
+          // Build a lookup from original src -> image id
+          const srcToId: Record<string, string> = {};
+          completed.forEach((img) => {
+            srcToId[img.src] = img.id;
+          });
+
           const imgElements = editorRef.current.querySelectorAll("img");
           imgElements.forEach((imgEl) => {
             if (uploadedUrls[imgEl.src]) {
+              // Get the image ID for this src to look up custom ALT
+              const imgId = srcToId[imgEl.src];
+              if (imgId && customAlts[imgId]) {
+                imgEl.alt = customAlts[imgId];
+              }
               imgEl.src = uploadedUrls[imgEl.src];
             }
           });
@@ -920,14 +816,23 @@ export default function ImageProcessor({
           setLastUploadedSessionId(sessionIdAtStart);
           setReplacementDone(false);
           onUploadedUrlsChange?.(uploadedUrls);
+
+          // Build ALT map: originalSrc -> alt (for output HTML replacement)
+          const altMap: Record<string, string> = {};
+          completed.forEach((img) => {
+            if (customAlts[img.id] && uploadedUrls[img.src]) {
+              altMap[img.src] = customAlts[img.id];
+            }
+          });
+          setLastUploadedAlts(altMap);
+          onUploadedAltsChange?.(altMap);
+
           const urlsList = Object.values(uploadedUrls).join("\n");
           const ok = await copyToClipboard(urlsList);
           log(ok ? "📋 URLs скопійовано в буфер" : `📋 URLs: ${urlsList.split("\n").join(", ")}`);
         }
 
-        const providerCfg =
-          STORAGE_PROVIDERS_CONFIG.providers[storageProvider] ||
-          STORAGE_PROVIDERS_CONFIG.providers.default;
+        const providerCfg = STORAGE_PROVIDERS_CONFIG.providers[storageProvider] || STORAGE_PROVIDERS_CONFIG.providers.default;
 
         // Final summary
         const errorCount = results.filter((r) => !r.success).length;
@@ -944,9 +849,7 @@ export default function ImageProcessor({
                   body: JSON.stringify({ provider: storageProvider }),
                   signal: uploadAbortControllerRef.current?.signal,
                 }),
-                new Promise<never>((_, reject) =>
-                  setTimeout(() => reject(new Error("Timeout: finalize (10s)")), 10000)
-                ),
+                new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Timeout: finalize (10s)")), 10000)),
               ]);
               if (!finalizeRes.ok) {
                 const err = await finalizeRes.json().catch(() => ({}));
@@ -957,9 +860,7 @@ export default function ImageProcessor({
             }
           }
         } else if (successCount > 0) {
-          log(
-            `⚠️ Завантажено ${successCount} з ${completed.length} зображень (${errorCount} помилок)`
-          );
+          log(`⚠️ Завантажено ${successCount} з ${completed.length} зображень (${errorCount} помилок)`);
         } else {
           log(`❌ Не вдалося завантажити жодного зображення`);
         }
@@ -1017,10 +918,7 @@ export default function ImageProcessor({
     }
 
     if (lastUploadedSessionId !== imagesSessionId) {
-      showSnackbar(
-        "⚠️ Немає актуальних URLs для поточного контенту. Спочатку зробіть Upload.",
-        "warning"
-      );
+      showSnackbar("⚠️ Немає актуальних URLs для поточного контенту. Спочатку зробіть Upload.", "warning");
       return;
     }
 
@@ -1031,15 +929,7 @@ export default function ImageProcessor({
       log(`✅ Замінено ${n} посилань в Output`);
       showSnackbar(`🔄 Замінено ${n} посилань в Output HTML/MJML`, "success");
     }
-  }, [
-    isUploading,
-    lastUploadedSessionId,
-    imagesSessionId,
-    lastUploadedUrls,
-    onReplaceUrls,
-    log,
-    showSnackbar,
-  ]);
+  }, [isUploading, lastUploadedSessionId, imagesSessionId, lastUploadedUrls, onReplaceUrls, log, showSnackbar]);
 
   const handleProcessAll = useCallback(() => {
     const pendingImages = images.filter((img) => img.status === "pending");
@@ -1075,13 +965,10 @@ export default function ImageProcessor({
 
   const totalOriginal = images.reduce((sum, img) => sum + img.originalSize, 0);
   const totalConverted = images.reduce((sum, img) => sum + (img.convertedSize || 0), 0);
-  const uploadable = (img: ProcessedImage) =>
-    (img.status === "done" && img.convertedBlob) ||
-    (img.status === "pending" && isCrossOrigin(img.src));
+  const uploadable = (img: ProcessedImage) => (img.status === "done" && img.convertedBlob) || (img.status === "pending" && isCrossOrigin(img.src));
   const doneCount = images.filter(uploadable).length;
   const pendingCount = images.filter((img) => img.status === "pending").length;
-  const currentUploadedUrls =
-    lastUploadedSessionId === imagesSessionId ? lastUploadedUrls : ({} as Record<string, string>);
+  const currentUploadedUrls = lastUploadedSessionId === imagesSessionId ? lastUploadedUrls : ({} as Record<string, string>);
   const lastUploadedCount = Object.keys(currentUploadedUrls).length;
 
   const actionButtonSx = {
@@ -1100,58 +987,33 @@ export default function ImageProcessor({
       sx={{
         p: spacingMUI.base,
         borderRadius: `${componentStyles.card.borderRadius}px`,
-        backgroundColor:
-          componentStyles.card.background || alpha(theme.palette.background.paper, 0.8),
+        backgroundColor: componentStyles.card.background || alpha(theme.palette.background.paper, 0.8),
         backdropFilter: componentStyles.card.backdropFilter,
         WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
         border: componentStyles.card.border,
         boxShadow: componentStyles.card.boxShadow,
-      }}
-    >
+      }}>
       <Stack spacing={spacingMUI.base}>
         {/* Header */}
         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <Typography
-            variant='subtitle2'
-            fontWeight={600}
-          >
+          <Typography variant='subtitle2' fontWeight={600}>
             Обробка зображень
           </Typography>
           {images.length > 0 && (
-            <Typography
-              variant='caption'
-              color='text.secondary'
-            >
+            <Typography variant='caption' color='text.secondary'>
               {doneCount}/{images.length} готово
             </Typography>
           )}
         </Box>
 
         {/* Settings Row */}
-        <Stack
-          direction='row'
-          spacing={spacingMUI.lg}
-          alignItems='flex-start'
-          flexWrap='wrap'
-        >
+        <Stack direction='row' spacing={spacingMUI.lg} alignItems='flex-start' flexWrap='wrap'>
           <Box sx={{ flex: 1, minWidth: 150 }}>
-            <Stack
-              direction='row'
-              justifyContent='space-between'
-              alignItems='center'
-              mb={spacingMUI.xs}
-            >
-              <Typography
-                variant='caption'
-                color='text.secondary'
-              >
+            <Stack direction='row' justifyContent='space-between' alignItems='center' mb={spacingMUI.xs}>
+              <Typography variant='caption' color='text.secondary'>
                 Якість:
               </Typography>
-              <Typography
-                variant='caption'
-                fontWeight={600}
-                color='primary.main'
-              >
+              <Typography variant='caption' fontWeight={600} color='primary.main'>
                 {quality}%
               </Typography>
             </Stack>
@@ -1168,23 +1030,11 @@ export default function ImageProcessor({
           </Box>
 
           <Box sx={{ flex: 1, minWidth: 150 }}>
-            <Stack
-              direction='row'
-              justifyContent='space-between'
-              alignItems='center'
-              mb={spacingMUI.xs}
-            >
-              <Typography
-                variant='caption'
-                color='text.secondary'
-              >
+            <Stack direction='row' justifyContent='space-between' alignItems='center' mb={spacingMUI.xs}>
+              <Typography variant='caption' color='text.secondary'>
                 Макс. ширина:
               </Typography>
-              <Typography
-                variant='caption'
-                fontWeight={600}
-                color='primary.main'
-              >
+              <Typography variant='caption' fontWeight={600} color='primary.main'>
                 {maxWidth}px
               </Typography>
             </Stack>
@@ -1205,24 +1055,15 @@ export default function ImageProcessor({
         {/* Images List */}
         {images.length > 0 && (
           <Box>
-            <Stack
-              direction='row'
-              spacing={spacingMUI.sm}
-              sx={{ overflowX: "auto", pb: spacingMUI.xs }}
-            >
+            <Stack direction='row' spacing={spacingMUI.sm} sx={{ overflowX: "auto", pb: spacingMUI.xs }}>
               {images.map((img) => {
                 const imgFormat = getImageFormat(img, format);
 
                 // Distinct colors by output format (updates when user changes format)
-                const badgeBg =
-                  imgFormat === "png" ? theme.palette.success.main : theme.palette.warning.dark;
+                const badgeBg = imgFormat === "png" ? theme.palette.success.main : theme.palette.warning.dark;
 
                 return (
-                  <Stack
-                    key={img.id}
-                    spacing={0.5}
-                    alignItems='center'
-                  >
+                  <Stack key={img.id} spacing={0.5} alignItems='center'>
                     <Box
                       sx={{
                         position: "relative",
@@ -1232,8 +1073,7 @@ export default function ImageProcessor({
                         borderRadius: `${borderRadius.sm}px`,
                         overflow: "hidden",
                         border: `1px solid ${theme.palette.divider}`,
-                      }}
-                    >
+                      }}>
                       <img
                         src={img.previewUrl}
                         alt={img.name}
@@ -1274,8 +1114,7 @@ export default function ImageProcessor({
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                          }}
-                        >
+                          }}>
                           <LinearProgress sx={{ width: "80%" }} />
                         </Box>
                       )}
@@ -1295,8 +1134,7 @@ export default function ImageProcessor({
                               "&:hover": {
                                 backgroundColor: theme.palette.success.main,
                               },
-                            }}
-                          >
+                            }}>
                             <DownloadIcon sx={{ fontSize: 14 }} />
                           </IconButton>
                         </Tooltip>
@@ -1316,8 +1154,7 @@ export default function ImageProcessor({
                             "&:hover": {
                               backgroundColor: theme.palette.error.main,
                             },
-                          }}
-                        >
+                          }}>
                           <CloseIcon sx={{ fontSize: 14 }} />
                         </IconButton>
                       </Tooltip>
@@ -1327,9 +1164,7 @@ export default function ImageProcessor({
                     <ToggleButtonGroup
                       value={img.formatOverride || "auto"}
                       exclusive
-                      onChange={(_, val) =>
-                        val && handleFormatChange(img.id, val as ImageFormatOverride)
-                      }
+                      onChange={(_, val) => val && handleFormatChange(img.id, val as ImageFormatOverride)}
                       size='small'
                       sx={{
                         height: 20,
@@ -1341,8 +1176,7 @@ export default function ImageProcessor({
                           lineHeight: 1,
                           border: `1px solid ${theme.palette.divider}`,
                         },
-                      }}
-                    >
+                      }}>
                       <ToggleButton value='auto'>
                         <Tooltip title='Авто (прозорість → PNG)'>
                           <span>Auto</span>
@@ -1365,85 +1199,34 @@ export default function ImageProcessor({
                   borderRadius: `${borderRadius.sm}px`,
                   backgroundColor: alpha(theme.palette.success.main, 0.05),
                   border: `1px solid ${alpha(theme.palette.success.main, 0.1)}`,
-                }}
-              >
-                <Typography
-                  variant='caption'
-                  color='text.secondary'
-                >
-                  💾 {formatSize(totalOriginal)} → {formatSize(totalConverted)} (
-                  {totalOriginal > 0
-                    ? `-${((1 - totalConverted / totalOriginal) * 100).toFixed(0)}%`
-                    : "0%"}
-                  )
+                }}>
+                <Typography variant='caption' color='text.secondary'>
+                  💾 {formatSize(totalOriginal)} → {formatSize(totalConverted)} ({totalOriginal > 0 ? `-${((1 - totalConverted / totalOriginal) * 100).toFixed(0)}%` : "0%"})
                 </Typography>
               </Box>
             )}
 
             {/* Actions */}
-            <Stack
-              direction='row'
-              spacing={spacingMUI.sm}
-              mt={spacingMUI.sm}
-            >
+            <Stack direction='row' spacing={spacingMUI.sm} mt={spacingMUI.sm}>
               {pendingCount > 0 && !autoProcess && (
-                <Button
-                  variant='outlined'
-                  startIcon={<ProcessIcon />}
-                  onClick={handleProcessAll}
-                  fullWidth
-                  sx={actionButtonSx}
-                >
+                <Button variant='outlined' startIcon={<ProcessIcon />} onClick={handleProcessAll} fullWidth sx={actionButtonSx}>
                   Обробити все ({pendingCount})
                 </Button>
               )}
-              <Button
-                variant='contained'
-                color='primary'
-                startIcon={<UploadIcon />}
-                onClick={() => setUploadDialogOpen(true)}
-                disabled={doneCount === 0}
-                fullWidth
-                sx={actionButtonSx}
-              >
+              <Button variant='contained' color='primary' startIcon={<UploadIcon />} onClick={() => setUploadDialogOpen(true)} disabled={doneCount === 0} fullWidth sx={actionButtonSx}>
                 Upload to Storage ({doneCount})
               </Button>
               {lastUploadedCount > 0 && (
-                <Tooltip
-                  title={
-                    !hasOutput
-                      ? "Спочатку експортуйте HTML або MJML"
-                      : isUploading
-                        ? "Йде завантаження на storage — заміну буде доступно після завершення"
-                        : replacementDone
-                          ? "URLs вже замінені в Output"
-                          : "Замінити зображення на storage URLs"
-                  }
-                  arrow
-                >
+                <Tooltip title={!hasOutput ? "Спочатку експортуйте HTML або MJML" : isUploading ? "Йде завантаження на storage — заміну буде доступно після завершення" : replacementDone ? "URLs вже замінені в Output" : "Замінити зображення на storage URLs"} arrow>
                   <span style={{ width: "100%" }}>
-                    <Button
-                      variant={replacementDone ? "contained" : "outlined"}
-                      color={replacementDone ? "success" : "secondary"}
-                      startIcon={replacementDone ? <CheckIcon /> : <ReplaceIcon />}
-                      onClick={handleReplaceInOutput}
-                      disabled={replacementDone || !hasOutput || isUploading}
-                      fullWidth
-                      sx={actionButtonSx}
-                    >
-                      {replacementDone
-                        ? `✓ Замінено в Output (${lastUploadedCount})`
-                        : `Замінити в Output (${lastUploadedCount})`}
+                    <Button variant={replacementDone ? "contained" : "outlined"} color={replacementDone ? "success" : "secondary"} startIcon={replacementDone ? <CheckIcon /> : <ReplaceIcon />} onClick={handleReplaceInOutput} disabled={replacementDone || !hasOutput || isUploading} fullWidth sx={actionButtonSx}>
+                      {replacementDone ? `✓ Замінено в Output (${lastUploadedCount})` : `Замінити в Output (${lastUploadedCount})`}
                     </Button>
                   </span>
                 </Tooltip>
               )}
 
-              <Button
-                variant='outlined'
-                onClick={handleClear}
-                sx={actionButtonSx}
-              >
+              <Button variant='outlined' onClick={handleClear} sx={actionButtonSx}>
                 Очистити
               </Button>
             </Stack>
@@ -1455,9 +1238,7 @@ export default function ImageProcessor({
         open={uploadDialogOpen}
         onClose={() => setUploadDialogOpen(false)}
         storageProvider={storageProvider}
-        files={images
-          .filter(uploadable)
-          .map((img) => ({ id: img.id, name: img.name, path: img.previewUrl }))}
+        files={images.filter(uploadable).map((img) => ({ id: img.id, name: img.name, path: img.previewUrl }))}
         onUpload={handleUploadToStorage}
         onCancel={() => {
           if (uploadAbortControllerRef.current) {
@@ -1471,17 +1252,8 @@ export default function ImageProcessor({
       />
 
       {/* Snackbar for notifications */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={UI_TIMINGS.SNACKBAR_DURATION}
-        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
-        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-      >
-        <Alert
-          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
-          severity={snackbar.severity}
-          sx={{ width: "100%" }}
-        >
+      <Snackbar open={snackbar.open} autoHideDuration={UI_TIMINGS.SNACKBAR_DURATION} onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))} anchorOrigin={{ vertical: "bottom", horizontal: "right" }}>
+        <Alert onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))} severity={snackbar.severity} sx={{ width: "100%" }}>
           {snackbar.message}
         </Alert>
       </Snackbar>

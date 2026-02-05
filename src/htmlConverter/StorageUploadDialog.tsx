@@ -1,37 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  TextField,
-  FormControl,
-  FormLabel,
-  RadioGroup,
-  FormControlLabel,
-  Radio,
-  Typography,
-  Box,
-  Alert,
-  LinearProgress,
-  Chip,
-  Stack,
-  useTheme,
-  alpha,
-  Divider,
-} from "@mui/material";
-import {
-  CloudUpload as UploadIcon,
-  CheckCircle as SuccessIcon,
-  Error as ErrorIcon,
-  ContentCopy as CopyIcon,
-  Image as ImageIcon,
-  CheckCircleOutline as CheckIcon,
-  Close as CloseIcon,
-  Link as LinkIcon,
-  DragIndicator as DragIcon,
-} from "@mui/icons-material";
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio, Typography, Box, Alert, LinearProgress, Chip, Stack, useTheme, alpha, Divider } from "@mui/material";
+import { CloudUpload as UploadIcon, CheckCircle as SuccessIcon, Error as ErrorIcon, ContentCopy as CopyIcon, Image as ImageIcon, CheckCircleOutline as CheckIcon, Close as CloseIcon, Link as LinkIcon, DragIndicator as DragIcon } from "@mui/icons-material";
 import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
 
@@ -60,46 +29,23 @@ interface StorageUploadDialogProps {
   onClose: () => void;
   storageProvider?: StorageProviderKey;
   files: Array<{ id: string; name: string; path?: string }>;
-  onUpload: (
-    category: string,
-    folderName: string,
-    customNames: Record<string, string>,
-    fileOrder?: string[]
-  ) => Promise<{ results: UploadResult[]; category: string; folderName: string }>;
+  onUpload: (category: string, folderName: string, customNames: Record<string, string>, customAlts: Record<string, string>, fileOrder?: string[]) => Promise<{ results: UploadResult[]; category: string; folderName: string }>;
   onCancel?: () => void;
   initialFolderName?: string;
   onHistoryAdd?: (category: string, folderName: string, results: UploadResult[]) => void;
   imageAnalysisSettings?: ImageAnalysisSettings;
 }
 
-export default function StorageUploadDialog({
-  open,
-  onClose,
-  storageProvider = "default",
-  files,
-  onUpload,
-  onCancel,
-  initialFolderName = "",
-  onHistoryAdd,
-  imageAnalysisSettings,
-}: StorageUploadDialogProps) {
+export default function StorageUploadDialog({ open, onClose, storageProvider = "default", files, onUpload, onCancel, initialFolderName = "", onHistoryAdd, imageAnalysisSettings }: StorageUploadDialogProps) {
   const theme = useTheme();
   const { mode, style } = useThemeMode();
   const componentStyles = getComponentStyles(mode, style);
 
-  const providerCfg =
-    STORAGE_PROVIDERS_CONFIG.providers[storageProvider] ||
-    STORAGE_PROVIDERS_CONFIG.providers.default;
+  const providerCfg = STORAGE_PROVIDERS_CONFIG.providers[storageProvider] || STORAGE_PROVIDERS_CONFIG.providers.default;
   const showCategory = providerCfg.usesCategory;
 
-  const categories = (showCategory && providerCfg.categories && providerCfg.categories.length > 0
-    ? providerCfg.categories
-    : STORAGE_PROVIDERS_CONFIG.providers.default.categories) || ["finance", "health"];
-  const defaultCategory =
-    (showCategory && providerCfg.defaultCategory) ||
-    STORAGE_PROVIDERS_CONFIG.providers.default.defaultCategory ||
-    categories[0] ||
-    "finance";
+  const categories = (showCategory && providerCfg.categories && providerCfg.categories.length > 0 ? providerCfg.categories : STORAGE_PROVIDERS_CONFIG.providers.default.categories) || ["finance", "health"];
+  const defaultCategory = (showCategory && providerCfg.defaultCategory) || STORAGE_PROVIDERS_CONFIG.providers.default.defaultCategory || categories[0] || "finance";
 
   const [category, setCategory] = useState<string>(defaultCategory);
   const [folderName, setFolderName] = useState<string>("");
@@ -114,12 +60,15 @@ export default function StorageUploadDialog({
   const [showOcrTextById, setShowOcrTextById] = useState<Record<string, boolean>>({});
   const [editingTag, setEditingTag] = useState<{ fileId: string; tagIdx: number } | null>(null);
 
-  const analysisEnabled = Boolean(
-    imageAnalysisSettings?.enabled && imageAnalysisSettings.engine === "ocr"
-  );
+  const analysisEnabled = Boolean(imageAnalysisSettings?.enabled && imageAnalysisSettings.engine === "ocr");
 
   // AI (step 1): OCR-based suggestions (configured globally in HtmlConverterPanel)
-  const { aiById, analyzeFile, reset: resetOcrState, dispose: disposeOcr } = useOcrAnalysis({
+  const {
+    aiById,
+    analyzeFile,
+    reset: resetOcrState,
+    dispose: disposeOcr,
+  } = useOcrAnalysis({
     enabled: analysisEnabled,
     settings: imageAnalysisSettings,
     files: orderedFiles,
@@ -239,7 +188,7 @@ export default function StorageUploadDialog({
     try {
       const fileOrder = orderedFiles.map((f) => f.id);
       const effectiveCategory = showCategory ? category : "finance";
-      const response = await onUpload(effectiveCategory, folderName.trim(), customNames, fileOrder);
+      const response = await onUpload(effectiveCategory, folderName.trim(), customNames, customAlts, fileOrder);
       setUploadResults(response.results);
 
       // Add to history
@@ -314,36 +263,18 @@ export default function StorageUploadDialog({
       PaperProps={{
         sx: {
           borderRadius: `${borderRadius.lg}px`,
-          background:
-            componentStyles.card.background || alpha(theme.palette.background.paper, 0.92),
+          background: componentStyles.card.background || alpha(theme.palette.background.paper, 0.92),
           backdropFilter: componentStyles.card.backdropFilter,
           WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
           border: componentStyles.card.border,
           boxShadow: componentStyles.card.boxShadow,
         },
-      }}
-    >
+      }}>
       <DialogTitle sx={{ pb: spacingMUI.sm }}>
-        <Box
-          display='flex'
-          alignItems='center'
-          justifyContent='space-between'
-        >
-          <Box
-            display='flex'
-            alignItems='center'
-            gap={spacingMUI.sm}
-          >
-            {uploadResults.length > 0 ? (
-              <SuccessIcon sx={{ color: theme.palette.success.main }} />
-            ) : (
-              <UploadIcon color='primary' />
-            )}
-            <Typography
-              variant='h6'
-              component='span'
-              fontWeight={600}
-            >
+        <Box display='flex' alignItems='center' justifyContent='space-between'>
+          <Box display='flex' alignItems='center' gap={spacingMUI.sm}>
+            {uploadResults.length > 0 ? <SuccessIcon sx={{ color: theme.palette.success.main }} /> : <UploadIcon color='primary' />}
+            <Typography variant='h6' component='span' fontWeight={600}>
               {uploadResults.length > 0 ? "Upload Complete" : "Upload to Storage"}
             </Typography>
           </Box>
@@ -356,8 +287,7 @@ export default function StorageUploadDialog({
               "&:hover": {
                 backgroundColor: alpha(theme.palette.text.primary, 0.05),
               },
-            }}
-          >
+            }}>
             <CloseIcon fontSize='small' />
           </IconButton>
         </Box>
@@ -372,18 +302,10 @@ export default function StorageUploadDialog({
             <>
               {/* Files list with thumbnails, rename, and drag & drop */}
               <Box>
-                <Typography
-                  variant='body2'
-                  color='text.secondary'
-                  fontWeight={500}
-                  gutterBottom
-                >
+                <Typography variant='body2' color='text.secondary' fontWeight={500} gutterBottom>
                   Files to upload ({orderedFiles.length}):
                 </Typography>
-                <Stack
-                  spacing={spacingMUI.sm}
-                  mt={spacingMUI.sm}
-                >
+                <Stack spacing={spacingMUI.sm} mt={spacingMUI.sm}>
                   {orderedFiles.map((file, index) => (
                     <Box
                       key={file.id}
@@ -398,10 +320,7 @@ export default function StorageUploadDialog({
                         gap: spacingMUI.sm,
                         p: spacingMUI.sm,
                         borderRadius: `${borderRadius.sm}px`,
-                        backgroundColor:
-                          draggedIndex === index
-                            ? alpha(theme.palette.primary.main, 0.15)
-                            : alpha(theme.palette.background.paper, 0.5),
+                        backgroundColor: draggedIndex === index ? alpha(theme.palette.primary.main, 0.15) : alpha(theme.palette.background.paper, 0.5),
                         border: `1px solid ${draggedIndex === index ? theme.palette.primary.main : theme.palette.divider}`,
                         cursor: uploading ? "default" : "grab",
                         transition: "all 0.2s ease",
@@ -414,15 +333,13 @@ export default function StorageUploadDialog({
                               backgroundColor: alpha(theme.palette.primary.main, 0.08),
                               borderColor: theme.palette.primary.light,
                             },
-                      }}
-                    >
+                      }}>
                       <Box
                         sx={{
                           display: "flex",
                           alignItems: "center",
                           gap: spacingMUI.sm,
-                        }}
-                      >
+                        }}>
                         {/* Drag Handle */}
                         <DragIcon
                           sx={{
@@ -445,8 +362,7 @@ export default function StorageUploadDialog({
                               flexShrink: 0,
                               border: `1px solid ${theme.palette.divider}`,
                               backgroundColor: alpha(theme.palette.background.default, 0.5),
-                            }}
-                          >
+                            }}>
                             <img
                               src={file.path}
                               alt={file.name}
@@ -479,7 +395,7 @@ export default function StorageUploadDialog({
                             placeholder={file.name.replace(/\.[^/.]+$/, "")}
                             value={customNames[file.id] || ""}
                             onChange={(e) => {
-                          const value = normalizeCustomNameInput(e.target.value);
+                              const value = normalizeCustomNameInput(e.target.value);
                               setCustomNames((prev) => ({
                                 ...prev,
                                 [file.id]: value,
@@ -517,80 +433,82 @@ export default function StorageUploadDialog({
                                 "&:focus-within": {
                                   borderColor: theme.palette.primary.main,
                                 },
-                              }}
-                            >
+                              }}>
                               {/* Selected ALT tags as removable/editable chips */}
-                              {(customAlts[file.id] || "").split(" | ").filter(Boolean).map((tag, idx) => {
-                                const isEditing = editingTag?.fileId === file.id && editingTag?.tagIdx === idx;
+                              {(customAlts[file.id] || "")
+                                .split(" | ")
+                                .filter(Boolean)
+                                .map((tag, idx) => {
+                                  const isEditing = editingTag?.fileId === file.id && editingTag?.tagIdx === idx;
 
-                                if (isEditing) {
-                                  return (
-                                    <TextField
-                                      key={`edit-${idx}`}
-                                      size="small"
-                                      variant="standard"
-                                      defaultValue={tag}
-                                      autoFocus
-                                      onBlur={(e) => {
-                                        const newValue = e.target.value.trim();
-                                        const tags = (customAlts[file.id] || "").split(" | ").filter(Boolean);
-                                        if (newValue) {
-                                          tags[idx] = newValue;
-                                        } else {
-                                          tags.splice(idx, 1);
-                                        }
-                                        setCustomAlts((prev) => ({ ...prev, [file.id]: tags.join(" | ") }));
-                                        setEditingTag(null);
-                                      }}
-                                      onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
-                                          (e.target as HTMLInputElement).blur();
-                                        } else if (e.key === "Escape") {
+                                  if (isEditing) {
+                                    return (
+                                      <TextField
+                                        key={`edit-${idx}`}
+                                        size='small'
+                                        variant='standard'
+                                        defaultValue={tag}
+                                        autoFocus
+                                        onBlur={(e) => {
+                                          const newValue = e.target.value.trim();
+                                          const tags = (customAlts[file.id] || "").split(" | ").filter(Boolean);
+                                          if (newValue) {
+                                            tags[idx] = newValue;
+                                          } else {
+                                            tags.splice(idx, 1);
+                                          }
+                                          setCustomAlts((prev) => ({ ...prev, [file.id]: tags.join(" | ") }));
                                           setEditingTag(null);
-                                        }
+                                        }}
+                                        onKeyDown={(e) => {
+                                          if (e.key === "Enter") {
+                                            (e.target as HTMLInputElement).blur();
+                                          } else if (e.key === "Escape") {
+                                            setEditingTag(null);
+                                          }
+                                        }}
+                                        sx={{
+                                          width: "auto",
+                                          minWidth: 60,
+                                          "& .MuiInputBase-input": {
+                                            fontSize: "0.8125rem",
+                                            padding: "2px 4px",
+                                          },
+                                        }}
+                                        InputProps={{ disableUnderline: true }}
+                                      />
+                                    );
+                                  }
+
+                                  return (
+                                    <Chip
+                                      key={`${tag}-${idx}`}
+                                      size='small'
+                                      label={tag}
+                                      onDoubleClick={() => setEditingTag({ fileId: file.id, tagIdx: idx })}
+                                      onDelete={() => {
+                                        const tags = (customAlts[file.id] || "").split(" | ").filter(Boolean);
+                                        tags.splice(idx, 1);
+                                        setCustomAlts((prev) => ({ ...prev, [file.id]: tags.join(" | ") }));
                                       }}
                                       sx={{
-                                        width: "auto",
-                                        minWidth: 60,
-                                        "& .MuiInputBase-input": {
-                                          fontSize: "0.8125rem",
-                                          padding: "2px 4px",
+                                        cursor: "pointer",
+                                        backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                                        "& .MuiChip-deleteIcon": {
+                                          color: theme.palette.text.secondary,
+                                          "&:hover": { color: theme.palette.error.main },
+                                        },
+                                        "&:hover": {
+                                          backgroundColor: alpha(theme.palette.primary.main, 0.2),
                                         },
                                       }}
-                                      InputProps={{ disableUnderline: true }}
                                     />
                                   );
-                                }
-
-                                return (
-                                  <Chip
-                                    key={`${tag}-${idx}`}
-                                    size="small"
-                                    label={tag}
-                                    onDoubleClick={() => setEditingTag({ fileId: file.id, tagIdx: idx })}
-                                    onDelete={() => {
-                                      const tags = (customAlts[file.id] || "").split(" | ").filter(Boolean);
-                                      tags.splice(idx, 1);
-                                      setCustomAlts((prev) => ({ ...prev, [file.id]: tags.join(" | ") }));
-                                    }}
-                                    sx={{
-                                      cursor: "pointer",
-                                      backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                                      "& .MuiChip-deleteIcon": {
-                                        color: theme.palette.text.secondary,
-                                        "&:hover": { color: theme.palette.error.main },
-                                      },
-                                      "&:hover": {
-                                        backgroundColor: alpha(theme.palette.primary.main, 0.2),
-                                      },
-                                    }}
-                                  />
-                                );
-                              })}
+                                })}
                               {/* Inline input for adding custom text */}
                               <TextField
-                                size="small"
-                                variant="standard"
+                                size='small'
+                                variant='standard'
                                 placeholder={customAlts[file.id] ? "Add more..." : "Type or click suggestions below..."}
                                 disabled={uploading}
                                 onKeyDown={(e) => {
@@ -627,45 +545,20 @@ export default function StorageUploadDialog({
                       {/* AI suggestions */}
                       {analysisEnabled && (
                         <Box sx={{ pl: 0, pt: spacingMUI.xs }}>
-                          <Stack
-                            direction='row'
-                            spacing={spacingMUI.xs}
-                            alignItems='center'
-                            flexWrap='wrap'
-                          >
-                            <Button
-                              size='small'
-                              variant='outlined'
-                              onClick={() => handleAnalyzeFile(file)}
-                              disabled={uploading || aiById[file.id]?.status === "running"}
-                              sx={{ textTransform: "none" }}
-                            >
+                          <Stack direction='row' spacing={spacingMUI.xs} alignItems='center' flexWrap='wrap'>
+                            <Button size='small' variant='outlined' onClick={() => handleAnalyzeFile(file)} disabled={uploading || aiById[file.id]?.status === "running"} sx={{ textTransform: "none" }}>
                               {aiById[file.id]?.status === "running" ? "Analyzing…" : "Analyze (OCR)"}
                             </Button>
 
                             {aiById[file.id]?.skippedReason === "lowTextLikelihood" && (
-                              <Button
-                                size='small'
-                                variant='text'
-                                onClick={() => handleAnalyzeFile(file, { force: true })}
-                                disabled={uploading || aiById[file.id]?.status === "running"}
-                                sx={{ textTransform: "none" }}
-                              >
+                              <Button size='small' variant='text' onClick={() => handleAnalyzeFile(file, { force: true })} disabled={uploading || aiById[file.id]?.status === "running"} sx={{ textTransform: "none" }}>
                                 Force OCR
                               </Button>
                             )}
 
-                            {typeof aiById[file.id]?.textLikelihood === "number" && (
-                              <Chip
-                                size='small'
-                                variant='outlined'
-                                label={`TL ${Number(aiById[file.id]?.textLikelihood).toFixed(3)}`}
-                              />
-                            )}
+                            {typeof aiById[file.id]?.textLikelihood === "number" && <Chip size='small' variant='outlined' label={`TL ${Number(aiById[file.id]?.textLikelihood).toFixed(3)}`} />}
 
-                            {aiById[file.id]?.cacheHit && (
-                              <Chip size='small' variant='outlined' label='cache' />
-                            )}
+                            {aiById[file.id]?.cacheHit && <Chip size='small' variant='outlined' label='cache' />}
 
                             {aiById[file.id]?.status === "error" && (
                               <Typography variant='caption' color='error'>
@@ -676,10 +569,7 @@ export default function StorageUploadDialog({
 
                           {aiById[file.id]?.status === "running" && (
                             <Box sx={{ mt: spacingMUI.xs }}>
-                              <LinearProgress
-                                variant={typeof aiById[file.id]?.progress === "number" ? "determinate" : "indeterminate"}
-                                value={Math.round((aiById[file.id]?.progress ?? 0) * 100)}
-                              />
+                              <LinearProgress variant={typeof aiById[file.id]?.progress === "number" ? "determinate" : "indeterminate"} value={Math.round((aiById[file.id]?.progress ?? 0) * 100)} />
                             </Box>
                           )}
 
@@ -703,54 +593,20 @@ export default function StorageUploadDialog({
                                           [file.id]: !prev[file.id],
                                         }))
                                       }
-                                      sx={{ textTransform: "none", px: 0.5 }}
-                                    >
+                                      sx={{ textTransform: "none", px: 0.5 }}>
                                       {showOcrTextById[file.id] ? "Сховати OCR текст" : "Показати OCR текст"}
                                     </Button>
 
                                     <Tooltip title='Copy OCR text'>
-                                      <IconButton
-                                        size='small'
-                                        onClick={() =>
-                                          copyToClipboard(
-                                            aiById[file.id]?.ocrTextRaw ||
-                                              aiById[file.id]?.ocrText ||
-                                              ""
-                                          )
-                                        }
-                                      >
+                                      <IconButton size='small' onClick={() => copyToClipboard(aiById[file.id]?.ocrTextRaw || aiById[file.id]?.ocrText || "")}>
                                         <CopyIcon fontSize='small' />
                                       </IconButton>
                                     </Tooltip>
                                   </Stack>
 
-                                  {showOcrTextById[file.id] && (
-                                    <TextField
-                                      fullWidth
-                                      size='small'
-                                      multiline
-                                      minRows={3}
-                                      maxRows={10}
-                                      value={aiById[file.id]?.ocrText || ""}
-                                      label='OCR (clean)'
-                                      InputProps={{ readOnly: true }}
-                                      sx={{ mt: spacingMUI.xs }}
-                                    />
-                                  )}
+                                  {showOcrTextById[file.id] && <TextField fullWidth size='small' multiline minRows={3} maxRows={10} value={aiById[file.id]?.ocrText || ""} label='OCR (clean)' InputProps={{ readOnly: true }} sx={{ mt: spacingMUI.xs }} />}
 
-                                  {showOcrTextById[file.id] && aiById[file.id]?.ocrTextRaw && (
-                                    <TextField
-                                      fullWidth
-                                      size='small'
-                                      multiline
-                                      minRows={3}
-                                      maxRows={10}
-                                      value={aiById[file.id]?.ocrTextRaw || ""}
-                                      label='OCR (raw debug)'
-                                      InputProps={{ readOnly: true }}
-                                      sx={{ mt: spacingMUI.xs }}
-                                    />
-                                  )}
+                                  {showOcrTextById[file.id] && aiById[file.id]?.ocrTextRaw && <TextField fullWidth size='small' multiline minRows={3} maxRows={10} value={aiById[file.id]?.ocrTextRaw || ""} label='OCR (raw debug)' InputProps={{ readOnly: true }} sx={{ mt: spacingMUI.xs }} />}
                                 </Box>
                               )}
 
@@ -785,12 +641,8 @@ export default function StorageUploadDialog({
                                           }}
                                           sx={{
                                             cursor: "pointer",
-                                            backgroundColor: isSelected
-                                              ? alpha(theme.palette.primary.main, 0.2)
-                                              : alpha(theme.palette.background.paper, 0.8),
-                                            border: isSelected
-                                              ? `1px solid ${theme.palette.primary.main}`
-                                              : `1px solid ${theme.palette.divider}`,
+                                            backgroundColor: isSelected ? alpha(theme.palette.primary.main, 0.2) : alpha(theme.palette.background.paper, 0.8),
+                                            border: isSelected ? `1px solid ${theme.palette.primary.main}` : `1px solid ${theme.palette.divider}`,
                                             "&:hover": {
                                               backgroundColor: alpha(theme.palette.primary.main, 0.15),
                                             },
@@ -897,32 +749,18 @@ export default function StorageUploadDialog({
                       fontWeight: 500,
                       mb: spacingMUI.sm,
                       color: theme.palette.text.primary,
-                    }}
-                  >
+                    }}>
                     Category
                   </FormLabel>
-                  <RadioGroup
-                    row
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                  >
+                  <RadioGroup row value={category} onChange={(e) => setCategory(e.target.value)}>
                     {categories.map((c) => (
-                      <FormControlLabel
-                        key={c}
-                        value={c}
-                        control={<Radio />}
-                        label={c}
-                      />
+                      <FormControlLabel key={c} value={c} control={<Radio />} label={c} />
                     ))}
                   </RadioGroup>
                 </FormControl>
               ) : (
-                <Alert
-                  severity='info'
-                  sx={{ borderRadius: `${borderRadius.md}px` }}
-                >
-                  AlfaOne: категорія не використовується (root:{" "}
-                  <code>{providerCfg.publicRootPrefix}/</code>)
+                <Alert severity='info' sx={{ borderRadius: `${borderRadius.md}px` }}>
+                  AlfaOne: категорія не використовується (root: <code>{providerCfg.publicRootPrefix}/</code>)
                 </Alert>
               )}
 
@@ -955,12 +793,8 @@ export default function StorageUploadDialog({
                     "& .MuiAlert-message": {
                       width: "100%",
                     },
-                  }}
-                >
-                  <Typography
-                    variant='caption'
-                    sx={{ fontFamily: "monospace" }}
-                  >
+                  }}>
+                  <Typography variant='caption' sx={{ fontFamily: "monospace" }}>
                     <strong>Upload path:</strong>
                     <br />
                     {(() => {
@@ -983,16 +817,9 @@ export default function StorageUploadDialog({
                     borderRadius: `${borderRadius.md}px`,
                     backgroundColor: alpha(theme.palette.primary.main, 0.05),
                     border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-                  }}
-                >
-                  <LinearProgress
-                    sx={{ mb: spacingMUI.sm, borderRadius: `${borderRadius.sm}px` }}
-                  />
-                  <Typography
-                    variant='body2'
-                    color='text.secondary'
-                    align='center'
-                  >
+                  }}>
+                  <LinearProgress sx={{ mb: spacingMUI.sm, borderRadius: `${borderRadius.sm}px` }} />
+                  <Typography variant='body2' color='text.secondary' align='center'>
                     Uploading files...
                   </Typography>
                 </Box>
@@ -1000,11 +827,7 @@ export default function StorageUploadDialog({
 
               {/* Error Message */}
               {error && (
-                <Alert
-                  icon={<ErrorIcon />}
-                  severity='error'
-                  sx={{ borderRadius: `${borderRadius.md}px` }}
-                >
+                <Alert icon={<ErrorIcon />} severity='error' sx={{ borderRadius: `${borderRadius.md}px` }}>
                   {error}
                 </Alert>
               )}
@@ -1017,43 +840,21 @@ export default function StorageUploadDialog({
               sx={{
                 p: spacingMUI.base,
                 borderRadius: `${borderRadius.lg}px`,
-                backgroundColor:
-                  componentStyles.card.background || alpha(theme.palette.background.paper, 0.5),
+                backgroundColor: componentStyles.card.background || alpha(theme.palette.background.paper, 0.5),
                 backdropFilter: componentStyles.card.backdropFilter,
                 WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
                 border: `1px solid ${alpha(theme.palette.success.main, 0.2)}`,
-              }}
-            >
-              <Box
-                display='flex'
-                alignItems='center'
-                justifyContent='space-between'
-                mb={spacingMUI.base}
-              >
-                <Box
-                  display='flex'
-                  alignItems='center'
-                  gap={spacingMUI.xs}
-                >
+              }}>
+              <Box display='flex' alignItems='center' justifyContent='space-between' mb={spacingMUI.base}>
+                <Box display='flex' alignItems='center' gap={spacingMUI.xs}>
                   <SuccessIcon sx={{ color: theme.palette.success.main, fontSize: 20 }} />
-                  <Typography
-                    variant='subtitle2'
-                    fontWeight={600}
-                  >
-                    Uploaded Files ({uploadResults.filter((r) => r.success).length}/
-                    {uploadResults.length})
+                  <Typography variant='subtitle2' fontWeight={600}>
+                    Uploaded Files ({uploadResults.filter((r) => r.success).length}/{uploadResults.length})
                   </Typography>
                 </Box>
                 {uploadResults.filter((r) => r.success).length > 0 && (
-                  <Box
-                    display='flex'
-                    gap={spacingMUI.xs}
-                  >
-                    <Tooltip
-                      title='Copy all full URLs'
-                      arrow
-                      placement='top'
-                    >
+                  <Box display='flex' gap={spacingMUI.xs}>
+                    <Tooltip title='Copy all full URLs' arrow placement='top'>
                       <Button
                         size='small'
                         onClick={() => handleCopyAllUrls(false)}
@@ -1063,16 +864,11 @@ export default function StorageUploadDialog({
                           borderRadius: `${borderRadius.md}px`,
                           fontSize: "0.75rem",
                           fontWeight: 600,
-                        }}
-                      >
+                        }}>
                         {copiedUrl === "all" ? "✓" : "Copy URLs"}
                       </Button>
                     </Tooltip>
-                    <Tooltip
-                      title='Copy all short paths'
-                      arrow
-                      placement='top'
-                    >
+                    <Tooltip title='Copy all short paths' arrow placement='top'>
                       <Button
                         size='small'
                         onClick={() => handleCopyAllUrls(true)}
@@ -1083,8 +879,7 @@ export default function StorageUploadDialog({
                           borderRadius: `${borderRadius.md}px`,
                           fontSize: "0.75rem",
                           fontWeight: 600,
-                        }}
-                      >
+                        }}>
                         {copiedUrl === "all-short" ? "✓" : "Copy Paths"}
                       </Button>
                     </Tooltip>
@@ -1099,45 +894,30 @@ export default function StorageUploadDialog({
                     sx={{
                       p: spacingMUI.sm,
                       borderRadius: `${borderRadius.md}px`,
-                      backgroundColor: result.success
-                        ? alpha(theme.palette.success.main, 0.05)
-                        : alpha(theme.palette.error.main, 0.05),
-                      border: `1px solid ${
-                        result.success
-                          ? alpha(theme.palette.success.main, 0.15)
-                          : alpha(theme.palette.error.main, 0.15)
-                      }`,
+                      backgroundColor: result.success ? alpha(theme.palette.success.main, 0.05) : alpha(theme.palette.error.main, 0.05),
+                      border: `1px solid ${result.success ? alpha(theme.palette.success.main, 0.15) : alpha(theme.palette.error.main, 0.15)}`,
                       display: "flex",
                       alignItems: "center",
                       gap: spacingMUI.sm,
                       transition: "all 0.2s ease",
                       "&:hover": {
-                        backgroundColor: result.success
-                          ? alpha(theme.palette.success.main, 0.08)
-                          : alpha(theme.palette.error.main, 0.08),
+                        backgroundColor: result.success ? alpha(theme.palette.success.main, 0.08) : alpha(theme.palette.error.main, 0.08),
                       },
-                    }}
-                  >
+                    }}>
                     <ImageIcon
                       sx={{
                         fontSize: 18,
-                        color: result.success
-                          ? theme.palette.success.main
-                          : theme.palette.error.main,
+                        color: result.success ? theme.palette.success.main : theme.palette.error.main,
                       }}
                     />
-                    <Box
-                      flex={1}
-                      minWidth={0}
-                    >
+                    <Box flex={1} minWidth={0}>
                       <Typography
                         variant='body2'
                         fontWeight={500}
                         sx={{
                           mb: 0.25,
                           color: theme.palette.text.primary,
-                        }}
-                      >
+                        }}>
                         {result.filename}
                       </Typography>
                       {result.success ? (
@@ -1150,29 +930,18 @@ export default function StorageUploadDialog({
                             overflow: "hidden",
                             textOverflow: "ellipsis",
                             whiteSpace: "nowrap",
-                          }}
-                        >
+                          }}>
                           {result.url}
                         </Typography>
                       ) : (
-                        <Typography
-                          variant='caption'
-                          color='error.main'
-                        >
+                        <Typography variant='caption' color='error.main'>
                           {result.error || "Upload failed"}
                         </Typography>
                       )}
                     </Box>
                     {result.success && (
-                      <Box
-                        display='flex'
-                        gap={spacingMUI.xs}
-                      >
-                        <Tooltip
-                          title='Copy full URL'
-                          arrow
-                          placement='top'
-                        >
+                      <Box display='flex' gap={spacingMUI.xs}>
+                        <Tooltip title='Copy full URL' arrow placement='top'>
                           <Button
                             size='small'
                             onClick={() => handleCopyUrl(result.url, false)}
@@ -1185,29 +954,19 @@ export default function StorageUploadDialog({
                               borderRadius: `${borderRadius.sm}px`,
                               fontSize: "0.7rem",
                               fontWeight: 600,
-                              color:
-                                copiedUrl === result.url
-                                  ? theme.palette.success.main
-                                  : theme.palette.primary.main,
+                              color: copiedUrl === result.url ? theme.palette.success.main : theme.palette.primary.main,
                               "&:hover": {
                                 backgroundColor: alpha(theme.palette.primary.main, 0.08),
                               },
-                            }}
-                          >
+                            }}>
                             {copiedUrl === result.url ? "✓" : "URL"}
                           </Button>
                         </Tooltip>
-                        <Tooltip
-                          title='Copy short path'
-                          arrow
-                          placement='top'
-                        >
+                        <Tooltip title='Copy short path' arrow placement='top'>
                           <Button
                             size='small'
                             onClick={() => handleCopyUrl(result.url, true)}
-                            startIcon={
-                              copiedUrl === `${result.url}-short` ? <CheckIcon /> : <CopyIcon />
-                            }
+                            startIcon={copiedUrl === `${result.url}-short` ? <CheckIcon /> : <CopyIcon />}
                             sx={{
                               minWidth: "auto",
                               px: spacingMUI.sm,
@@ -1216,15 +975,11 @@ export default function StorageUploadDialog({
                               borderRadius: `${borderRadius.sm}px`,
                               fontSize: "0.7rem",
                               fontWeight: 600,
-                              color:
-                                copiedUrl === `${result.url}-short`
-                                  ? theme.palette.success.main
-                                  : theme.palette.text.secondary,
+                              color: copiedUrl === `${result.url}-short` ? theme.palette.success.main : theme.palette.text.secondary,
                               "&:hover": {
                                 backgroundColor: alpha(theme.palette.text.secondary, 0.08),
                               },
-                            }}
-                          >
+                            }}>
                             {copiedUrl === `${result.url}-short` ? "✓" : "Path"}
                           </Button>
                         </Tooltip>
@@ -1249,8 +1004,7 @@ export default function StorageUploadDialog({
               textTransform: "none",
               fontWeight: 600,
               borderRadius: `${borderRadius.md}px`,
-            }}
-          >
+            }}>
             Done
           </Button>
         ) : (
@@ -1264,8 +1018,7 @@ export default function StorageUploadDialog({
                 textTransform: "none",
                 borderRadius: `${borderRadius.md}px`,
                 fontWeight: uploading ? 600 : 400,
-              }}
-            >
+              }}>
               {uploading ? "Скасувати" : "Cancel"}
             </Button>
             <Button
@@ -1277,8 +1030,7 @@ export default function StorageUploadDialog({
                 textTransform: "none",
                 fontWeight: 600,
                 borderRadius: `${borderRadius.md}px`,
-              }}
-            >
+              }}>
               {uploading ? "Завантаження..." : "Upload"}
             </Button>
           </>
