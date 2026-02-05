@@ -1,28 +1,19 @@
-import { useCallback, useEffect, useState } from "react";
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio, Typography, Box, Alert, LinearProgress, Chip, Stack, useTheme, alpha, Divider } from "@mui/material";
-import { CloudUpload as UploadIcon, CheckCircle as SuccessIcon, Error as ErrorIcon, ContentCopy as CopyIcon, Image as ImageIcon, CheckCircleOutline as CheckIcon, Close as CloseIcon, Link as LinkIcon, DragIndicator as DragIcon } from "@mui/icons-material";
-import IconButton from "@mui/material/IconButton";
-import Tooltip from "@mui/material/Tooltip";
+import { useState, useCallback } from "react";
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, FormControl, FormLabel, ToggleButtonGroup, ToggleButton, Typography, Box, Alert, LinearProgress, IconButton, Tooltip, Stack, useTheme, alpha, Divider, FormHelperText } from "@mui/material";
+import { CloudUpload as UploadIcon, CheckCircle as SuccessIcon, Error as ErrorIcon, Close as CloseIcon, Link as LinkIcon, CheckCircleOutline as CheckIcon } from "@mui/icons-material";
 
 import { useThemeMode } from "../theme";
 import { getComponentStyles } from "../theme/componentStyles";
 import { spacingMUI, borderRadius } from "../theme/tokens";
 import { copyToClipboard } from "./utils/clipboard";
+
 import { normalizeCustomNameInput } from "./utils/imageAnalysis";
 import { useOcrAnalysis } from "./utils/useOcrAnalysis";
 import { UI_TIMINGS } from "./constants";
-import { STORAGE_PROVIDERS_CONFIG } from "./constants";
 import type { ImageAnalysisSettings, UploadResult } from "./types";
 import type { StorageProviderKey } from "./constants";
-
-function toShortPath(url: string): string {
-  try {
-    const u = new URL(url);
-    return u.pathname.startsWith("/") ? u.pathname.slice(1) : u.pathname;
-  } catch {
-    return url;
-  }
-}
+import { useUploadMetadata } from "./hooks/useUploadMetadata";
+import { FileList } from "./components/FileList";
 
 interface StorageUploadDialogProps {
   open: boolean;
@@ -41,28 +32,19 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
   const { mode, style } = useThemeMode();
   const componentStyles = getComponentStyles(mode, style);
 
-  const providerCfg = STORAGE_PROVIDERS_CONFIG.providers[storageProvider] || STORAGE_PROVIDERS_CONFIG.providers.default;
-  const showCategory = providerCfg.usesCategory;
+  // Extracted Metadata Hook
+  const { category, setCategory, folderName, setFolderName, customNames, setCustomNames, customAlts, setCustomAlts, orderedFiles, draggedIndex, handleDragStart, handleDragOver, handleDragEnd, showCategory, categories, providerCfg } = useUploadMetadata({ files, open, storageProvider, initialFolderName });
 
-  const categories = (showCategory && providerCfg.categories && providerCfg.categories.length > 0 ? providerCfg.categories : STORAGE_PROVIDERS_CONFIG.providers.default.categories) || ["finance", "health"];
-  const defaultCategory = (showCategory && providerCfg.defaultCategory) || STORAGE_PROVIDERS_CONFIG.providers.default.defaultCategory || categories[0] || "finance";
-
-  const [category, setCategory] = useState<string>(defaultCategory);
-  const [folderName, setFolderName] = useState<string>("");
+  // UI State
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploadResults, setUploadResults] = useState<UploadResult[]>([]);
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
-  const [customNames, setCustomNames] = useState<Record<string, string>>({});
-  const [customAlts, setCustomAlts] = useState<Record<string, string>>({});
-  const [orderedFiles, setOrderedFiles] = useState(files);
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [showOcrTextById, setShowOcrTextById] = useState<Record<string, boolean>>({});
-  const [editingTag, setEditingTag] = useState<{ fileId: string; tagIdx: number } | null>(null);
 
   const analysisEnabled = Boolean(imageAnalysisSettings?.enabled && imageAnalysisSettings.engine === "ocr");
 
-  // AI (step 1): OCR-based suggestions (configured globally in HtmlConverterPanel)
+  // AI Analysis (kept here as it ties to complex state, though could be extracted)
   const {
     aiById,
     analyzeFile,
@@ -79,7 +61,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
       const result = await analyzeFile(file, { force: opts?.force });
       if (!result) return;
 
-      // Auto-apply (global settings)
+      // Auto-apply if settings dictate
       const bestAlt = result.altSuggestions[0] || result.ctaSuggestions?.[0];
       if (imageAnalysisSettings?.autoApplyAlt === "ifEmpty" && bestAlt) {
         setCustomAlts((prev) => (prev[file.id] ? prev : { ...prev, [file.id]: bestAlt }));
@@ -91,112 +73,32 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
         }
       }
     },
-    [analyzeFile, imageAnalysisSettings?.autoApplyAlt, imageAnalysisSettings?.autoApplyFilename]
+    [analyzeFile, imageAnalysisSettings?.autoApplyAlt, imageAnalysisSettings?.autoApplyFilename, setCustomAlts, setCustomNames]
   );
 
-  // Sync orderedFiles when files prop changes
-  useEffect(() => {
-    setOrderedFiles(files);
-  }, [files]);
-
-  // Reset per-open transient state
-  useEffect(() => {
-    if (!open) return;
-    setError(null);
-    setUploadResults([]);
-    setCopiedUrl(null);
-    setCustomNames({});
-    setCustomAlts({});
-    setShowOcrTextById({});
-    setEditingTag(null);
-    resetOcrState();
-  }, [open]);
-
-  // Reset category when provider changes
-  useEffect(() => {
-    if (!showCategory) return;
-    setCategory((prev) => (categories.includes(prev) ? prev : defaultCategory));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storageProvider]);
-
-  // Auto-fill from initialFolderName or clipboard on mount
-  useEffect(() => {
-    if (open) {
-      // Priority 1: Use initialFolderName from fileName input
-      if (initialFolderName && /[a-zA-Z]+\d+/.test(initialFolderName)) {
-        setFolderName(initialFolderName);
-        return;
-      }
-
-      // Priority 2: Try to get from clipboard
-      if (navigator.clipboard && navigator.clipboard.readText) {
-        navigator.clipboard
-          .readText()
-          .then((text) => {
-            // Check if clipboard contains valid format (e.g., "ABCD123")
-            if (/[a-zA-Z]+\d+/.test(text.trim())) {
-              setFolderName(text.trim());
-            }
-          })
-          .catch((err) => {
-            // Clipboard API not available, permission denied, or document not focused
-            console.debug("Clipboard read failed:", err.message || err);
-          });
-      }
-    }
-  }, [open, initialFolderName]);
-
-  // Drag and drop handlers
-  const handleDragStart = (index: number) => {
-    setDraggedIndex(index);
-  };
-
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    if (draggedIndex === null || draggedIndex === index) return;
-
-    const newFiles = [...orderedFiles];
-    const draggedItem = newFiles[draggedIndex];
-    newFiles.splice(draggedIndex, 1);
-    newFiles.splice(index, 0, draggedItem);
-
-    setOrderedFiles(newFiles);
-    setDraggedIndex(index);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedIndex(null);
-  };
-
-  const handleUpload = async () => {
+  // Handlers
+  const handleUploadClick = async () => {
     setError(null);
     setUploadResults([]);
 
-    // Validation
     if (!folderName.trim()) {
       setError("Folder name is required");
       return;
     }
-
     if (!/[a-zA-Z]+\d+/.test(folderName)) {
       setError("Invalid format. Expected: Letters + Numbers (e.g., ABCD123)");
       return;
     }
 
     setUploading(true);
-
     try {
       const fileOrder = orderedFiles.map((f) => f.id);
       const effectiveCategory = showCategory ? category : "finance";
       const response = await onUpload(effectiveCategory, folderName.trim(), customNames, customAlts, fileOrder);
       setUploadResults(response.results);
-
-      // Add to history
       if (onHistoryAdd && response.results.length > 0) {
         onHistoryAdd(response.category, response.folderName, response.results);
       }
-
-      // Don't auto-close, let user review results and copy URLs
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
@@ -206,20 +108,20 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
 
   const handleClose = () => {
     if (uploading) {
-      // If uploading, trigger cancel instead of close
-      handleCancel();
+      handleCancelClick();
     } else {
       onClose();
+      // Reset UI state
       setError(null);
       setUploadResults([]);
       setCopiedUrl(null);
-      setCustomNames({});
-      setCustomAlts({});
+      // Metadata state resets in hook on open change
       disposeOcr();
+      resetOcrState();
     }
   };
 
-  const handleCancel = () => {
+  const handleCancelClick = () => {
     if (uploading && onCancel) {
       onCancel();
       setError("Завантаження скасовано");
@@ -227,29 +129,9 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
     }
   };
 
-  const handleCopyUrl = async (url: string, isShortPath = false) => {
-    const textToCopy = isShortPath ? toShortPath(url) : url;
-
-    const copiedKey = isShortPath ? `${url}-short` : url;
-
-    const success = await copyToClipboard(textToCopy);
-    if (success) {
-      setCopiedUrl(copiedKey);
-      setTimeout(() => setCopiedUrl(null), UI_TIMINGS.COPIED_FEEDBACK);
-    }
-  };
-
-  const handleCopyAllUrls = async (isShortPath = false) => {
-    const urls = uploadResults
-      .filter((r) => r.success)
-      .map((r) => (isShortPath ? toShortPath(r.url) : r.url))
-      .join("\n");
-
-    const copiedKey = isShortPath ? "all-short" : "all";
-
-    const success = await copyToClipboard(urls);
-    if (success) {
-      setCopiedUrl(copiedKey);
+  const handleCopy = async (text: string, key: string) => {
+    if (await copyToClipboard(text)) {
+      setCopiedUrl(key);
       setTimeout(() => setCopiedUrl(null), UI_TIMINGS.COPIED_FEEDBACK);
     }
   };
@@ -278,554 +160,120 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
               {uploadResults.length > 0 ? "Upload Complete" : "Upload to Storage"}
             </Typography>
           </Box>
-          <IconButton
-            onClick={handleClose}
-            disabled={uploading}
-            size='small'
-            sx={{
-              color: theme.palette.text.secondary,
-              "&:hover": {
-                backgroundColor: alpha(theme.palette.text.primary, 0.05),
-              },
-            }}>
+          <IconButton onClick={handleClose} disabled={uploading} size='small'>
             <CloseIcon fontSize='small' />
           </IconButton>
         </Box>
       </DialogTitle>
-
       <Divider />
 
       <DialogContent sx={{ pt: spacingMUI.lg }}>
         <Stack spacing={spacingMUI.lg}>
-          {/* Hide input section if upload is complete */}
+          {/* Input Section */}
           {uploadResults.length === 0 && (
             <>
-              {/* Files list with thumbnails, rename, and drag & drop */}
-              <Box>
-                <Typography variant='body2' color='text.secondary' fontWeight={500} gutterBottom>
-                  Files to upload ({orderedFiles.length}):
-                </Typography>
-                <Stack spacing={spacingMUI.sm} mt={spacingMUI.sm}>
-                  {orderedFiles.map((file, index) => (
-                    <Box
-                      key={file.id}
-                      draggable={!uploading}
-                      onDragStart={() => handleDragStart(index)}
-                      onDragOver={(e) => handleDragOver(e, index)}
-                      onDragEnd={handleDragEnd}
+              {/* File List */}
+              {files.length > 0 && (
+                <>
+                  <Typography variant='subtitle2' fontWeight={600}>
+                    Files ({files.length})
+                  </Typography>
+                  <FileList files={orderedFiles} customNames={customNames} setCustomNames={setCustomNames} customAlts={customAlts} setCustomAlts={setCustomAlts} draggedIndex={draggedIndex} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd} aiById={aiById} showOcrTextById={showOcrTextById} setShowOcrTextById={setShowOcrTextById} onAnalyze={handleAnalyzeFile} />
+                </>
+              )}
+
+              {/* Metadata Form */}
+              <Stack spacing={spacingMUI.base}>
+                {showCategory ? (
+                  <FormControl fullWidth>
+                    <FormLabel component='legend' sx={{ fontWeight: 500, mb: 1, color: "text.primary" }}>
+                      Category
+                    </FormLabel>
+                    <ToggleButtonGroup
+                      value={category}
+                      exclusive
+                      onChange={(_, newVal) => newVal && setCategory(newVal)}
+                      fullWidth
+                      size='small'
                       sx={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "stretch",
-                        gap: spacingMUI.sm,
-                        p: spacingMUI.sm,
-                        borderRadius: `${borderRadius.sm}px`,
-                        backgroundColor: draggedIndex === index ? alpha(theme.palette.primary.main, 0.15) : alpha(theme.palette.background.paper, 0.5),
-                        border: `1px solid ${draggedIndex === index ? theme.palette.primary.main : theme.palette.divider}`,
-                        cursor: uploading ? "default" : "grab",
-                        transition: "all 0.2s ease",
-                        "&:active": {
-                          cursor: uploading ? "default" : "grabbing",
-                        },
-                        "&:hover": uploading
-                          ? {}
-                          : {
-                              backgroundColor: alpha(theme.palette.primary.main, 0.08),
-                              borderColor: theme.palette.primary.light,
-                            },
-                      }}>
-                      <Box
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: spacingMUI.sm,
-                        }}>
-                        {/* Drag Handle */}
-                        <DragIcon
-                          sx={{
-                            color: theme.palette.text.disabled,
-                            cursor: uploading ? "default" : "grab",
-                            "&:active": {
-                              cursor: uploading ? "default" : "grabbing",
-                            },
-                          }}
-                        />
-
-                        {/* Thumbnail */}
-                        {file.path && (
-                          <Box
-                            sx={{
-                              width: 48,
-                              height: 48,
-                              borderRadius: `${borderRadius.sm}px`,
-                              overflow: "hidden",
-                              flexShrink: 0,
-                              border: `1px solid ${theme.palette.divider}`,
-                              backgroundColor: alpha(theme.palette.background.default, 0.5),
-                            }}>
-                            <img
-                              src={file.path}
-                              alt={file.name}
-                              style={{
-                                width: "100%",
-                                height: "100%",
-                                objectFit: "cover",
-                              }}
-                            />
-                          </Box>
-                        )}
-
-                        {/* Index Chip */}
-                        <Chip
-                          label={`#${index + 1}`}
-                          size='small'
-                          sx={{
-                            minWidth: 36,
-                            fontWeight: 700,
+                        "& .MuiToggleButton-root": {
+                          borderRadius: `${borderRadius.md}px`,
+                          border: `1px solid ${theme.palette.divider}`,
+                          "&.Mui-selected": {
                             backgroundColor: alpha(theme.palette.primary.main, 0.1),
                             color: theme.palette.primary.main,
-                          }}
-                        />
+                            fontWeight: 600,
+                            border: `1px solid ${theme.palette.primary.main}`,
+                            "&:hover": {
+                              backgroundColor: alpha(theme.palette.primary.main, 0.2),
+                            },
+                          },
+                          "&:not(:first-of-type)": {
+                            marginLeft: 1,
+                            borderLeft: `1px solid ${theme.palette.divider}`,
+                          },
+                          "&:not(:last-of-type)": {
+                            borderRight: `1px solid ${theme.palette.divider}`,
+                          },
+                        },
+                      }}>
+                      {categories.map((c) => (
+                        <ToggleButton key={c} value={c}>
+                          {c}
+                        </ToggleButton>
+                      ))}
+                    </ToggleButtonGroup>
+                  </FormControl>
+                ) : (
+                  <Alert severity='info' sx={{ borderRadius: `${borderRadius.md}px` }}>
+                    AlfaOne: категорія не використовується (root: <code>{providerCfg.publicRootPrefix}/</code>)
+                  </Alert>
+                )}
 
-                        <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: spacingMUI.xs }}>
-                          {/* Name Input */}
-                          <TextField
-                            size='small'
-                            fullWidth
-                            placeholder={file.name.replace(/\.[^/.]+$/, "")}
-                            value={customNames[file.id] || ""}
-                            onChange={(e) => {
-                              const value = normalizeCustomNameInput(e.target.value);
-                              setCustomNames((prev) => ({
-                                ...prev,
-                                [file.id]: value,
-                              }));
-                            }}
-                            disabled={uploading}
-                            helperText={customNames[file.id] ? `${customNames[file.id]}.jpg` : file.name}
-                            sx={{
-                              "& .MuiOutlinedInput-root": {
-                                borderRadius: `${borderRadius.sm}px`,
-                                "&.Mui-focused": {
-                                  backgroundColor: "transparent",
-                                },
-                              },
-                              "& .MuiFormHelperText-root": {
-                                fontFamily: "monospace",
-                                fontSize: "0.7rem",
-                              },
-                            }}
-                          />
-
-                          {/* ALT Input with Tags */}
-                          {analysisEnabled && (
-                            <Box
-                              sx={{
-                                border: `1px solid ${theme.palette.divider}`,
-                                borderRadius: `${borderRadius.sm}px`,
-                                p: spacingMUI.xs,
-                                minHeight: 40,
-                                display: "flex",
-                                flexWrap: "wrap",
-                                gap: 0.5,
-                                alignItems: "center",
-                                backgroundColor: alpha(theme.palette.background.paper, 0.5),
-                                "&:focus-within": {
-                                  borderColor: theme.palette.primary.main,
-                                },
-                              }}>
-                              {/* Selected ALT tags as removable/editable chips */}
-                              {(customAlts[file.id] || "")
-                                .split(" | ")
-                                .filter(Boolean)
-                                .map((tag, idx) => {
-                                  const isEditing = editingTag?.fileId === file.id && editingTag?.tagIdx === idx;
-
-                                  if (isEditing) {
-                                    return (
-                                      <TextField
-                                        key={`edit-${idx}`}
-                                        size='small'
-                                        variant='standard'
-                                        defaultValue={tag}
-                                        autoFocus
-                                        onBlur={(e) => {
-                                          const newValue = e.target.value.trim();
-                                          const tags = (customAlts[file.id] || "").split(" | ").filter(Boolean);
-                                          if (newValue) {
-                                            tags[idx] = newValue;
-                                          } else {
-                                            tags.splice(idx, 1);
-                                          }
-                                          setCustomAlts((prev) => ({ ...prev, [file.id]: tags.join(" | ") }));
-                                          setEditingTag(null);
-                                        }}
-                                        onKeyDown={(e) => {
-                                          if (e.key === "Enter") {
-                                            (e.target as HTMLInputElement).blur();
-                                          } else if (e.key === "Escape") {
-                                            setEditingTag(null);
-                                          }
-                                        }}
-                                        sx={{
-                                          width: "auto",
-                                          minWidth: 60,
-                                          "& .MuiInputBase-input": {
-                                            fontSize: "0.8125rem",
-                                            padding: "2px 4px",
-                                          },
-                                        }}
-                                        InputProps={{ disableUnderline: true }}
-                                      />
-                                    );
-                                  }
-
-                                  return (
-                                    <Chip
-                                      key={`${tag}-${idx}`}
-                                      size='small'
-                                      label={tag}
-                                      onDoubleClick={() => setEditingTag({ fileId: file.id, tagIdx: idx })}
-                                      onDelete={() => {
-                                        const tags = (customAlts[file.id] || "").split(" | ").filter(Boolean);
-                                        tags.splice(idx, 1);
-                                        setCustomAlts((prev) => ({ ...prev, [file.id]: tags.join(" | ") }));
-                                      }}
-                                      sx={{
-                                        cursor: "pointer",
-                                        backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                                        "& .MuiChip-deleteIcon": {
-                                          color: theme.palette.text.secondary,
-                                          "&:hover": { color: theme.palette.error.main },
-                                        },
-                                        "&:hover": {
-                                          backgroundColor: alpha(theme.palette.primary.main, 0.2),
-                                        },
-                                      }}
-                                    />
-                                  );
-                                })}
-                              {/* Inline input for adding custom text */}
-                              <TextField
-                                size='small'
-                                variant='standard'
-                                placeholder={customAlts[file.id] ? "Add more..." : "Type or click suggestions below..."}
-                                disabled={uploading}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter" && (e.target as HTMLInputElement).value.trim()) {
-                                    e.preventDefault();
-                                    const newTag = (e.target as HTMLInputElement).value.trim();
-                                    const existing = (customAlts[file.id] || "").split(" | ").filter(Boolean);
-                                    if (!existing.includes(newTag)) {
-                                      setCustomAlts((prev) => ({
-                                        ...prev,
-                                        [file.id]: [...existing, newTag].join(" | "),
-                                      }));
-                                    }
-                                    (e.target as HTMLInputElement).value = "";
-                                  }
-                                }}
-                                sx={{
-                                  flex: 1,
-                                  minWidth: 120,
-                                  "& .MuiInput-underline:before": { borderBottom: "none" },
-                                  "& .MuiInput-underline:after": { borderBottom: "none" },
-                                  "& .MuiInput-underline:hover:before": { borderBottom: "none" },
-                                }}
-                                InputProps={{
-                                  disableUnderline: true,
-                                  sx: { fontSize: "0.875rem" },
-                                }}
-                              />
-                            </Box>
-                          )}
-                        </Box>
-                      </Box>
-
-                      {/* AI suggestions */}
-                      {analysisEnabled && (
-                        <Box sx={{ pl: 0, pt: spacingMUI.xs }}>
-                          <Stack direction='row' spacing={spacingMUI.xs} alignItems='center' flexWrap='wrap'>
-                            <Button size='small' variant='outlined' onClick={() => handleAnalyzeFile(file)} disabled={uploading || aiById[file.id]?.status === "running"} sx={{ textTransform: "none" }}>
-                              {aiById[file.id]?.status === "running" ? "Analyzing…" : "Analyze (OCR)"}
-                            </Button>
-
-                            {aiById[file.id]?.skippedReason === "lowTextLikelihood" && (
-                              <Button size='small' variant='text' onClick={() => handleAnalyzeFile(file, { force: true })} disabled={uploading || aiById[file.id]?.status === "running"} sx={{ textTransform: "none" }}>
-                                Force OCR
-                              </Button>
-                            )}
-
-                            {typeof aiById[file.id]?.textLikelihood === "number" && <Chip size='small' variant='outlined' label={`TL ${Number(aiById[file.id]?.textLikelihood).toFixed(3)}`} />}
-
-                            {aiById[file.id]?.cacheHit && <Chip size='small' variant='outlined' label='cache' />}
-
-                            {aiById[file.id]?.status === "error" && (
-                              <Typography variant='caption' color='error'>
-                                {aiById[file.id]?.error}
-                              </Typography>
-                            )}
-                          </Stack>
-
-                          {aiById[file.id]?.status === "running" && (
-                            <Box sx={{ mt: spacingMUI.xs }}>
-                              <LinearProgress variant={typeof aiById[file.id]?.progress === "number" ? "determinate" : "indeterminate"} value={Math.round((aiById[file.id]?.progress ?? 0) * 100)} />
-                            </Box>
-                          )}
-
-                          {aiById[file.id]?.status === "done" && (
-                            <Box sx={{ mt: spacingMUI.xs }}>
-                              {aiById[file.id]?.skippedReason === "lowTextLikelihood" && (
-                                <Typography variant='caption' color='text.secondary' display='block' sx={{ mb: 0.5 }}>
-                                  OCR пропущено (текст малоймовірний). Натисни <b>Force OCR</b>, якщо це банер/кнопка з текстом.
-                                </Typography>
-                              )}
-
-                              {(aiById[file.id]?.ocrText || aiById[file.id]?.ocrTextRaw) && (
-                                <Box sx={{ mb: spacingMUI.xs }}>
-                                  <Stack direction='row' spacing={spacingMUI.xs} alignItems='center' flexWrap='wrap'>
-                                    <Button
-                                      size='small'
-                                      variant='text'
-                                      onClick={() =>
-                                        setShowOcrTextById((prev) => ({
-                                          ...prev,
-                                          [file.id]: !prev[file.id],
-                                        }))
-                                      }
-                                      sx={{ textTransform: "none", px: 0.5 }}>
-                                      {showOcrTextById[file.id] ? "Сховати OCR текст" : "Показати OCR текст"}
-                                    </Button>
-
-                                    <Tooltip title='Copy OCR text'>
-                                      <IconButton size='small' onClick={() => copyToClipboard(aiById[file.id]?.ocrTextRaw || aiById[file.id]?.ocrText || "")}>
-                                        <CopyIcon fontSize='small' />
-                                      </IconButton>
-                                    </Tooltip>
-                                  </Stack>
-
-                                  {showOcrTextById[file.id] && <TextField fullWidth size='small' multiline minRows={3} maxRows={10} value={aiById[file.id]?.ocrText || ""} label='OCR (clean)' InputProps={{ readOnly: true }} sx={{ mt: spacingMUI.xs }} />}
-
-                                  {showOcrTextById[file.id] && aiById[file.id]?.ocrTextRaw && <TextField fullWidth size='small' multiline minRows={3} maxRows={10} value={aiById[file.id]?.ocrTextRaw || ""} label='OCR (raw debug)' InputProps={{ readOnly: true }} sx={{ mt: spacingMUI.xs }} />}
-                                </Box>
-                              )}
-
-                              {(aiById[file.id]?.altSuggestions?.length ?? 0) > 0 && (
-                                <Box sx={{ mt: spacingMUI.sm }}>
-                                  <Typography variant='caption' color='text.secondary' display='block' sx={{ mb: 0.75 }}>
-                                    ALT suggestions (click to add)
-                                  </Typography>
-                                  <Stack direction='row' spacing={0.75} flexWrap='wrap' useFlexGap sx={{ gap: 0.75 }}>
-                                    {aiById[file.id]?.altSuggestions?.map((s) => {
-                                      const existing = (customAlts[file.id] || "").split(" | ").filter(Boolean);
-                                      const isSelected = existing.includes(s);
-                                      return (
-                                        <Chip
-                                          key={s}
-                                          size='small'
-                                          label={s}
-                                          onClick={() => {
-                                            if (isSelected) {
-                                              // Remove if already selected
-                                              setCustomAlts((prev) => ({
-                                                ...prev,
-                                                [file.id]: existing.filter((t) => t !== s).join(" | "),
-                                              }));
-                                            } else {
-                                              // Append
-                                              setCustomAlts((prev) => ({
-                                                ...prev,
-                                                [file.id]: [...existing, s].join(" | "),
-                                              }));
-                                            }
-                                          }}
-                                          sx={{
-                                            cursor: "pointer",
-                                            backgroundColor: isSelected ? alpha(theme.palette.primary.main, 0.2) : alpha(theme.palette.background.paper, 0.8),
-                                            border: isSelected ? `1px solid ${theme.palette.primary.main}` : `1px solid ${theme.palette.divider}`,
-                                            "&:hover": {
-                                              backgroundColor: alpha(theme.palette.primary.main, 0.15),
-                                            },
-                                          }}
-                                        />
-                                      );
-                                    })}
-                                  </Stack>
-                                </Box>
-                              )}
-
-                              {(aiById[file.id]?.ctaSuggestions?.length ?? 0) > 0 && (
-                                <Box sx={{ mt: spacingMUI.sm }}>
-                                  <Typography variant='caption' color='text.secondary' display='block' sx={{ mb: 0.75 }}>
-                                    CTA text (click to add)
-                                  </Typography>
-                                  <Stack direction='row' spacing={0.75} flexWrap='wrap' useFlexGap sx={{ gap: 0.75 }}>
-                                    {aiById[file.id]?.ctaSuggestions?.map((s) => {
-                                      const existing = (customAlts[file.id] || "").split(" | ").filter(Boolean);
-                                      const isSelected = existing.includes(s);
-                                      return (
-                                        <Chip
-                                          key={s}
-                                          size='small'
-                                          variant='outlined'
-                                          label={s}
-                                          onClick={() => {
-                                            if (isSelected) {
-                                              setCustomAlts((prev) => ({
-                                                ...prev,
-                                                [file.id]: existing.filter((t) => t !== s).join(" | "),
-                                              }));
-                                            } else {
-                                              setCustomAlts((prev) => ({
-                                                ...prev,
-                                                [file.id]: [...existing, s].join(" | "),
-                                              }));
-                                            }
-                                          }}
-                                          sx={{
-                                            cursor: "pointer",
-                                            borderColor: isSelected ? theme.palette.secondary.main : theme.palette.divider,
-                                            backgroundColor: isSelected ? alpha(theme.palette.secondary.main, 0.15) : "transparent",
-                                            "&:hover": {
-                                              backgroundColor: alpha(theme.palette.secondary.main, 0.1),
-                                            },
-                                          }}
-                                        />
-                                      );
-                                    })}
-                                  </Stack>
-                                </Box>
-                              )}
-
-                              {(aiById[file.id]?.nameSuggestions?.length ?? 0) > 0 && (
-                                <Box sx={{ mt: spacingMUI.sm }}>
-                                  <Typography variant='caption' color='text.secondary' display='block' sx={{ mb: 0.75 }}>
-                                    Filename suggestions
-                                  </Typography>
-                                  <Stack direction='row' spacing={0.75} flexWrap='wrap' useFlexGap sx={{ gap: 0.75 }}>
-                                    {aiById[file.id]?.nameSuggestions?.map((s) => {
-                                      const isSelected = customNames[file.id] === normalizeCustomNameInput(s);
-                                      return (
-                                        <Chip
-                                          key={s}
-                                          size='small'
-                                          variant='outlined'
-                                          label={s}
-                                          onClick={() =>
-                                            setCustomNames((prev) => ({
-                                              ...prev,
-                                              [file.id]: normalizeCustomNameInput(s),
-                                            }))
-                                          }
-                                          sx={{
-                                            cursor: "pointer",
-                                            borderColor: isSelected ? theme.palette.success.main : theme.palette.divider,
-                                            backgroundColor: isSelected ? alpha(theme.palette.success.main, 0.15) : "transparent",
-                                            "&:hover": {
-                                              backgroundColor: alpha(theme.palette.success.main, 0.1),
-                                            },
-                                          }}
-                                        />
-                                      );
-                                    })}
-                                  </Stack>
-                                </Box>
-                              )}
-                            </Box>
-                          )}
-                        </Box>
-                      )}
-                    </Box>
-                  ))}
-                </Stack>
-              </Box>
-
-              {/* Category Selection */}
-              {showCategory ? (
-                <FormControl component='fieldset'>
-                  <FormLabel
-                    component='legend'
-                    sx={{
-                      fontWeight: 500,
-                      mb: spacingMUI.sm,
-                      color: theme.palette.text.primary,
-                    }}>
-                    Category
-                  </FormLabel>
-                  <RadioGroup row value={category} onChange={(e) => setCategory(e.target.value)}>
-                    {categories.map((c) => (
-                      <FormControlLabel key={c} value={c} control={<Radio />} label={c} />
-                    ))}
-                  </RadioGroup>
-                </FormControl>
-              ) : (
-                <Alert severity='info' sx={{ borderRadius: `${borderRadius.md}px` }}>
-                  AlfaOne: категорія не використовується (root: <code>{providerCfg.publicRootPrefix}/</code>)
-                </Alert>
-              )}
-
-              {/* Folder Name Input */}
-              <TextField
-                label='Folder Name'
-                placeholder='e.g., ABCD123'
-                value={folderName}
-                onChange={(e) => setFolderName(e.target.value)}
-                fullWidth
-                disabled={uploading}
-                helperText='Format: Letters + Numbers (e.g., ABCD123, Finance456)'
-                autoFocus
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: `${borderRadius.md}px`,
-                    "&.Mui-focused": {
-                      backgroundColor: "transparent",
-                    },
-                  },
-                }}
-              />
-
-              {/* Upload Path Preview */}
-              {folderName && /[a-zA-Z]+\d+/.test(folderName) && (
-                <Alert
-                  severity='info'
-                  sx={{
-                    borderRadius: `${borderRadius.md}px`,
-                    "& .MuiAlert-message": {
-                      width: "100%",
-                    },
-                  }}>
-                  <Typography variant='caption' sx={{ fontFamily: "monospace" }}>
-                    <strong>Upload path:</strong>
+                <Box>
+                  <TextField
+                    label='Folder Name'
+                    placeholder='e.g., ABCD123'
+                    value={folderName}
+                    onChange={(e) => setFolderName(e.target.value)}
+                    fullWidth
+                    disabled={uploading}
+                    // helperText removal - moving to custom helper text below
+                    autoFocus
+                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: `${borderRadius.md}px` } }}
+                  />
+                  {/* Combined Helper Text: Format + Path Preview */}
+                  <FormHelperText sx={{ mt: 1, ml: 1, lineHeight: 1.5 }}>
+                    Format: Letters + Numbers (e.g., ABCD123)
                     <br />
-                    {(() => {
-                      const letters = folderName.replace(/[^a-zA-Z]/g, "").toLowerCase();
-                      const digits = folderName.replace(/[^0-9]/g, "");
-                      const parts = [providerCfg.publicRootPrefix];
-                      if (showCategory) parts.push(category);
-                      parts.push(letters, `lift-${digits}`);
-                      return `${parts.filter(Boolean).join("/")}/`;
-                    })()}
-                  </Typography>
-                </Alert>
-              )}
+                    {folderName && /[a-zA-Z]+\d+/.test(folderName) && (
+                      <Typography component='span' variant='caption' sx={{ fontFamily: "monospace", color: "text.primary", display: "block", mt: 0.5, p: 0.5, bgcolor: alpha(theme.palette.info.main, 0.1), borderRadius: 1 }}>
+                        Path:{" "}
+                        <strong>
+                          {(() => {
+                            const letters = folderName.replace(/[^a-zA-Z]/g, "").toLowerCase();
+                            const digits = folderName.replace(/[^0-9]/g, "");
+                            const parts = [providerCfg.publicRootPrefix];
+                            if (showCategory) parts.push(category);
+                            parts.push(letters, `lift-${digits}`);
+                            return `${parts.filter(Boolean).join("/")}/`;
+                          })()}
+                        </strong>
+                      </Typography>
+                    )}
+                  </FormHelperText>
+                </Box>
+              </Stack>
 
-              {/* Progress */}
+              {/* Progress/Error */}
               {uploading && (
-                <Box
-                  sx={{
-                    p: spacingMUI.base,
-                    borderRadius: `${borderRadius.md}px`,
-                    backgroundColor: alpha(theme.palette.primary.main, 0.05),
-                    border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-                  }}>
-                  <LinearProgress sx={{ mb: spacingMUI.sm, borderRadius: `${borderRadius.sm}px` }} />
+                <Box sx={{ p: 2, borderRadius: `${borderRadius.md}px`, bgcolor: alpha(theme.palette.primary.main, 0.05), border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}` }}>
+                  <LinearProgress sx={{ mb: 1, borderRadius: 1 }} />
                   <Typography variant='body2' color='text.secondary' align='center'>
                     Uploading files...
                   </Typography>
                 </Box>
               )}
-
-              {/* Error Message */}
               {error && (
                 <Alert icon={<ErrorIcon />} severity='error' sx={{ borderRadius: `${borderRadius.md}px` }}>
                   {error}
@@ -834,156 +282,56 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
             </>
           )}
 
-          {/* Upload Results */}
+          {/* Results Section */}
           {uploadResults.length > 0 && (
-            <Box
-              sx={{
-                p: spacingMUI.base,
-                borderRadius: `${borderRadius.lg}px`,
-                backgroundColor: componentStyles.card.background || alpha(theme.palette.background.paper, 0.5),
-                backdropFilter: componentStyles.card.backdropFilter,
-                WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
-                border: `1px solid ${alpha(theme.palette.success.main, 0.2)}`,
-              }}>
-              <Box display='flex' alignItems='center' justifyContent='space-between' mb={spacingMUI.base}>
-                <Box display='flex' alignItems='center' gap={spacingMUI.xs}>
-                  <SuccessIcon sx={{ color: theme.palette.success.main, fontSize: 20 }} />
-                  <Typography variant='subtitle2' fontWeight={600}>
+            <Box sx={{ p: 2, borderRadius: `${borderRadius.lg}px`, bgcolor: componentStyles.card.background || alpha(theme.palette.background.paper, 0.5), border: `1px solid ${alpha(theme.palette.success.main, 0.2)}` }}>
+              <Box display='flex' justifyContent='space-between' mb={2}>
+                <Box display='flex' alignItems='center' gap={1}>
+                  <SuccessIcon color='success' />
+                  <Typography variant='subtitle2'>
                     Uploaded Files ({uploadResults.filter((r) => r.success).length}/{uploadResults.length})
                   </Typography>
                 </Box>
-                {uploadResults.filter((r) => r.success).length > 0 && (
-                  <Box display='flex' gap={spacingMUI.xs}>
-                    <Tooltip title='Copy all full URLs' arrow placement='top'>
-                      <Button
-                        size='small'
-                        onClick={() => handleCopyAllUrls(false)}
-                        startIcon={copiedUrl === "all" ? <CheckIcon /> : <LinkIcon />}
-                        sx={{
-                          textTransform: "none",
-                          borderRadius: `${borderRadius.md}px`,
-                          fontSize: "0.75rem",
-                          fontWeight: 600,
-                        }}>
-                        {copiedUrl === "all" ? "✓" : "Copy URLs"}
-                      </Button>
-                    </Tooltip>
-                    <Tooltip title='Copy all short paths' arrow placement='top'>
-                      <Button
-                        size='small'
-                        onClick={() => handleCopyAllUrls(true)}
-                        startIcon={copiedUrl === "all-short" ? <CheckIcon /> : <CopyIcon />}
-                        variant='outlined'
-                        sx={{
-                          textTransform: "none",
-                          borderRadius: `${borderRadius.md}px`,
-                          fontSize: "0.75rem",
-                          fontWeight: 600,
-                        }}>
-                        {copiedUrl === "all-short" ? "✓" : "Copy Paths"}
-                      </Button>
-                    </Tooltip>
-                  </Box>
-                )}
-              </Box>
-
-              <Stack spacing={spacingMUI.xs}>
-                {uploadResults.map((result, index) => (
-                  <Box
-                    key={index}
-                    sx={{
-                      p: spacingMUI.sm,
-                      borderRadius: `${borderRadius.md}px`,
-                      backgroundColor: result.success ? alpha(theme.palette.success.main, 0.05) : alpha(theme.palette.error.main, 0.05),
-                      border: `1px solid ${result.success ? alpha(theme.palette.success.main, 0.15) : alpha(theme.palette.error.main, 0.15)}`,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: spacingMUI.sm,
-                      transition: "all 0.2s ease",
-                      "&:hover": {
-                        backgroundColor: result.success ? alpha(theme.palette.success.main, 0.08) : alpha(theme.palette.error.main, 0.08),
-                      },
-                    }}>
-                    <ImageIcon
-                      sx={{
-                        fontSize: 18,
-                        color: result.success ? theme.palette.success.main : theme.palette.error.main,
+                <Box display='flex' gap={1}>
+                  <Tooltip title='Copy all URLs'>
+                    <Button
+                      size='small'
+                      onClick={() => {
+                        const text = uploadResults
+                          .filter((r) => r.success)
+                          .map((r) => r.url)
+                          .join("\n");
+                        handleCopy(text, "all");
                       }}
-                    />
-                    <Box flex={1} minWidth={0}>
-                      <Typography
-                        variant='body2'
-                        fontWeight={500}
-                        sx={{
-                          mb: 0.25,
-                          color: theme.palette.text.primary,
-                        }}>
-                        {result.filename}
+                      startIcon={copiedUrl === "all" ? <CheckIcon /> : <LinkIcon />}>
+                      {copiedUrl === "all" ? "✓" : "Copy URLs"}
+                    </Button>
+                  </Tooltip>
+                </Box>
+              </Box>
+              <Stack spacing={1}>
+                {uploadResults.map((res, idx) => (
+                  <Box key={idx} sx={{ p: 1, borderRadius: 1, bgcolor: res.success ? alpha(theme.palette.success.main, 0.05) : alpha(theme.palette.error.main, 0.05), border: `1px solid ${res.success ? alpha(theme.palette.success.main, 0.15) : alpha(theme.palette.error.main, 0.15)}`, display: "flex", alignItems: "center", gap: 1 }}>
+                    <Box flex={1}>
+                      <Typography variant='body2' fontWeight={500}>
+                        {res.filename}
                       </Typography>
-                      {result.success ? (
-                        <Typography
-                          variant='caption'
-                          sx={{
-                            fontFamily: "monospace",
-                            color: theme.palette.text.secondary,
-                            display: "block",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}>
-                          {result.url}
+                      {res.success ? (
+                        <Typography variant='caption' sx={{ fontFamily: "monospace", color: "text.secondary" }}>
+                          {res.url}
                         </Typography>
                       ) : (
-                        <Typography variant='caption' color='error.main'>
-                          {result.error || "Upload failed"}
+                        <Typography variant='caption' color='error'>
+                          {res.error}
                         </Typography>
                       )}
                     </Box>
-                    {result.success && (
-                      <Box display='flex' gap={spacingMUI.xs}>
-                        <Tooltip title='Copy full URL' arrow placement='top'>
-                          <Button
-                            size='small'
-                            onClick={() => handleCopyUrl(result.url, false)}
-                            startIcon={copiedUrl === result.url ? <CheckIcon /> : <LinkIcon />}
-                            sx={{
-                              minWidth: "auto",
-                              px: spacingMUI.sm,
-                              py: spacingMUI.xs,
-                              textTransform: "none",
-                              borderRadius: `${borderRadius.sm}px`,
-                              fontSize: "0.7rem",
-                              fontWeight: 600,
-                              color: copiedUrl === result.url ? theme.palette.success.main : theme.palette.primary.main,
-                              "&:hover": {
-                                backgroundColor: alpha(theme.palette.primary.main, 0.08),
-                              },
-                            }}>
-                            {copiedUrl === result.url ? "✓" : "URL"}
-                          </Button>
-                        </Tooltip>
-                        <Tooltip title='Copy short path' arrow placement='top'>
-                          <Button
-                            size='small'
-                            onClick={() => handleCopyUrl(result.url, true)}
-                            startIcon={copiedUrl === `${result.url}-short` ? <CheckIcon /> : <CopyIcon />}
-                            sx={{
-                              minWidth: "auto",
-                              px: spacingMUI.sm,
-                              py: spacingMUI.xs,
-                              textTransform: "none",
-                              borderRadius: `${borderRadius.sm}px`,
-                              fontSize: "0.7rem",
-                              fontWeight: 600,
-                              color: copiedUrl === `${result.url}-short` ? theme.palette.success.main : theme.palette.text.secondary,
-                              "&:hover": {
-                                backgroundColor: alpha(theme.palette.text.secondary, 0.08),
-                              },
-                            }}>
-                            {copiedUrl === `${result.url}-short` ? "✓" : "Path"}
-                          </Button>
-                        </Tooltip>
-                      </Box>
+                    {res.success && (
+                      <Tooltip title='Copy URL'>
+                        <Button size='small' onClick={() => handleCopy(res.url, res.url)} startIcon={copiedUrl === res.url ? <CheckIcon /> : <LinkIcon />} sx={{ minWidth: "auto", px: 1 }}>
+                          {copiedUrl === res.url ? "✓" : "URL"}
+                        </Button>
+                      </Tooltip>
                     )}
                   </Box>
                 ))}
@@ -993,44 +341,17 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
         </Stack>
       </DialogContent>
 
-      <DialogActions sx={{ px: spacingMUI.lg, pb: spacingMUI.base, pt: spacingMUI.sm }}>
+      <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
         {uploadResults.length > 0 ? (
-          // After upload is complete
-          <Button
-            fullWidth
-            variant='contained'
-            onClick={handleClose}
-            sx={{
-              textTransform: "none",
-              fontWeight: 600,
-              borderRadius: `${borderRadius.md}px`,
-            }}>
+          <Button fullWidth variant='contained' onClick={handleClose} sx={{ borderRadius: `${borderRadius.md}px` }}>
             Done
           </Button>
         ) : (
-          // Before/during upload
           <>
-            <Button
-              onClick={handleClose}
-              color={uploading ? "error" : "inherit"}
-              variant={uploading ? "outlined" : "text"}
-              sx={{
-                textTransform: "none",
-                borderRadius: `${borderRadius.md}px`,
-                fontWeight: uploading ? 600 : 400,
-              }}>
+            <Button onClick={handleClose} color={uploading ? "error" : "inherit"} variant={uploading ? "outlined" : "text"} sx={{ borderRadius: `${borderRadius.md}px` }}>
               {uploading ? "Скасувати" : "Cancel"}
             </Button>
-            <Button
-              variant='contained'
-              onClick={handleUpload}
-              disabled={uploading || !folderName.trim()}
-              startIcon={<UploadIcon />}
-              sx={{
-                textTransform: "none",
-                fontWeight: 600,
-                borderRadius: `${borderRadius.md}px`,
-              }}>
+            <Button variant='contained' onClick={handleUploadClick} disabled={uploading || !folderName.trim()} startIcon={<UploadIcon />} sx={{ borderRadius: `${borderRadius.md}px` }}>
               {uploading ? "Завантаження..." : "Upload"}
             </Button>
           </>
