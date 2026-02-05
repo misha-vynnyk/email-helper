@@ -79,6 +79,47 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
   );
 
   // Handlers
+  const [altsSaved, setAltsSaved] = useState(false);
+  const hasAltsToSave = orderedFiles.some((f) => customAlts[f.id]?.length > 0);
+
+  const handleSaveAlts = () => {
+    if (!onAltsUpdate) return;
+
+    // Collect alts
+    const altMap: Record<string, string> = {};
+
+    // From current results
+    if (uploadResults.length > 0) {
+      for (const res of uploadResults) {
+        if (res.success) {
+          const file = orderedFiles.find((f) => {
+            const customName = customNames[f.id];
+            const baseName = customName || f.name.replace(/\.[^.]+$/, "");
+            return res.filename.startsWith(baseName);
+          });
+          if (file && customAlts[file.id]?.length) {
+            altMap[res.url] = customAlts[file.id].join(" | ");
+          }
+        }
+      }
+    }
+
+    // From existing URLs
+    if (existingUrls) {
+      for (const file of orderedFiles) {
+        if (existingUrls[file.id] && customAlts[file.id]?.length) {
+          altMap[existingUrls[file.id]] = customAlts[file.id].join(" | ");
+        }
+      }
+    }
+
+    if (Object.keys(altMap).length > 0) {
+      onAltsUpdate(altMap);
+      setAltsSaved(true);
+      setTimeout(() => setAltsSaved(false), 2000);
+    }
+  };
+
   const handleUploadClick = async () => {
     setError(null);
     setUploadResults([]);
@@ -366,40 +407,6 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
       <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
         {uploadResults.length > 0 ? (
           <>
-            {onAltsUpdate && (
-              <Button
-                variant='outlined'
-                onClick={() => {
-                  const altMap: Record<string, string> = {};
-                  // From current results
-                  for (const res of uploadResults) {
-                    if (res.success) {
-                      const file = orderedFiles.find((f) => {
-                        const customName = customNames[f.id];
-                        const baseName = customName || f.name.replace(/\.[^.]+$/, "");
-                        return res.filename.startsWith(baseName);
-                      });
-                      if (file && customAlts[file.id]?.length) {
-                        altMap[res.url] = customAlts[file.id].join(" | ");
-                      }
-                    }
-                  }
-                  // From existing URLs (duplicates handled by overwriting or effectively same)
-                  if (existingUrls) {
-                    for (const file of orderedFiles) {
-                      if (existingUrls[file.id] && customAlts[file.id]?.length) {
-                        altMap[existingUrls[file.id]] = customAlts[file.id].join(" | ");
-                      }
-                    }
-                  }
-                  if (onAltsUpdate && Object.keys(altMap).length > 0) {
-                    onAltsUpdate(altMap);
-                  }
-                }}
-                sx={{ borderRadius: `${borderRadius.md}px`, mr: 1 }}>
-                Save Alts
-              </Button>
-            )}
             <Button fullWidth variant='contained' onClick={handleClose} sx={{ borderRadius: `${borderRadius.md}px` }}>
               Done
             </Button>
@@ -409,25 +416,13 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
             <Button onClick={handleClose} color={uploading ? "error" : "inherit"} variant={uploading ? "outlined" : "text"} sx={{ borderRadius: `${borderRadius.md}px` }}>
               {uploading ? "Скасувати" : "Cancel"}
             </Button>
-            {onAltsUpdate && existingUrls && Object.keys(existingUrls).length > 0 && (
-              <Button
-                variant='outlined'
-                onClick={() => {
-                  const altMap: Record<string, string> = {};
-                  for (const file of orderedFiles) {
-                    if (existingUrls[file.id] && customAlts[file.id]?.length) {
-                      altMap[existingUrls[file.id]] = customAlts[file.id].join(" | ");
-                    }
-                  }
-                  if (onAltsUpdate && Object.keys(altMap).length > 0) {
-                    onAltsUpdate(altMap);
-                  }
-                }}
-                disabled={uploading}
-                sx={{ borderRadius: `${borderRadius.md}px` }}>
-                Save Alts
+
+            {onAltsUpdate && existingUrls && Object.keys(existingUrls).length > 0 && hasAltsToSave && (
+              <Button variant={altsSaved ? "contained" : "outlined"} color={altsSaved ? "success" : "primary"} onClick={handleSaveAlts} disabled={uploading || altsSaved} startIcon={altsSaved ? <CheckIcon /> : undefined} sx={{ borderRadius: `${borderRadius.md}px` }}>
+                {altsSaved ? "Saved!" : "Save Alts"}
               </Button>
             )}
+
             <Button variant='contained' onClick={handleUploadClick} disabled={uploading || !folderName.trim()} startIcon={<UploadIcon />} sx={{ borderRadius: `${borderRadius.md}px` }}>
               {uploading ? "Завантаження..." : "Upload"}
             </Button>

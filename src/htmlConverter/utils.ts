@@ -146,48 +146,10 @@ export function replaceAllEmojisAndSymbolsExcludingHTML(htmlContent: string): st
 
 export function mergeSimilarTags(htmlContent: string): string {
   // Merge adjacent h1-h6 tags and add <br><br> between them
-  // Special handling for h6: merge all h6 tags even if separated by other elements (div, br, table, etc.)
-  const tagsWithoutH6 = ["h1", "h4", "h5"];
+  const tagsToMerge = ["h1", "h4", "h5", "h6"];
 
-  // Step 1: For h6, find patterns where </h6> is followed by any content (including div, br, table) then <h6
-  // Replace the content between with [[BR_SEP]]
-  const h6SeparatedRegex = /<\/h6>([\s\S]*?)<h6/gi;
-  let h6Count = 0;
-  let maxIterations = 50;
-  let iterations = 0;
-
-  while (iterations < maxIterations) {
-    const before = htmlContent;
-    htmlContent = htmlContent.replace(h6SeparatedRegex, (_match, _middle) => {
-      h6Count++;
-      return "</h6>[[BR_SEP]]<h6";
-    });
-    if (htmlContent === before) break; // No more replacements
-    iterations++;
-  }
-
-  // Step 2: Now merge consecutive h6 tags: <h6>content1</h6>[[BR_SEP]]<h6>content2</h6>
-  // -> <h6>content1[[BR_SEP]]content2</h6>
-  const h6MergeRegex = /(<h6[^>]*>)([\s\S]*?)(<\/h6>)\s*\[\[BR_SEP\]\]\s*(<h6[^>]*>)([\s\S]*?)(<\/h6>)/gi;
-  let mergeCount = 0;
-  iterations = 0;
-
-  while (iterations < maxIterations) {
-    const before = htmlContent;
-    htmlContent = htmlContent.replace(h6MergeRegex, (_match, open1, content1, close1, _open2, content2, _close2) => {
-      mergeCount++;
-      // Merge: keep first h6 tag, combine content with [[BR_SEP]], remove second h6
-      return open1 + content1 + "[[BR_SEP]]" + content2 + close1;
-    });
-    if (htmlContent === before) break; // No more replacements
-    iterations++;
-  }
-
-  // Debug tracking for h6 processing
-  // h6Count and mergeCount are tracked for optimization
-
-  // Now handle other tags normally (merge them)
-  tagsWithoutH6.forEach((tag) => {
+  // Now handle tags normally (merge them)
+  tagsToMerge.forEach((tag) => {
     const regex = new RegExp(`(<\\/${tag}>)\\s*<${tag}[^>]*>`, "gi");
 
     let matchFound = true;
