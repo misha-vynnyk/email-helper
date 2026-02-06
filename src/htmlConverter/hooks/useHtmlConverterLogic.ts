@@ -373,6 +373,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
     setTriggerExtract(0);
     setHasOutput(false);
     setUploadedUrlMap({});
+    setUploadedAltMap({});
 
     if (resetReplacementRef.current) resetReplacementRef.current();
     addLog("🧹 Очищено");

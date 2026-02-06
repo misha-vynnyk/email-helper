@@ -11,6 +11,8 @@ export function cleanEmptyHtmlTags(htmlContent: string): string {
   htmlContent = htmlContent.replace(/<li>\s*<\/li>/g, "");
   htmlContent = htmlContent.replace(/<br>\s*<br>\s*<br>\s*<br>/g, "<br><br>");
   htmlContent = htmlContent.replace(/<br>\s*<br>\s*<br>/g, "<br><br>");
+  // Safety net: crush any sequence of 3+ breaks into 2
+  htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*){3,}/gi, "<br><br>");
   htmlContent = htmlContent.replace(/(<span[^>]*>)\s*<br><br>/gi, "$1");
   htmlContent = htmlContent.replace(/<\/a>\s*<a[^>]*>/g, " ");
   htmlContent = htmlContent.replace(/<pre>/g, "");
@@ -60,9 +62,7 @@ export function isSignatureImageTag(imgTag: string): boolean {
 
 export function addOneBr(htmlContent: string): string {
   return htmlContent.replace(new RegExp(SYMBOLS.ONE_BR, "gi"), function (_match, _content) {
-    return `
-                    <br>
-        `;
+    return "<br>";
   });
 }
 
@@ -89,31 +89,26 @@ export function addBrAfterClosingP(htmlContent: string): string {
   });
 
   // Handle sequences of empty paragraphs (p tags with only br inside)
-  // Replace sequences of empty paragraphs with a marker
-  htmlContent = htmlContent.replace(/(<p[^>]*>[\s\S]*?<\/p>)(\s*<p[^>]*>\s*<br\s*\/?>\s*<\/p>\s*){2,}(<p[^>]*>[\s\S]*?<\/p>)/gi, (_match, beforeP, emptyPs, afterP) => {
-    // Count how many empty paragraphs we have
-    const emptyCount = (emptyPs.match(/<p[^>]*>\s*<br\s*\/?>\s*<\/p>/gi) || []).length;
-    // For 2+ empty paragraphs between text, we want <br><br> (2 line breaks)
-    // Mark this sequence for later processing
-    return beforeP + `[[EMPTY_P_SEQ_${emptyCount}]]` + afterP;
+  // We want to treat even a single empty paragraph as a spacer, but NOT add extra breaks if it's just one.
+  // The goal: merge the line break from the empty paragraph with the standard paragraph break.
+  htmlContent = htmlContent.replace(/(<p[^>]*>[\s\S]*?<\/p>)(\s*<p[^>]*>\s*<br\s*\/?>\s*<\/p>\s*){1,}(<p[^>]*>[\s\S]*?<\/p>)/gi, (_match, beforeP, _emptyPs, afterP) => {
+    // We just ignore the empty P in the middle, because the </p> replacement below will add <br><br>
+    // effectively doing P -> BR BR -> P.
+    // If we kept the empty P, we'd get P -> BR BR -> BR (from empty P) -> BR BR -> P, which is too much.
+    return beforeP + afterP;
   });
 
-  // Delete extra <br>
-  htmlContent = htmlContent.replace(/<br\s*\/?>/gi, "");
+  // Delete extra inline <br> (optional, but good for cleanup)
+  // htmlContent = htmlContent.replace(/<br\s*\/?>/gi, "");
 
   // Add <br><br> after each </p> (but not inside lists - they're already processed)
   // Use negative lookahead to skip </p> that are inside <li> elements
-  // Pattern: </p> that is NOT followed by </li> and is NOT inside an open <li>
-  htmlContent = htmlContent.replace(/<\/p>(?!\s*\[\[EMPTY_P_SEQ)(?!\s*<\/li>)/gi, "</p>\n<br><br>\n");
-
-  // Replace empty paragraph sequence markers with <br><br>
-  htmlContent = htmlContent.replace(/\[\[EMPTY_P_SEQ_\d+\]\]/gi, "\n<br><br>\n");
+  htmlContent = htmlContent.replace(/<\/p>(?!\s*<\/li>)/gi, "</p>\n<br><br>\n");
 
   // Delete extra <p> tags (but not inside lists - already processed)
   htmlContent = htmlContent.replace(/<p[^>]*>/gi, "").replace(/<\/p>/gi, "");
 
   // Remove <br> between <li> elements (lists should not have <br> between items)
-  // This must be done after deleting <p> tags to catch any remaining <br>
   htmlContent = htmlContent.replace(/<\/li>\s*<br>\s*<br>\s*<li>/gi, "</li>\n<li>");
   htmlContent = htmlContent.replace(/<\/li>\s*<br>\s*<li>/gi, "</li>\n<li>");
   // Also remove <br> at the start of <li> (if any were added incorrectly)
@@ -136,6 +131,9 @@ export function removeStylesFromLists(htmlContent: string): string {
 
 export function replaceAllEmojisAndSymbolsExcludingHTML(htmlContent: string): string {
   const rx = /(?:\p{Extended_Pictographic}|(?![<>=&%"'#;:_-])[\p{S}\p{No}])(?:\uFE0F)?/gu;
+
+  // Remove Zero Width Space and other invisible characters that cause issues
+  htmlContent = htmlContent.replace(/[\u200B-\u200D\uFEFF]/g, "");
 
   return htmlContent.replace(rx, (match) => {
     return Array.from(match)

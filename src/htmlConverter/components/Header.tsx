@@ -26,7 +26,7 @@ export function Header({ ui, setUi, imageAnalysis, setImageAnalysis, autoProcess
   return (
     <>
       <Stack direction='row' alignItems='center' justifyContent='space-between'>
-        <SectionHeader icon={<CodeIcon fontSize='small' />} title='HTML to Table Converter' subtitle='Конвертація HTML в табличну структуру для email' />
+        <SectionHeader icon={<CodeIcon fontSize='small' />} title='HTML to Table Converter'/>
         <Stack direction='row' alignItems='center' spacing={spacingMUI.sm}>
           {/* AI Backend Status Indicator */}
           {imageAnalysis.useAiBackend && (
