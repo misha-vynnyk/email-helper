@@ -177,7 +177,7 @@ export default function HtmlConverterPanel() {
         }
 
         // Replace ALT attributes
-        const altResult = replaceAltsInContent(content, urlMap, uploadedAltMap);
+        const altResult = replaceAltsInContent(content, uploadedAltMap);
         if (altResult.count > 0) {
           content = altResult.replaced;
           addLog(`🔄 Замінено ${altResult.count} ALT-атрибутів в Output HTML`);
@@ -200,7 +200,7 @@ export default function HtmlConverterPanel() {
         }
 
         // Replace ALT attributes
-        const altResult = replaceAltsInContent(content, urlMap, uploadedAltMap);
+        const altResult = replaceAltsInContent(content, uploadedAltMap);
         if (altResult.count > 0) {
           content = altResult.replaced;
           addLog(`🔄 Замінено ${altResult.count} ALT-атрибутів в Output MJML`);

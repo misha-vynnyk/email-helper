@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { STORAGE_PROVIDERS_CONFIG } from "../constants";
 import type { StorageProviderKey } from "../constants";
-import type { ImageAnalysisSettings } from "../types";
 
 interface FileItem {
   id: string;
@@ -14,7 +13,6 @@ interface UseUploadMetadataProps {
   open: boolean;
   storageProvider: StorageProviderKey;
   initialFolderName?: string;
-  imageAnalysisSettings?: ImageAnalysisSettings;
 }
 
 export function useUploadMetadata({ files, open, storageProvider, initialFolderName }: UseUploadMetadataProps) {
