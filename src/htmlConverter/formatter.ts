@@ -5,20 +5,47 @@
 import { blueColors, config } from "./config";
 import { htmlTemplates, mjmlTemplates } from "./templates";
 import * as utils from "./utils";
+import * as colorUtils from "./colorUtils";
+
+function isLinkColor(color: string): boolean {
+  // Sanitize: remove !important and trim
+  const sanitized = color.replace(/!important/gi, "").trim();
+
+  // 1. Check against the explicit list from config
+  for (const pattern of blueColors) {
+    if (new RegExp("^" + pattern + "$", "i").test(sanitized)) return true;
+  }
+
+  // 2. Smart check for any blue-ish/purple-ish color
+  return colorUtils.isBlueish(sanitized);
+}
 
 function italicLinks(htmlContent: string): string {
   htmlContent = htmlContent.replace(/<a[^>]*>/gi, "").replace(/<\/a>/gi, "");
-  blueColors.forEach((color) => {
-    const regex = new RegExp(`<span[^>]*style="[^"]*color:\\s*${color}[^"]*;[^"]*font-style:\\s*italic[^"]*"[^>]*>(.*?)<\\/span>`, "gi");
-    htmlContent = htmlContent.replace(regex, '<a href="urlhere" style="font-family:\'Roboto\', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: #0000EE;"><em>$1</em></a>');
+
+  // Regex targets only Hex or RGB color values to skip "transparent" or other named containers
+  // and handle single/double quotes and !important
+  const regex = /<span[^>]*style=["'][^"']*color\s*:\s*(#[0-9a-fA-F]{3,6}|rgb\s*\([^)]+\))(?:[^"';]*!important)?[^"']*font-style\s*:\s*italic[^"']*["'][^>]*>(.*?)<\/span>/gi;
+
+  htmlContent = htmlContent.replace(regex, (match, color, innerText) => {
+    if (isLinkColor(color)) {
+      return `<a href="urlhere" style="font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: #0000EE;"><em>${innerText}</em></a>`;
+    }
+    return match;
   });
+
   return htmlContent;
 }
 
 function linksStyles(htmlContent: string): string {
-  blueColors.forEach((color) => {
-    const reg = new RegExp(`<span[^>]*style="[^"]*color:\\s*(${color})[^"]*"[^>]*>(.*?)<\\/span>`, "gi");
-    htmlContent = htmlContent.replace(reg, '<a href="urlhere" style="font-family:\'Roboto\', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: #0000EE;">$2</a>');
+  // Regex targets only Hex or RGB color values
+  const reg = /<span[^>]*style=["'][^"']*color\s*:\s*(#[0-9a-fA-F]{3,6}|rgb\s*\([^)]+\))(?:[^"';]*!important)?[^"']*["'][^>]*>(.*?)<\/span>/gi;
+
+  htmlContent = htmlContent.replace(reg, (match, color, innerText) => {
+    if (isLinkColor(color)) {
+      return `<a href="urlhere" style="font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: #0000EE;">${innerText}</a>`;
+    }
+    return match;
   });
   return htmlContent;
 }
@@ -98,26 +125,7 @@ function wrapTextInSpan(htmlContent: string, templateFn: (content: string) => st
   return htmlContent;
 }
 
-// Template interface for type safety
-interface Templates {
-  centerText: (content: string) => string;
-  smallCenterText: (content: string) => string;
-  smallText: (content: string) => string;
-  centerHeadline: (content: string) => string;
-  headline: (content: string) => string;
-  button: (content: string) => string;
-  centerQuote: (content: string) => string;
-  quote: (content: string) => string;
-  rightSideImg: (content: string) => string;
-  leftSideImg: (content: string) => string;
-  signatureImg: (content: string) => string;
-  footerBlock: (content: string) => string;
-  footerCenterBlock: (content: string) => string;
-  wrapImg: (content: string) => string;
-  fullStructure: (content: string) => string;
-}
-
-function formatContent(editorContent: string, templates: Templates, type: "html" | "mjml"): string {
+export function formatHtml(editorContent: string): string {
   let content = editorContent;
   content = utils.mergeSimilarTags(content);
   content = italicLinks(content);
@@ -126,41 +134,75 @@ function formatContent(editorContent: string, templates: Templates, type: "html"
   content = processStyles(content);
 
   // Block Wrappers
-  content = applyTemplate(content, /<p[^>]*style="[^"]*text-align:\s*center[^"]*"[^>]*>([\s\S]*?)<\/p>/gi, templates.centerText);
-  content = applyTemplate(content, /<h6[^>]*style="[^"]*text-align:\s*center[^"]*"[^>]*>([\s\S]*?)<\/h6>/gi, templates.smallCenterText);
-  content = applyTemplate(content, /<h6[^>]*>([\s\S]*?)<\/h6>/gi, templates.smallText);
-  content = applyTemplate(content, /<h1[^>]*style="[^"]*text-align:\s*center[^"]*"[^>]*>([\s\S]*?)<\/h1>/gi, templates.centerHeadline);
-  content = applyTemplate(content, /<h1[^>]*>([\s\S]*?)<\/h1>/gi, templates.headline);
-  content = applyTemplate(content, /<h5[^>]*>([\s\S]*?)<\/h5>/gi, templates.button);
-  content = applyTemplate(content, /<h4[^>]*style="[^"]*text-align:\s*center[^"]*"[^>]*>([\s\S]*?)<\/h4>/gi, templates.centerQuote);
-  content = applyTemplate(content, /<h4[^>]*>([\s\S]*?)<\/h4>/gi, templates.quote);
+  content = applyTemplate(content, /<p[^>]*style="[^"]*text-align:\s*center[^"]*"[^>]*>([\s\S]*?)<\/p>/gi, htmlTemplates.centerText);
+  content = applyTemplate(content, /<h6[^>]*style="[^"]*text-align:\s*center[^"]*"[^>]*>([\s\S]*?)<\/h6>/gi, htmlTemplates.smallCenterText);
+  content = applyTemplate(content, /<h6[^>]*>([\s\S]*?)<\/h6>/gi, htmlTemplates.smallText);
+  content = applyTemplate(content, /<h1[^>]*style="[^"]*text-align:\s*center[^"]*"[^>]*>([\s\S]*?)<\/h1>/gi, htmlTemplates.centerHeadline);
+  content = applyTemplate(content, /<h1[^>]*>([\s\S]*?)<\/h1>/gi, htmlTemplates.headline);
+  content = applyTemplate(content, /<h5[^>]*>([\s\S]*?)<\/h5>/gi, htmlTemplates.button);
+  content = applyTemplate(content, /<h4[^>]*style="[^"]*text-align:\s*center[^"]*"[^>]*>([\s\S]*?)<\/h4>/gi, htmlTemplates.centerQuote);
+  content = applyTemplate(content, /<h4[^>]*>([\s\S]*?)<\/h4>/gi, htmlTemplates.quote);
 
   content = utils.addBrAfterClosingP(content);
+  // Clean up whitespace around [[BR_SEP]] and replace with <br><br> on its own line
   content = content.replace(/\s*\[\[BR_SEP\]\]\s*/g, "\n<br><br>\n");
   content = utils.removeStylesFromLists(content);
 
   // Complex wrapping (Images + Body)
-  content = wrapTextInSpan(content, templates.wrapImg, type);
+  content = wrapTextInSpan(content, htmlTemplates.wrapImg, "html");
 
   // More wrappers
-  content = applyTemplate(content, /i-r-s([\s\S]*?)i-r-s-e/gi, templates.rightSideImg);
-  content = applyTemplate(content, /i-l-s([\s\S]*?)i-l-s-e/gi, templates.leftSideImg);
-  content = applyTemplate(content, /sign-i([\s\S]*?)sign-i-e/gi, templates.signatureImg);
-  content = applyTemplate(content, /ftr-s([\s\S]*?)ftr-e/gi, templates.footerBlock);
-  content = applyTemplate(content, /ftr-c([\s\S]*?)ftr-c-e/gi, templates.footerCenterBlock);
+  content = applyTemplate(content, /i-r-s([\s\S]*?)i-r-s-e/gi, htmlTemplates.rightSideImg);
+  content = applyTemplate(content, /i-l-s([\s\S]*?)i-l-s-e/gi, htmlTemplates.leftSideImg);
+  content = applyTemplate(content, /sign-i([\s\S]*?)sign-i-e/gi, htmlTemplates.signatureImg);
+  content = applyTemplate(content, /ftr-s([\s\S]*?)ftr-e/gi, htmlTemplates.footerBlock);
+  content = applyTemplate(content, /ftr-c([\s\S]*?)ftr-c-e/gi, htmlTemplates.footerCenterBlock);
 
   content = utils.cleanEmptyHtmlTags(content);
-  content = templates.fullStructure(content);
+  content = htmlTemplates.fullStructure(content);
   content = utils.addOneBr(content);
   content = utils.replaceTripleBrWithSingle(content);
 
   return content;
 }
 
-export function formatHtml(editorContent: string): string {
-  return formatContent(editorContent, htmlTemplates, "html");
-}
-
 export function formatMjml(editorContent: string): string {
-  return formatContent(editorContent, mjmlTemplates, "mjml");
+  let content = editorContent;
+  content = utils.mergeSimilarTags(content);
+  content = italicLinks(content);
+  content = linksStyles(content);
+  content = utils.replaceAllEmojisAndSymbolsExcludingHTML(content);
+  content = processStyles(content);
+
+  // Block Wrappers
+  content = applyTemplate(content, /<p[^>]*style="[^"]*text-align:\s*center[^"]*"[^>]*>([\s\S]*?)<\/p>/gi, mjmlTemplates.centerText);
+  content = applyTemplate(content, /<h6[^>]*style="[^"]*text-align:\s*center[^"]*"[^>]*>([\s\S]*?)<\/h6>/gi, mjmlTemplates.smallCenterText);
+  content = applyTemplate(content, /<h6[^>]*>([\s\S]*?)<\/h6>/gi, mjmlTemplates.smallText);
+  content = applyTemplate(content, /<h1[^>]*style="[^"]*text-align:\s*center[^"]*"[^>]*>([\s\S]*?)<\/h1>/gi, mjmlTemplates.centerHeadline);
+  content = applyTemplate(content, /<h1[^>]*>([\s\S]*?)<\/h1>/gi, mjmlTemplates.headline);
+  content = applyTemplate(content, /<h4[^>]*style="[^"]*text-align:\s*center[^"]*"[^>]*>([\s\S]*?)<\/h4>/gi, mjmlTemplates.centerQuote);
+  content = applyTemplate(content, /<h4[^>]*>([\s\S]*?)<\/h4>/gi, mjmlTemplates.quote);
+  content = applyTemplate(content, /<h5[^>]*>([\s\S]*?)<\/h5>/gi, mjmlTemplates.button);
+
+  content = utils.addBrAfterClosingP(content);
+  // Clean up whitespace around [[BR_SEP]] and replace with <br><br> on its own line
+  content = content.replace(/\s*\[\[BR_SEP\]\]\s*/g, "\n<br><br>\n");
+  content = utils.removeStylesFromLists(content);
+
+  // Complex wrapping
+  content = wrapTextInSpan(content, mjmlTemplates.wrapImg, "mjml");
+
+  // More wrappers
+  content = applyTemplate(content, /i-l-s([\s\S]*?)i-l-s-e/gi, mjmlTemplates.leftSideImg);
+  content = applyTemplate(content, /i-r-s([\s\S]*?)i-r-s-e/gi, mjmlTemplates.rightSideImg);
+  content = applyTemplate(content, /sign-i([\s\S]*?)sign-i-e/gi, mjmlTemplates.signatureImg);
+  content = applyTemplate(content, /ftr-s([\s\S]*?)ftr-e/gi, mjmlTemplates.footerBlock);
+  content = applyTemplate(content, /ftr-c([\s\S]*?)ftr-c-e/gi, mjmlTemplates.footerCenterBlock);
+
+  content = utils.cleanEmptyHtmlTags(content);
+  content = mjmlTemplates.fullStructure(content);
+  content = utils.addOneBr(content);
+  content = utils.replaceTripleBrWithSingle(content);
+
+  return content;
 }

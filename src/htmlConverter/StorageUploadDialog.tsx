@@ -7,7 +7,7 @@ import { getComponentStyles } from "../theme/componentStyles";
 import { spacingMUI, borderRadius } from "../theme/tokens";
 import { copyToClipboard } from "./utils/clipboard";
 
-import { normalizeCustomNameInput } from "./utils/imageAnalysis";
+// import { normalizeCustomNameInput } from "./utils/imageAnalysis";
 import { useOcrAnalysis } from "./utils/useOcrAnalysis";
 import { UI_TIMINGS } from "./constants";
 import type { ImageAnalysisSettings, UploadResult } from "./types";
@@ -64,6 +64,8 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
       if (!result) return;
 
       // Auto-apply if settings dictate
+      // DISABLE AUTO-APPLY (User request: "remove automatic insertion")
+      /*
       const bestAlt = result.altSuggestions[0] || result.ctaSuggestions?.[0];
       if (imageAnalysisSettings?.autoApplyAlt === "ifEmpty" && bestAlt) {
         setCustomAlts((prev) => (prev[file.id]?.length ? prev : { ...prev, [file.id]: [bestAlt] }));
@@ -74,8 +76,9 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
           setCustomNames((prev) => (prev[file.id] ? prev : { ...prev, [file.id]: normalized }));
         }
       }
+      */
     },
-    [analyzeFile, imageAnalysisSettings?.autoApplyAlt, imageAnalysisSettings?.autoApplyFilename, setCustomAlts, setCustomNames]
+    [analyzeFile, /* imageAnalysisSettings?.autoApplyAlt, imageAnalysisSettings?.autoApplyFilename, */ setCustomAlts, setCustomNames]
   );
 
   // Handlers
