@@ -6,6 +6,7 @@ import { getComponentStyles } from "../../theme/componentStyles";
 import { STORAGE_KEYS } from "../constants";
 import type { ImageAnalysisSettings } from "../types";
 import type { UiSettings } from "../hooks/useHtmlConverterSettings";
+import { OCR_PRESETS } from "../ocrPresets";
 
 type SettingsPopoverProps = {
   open: boolean;
@@ -155,115 +156,8 @@ export const SettingsPopover: React.FC<SettingsPopoverProps> = ({ open, anchorEl
                     onChange={(e) => {
                       const v = e.target.value;
                       setUi((prev) => ({ ...prev, ocrSimpleMode: v as UiSettings["ocrSimpleMode"] }));
-                      if (v === "fast") {
-                        setImageAnalysis((prev) => ({
-                          ...prev,
-                          enabled: true,
-                          engine: "ocr",
-                          runMode: "manual",
-                          ocrScaleFactor: 1,
-                          ocrPsm: "11",
-                          ocrWhitelist: "",
-                          preprocess: true,
-                          preprocessUseThreshold: false,
-                          preprocessBrightness: 1.0,
-                          preprocessBlur: false,
-                          preprocessSharpen: false,
-                          preprocessContrast: 1.6,
-                          smartPrecheck: true,
-                          roiEnabled: false,
-                          roiPreset: "full",
-                          roiX: 0,
-                          roiY: 0,
-                          roiW: 1,
-                          roiH: 1,
-                          ocrMinWidth: 800,
-                          ocrMaxWidth: 1100,
-                          spellCorrectionBanner: true,
-                        }));
-                      } else if (v === "balanced") {
-                        setImageAnalysis((prev) => ({
-                          ...prev,
-                          enabled: true,
-                          engine: "ocr",
-                          runMode: "manual",
-                          ocrScaleFactor: 2,
-                          ocrPsm: "11",
-                          ocrWhitelist: "",
-                          preprocess: true,
-                          preprocessUseThreshold: true,
-                          preprocessThreshold: 160,
-                          preprocessBrightness: 1.1,
-                          preprocessBlur: false,
-                          preprocessSharpen: false,
-                          preprocessContrast: 1.8,
-                          smartPrecheck: true,
-                          roiEnabled: false,
-                          roiPreset: "full",
-                          roiX: 0,
-                          roiY: 0,
-                          roiW: 1,
-                          roiH: 1,
-                          ocrMinWidth: 1000,
-                          ocrMaxWidth: 1200,
-                          spellCorrectionBanner: true,
-                        }));
-                      } else if (v === "banner") {
-                        setImageAnalysis((prev) => ({
-                          ...prev,
-                          enabled: true,
-                          engine: "ocr",
-                          runMode: "manual",
-                          ocrScaleFactor: 2,
-                          ocrPsm: "6",
-                          ocrWhitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789:.'\"- ",
-                          preprocess: true,
-                          preprocessUseThreshold: true,
-                          preprocessThreshold: 150,
-                          preprocessBrightness: 1.1,
-                          preprocessBlur: true,
-                          preprocessBlurRadius: 2,
-                          preprocessSharpen: true,
-                          preprocessContrast: 2.2,
-                          smartPrecheck: true,
-                          roiEnabled: true,
-                          roiPreset: "auto",
-                          roiX: 0,
-                          roiY: 0,
-                          roiW: 1,
-                          roiH: 1,
-                          ocrMinWidth: 1200,
-                          ocrMaxWidth: 1400,
-                          spellCorrectionBanner: true,
-                        }));
-                      } else if (v === "max") {
-                        setImageAnalysis((prev) => ({
-                          ...prev,
-                          enabled: true,
-                          engine: "ocr",
-                          runMode: "manual",
-                          ocrScaleFactor: 3,
-                          ocrPsm: "6",
-                          ocrWhitelist: "",
-                          preprocess: true,
-                          preprocessUseThreshold: true,
-                          preprocessThreshold: 150,
-                          preprocessBrightness: 1.15,
-                          preprocessBlur: true,
-                          preprocessBlurRadius: 2,
-                          preprocessSharpen: true,
-                          preprocessContrast: 2.3,
-                          smartPrecheck: false,
-                          roiEnabled: true,
-                          roiPreset: "auto",
-                          roiX: 0,
-                          roiY: 0,
-                          roiW: 1,
-                          roiH: 1,
-                          ocrMinWidth: 1400,
-                          ocrMaxWidth: 1600,
-                          spellCorrectionBanner: true,
-                        }));
+                      if (v !== "custom" && OCR_PRESETS[v]) {
+                        setImageAnalysis((prev) => ({ ...prev, ...OCR_PRESETS[v] }));
                       }
                     }}
                     helperText='Швидко = легше для ноутбука. Банер = найкраще для картинок з великим текстом. Максимально = повільніше.'>

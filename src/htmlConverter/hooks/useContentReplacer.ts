@@ -52,7 +52,7 @@ export function useContentReplacer() {
   // Replace ALT attributes in img tags based on URL mapping
   // altMap is storageUrl -> alt (after upload)
   // Uses regex instead of DOMParser to preserve original HTML formatting (important for email)
-  const replaceAltsInContent = useCallback((content: string, _urlMap: Record<string, string>, altMap: Record<string, string>): ContentReplacerResult => {
+  const replaceAltsInContent = useCallback((content: string, altMap: Record<string, string>): ContentReplacerResult => {
     if (Object.keys(altMap).length === 0) return { replaced: content, count: 0 };
 
     let replacedCount = 0;
