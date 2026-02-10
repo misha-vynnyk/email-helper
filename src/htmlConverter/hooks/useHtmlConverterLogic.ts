@@ -21,7 +21,13 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
 
   // 2. Local State
   const [fileName, setFileName] = useState("promo-1");
-  const [approveNeeded, setApproveNeeded] = useState(true);
+  const approveNeeded = ui.approveNeededValue;
+  const setApproveNeeded = useCallback(
+    (value: boolean) => {
+      settings.setUi((prev) => ({ ...prev, approveNeededValue: value }));
+    },
+    [settings.setUi]
+  );
   const [useAlfaOne, setUseAlfaOne] = useState(false);
   const [log, setLog] = useState<string[]>([]);
   const [unseenLogCount, setUnseenLogCount] = useState(0);

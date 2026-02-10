@@ -132,7 +132,7 @@ export default function HtmlConverterPanel() {
             </Tooltip>
           </Stack>
 
-          <FormControlLabel control={<Checkbox checked={state.approveNeeded} onChange={(e) => actions.setApproveNeeded(e.target.checked)} size='small' />} label={<Typography variant='body2'>Approve needed</Typography>} />
+          {ui.showApproveNeeded && <FormControlLabel control={<Checkbox checked={state.approveNeeded} onChange={(e) => actions.setApproveNeeded(e.target.checked)} size='small' />} label={<Typography variant='body2'>Approve needed</Typography>} />}
 
           <FormControlLabel control={<Checkbox checked={state.useAlfaOne} onChange={(e) => actions.setUseAlfaOne(e.target.checked)} size='small' />} label={<Typography variant='body2'>AlfaOne</Typography>} />
 

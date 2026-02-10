@@ -10,6 +10,8 @@ export type UiSettings = {
   compactMode: boolean;
   stickyActions: boolean;
   showAdvancedOcrSettings: boolean;
+  showApproveNeeded: boolean;
+  approveNeededValue: boolean;
   ocrSimpleMode: "custom" | "fast" | "balanced" | "banner" | "max";
 };
 
@@ -21,6 +23,8 @@ export const DEFAULT_UI_SETTINGS: UiSettings = {
   compactMode: false,
   stickyActions: false,
   showAdvancedOcrSettings: false,
+  showApproveNeeded: true,
+  approveNeededValue: false,
   ocrSimpleMode: "custom",
 };
 

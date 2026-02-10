@@ -35,9 +35,10 @@ interface ImageProcessorProps {
   autoProcess?: boolean;
   storageProvider?: "default" | "alphaone";
   imageAnalysisSettings?: ImageAnalysisSettings;
+
 }
 
-export default function ImageProcessor({ editorRef, onLog, visible, onVisibilityChange, triggerExtract = 0, fileName = "", onHistoryAdd, onReplaceUrls, onUploadedUrlsChange, onUploadedAltsChange, onResetReplacement, hasOutput = false, autoProcess: autoProcessProp, storageProvider = "default", imageAnalysisSettings }: ImageProcessorProps) {
+export default function ImageProcessor({ editorRef, onLog, visible, onVisibilityChange, triggerExtract = 0, fileName = "", onHistoryAdd, onReplaceUrls, onUploadedUrlsChange, onUploadedAltsChange, onResetReplacement, hasOutput = false, autoProcess: autoProcessProp, storageProvider = "default", imageAnalysisSettings}: ImageProcessorProps) {
   const theme = useTheme();
 
   // 1. Conversion Logic
@@ -283,6 +284,7 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
           return map;
         })()}
         imageAnalysisSettings={imageAnalysisSettings}
+
       />
 
       <Snackbar open={snackbar.open} autoHideDuration={UI_TIMINGS.SNACKBAR_DURATION} onClose={() => setSnackbar((p) => ({ ...p, open: false }))} anchorOrigin={{ vertical: "bottom", horizontal: "right" }}>
