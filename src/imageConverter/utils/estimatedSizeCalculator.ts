@@ -1,4 +1,4 @@
-import { ConversionSettings, ImageFormat } from "../types";
+import { ConversionSettings } from "../types";
 
 /**
  * Estimate the output file size based on settings

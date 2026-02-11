@@ -14,6 +14,7 @@ import {
 } from "./types";
 import { ValidationEngine } from "./ValidationEngine";
 import { EMAIL_VALIDATION_RULES } from "./validationRules";
+import { logger } from "../utils/logger";
 
 export class EmailHTMLValidator {
   private config: EmailValidatorConfig;
@@ -73,7 +74,7 @@ export class EmailHTMLValidator {
         this.performPeriodicCleanup();
       }, EMAIL_DEFAULTS.CACHE_CLEANUP_INTERVAL_MS);
     } catch (error) {
-      console.error("Failed to setup cleanup interval", error, "EmailHTMLValidator");
+      logger.error("EmailHTMLValidator", "Failed to setup cleanup interval", error);
     }
   }
 
@@ -88,26 +89,22 @@ export class EmailHTMLValidator {
       const validationStats = this.validationEngine.getCacheStats();
       const autofixStats = this.autofixEngine.getFixHistoryStats();
 
-      console.log(
-        `${LOGGING_CONSTANTS.CACHE_CLEANUP_PREFIX}`,
-        {
-          validationCache: validationStats,
-          autofixHistory: autofixStats,
-        },
-        "EmailHTMLValidator"
-      );
+      logger.debug("EmailHTMLValidator", LOGGING_CONSTANTS.CACHE_CLEANUP_PREFIX, {
+        validationCache: validationStats,
+        autofixHistory: autofixStats,
+      });
 
       // Force garbage collection if available (Node.js only)
       if (typeof global !== "undefined" && (global as { gc?: () => void }).gc) {
         try {
           (global as { gc: () => void }).gc();
-          console.log(`${LOGGING_CONSTANTS.GARBAGE_COLLECTION_PREFIX}`, {}, "EmailHTMLValidator");
+          logger.debug("EmailHTMLValidator", LOGGING_CONSTANTS.GARBAGE_COLLECTION_PREFIX);
         } catch (error) {
           // Ignore GC errors
         }
       }
     } catch (error) {
-      console.error("Error during periodic cleanup", error, "EmailHTMLValidator");
+      logger.error("EmailHTMLValidator", "Error during periodic cleanup", error);
     }
   }
 
@@ -181,14 +178,10 @@ export class EmailHTMLValidator {
       const duration = Date.now() - startTime;
       if (duration > PERFORMANCE_CONSTANTS.SLOW_VALIDATION_THRESHOLD_MS) {
         // Log slow validations
-        console.warn(
+        logger.warn(
+          "EmailHTMLValidator",
           `${LOGGING_CONSTANTS.SLOW_OPERATION_PREFIX}: ${duration}ms for ${html.length} bytes`,
-          {
-            duration,
-            htmlSize: html.length,
-            issues: report.totalIssues,
-          },
-          "EmailHTMLValidator"
+          { duration, htmlSize: html.length, issues: report.totalIssues }
         );
       }
 
@@ -198,7 +191,7 @@ export class EmailHTMLValidator {
       this.validationStats.lastValidationTime = Date.now();
 
       // Log error and return error report
-      console.error(`${ERROR_MESSAGES.VALIDATION_FAILED}`, error, "EmailHTMLValidator");
+      logger.error("EmailHTMLValidator", ERROR_MESSAGES.VALIDATION_FAILED, error);
 
       const errorMessage = error instanceof Error ? error.message : "Unknown validation error";
       return {
@@ -263,14 +256,10 @@ export class EmailHTMLValidator {
       const duration = Date.now() - startTime;
       if (duration > PERFORMANCE_CONSTANTS.SLOW_AUTOFIX_THRESHOLD_MS) {
         // Log slow autofixes
-        console.warn(
+        logger.warn(
+          "EmailHTMLValidator",
           `${LOGGING_CONSTANTS.SLOW_OPERATION_PREFIX}: ${duration}ms for ${html.length} bytes`,
-          {
-            duration,
-            htmlSize: html.length,
-            fixedRules: result.fixed.length,
-          },
-          "EmailHTMLValidator"
+          { duration, htmlSize: html.length, fixedRules: result.fixed.length }
         );
       }
 
@@ -280,7 +269,7 @@ export class EmailHTMLValidator {
       this.validationStats.lastAutoFixTime = Date.now();
 
       // Log error and return original HTML
-      console.error(`${ERROR_MESSAGES.AUTOFIX_FAILED}`, error, "EmailHTMLValidator");
+      logger.error("EmailHTMLValidator", ERROR_MESSAGES.AUTOFIX_FAILED, error);
 
       return { html, fixed: [] };
     }
@@ -297,11 +286,7 @@ export class EmailHTMLValidator {
     try {
       return this.autofixEngine.autoFixSpecificIssue(html, ruleName);
     } catch (error) {
-      console.error(
-        `Error fixing specific issue with rule ${ruleName}`,
-        error,
-        "EmailHTMLValidator"
-      );
+      logger.error("EmailHTMLValidator", `Error fixing specific issue with rule ${ruleName}`, error);
       return { html, fixed: false };
     }
   }
@@ -317,7 +302,7 @@ export class EmailHTMLValidator {
     try {
       return this.autofixEngine.autoFixMultipleIssues(html, ruleNames);
     } catch (error) {
-      console.error("Error fixing multiple issues", error, "EmailHTMLValidator");
+      logger.error("EmailHTMLValidator", "Error fixing multiple issues", error);
       return { html, fixed: [] };
     }
   }
@@ -333,7 +318,7 @@ export class EmailHTMLValidator {
     try {
       return this.autofixEngine.autoFixAllIssues(html, severity);
     } catch (error) {
-      console.error(`Error fixing all ${severity} issues`, error, "EmailHTMLValidator");
+      logger.error("EmailHTMLValidator", `Error fixing all ${severity} issues`, error);
       return { html, fixed: [] };
     }
   }
@@ -349,7 +334,7 @@ export class EmailHTMLValidator {
     try {
       return this.autofixEngine.autoFixCategory(html, category);
     } catch (error) {
-      console.error(`Error fixing category ${category} issues`, error, "EmailHTMLValidator");
+      logger.error("EmailHTMLValidator", `Error fixing category ${category} issues`, error);
       return { html, fixed: [] };
     }
   }
@@ -365,7 +350,7 @@ export class EmailHTMLValidator {
     try {
       return this.autofixEngine.getAutoFixableRules();
     } catch (error) {
-      console.error("Error getting auto-fixable rules", error, "EmailHTMLValidator");
+      logger.error("EmailHTMLValidator", "Error getting auto-fixable rules", error);
       return [];
     }
   }
@@ -381,7 +366,7 @@ export class EmailHTMLValidator {
     try {
       return this.autofixEngine.getRulesByCategory(category);
     } catch (error) {
-      console.error(`Error getting rules for category ${category}`, error, "EmailHTMLValidator");
+      logger.error("EmailHTMLValidator", `Error getting rules for category ${category}`, error);
       return [];
     }
   }
@@ -397,9 +382,9 @@ export class EmailHTMLValidator {
     try {
       this.validationEngine.addRule(rule);
       this.autofixEngine.addRule(rule);
-      console.log(`Custom rule added: ${rule.name}`, {}, "EmailHTMLValidator");
+      logger.debug("EmailHTMLValidator", `Custom rule added: ${rule.name}`);
     } catch (error) {
-      console.error(`Error adding custom rule ${rule.name}`, error, "EmailHTMLValidator");
+      logger.error("EmailHTMLValidator", `Error adding custom rule ${rule.name}`, error);
       throw error;
     }
   }
@@ -415,9 +400,9 @@ export class EmailHTMLValidator {
     try {
       this.validationEngine.removeRule(ruleName);
       this.autofixEngine.removeRule(ruleName);
-      console.log(`Custom rule removed: ${ruleName}`, {}, "EmailHTMLValidator");
+      logger.debug("EmailHTMLValidator", `Custom rule removed: ${ruleName}`);
     } catch (error) {
-      console.error(`Error removing custom rule ${ruleName}`, error, "EmailHTMLValidator");
+      logger.error("EmailHTMLValidator", `Error removing custom rule ${ruleName}`, error);
       throw error;
     }
   }
@@ -461,9 +446,9 @@ export class EmailHTMLValidator {
       this.validationEngine = new ValidationEngine(this.config);
       this.autofixEngine = new AutofixEngine(this.config);
 
-      console.log("Configuration updated successfully", { newConfig }, "EmailHTMLValidator");
+      logger.debug("EmailHTMLValidator", "Configuration updated successfully", { newConfig });
     } catch (error) {
-      console.error("Error updating configuration", error, "EmailHTMLValidator");
+      logger.error("EmailHTMLValidator", "Error updating configuration", error);
       throw error;
     }
   }
@@ -487,9 +472,9 @@ export class EmailHTMLValidator {
         this.config.rules[ruleName].enabled = enabled;
       }
 
-      console.log(`Rule ${ruleName} ${enabled ? "enabled" : "disabled"}`, {}, "EmailHTMLValidator");
+      logger.debug("EmailHTMLValidator", `Rule ${ruleName} ${enabled ? "enabled" : "disabled"}`);
     } catch (error) {
-      console.error(`Error setting rule ${ruleName} enabled state`, error, "EmailHTMLValidator");
+      logger.error("EmailHTMLValidator", `Error setting rule ${ruleName} enabled state`, error);
       throw error;
     }
   }
@@ -517,9 +502,9 @@ export class EmailHTMLValidator {
         this.config.rules[ruleName].severity = severity;
       }
 
-      console.log(`Rule ${ruleName} severity set to ${severity}`, {}, "EmailHTMLValidator");
+      logger.debug("EmailHTMLValidator", `Rule ${ruleName} severity set to ${severity}`);
     } catch (error) {
-      console.error(`Error setting rule ${ruleName} severity`, error, "EmailHTMLValidator");
+      logger.error("EmailHTMLValidator", `Error setting rule ${ruleName} severity`, error);
       throw error;
     }
   }
@@ -546,7 +531,7 @@ export class EmailHTMLValidator {
     try {
       return this.validationEngine.getAvailableRules();
     } catch (error) {
-      console.error("Error getting available rules", error, "EmailHTMLValidator");
+      logger.error("EmailHTMLValidator", "Error getting available rules", error);
       return {};
     }
   }
@@ -562,7 +547,7 @@ export class EmailHTMLValidator {
     try {
       return this.validationEngine.testRule(ruleName, html);
     } catch (error) {
-      console.error(`Error testing rule ${ruleName}`, error, "EmailHTMLValidator");
+      logger.error("EmailHTMLValidator", `Error testing rule ${ruleName}`, error);
       return [];
     }
   }
@@ -578,7 +563,7 @@ export class EmailHTMLValidator {
     try {
       return this.validationEngine.getCompatibilityReport(html);
     } catch (error) {
-      console.error("Error generating compatibility report", error, "EmailHTMLValidator");
+      logger.error("EmailHTMLValidator", "Error generating compatibility report", error);
       return {};
     }
   }
@@ -597,7 +582,7 @@ export class EmailHTMLValidator {
         isDisposed: this.isDisposed,
       };
     } catch (error) {
-      console.error("Error getting statistics", error, "EmailHTMLValidator");
+      logger.error("EmailHTMLValidator", "Error getting statistics", error);
       return {
         validation: this.validationStats,
         cache: { validation: {}, autofix: {} },
@@ -623,7 +608,7 @@ export class EmailHTMLValidator {
       lastAutoFixTime: 0,
     };
 
-    console.log(`${LOGGING_CONSTANTS.STATISTICS_RESET_PREFIX}`, {}, "EmailHTMLValidator");
+    logger.debug("EmailHTMLValidator", LOGGING_CONSTANTS.STATISTICS_RESET_PREFIX);
   }
 
   /**
@@ -651,13 +636,9 @@ export class EmailHTMLValidator {
       // Mark as disposed
       this.isDisposed = true;
 
-      console.log(
-        `EmailHTMLValidator ${LOGGING_CONSTANTS.DISPOSAL_PREFIX}`,
-        {},
-        "EmailHTMLValidator"
-      );
+      logger.debug("EmailHTMLValidator", `EmailHTMLValidator ${LOGGING_CONSTANTS.DISPOSAL_PREFIX}`);
     } catch (error) {
-      console.error("Error during disposal", error, "EmailHTMLValidator");
+      logger.error("EmailHTMLValidator", "Error during disposal", error);
       // Mark as disposed even if cleanup fails
       this.isDisposed = true;
     }

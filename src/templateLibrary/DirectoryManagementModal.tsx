@@ -3,7 +3,7 @@
  * Allows users to manage allowed directories for template import
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Delete as DeleteIcon, FolderOpen as FolderOpenIcon } from "@mui/icons-material";
 import {
@@ -17,8 +17,11 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
 
 import { addAllowedRoot, getAllowedRoots, removeAllowedRoot } from "./templateApi";
+import { StyledPaper, useThemeMode } from "../theme";
+import { getComponentStyles } from "../theme/componentStyles";
 
 interface DirectoryManagementModalProps {
   open: boolean;
@@ -26,6 +29,10 @@ interface DirectoryManagementModalProps {
 }
 
 export default function DirectoryManagementModal({ open, onClose }: DirectoryManagementModalProps) {
+  const theme = useTheme();
+  const { mode, style } = useThemeMode();
+  const componentStyles = useMemo(() => getComponentStyles(mode, style), [mode, style]);
+
   const [allowedDirectories, setAllowedDirectories] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -125,6 +132,17 @@ export default function DirectoryManagementModal({ open, onClose }: DirectoryMan
       onClose={handleClose}
       maxWidth='md'
       fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: `${componentStyles.card.borderRadius}px`,
+          background:
+            componentStyles.card.background || alpha(theme.palette.background.paper, 0.9),
+          backdropFilter: componentStyles.card.backdropFilter,
+          WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
+          border: componentStyles.card.border,
+          boxShadow: componentStyles.card.boxShadow,
+        },
+      }}
     >
       <DialogTitle>Manage Allowed Directories</DialogTitle>
       <DialogContent>
@@ -162,17 +180,16 @@ export default function DirectoryManagementModal({ open, onClose }: DirectoryMan
         {allowedDirectories.length > 0 ? (
           <Box>
             {allowedDirectories.map((dir, index) => (
-              <Box
+              <StyledPaper
                 key={index}
-                display='flex'
-                alignItems='center'
-                justifyContent='space-between'
-                p={2}
-                mb={1}
-                border={1}
-                borderColor='divider'
-                borderRadius={1}
-                sx={{ backgroundColor: "background.paper" }}
+                backgroundAlpha={0.85}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  p: 2,
+                  mb: 1,
+                }}
               >
                 <Typography
                   variant='body2'
@@ -189,7 +206,7 @@ export default function DirectoryManagementModal({ open, onClose }: DirectoryMan
                 >
                   Remove
                 </Button>
-              </Box>
+              </StyledPaper>
             ))}
           </Box>
         ) : (

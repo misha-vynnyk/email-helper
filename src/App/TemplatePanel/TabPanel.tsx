@@ -38,7 +38,14 @@ export default function TabPanel({ children, value, selectedValue, mounted }: Ta
       }}
     >
       <Fade in={isActive} timeout={200}>
-        <Box sx={{ height: "100%", width: "100%" }}>
+        <Box
+          data-app-scroll="true"
+          sx={{
+            height: "100%",
+            width: "100%",
+            overflow: "auto",
+          }}
+        >
           {children}
         </Box>
       </Fade>

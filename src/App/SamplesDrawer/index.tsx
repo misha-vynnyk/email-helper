@@ -5,7 +5,7 @@ import { Settings, Email } from "@mui/icons-material";
 
 import { useSamplesDrawerOpen } from "../../contexts/AppState";
 import { useRegistrationStatus } from "../../hooks/useRegistrationStatus";
-import AnimatedBackground from "../../imageConverter/components/AnimatedBackground";
+import GeometricBackground from "../../imageConverter/components/GeometricBackground";
 import { getComponentStyles, useThemeMode } from "../../theme";
 import { getGradients } from "../../theme/tokens";
 
@@ -52,9 +52,16 @@ export default function SamplesDrawer({
         width: samplesDrawerOpen ? SAMPLES_DRAWER_WIDTH : 0,
         "& .MuiDrawer-paper": {
           width: SAMPLES_DRAWER_WIDTH,
-          backgroundColor: "background.paper",
-          borderRight: 1,
-          borderColor: "divider",
+          background:
+            componentStyles.card.background || alpha(theme.palette.background.paper, 0.92),
+          backdropFilter: componentStyles.card.backdropFilter,
+          WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
+          borderRight: "1px solid",
+          borderRightColor: "divider",
+          borderTop: "none",
+          borderBottom: "none",
+          borderLeft: "none",
+          boxShadow: componentStyles.card.boxShadow,
           paddingTop: "10px",
           boxSizing: "border-box",
         },
@@ -63,7 +70,7 @@ export default function SamplesDrawer({
       {/* Animated Background - only for non-default styles */}
       {showAnimatedBackground && (
         <Box sx={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 }}>
-          <AnimatedBackground />
+          <GeometricBackground />
         </Box>
       )}
       <Stack

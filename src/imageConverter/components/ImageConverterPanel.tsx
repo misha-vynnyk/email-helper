@@ -1,9 +1,9 @@
 import { Box, useTheme, useMediaQuery } from "@mui/material";
 
-import { useThemeMode } from "../../theme";
+import { StyledPaper, useThemeMode } from "../../theme";
 import { ImageConverterProvider } from "../context/ImageConverterContext";
 
-import AnimatedBackground from "./AnimatedBackground";
+import GeometricBackground from "./GeometricBackground";
 import BatchProcessor from "./BatchProcessor";
 import FileUploadZone from "./FileUploadZone";
 import SettingsSidebar from "./SettingsSidebar";
@@ -30,7 +30,7 @@ function ImageConverterContent() {
         }}
       >
         {/* Animated Background - only for non-default styles */}
-        {showAnimatedBackground && <AnimatedBackground />}
+        {showAnimatedBackground && <GeometricBackground />}
 
         {/* Settings Sidebar on top */}
         <Box
@@ -102,7 +102,7 @@ function ImageConverterContent() {
         }}
       >
         {/* Animated Background - only for non-default styles */}
-        {showAnimatedBackground && <AnimatedBackground />}
+        {showAnimatedBackground && <GeometricBackground />}
 
         {/* Main Content Area */}
         <Box
@@ -119,15 +119,20 @@ function ImageConverterContent() {
         </Box>
 
         {/* Sticky Footer: Batch Actions */}
-        <Box
+        <StyledPaper
+          backgroundAlpha={0.9}
           sx={{
-            borderTop: `1px solid ${theme.palette.divider}`,
-            backgroundColor: theme.palette.background.paper,
-            boxShadow: `0 -2px 10px ${theme.palette.mode === "dark" ? "rgba(0,0,0,0.3)" : "rgba(0,0,0,0.05)"}`,
+            borderRadius: 0,
+            border: "none",
+            borderTop: "1px solid",
+            borderTopColor: "divider",
+            borderLeft: "none",
+            borderRight: "none",
+            borderBottom: "none",
           }}
         >
           <BatchProcessor />
-        </Box>
+        </StyledPaper>
       </Box>
     </Box>
   );

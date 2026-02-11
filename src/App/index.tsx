@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ErrorBoundary } from "react-error-boundary";
 import { ToastContainer } from "react-toastify";
 
-import { Box, Stack, useTheme } from "@mui/material";
+import { Stack, useTheme } from "@mui/material";
 
 import { EmailSettingsMenu } from "../components/EmailSettingsMenu";
 import { RegistrationForm } from "../components/RegistrationForm";

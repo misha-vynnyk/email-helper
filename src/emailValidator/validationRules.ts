@@ -200,6 +200,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
           fixedHtml = fixedHtml.replace(
             RegexCache.get('style="([^"]*?)"([^>]*?)style="([^"]*?)"'),
             (match, style1, middle, style2) => {
+              void match;
               // Split styles and merge, removing duplicates
               const styles1 = style1.split(";").filter((s: string) => s.trim());
               const styles2 = style2.split(";").filter((s: string) => s.trim());
@@ -663,6 +664,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
       try {
         // Fix table attributes (avoid duplicates and fix wrong values)
         fixedHtml = fixedHtml.replace(/<table([^>]*?)>/gi, (match, attrs) => {
+          void match;
           let newAttrs = attrs;
 
           // Fix existing wrong values
@@ -680,6 +682,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
 
         // Fix td attributes (avoid duplicates and fix wrong values)
         fixedHtml = fixedHtml.replace(/<td([^>]*?)>/gi, (match, attrs) => {
+          void match;
           let newAttrs = attrs;
 
           // Fix existing wrong valign values
@@ -693,6 +696,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
 
         // Fix img attributes (comprehensive replacement)
         fixedHtml = fixedHtml.replace(/<img([^>]*?)(\s*\/?\s*)>/gi, (match, attrs) => {
+          void match;
           let newAttrs = attrs;
 
           // Alt handling is done by image-alt-attributes rule - skip here to avoid conflicts
@@ -710,6 +714,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
             newAttrs = newAttrs.replace(
               /style="([^"]*?)width:\s*100%([^"]*?)"/gi,
               (styleMatch: string, before: string, after: string) => {
+                void styleMatch;
                 const beforeStyles = before.trim();
                 const afterStyles = after.trim();
                 const separator1 = beforeStyles && !beforeStyles.endsWith(";") ? "; " : "";
@@ -728,6 +733,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
               newAttrs = newAttrs.replace(
                 /style="([^"]*?)"/gi,
                 (styleMatch: string, styleContent: string) => {
+                  void styleMatch;
                   const trimmed = styleContent.trim();
                   const separator = trimmed && !trimmed.endsWith(";") ? "; " : "";
                   return `style="${trimmed}${separator}display:block"`;
@@ -851,6 +857,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
 
         // Enhanced link processing: add target="_blank" and styles (ONLY for <a> tags)
         fixedHtml = fixedHtml.replace(/<a\b([^>]*)>/gi, (match, attrs) => {
+          void match;
           let newAttrs = attrs;
 
           // Fix malformed href attributes (missing = sign)
@@ -876,6 +883,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
               newAttrs = newAttrs.replace(
                 /style="([^"]*?)"/gi,
                 (styleMatch: string, styleContent: string) => {
+                  void styleMatch;
                   const trimmed = styleContent.trim();
                   const separator = trimmed && !trimmed.endsWith(";") ? "; " : "";
                   return `style="${trimmed}${separator}text-decoration:none"`;
@@ -1501,6 +1509,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
           fixedHtml = fixedHtml.replace(
             RegexCache.get('style="([^"]*?)"([^>]*?)style="([^"]*?)"'),
             (match, style1, middle, style2) => {
+              void match;
               // Split styles and merge, removing duplicates
               const styles1 = style1.split(";").filter((s: string) => s.trim());
               const styles2 = style2.split(";").filter((s: string) => s.trim());
@@ -1777,6 +1786,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
       try {
         // Single comprehensive img replacement to avoid multiple passes and conflicts
         fixedHtml = fixedHtml.replace(/<img([^>]*?)(\s*\/?\s*)>/gi, (match, attrs) => {
+          void match;
           let newAttrs = attrs;
 
           // Extract src for alt text generation

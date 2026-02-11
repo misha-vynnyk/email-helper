@@ -4,13 +4,13 @@ import { Edit, SettingsApplications, Storage } from "@mui/icons-material";
 import {
   Alert,
   Box,
-  Paper,
   ToggleButton,
   ToggleButtonGroup,
   Tooltip,
   Typography,
 } from "@mui/material";
 
+import { StyledPaper } from "../theme";
 import { useEmailSender } from "./EmailSenderContext";
 
 export const StorageToggle: React.FC = () => {
@@ -52,7 +52,7 @@ export const StorageToggle: React.FC = () => {
   };
 
   return (
-    <Paper sx={{ p: 2, mb: 2 }}>
+    <StyledPaper sx={{ p: 2, mb: 2 }}>
       <Typography
         variant='subtitle1'
         sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}
@@ -133,6 +133,6 @@ export const StorageToggle: React.FC = () => {
           </Typography>
         </Alert>
       )}
-    </Paper>
+    </StyledPaper>
   );
 };
