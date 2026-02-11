@@ -14,7 +14,7 @@ import {
 import { LIMITS, TIMING } from "../constants/limits";
 import { logger } from "../../utils/logger";
 import { STORAGE_KEYS } from "../../utils/storageKeys";
-import { ConversionResult, ConversionSettings, ImageFile, ImageFormat } from "../types";
+import { ConversionResult, ConversionSettings, ImageFile } from "../types";
 import { convertImageClient } from "../utils/clientConverter";
 import { extractExif, insertExif } from "../utils/exifPreserver";
 import { detectImageFormat, getExtensionForFormat } from "../utils/imageFormatDetector";

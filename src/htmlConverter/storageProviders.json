@@ -1,0 +1,43 @@
+{
+  "consoleBaseUrl": "https://storage.epcnetwork.dev",
+  "systemNotifications": {
+    "enabled": false,
+    "soundsEnabled": true
+  },
+  "providers": {
+    "default": {
+      "bucket": "files",
+      "usesCategory": true,
+      "consoleRootPrefix": "Promo",
+      "categories": ["finance", "health"],
+      "defaultCategory": "finance",
+      "closeTabAfterBatch": true,
+      "publicBaseUrl": "https://storage.5th-elementagency.com",
+      "publicPathPrefix": "files",
+      "publicRootPrefix": "Promo"
+    },
+    "alphaone": {
+      "bucket": "alphaone",
+      "usesCategory": false,
+      "consoleRootPrefix": "promo",
+      "loginWaitMs": 600000,
+      "bootstrapWaitMs": 30000,
+      "closeTabAfterBatch": true,
+      "publicBaseUrl": "https://alphaonest.com",
+      "publicPathPrefix": "files",
+      "publicRootPrefix": "promo"
+    }
+  },
+  "browserProfiles": {
+    "default": {
+      "debugPort": 9222,
+      "userDataDir": "/Users/mykhailo.vynnyk/Library/Application Support/BravePlaywright",
+      "autoCloseTab": false
+    },
+    "alphaone": {
+      "debugPort": 9223,
+      "userDataDir": "/Users/mykhailo.vynnyk/Library/Application Support/BravePlaywright-AlfaOne",
+      "autoCloseTab": false
+    }
+  }
+}

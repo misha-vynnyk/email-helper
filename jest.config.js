@@ -6,6 +6,7 @@ export default {
     "^@/(.*)$": "<rootDir>/src/$1",
   },
   testMatch: ["**/__tests__/**/*.(ts|tsx|js)", "**/*.(test|spec).(ts|tsx|js)"],
+  testPathIgnorePatterns: ["/node_modules/", "/dist/", "/build/", "/server/dist/", "\\.d\\.ts$"],
   transform: {
     "^.+\\.(ts|tsx)$": [
       "ts-jest",

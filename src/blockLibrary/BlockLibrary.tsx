@@ -16,7 +16,6 @@ import {
   Alert,
   Box,
   Button,
-  Card,
   CardContent,
   FormControl,
   Grid,
@@ -30,10 +29,10 @@ import {
 } from "@mui/material";
 
 import { EmailBlock } from "../types/block";
+import { StyledCard } from "../theme";
 
 import AddBlockModal from "./AddBlockModal";
 import { blockFileApi } from "./blockFileApi";
-import BlockItem from "./BlockItem";
 import {
   getCategories,
   loadCustomBlocks,
@@ -359,7 +358,7 @@ export default function BlockLibrary() {
               md={4}
               key={index}
             >
-              <Card>
+              <StyledCard enableHover={false}>
                 <CardContent>
                   <Skeleton
                     variant='rectangular'
@@ -371,7 +370,7 @@ export default function BlockLibrary() {
                     width='60%'
                   />
                 </CardContent>
-              </Card>
+              </StyledCard>
             </Grid>
           ))}
         </Grid>
@@ -482,7 +481,7 @@ export default function BlockLibrary() {
       </Box>
 
       {/* Search and Filter */}
-      <Card sx={{ mb: 3 }}>
+      <StyledCard enableHover={false} sx={{ mb: 3 }}>
         <CardContent>
           <Grid
             container
@@ -608,7 +607,7 @@ export default function BlockLibrary() {
             </Grid>
           </Grid>
         </CardContent>
-      </Card>
+      </StyledCard>
       </Box>
 
       {/* Blocks Grid */}

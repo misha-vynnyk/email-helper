@@ -1,14 +1,16 @@
 import React from "react";
 
 import { Box, CircularProgress, Fade, Stack } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 
 import { BlockLibrary } from "../../blockLibrary";
 import { useSelectedMainTab } from "../../contexts/AppState";
 import { EmailSenderProvider } from "../../emailSender/EmailSenderContext";
+import { HtmlConverterPanel } from "../../htmlConverter";
 import { ImageConverterPanel } from "../../imageConverter";
-import AnimatedBackground from "../../imageConverter/components/AnimatedBackground";
+import GeometricBackground from "../../imageConverter/components/GeometricBackground";
 import { TemplateLibrary } from "../../templateLibrary";
-import { ThemeToggle, ThemeStyleSelector, useThemeMode } from "../../theme";
+import { getComponentStyles, ThemeToggle, ThemeStyleSelector, useThemeMode } from "../../theme";
 import ToggleSamplesPanelButton from "../SamplesDrawer/ToggleSamplesPanelButton";
 
 import EmailSenderPanel from "./EmailSenderPanel";
@@ -16,8 +18,9 @@ import MainTabsGroup from "./MainTabsGroup";
 import TabPanel from "./TabPanel";
 
 export default function TemplatePanel() {
-  const { style } = useThemeMode();
+  const { mode, style } = useThemeMode();
   const selectedMainTab = useSelectedMainTab();
+  const componentStyles = React.useMemo(() => getComponentStyles(mode, style), [mode, style]);
   // useDeferredValue - рендер контенту відкладається, таб-індикатор оновлюється миттєво
   const deferredTab = React.useDeferredValue(selectedMainTab);
   const showAnimatedBackground = style !== "default";
@@ -50,7 +53,11 @@ export default function TemplatePanel() {
           height: 49,
           borderBottom: 1,
           borderColor: "divider",
-          backgroundColor: "background.paper",
+          background:
+            componentStyles.card.background ||
+            ((theme) => alpha(theme.palette.background.paper, 0.9)),
+          backdropFilter: componentStyles.card.backdropFilter,
+          WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
           position: "sticky",
           top: 0,
           zIndex: "appBar",
@@ -74,7 +81,7 @@ export default function TemplatePanel() {
               pointerEvents: "none",
             }}
           >
-            <AnimatedBackground />
+            <GeometricBackground />
           </Box>
         )}
         <Box sx={{ position: "relative", zIndex: 1, minWidth: 40 }}>
@@ -148,6 +155,10 @@ export default function TemplatePanel() {
 
         <TabPanel value="images" selectedValue={deferredTab} mounted={mountedTabs.has("images")}>
           <ImageConverterPanel />
+        </TabPanel>
+
+        <TabPanel value="converter" selectedValue={deferredTab} mounted={mountedTabs.has("converter")}>
+          <HtmlConverterPanel />
         </TabPanel>
       </Box>
     </>

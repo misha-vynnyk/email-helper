@@ -4,10 +4,11 @@
  * Uses react-window v2 API
  */
 
-import React, { useMemo, CSSProperties, ReactElement } from "react";
-import { List } from "react-window";
+import { useMemo } from "react";
+import type { CSSProperties, ReactElement } from "react";
 import { Box, useMediaQuery, useTheme } from "@mui/material";
 
+import { VirtualList } from "../components/VirtualList";
 import { useContainerDimensions } from "../hooks";
 import { EmailBlock } from "../types/block";
 import BlockItem from "./BlockItem";
@@ -130,7 +131,7 @@ export default function VirtualizedBlockGrid({
   return (
     <Box ref={containerRef} sx={{ width: "100%", height: "100%", pt: `${GAP}px` }}>
       {dimensions.width > 0 && dimensions.height > 0 && (
-        <List
+        <VirtualList
           rowComponent={RowComponent}
           rowCount={rowCount}
           rowHeight={ROW_HEIGHT}

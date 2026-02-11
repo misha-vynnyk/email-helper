@@ -1,0 +1,19 @@
+{
+  "name": "automation",
+  "version": "1.0.0",
+  "description": "Automated file upload to EPC Network storage with Playwright",
+  "main": "scripts/upload-playwright-brave.js",
+  "scripts": {
+    "upload": "node scripts/upload-playwright-brave.js",
+    "upload:finance": "node scripts/upload-playwright-brave.js",
+    "upload:health": "node scripts/upload-playwright-brave.js",
+    "server": "node server.js",
+    "start": "node server.js"
+  },
+  "keywords": ["automation", "playwright", "upload", "storage"],
+  "author": "Stanislav Drahoi",
+  "license": "ISC",
+  "dependencies": {
+    "playwright-core": "^1.57.0"
+  }
+}

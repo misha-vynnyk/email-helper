@@ -23,8 +23,46 @@ app.use(helmet());
 app.use(limiter);
 
 // CORS configuration - allow local development and GitHub Pages demo
+const allowedOrigins = [
+  /^http:\/\/localhost:\d+$/, // Allow any localhost port
+  /^http:\/\/127\.0\.0\.1:\d+$/, // Allow any 127.0.0.1 port
+  "https://misha-vynnyk.github.io",
+];
+
+// Add origin from environment variable if set
+if (process.env.ALLOWED_ORIGIN) {
+  allowedOrigins.push(process.env.ALLOWED_ORIGIN);
+}
+
+// In production, allow all GitHub Pages origins for this user
+if (process.env.NODE_ENV === "production") {
+  allowedOrigins.push("https://misha-vynnyk.github.io");
+  // Also allow wildcard for any path on GitHub Pages
+  allowedOrigins.push(/^https:\/\/misha-vynnyk\.github\.io/);
+}
+
 const corsOptions = {
-  origin: ["http://localhost:5173", "http://localhost:3000", "https://misha-vynnyk.github.io"],
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+
+    // Check if origin matches any allowed origin
+    const isAllowed = allowedOrigins.some((allowedOrigin) => {
+      if (typeof allowedOrigin === "string") {
+        return origin === allowedOrigin || origin.startsWith(allowedOrigin);
+      }
+      if (allowedOrigin instanceof RegExp) {
+        return allowedOrigin.test(origin);
+      }
+      return false;
+    });
+
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   credentials: true,
   optionsSuccessStatus: 200,
 };
@@ -44,6 +82,7 @@ app.use("/api/templates", require("./routes/templates"));
 app.use("/api/custom-blocks", require("./routes/customBlocks"));
 app.use("/api/image-converter", require("./routes/imageConverter"));
 app.use("/api/storage-paths", require("./routes/storagePaths"));
+app.use(require("./routes/storageUpload"));
 app.use("/api", require("./routes/email"));
 
 // Error handling middleware
@@ -60,6 +99,59 @@ app.use((req, res) => {
   res.status(404).json({ error: "Not found" });
 });
 
+// Helper function to find an available port
+const findAvailablePort = async (startPort, maxAttempts = 10) => {
+  const net = require("net");
+
+  for (let i = 0; i < maxAttempts; i++) {
+    const port = startPort + i;
+    const isAvailable = await new Promise((resolve) => {
+      const server = net.createServer();
+
+      server.once("error", (err) => {
+        if (err.code === "EADDRINUSE") {
+          resolve(false);
+        } else {
+          resolve(false);
+        }
+      });
+
+      server.once("listening", () => {
+        server.close();
+        resolve(true);
+      });
+
+      server.listen(port);
+    });
+
+    if (isAvailable) {
+      if (i > 0) {
+        console.log(`⚠️  Port ${startPort} is in use, using port ${port} instead`);
+      }
+      return port;
+    }
+  }
+
+  throw new Error(`Could not find an available port after ${maxAttempts} attempts starting from ${startPort}`);
+};
+
+// Start server with automatic port detection
+const startServer = async () => {
+  try {
+    const initialPort = parseInt(process.env.PORT) || 3001;
+    const availablePort = await findAvailablePort(initialPort);
+
+    app.listen(availablePort, () => {
+      console.log(`🚀 Server running on port ${availablePort}`);
+      console.log(`📝 Environment: ${process.env.NODE_ENV || "development"}`);
+      console.log(`🌐 CORS enabled for: ${allowedOrigins.join(", ")}`);
+    });
+  } catch (error) {
+    console.error("❌ Failed to start server:", error.message);
+    process.exit(1);
+  }
+};
+
 // Graceful error handling
 process.on("uncaughtException", (error) => {
   console.error("❌ Uncaught Exception:", error);
@@ -71,8 +163,5 @@ process.on("unhandledRejection", (reason, promise) => {
   process.exit(1);
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📝 Environment: ${process.env.NODE_ENV || "development"}`);
-  console.log(`🌐 CORS enabled for: ${corsOptions.origin}`);
-});
+// Start the server
+startServer();

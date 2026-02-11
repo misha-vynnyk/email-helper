@@ -19,11 +19,11 @@ import {
   InputAdornment,
   InputLabel,
   OutlinedInput,
-  Paper,
   TextField,
   Typography,
 } from "@mui/material";
 
+import { StyledPaper } from "../theme";
 import { useEmailSender } from "./EmailSenderContext";
 import { StorageToggle } from "./StorageToggle";
 
@@ -102,7 +102,7 @@ const EmailCredentialsForm: React.FC = () => {
     <>
       <StorageToggle />
 
-      <Paper sx={{ p: 3, mb: 2 }}>
+      <StyledPaper sx={{ p: 3, mb: 2 }}>
         <Box
           sx={{
             display: "flex",
@@ -218,7 +218,7 @@ const EmailCredentialsForm: React.FC = () => {
             </Alert>
           </Box>
         </Collapse>
-      </Paper>
+      </StyledPaper>
     </>
   );
 };

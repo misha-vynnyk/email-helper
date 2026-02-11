@@ -6,6 +6,10 @@
 import { logger } from '../../utils/logger';
 import { ConversionSettings } from '../types';
 
+// Import worker - Vite will handle this correctly in production
+// Using ?worker suffix tells Vite to bundle this as a worker
+import WorkerConstructor from './imageWorker.ts?worker';
+
 interface WorkerTask {
   id: string;
   file: File;
@@ -24,14 +28,13 @@ export class WorkerPool {
   private workers: WorkerWithState[] = [];
   private queue: WorkerTask[] = [];
   private poolSize: number;
-  private workerUrl: string;
+  private WorkerClass: typeof WorkerConstructor;
 
   constructor(poolSize: number = 2) {
     this.poolSize = poolSize;
-
-    // Create worker URL from worker file
-    // In Vite, we use ?worker to import as a worker module
-    this.workerUrl = new URL('./imageWorker.ts', import.meta.url).href;
+    // Use imported Worker class - Vite handles this correctly in production
+    // Vite's ?worker returns a Worker class with different constructor signature
+    this.WorkerClass = WorkerConstructor;
   }
 
   /**
@@ -42,7 +45,7 @@ export class WorkerPool {
 
     for (let i = 0; i < this.poolSize; i++) {
       try {
-        const worker = new Worker(this.workerUrl, { type: 'module' });
+        const worker = new this.WorkerClass();
         this.workers.push({ worker, busy: false });
       } catch (error) {
         logger.error('WorkerPool', 'Failed to create worker', error);
@@ -107,7 +110,7 @@ export class WorkerPool {
    * Run a single task on a worker
    */
   private async runTask(worker: Worker, task: WorkerTask): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<void>((resolve) => {
       let resolved = false;
 
       const handleMessage = (e: MessageEvent) => {
@@ -160,14 +163,15 @@ export class WorkerPool {
       // Convert file to ArrayBuffer and send to worker
       const reader = new FileReader();
       reader.onload = () => {
+        const fileData = reader.result as ArrayBuffer;
         worker.postMessage({
           type: 'convert',
           id: task.id,
-          fileData: reader.result,
+          fileData,
           fileName: task.file.name,
           fileType: task.file.type,
           settings: task.settings,
-        });
+        }, [fileData]);
       };
       reader.onerror = () => {
         if (!resolved) {

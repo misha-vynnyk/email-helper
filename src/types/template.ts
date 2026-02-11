@@ -17,6 +17,7 @@ export interface EmailTemplate {
   tags: string[]; // For search functionality
   description?: string; // Optional description
   thumbnail?: string; // Base64 or URL to preview image
+  preview?: string; // Optional cached preview HTML/text (used for preloading images)
   fileSize: number; // In bytes
   lastModified: number; // Timestamp (ms)
   createdAt: number; // When added to library (timestamp ms)

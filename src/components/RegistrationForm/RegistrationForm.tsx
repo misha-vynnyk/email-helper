@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { toast } from "react-toastify";
 
 import {
@@ -15,7 +15,6 @@ import {
   Alert,
   Box,
   Button,
-  Card,
   CardContent,
   Dialog,
   DialogActions,
@@ -33,8 +32,11 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
 
 import { triggerRegistrationStatusUpdate } from "../../hooks/useRegistrationStatus";
+import { StyledCard, useThemeMode } from "../../theme";
+import { getComponentStyles } from "../../theme/componentStyles";
 import { logger } from "../../utils/logger";
 
 interface RegistrationFormProps {
@@ -77,6 +79,21 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
   editMode = false,
   initialData,
 }) => {
+  const theme = useTheme();
+  const { mode, style } = useThemeMode();
+  const componentStyles = useMemo(() => getComponentStyles(mode, style), [mode, style]);
+  const dialogPaperSx = useMemo(
+    () => ({
+      borderRadius: `${componentStyles.card.borderRadius}px`,
+      background: componentStyles.card.background || alpha(theme.palette.background.paper, 0.94),
+      backdropFilter: componentStyles.card.backdropFilter,
+      WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
+      border: componentStyles.card.border,
+      boxShadow: componentStyles.card.boxShadow,
+    }),
+    [componentStyles, theme.palette.background.paper]
+  );
+
   const [activeStep, setActiveStep] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -210,7 +227,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
       maxWidth='md'
       fullWidth
       PaperProps={{
-        sx: { minHeight: "600px" },
+        sx: { minHeight: "600px", ...dialogPaperSx },
       }}
     >
       <DialogTitle sx={{ pb: 1 }}>
@@ -335,10 +352,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 </Typography>
               </Alert>
 
-              <Card
-                variant='outlined'
-                sx={{ mb: 3 }}
-              >
+              <StyledCard variant='outlined' enableHover={false} sx={{ mb: 3 }}>
                 <CardContent>
                   <Typography
                     variant='subtitle2'
@@ -361,7 +375,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                     5. Copy the 16-character password
                   </Typography>
                 </CardContent>
-              </Card>
+              </StyledCard>
 
               <TextField
                 fullWidth
@@ -416,10 +430,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                 {steps[2].description}
               </Typography>
 
-              <Card
-                variant='outlined'
-                sx={{ mb: 3 }}
-              >
+              <StyledCard variant='outlined' enableHover={false} sx={{ mb: 3 }}>
                 <CardContent>
                   <Typography
                     variant='h6'
@@ -466,7 +477,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({
                     </Box>
                   </Stack>
                 </CardContent>
-              </Card>
+              </StyledCard>
 
               <Alert
                 severity='success'

@@ -15,10 +15,7 @@ export function createCodeMirrorTheme(theme: Theme, mode: ThemeMode, style: Them
   const selectionColor = alpha(theme.palette.primary.main, 0.25);
 
   return [
-    drawSelection({
-      selectionLayer: true,
-      drawSelectionCursor: true,
-    }),
+    drawSelection(),
     EditorView.theme(
     {
       "&": {

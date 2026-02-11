@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { toast } from "react-toastify";
 
 import {
@@ -16,7 +16,6 @@ import {
 import {
   Alert,
   Button,
-  Card,
   CardActions,
   CardContent,
   Chip,
@@ -32,11 +31,14 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
 
 import {
   triggerRegistrationStatusUpdate,
   useRegistrationStatus,
 } from "../../hooks/useRegistrationStatus";
+import { StyledCard, useThemeMode } from "../../theme";
+import { getComponentStyles } from "../../theme/componentStyles";
 import { logger } from "../../utils/logger";
 
 interface EmailSettingsMenuProps {
@@ -50,6 +52,21 @@ export const EmailSettingsMenu: React.FC<EmailSettingsMenuProps> = ({
   onClose,
   onEditCredentials,
 }) => {
+  const theme = useTheme();
+  const { mode, style } = useThemeMode();
+  const componentStyles = useMemo(() => getComponentStyles(mode, style), [mode, style]);
+  const dialogPaperSx = useMemo(
+    () => ({
+      borderRadius: `${componentStyles.card.borderRadius}px`,
+      background: componentStyles.card.background || alpha(theme.palette.background.paper, 0.92),
+      backdropFilter: componentStyles.card.backdropFilter,
+      WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
+      border: componentStyles.card.border,
+      boxShadow: componentStyles.card.boxShadow,
+    }),
+    [componentStyles, theme.palette.background.paper]
+  );
+
   const { isRegistered, registrationData, hasValidCredentials, registeredAt } =
     useRegistrationStatus();
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -104,6 +121,7 @@ export const EmailSettingsMenu: React.FC<EmailSettingsMenuProps> = ({
         onClose={onClose}
         maxWidth='sm'
         fullWidth
+        PaperProps={{ sx: dialogPaperSx }}
       >
         <DialogTitle>
           <Stack
@@ -145,6 +163,7 @@ export const EmailSettingsMenu: React.FC<EmailSettingsMenuProps> = ({
         onClose={onClose}
         maxWidth='md'
         fullWidth
+        PaperProps={{ sx: dialogPaperSx }}
       >
         <DialogTitle>
           <Stack
@@ -184,8 +203,9 @@ export const EmailSettingsMenu: React.FC<EmailSettingsMenuProps> = ({
           </Alert>
 
           {/* Credentials Summary Card */}
-          <Card
+          <StyledCard
             variant='outlined'
+            enableHover={false}
             sx={{ mb: 3 }}
           >
             <CardContent>
@@ -280,10 +300,10 @@ export const EmailSettingsMenu: React.FC<EmailSettingsMenuProps> = ({
                 Delete All
               </Button>
             </CardActions>
-          </Card>
+          </StyledCard>
 
           {/* Help Information */}
-          <Card variant='outlined'>
+          <StyledCard variant='outlined' enableHover={false}>
             <CardContent>
               <Typography
                 variant='subtitle1'
@@ -321,7 +341,7 @@ export const EmailSettingsMenu: React.FC<EmailSettingsMenuProps> = ({
                 • Credentials are not synced across devices or browsers
               </Typography>
             </CardContent>
-          </Card>
+          </StyledCard>
         </DialogContent>
 
         <DialogActions>
@@ -334,6 +354,8 @@ export const EmailSettingsMenu: React.FC<EmailSettingsMenuProps> = ({
         open={deleteConfirmOpen}
         onClose={() => setDeleteConfirmOpen(false)}
         maxWidth='sm'
+        fullWidth
+        PaperProps={{ sx: dialogPaperSx }}
       >
         <DialogTitle>
           <Stack

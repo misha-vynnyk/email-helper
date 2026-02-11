@@ -13,6 +13,9 @@ export const STORAGE_KEYS = {
   TEMPLATE_ALLOWED_DIRECTORIES: "emailBuilder_allowedDirectories",
   TEMPLATE_PREVIEW_CONFIG: "preview-config",
 
+  // Image Converter
+  IMAGE_CONVERTER_SETTINGS: "imageConverterSettings",
+
   // Email Sender
   EMAIL_CREDENTIALS: "emailSenderCredentials",
   EMAIL_FORM_DATA: "emailSenderForm",
