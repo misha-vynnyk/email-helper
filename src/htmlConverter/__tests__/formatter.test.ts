@@ -89,5 +89,22 @@ describe("htmlConverter formatter", () => {
       expect(result).toContain("Text");
       expect(result).toContain("Button");
     });
+
+    it("should convert blue text to link even when background-color appears later in style", () => {
+      const input = '<p><span style="color: rgb(17,85,204); background-color: rgb(255,255,255);">Blue Link Text</span></p>';
+      const result = formatHtml(input);
+
+      expect(result).toContain("Blue Link Text");
+      expect(result).toContain('href="urlhere"');
+      expect(result).toContain("color: #0000EE");
+    });
+
+    it("should not convert text when only background-color is blue but text color is not", () => {
+      const input = '<p><span style="color: rgb(34,34,34); background-color: rgb(17,85,204);">Not A Link</span></p>';
+      const result = formatHtml(input);
+
+      expect(result).toContain("Not A Link");
+      expect(result).not.toContain('href="urlhere"');
+    });
   });
 });

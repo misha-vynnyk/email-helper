@@ -4,7 +4,7 @@
 
 import { cleanOcrText, normalizeOcrLine, cleanupAltCandidate, truncateAlt, isAllCapsLike, isTitleCaseLike } from "./cleanup";
 import { postFixBannerText, spellCorrectBannerText } from "./bannerSpell";
-import { ALLOWED_SHORT_ALL_CAPS, COMMON_3_LETTER_WORDS } from "../constants";
+import { ALLOWED_SHORT_ALL_CAPS, COMMON_3_LETTER_WORDS, FILENAME_STOP_WORDS } from "../constants";
 
 type LineType = "junk" | "cta" | "content" | "year";
 
@@ -190,7 +190,11 @@ function extractFromLines(lines: ProcessedLine[]) {
 
   const nameSuggestions: string[] = [];
   for (const cand of pool) {
-    const parts = cand.toLowerCase().split(/\s+/).filter(w => w.length >= 3);
+    const parts = cand
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, " ")
+      .split(/\s+/)
+      .filter((w) => w.length >= 3 && !FILENAME_STOP_WORDS.has(w));
     for (const p of parts) {
       if (!nameSuggestions.includes(p)) nameSuggestions.push(p);
       if (nameSuggestions.length >= 3) break;

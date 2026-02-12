@@ -6,6 +6,15 @@ interface ContentReplacerResult {
   count: number;
 }
 
+function escapeHtmlAttr(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 export function useContentReplacer() {
   const replaceUrlsInContentByMap = useCallback((content: string, pattern: RegExp, urlMap: Record<string, string>): ContentReplacerResult => {
     let replacedCount = 0;
@@ -67,16 +76,17 @@ export function useContentReplacer() {
       // altMap now uses storage URL as key directly
       const newAlt = altMap[src];
       if (!newAlt) return imgTag;
+      const safeAlt = escapeHtmlAttr(newAlt);
 
       replacedCount++;
 
       // Replace alt attribute value (handles alt before or after src)
       if (/\salt=["'][^"']*["']/i.test(imgTag)) {
         // Alt exists - replace it
-        return imgTag.replace(/(\salt=["'])[^"']*(["'])/i, `$1${newAlt}$2`);
+        return imgTag.replace(/(\salt=["'])[^"']*(["'])/i, `$1${safeAlt}$2`);
       } else {
         // No alt - add it after <img
-        return imgTag.replace(/<img/i, `<img alt="${newAlt}"`);
+        return imgTag.replace(/<img/i, `<img alt="${safeAlt}"`);
       }
     });
 

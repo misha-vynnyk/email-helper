@@ -27,7 +27,7 @@ export type UseOcrAnalysisApi = {
 export function useOcrAnalysis({ enabled, settings, files }: UseOcrAnalysisArgs): UseOcrAnalysisApi {
   const [aiById, setAiById] = useState<Record<string, ImageAiAnalysis>>({});
   const abortRef = useRef<AbortController | null>(null);
-  const autoStartedRef = useRef(false);
+  const autoQueuedRef = useRef<Set<string>>(new Set());
   const analyzerRef = useRef<OcrAnalyzer | null>(null);
 
   const setAiState = useCallback((fileId: string, next: Partial<ImageAiAnalysis>) => {
@@ -113,15 +113,21 @@ export function useOcrAnalysis({ enabled, settings, files }: UseOcrAnalysisArgs)
     if (settings.runMode !== "auto") return;
     const max = settings.autoAnalyzeMaxFiles ?? 0;
     if (max <= 0) return;
-    if (autoStartedRef.current) return;
-
-    autoStartedRef.current = true;
 
     let alive = true;
     (async () => {
-      for (const f of files.slice(0, max)) {
+      const candidates = files
+        .slice(0, max)
+        .filter((f) => {
+          const status = aiById[f.id]?.status;
+          if (status === "done" || status === "running") return false;
+          if (autoQueuedRef.current.has(f.id)) return false;
+          return true;
+        });
+
+      for (const f of candidates) {
         if (!alive) return;
-        if (aiById[f.id]?.status === "done") continue;
+        autoQueuedRef.current.add(f.id);
         await analyzeFile(f, { cancelPrevious: false });
       }
     })();
@@ -131,9 +137,24 @@ export function useOcrAnalysis({ enabled, settings, files }: UseOcrAnalysisArgs)
     };
   }, [aiById, analyzeFile, enabled, files, settings]);
 
+  useEffect(() => {
+    if (!enabled || !settings || settings.runMode !== "auto") {
+      autoQueuedRef.current.clear();
+    }
+  }, [enabled, settings]);
+
+  useEffect(() => {
+    const currentIds = new Set(files.map((f) => f.id));
+    for (const id of Array.from(autoQueuedRef.current)) {
+      if (!currentIds.has(id)) {
+        autoQueuedRef.current.delete(id);
+      }
+    }
+  }, [files]);
+
   const reset = useCallback(() => {
     setAiById({});
-    autoStartedRef.current = false;
+    autoQueuedRef.current.clear();
     abortRef.current?.abort();
     abortRef.current = new AbortController();
   }, []);
@@ -141,7 +162,7 @@ export function useOcrAnalysis({ enabled, settings, files }: UseOcrAnalysisArgs)
   const dispose = useCallback(() => {
     abortRef.current?.abort();
     abortRef.current = null;
-    autoStartedRef.current = false;
+    autoQueuedRef.current.clear();
     setAiById({});
     void analyzerRef.current?.dispose();
     analyzerRef.current = null;
@@ -149,4 +170,3 @@ export function useOcrAnalysis({ enabled, settings, files }: UseOcrAnalysisArgs)
 
   return { aiById, analyzeFile, reset, dispose };
 }
-

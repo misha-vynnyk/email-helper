@@ -8,14 +8,22 @@ interface RGB {
   b: number;
 }
 
+function sanitizeColorInput(color: string): string {
+  return color.replace(/!important/gi, "").trim().toLowerCase();
+}
+
+function isValidRgbChannel(value: number): boolean {
+  return Number.isInteger(value) && value >= 0 && value <= 255;
+}
+
 /**
  * Parses a color string (Hex or RGB) into an RGB object.
  * Returns null if the color cannot be parsed.
  */
 export function parseColor(color: string): RGB | null {
-  color = color.trim().toLowerCase();
+  color = sanitizeColorInput(color);
 
-  // Handle Hex (#RRGGBB or #RGB)
+  // Handle Hex (#RRGGBB, #RGB, #RRGGBBAA, #RGBA)
   if (color.startsWith("#")) {
     const hex = color.substring(1);
     if (hex.length === 3) {
@@ -24,7 +32,19 @@ export function parseColor(color: string): RGB | null {
       const b = parseInt(hex[2] + hex[2], 16);
       if (isNaN(r) || isNaN(g) || isNaN(b)) return null;
       return { r, g, b };
+    } else if (hex.length === 4) {
+      const r = parseInt(hex[0] + hex[0], 16);
+      const g = parseInt(hex[1] + hex[1], 16);
+      const b = parseInt(hex[2] + hex[2], 16);
+      if (isNaN(r) || isNaN(g) || isNaN(b)) return null;
+      return { r, g, b };
     } else if (hex.length === 6) {
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+      if (isNaN(r) || isNaN(g) || isNaN(b)) return null;
+      return { r, g, b };
+    } else if (hex.length === 8) {
       const r = parseInt(hex.substring(0, 2), 16);
       const g = parseInt(hex.substring(2, 4), 16);
       const b = parseInt(hex.substring(4, 6), 16);
@@ -37,13 +57,15 @@ export function parseColor(color: string): RGB | null {
   // Handle RGB (rgb(r, g, b) or rgba(r, g, b, a))
   // We ignore alpha for link detection purposes
   if (color.startsWith("rgb")) {
-    const match = color.match(/rgb\w*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+    const match = color.match(/^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})(?:\s*,\s*(?:\d*\.?\d+))?\s*\)$/);
     if (!match) return null;
-    return {
-      r: parseInt(match[1], 10),
-      g: parseInt(match[2], 10),
-      b: parseInt(match[3], 10),
-    };
+
+    const r = parseInt(match[1], 10);
+    const g = parseInt(match[2], 10);
+    const b = parseInt(match[3], 10);
+    if (!isValidRgbChannel(r) || !isValidRgbChannel(g) || !isValidRgbChannel(b)) return null;
+
+    return { r, g, b };
   }
 
   return null;
@@ -89,4 +111,11 @@ export function isBlueish(color: string): boolean {
   if (b >= r && b > g) return true;
 
   return false;
+}
+
+/**
+ * Public helper for link color detection. Keeps formatting code free from color heuristics.
+ */
+export function isLinkColor(color: string): boolean {
+  return isBlueish(color);
 }

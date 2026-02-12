@@ -1,10 +1,15 @@
-import { isBlueish, parseColor } from "../colorUtils";
+import { isBlueish, isLinkColor, parseColor } from "../colorUtils";
 
 describe("Smart Link Detection", () => {
   describe("parseColor", () => {
     it("should parse 6-digit hex", () => {
       expect(parseColor("#0000FF")).toEqual({ r: 0, g: 0, b: 255 });
       expect(parseColor("#FFFFFF")).toEqual({ r: 255, g: 255, b: 255 });
+    });
+
+    it("should parse 8-digit and 4-digit hex (alpha ignored)", () => {
+      expect(parseColor("#0000FFCC")).toEqual({ r: 0, g: 0, b: 255 });
+      expect(parseColor("#00FC")).toEqual({ r: 0, g: 0, b: 255 });
     });
 
     it("should parse 3-digit hex", () => {
@@ -19,6 +24,19 @@ describe("Smart Link Detection", () => {
 
     it("should parse rgb strings with spacing", () => {
       expect(parseColor("rgb( 0 ,  0,255 )")).toEqual({ r: 0, g: 0, b: 255 });
+    });
+
+    it("should parse rgba and ignore alpha", () => {
+      expect(parseColor("rgba(0, 0, 255, 0.5)")).toEqual({ r: 0, g: 0, b: 255 });
+    });
+
+    it("should handle !important suffix", () => {
+      expect(parseColor("rgb(0, 0, 255) !important")).toEqual({ r: 0, g: 0, b: 255 });
+    });
+
+    it("should reject out-of-range rgb values", () => {
+      expect(parseColor("rgb(256, 0, 255)")).toBeNull();
+      expect(parseColor("rgb(0, 999, 0)")).toBeNull();
     });
 
     it("should return null for invalid colors", () => {
@@ -56,6 +74,17 @@ describe("Smart Link Detection", () => {
     it("should handle rgb input", () => {
       expect(isBlueish("rgb(0, 0, 255)")).toBe(true);
       expect(isBlueish("rgb(255, 0, 0)")).toBe(false);
+    });
+  });
+
+  describe("isLinkColor", () => {
+    it("should use shared link detection logic", () => {
+      expect(isLinkColor("#1155CC")).toBe(true);
+      expect(isLinkColor("rgb(255, 0, 0)")).toBe(false);
+    });
+
+    it("should support !important without false negatives", () => {
+      expect(isLinkColor("rgb(17, 85, 204) !important")).toBe(true);
     });
   });
 });

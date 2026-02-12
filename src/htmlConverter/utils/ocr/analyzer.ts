@@ -69,6 +69,7 @@ function getAnalysisConfigKey(s: ImageAnalysisSettings): string {
   const OCR_PIPELINE_VERSION = 17;
   return [
     `v${OCR_PIPELINE_VERSION}`,
+    s.useAiBackend ? "ai1" : "ai0",
     s.ocrMinWidth ?? 0,
     s.ocrMaxWidth ?? 0,
     s.ocrScaleFactor ?? 1,
@@ -166,34 +167,7 @@ export function createOcrAnalyzer(): OcrAnalyzer {
         const blob = await res.blob();
         onProgress?.(0.1); // Downloaded
 
-      // 0. CHECK: AI Backend Mode
-      if (settings.useAiBackend) {
-        try {
-          if (onProgress) onProgress(0.1); // Connecting...
-
-          // Optional: Check availability first? Or just try-catch?
-          // Let's just try call.
-
-          if (onProgress) onProgress(0.3); // Uploading...
-          const result = await AiBackendClient.analyzeImage(blob, "detailed");
-          if (onProgress) onProgress(1); // Done
-
-          // Cache this result?
-          // For now, let's cache it using the same hash key so future calls are instant
-          const configKey = getAnalysisConfigKey(settings);
-          const hash = await sha256Hex(blob);
-
-          // result fits OcrAnalyzeResult, just add cache info
-          cache.set(hash, { configKey, ...result, cacheHit: true });
-
-          return result;
-        } catch (e) {
-          console.warn("AI Backend failed, falling back to local Tesseract:", e);
-          // Fallthrough to local Tesseract logic
-        }
-      }
-
-      const configKey = getAnalysisConfigKey(settings);
+        const configKey = getAnalysisConfigKey(settings);
         const hash = await sha256Hex(blob);
         const cached = cache.get(hash);
         if (cached && cached.configKey === configKey && !(force && cached.skippedReason)) {
@@ -208,6 +182,37 @@ export function createOcrAnalyzer(): OcrAnalyzer {
             skippedReason: cached.skippedReason,
             cacheHit: true,
           };
+        }
+
+        // 0. CHECK: AI Backend Mode
+        if (settings.useAiBackend) {
+          try {
+            if (onProgress) onProgress(0.1); // Connecting...
+
+            // Optional: Check availability first? Or just try-catch?
+            // Let's just try call.
+
+            if (onProgress) onProgress(0.3); // Uploading...
+            const result = await AiBackendClient.analyzeImage(blob, "detailed");
+            if (onProgress) onProgress(1); // Done
+
+            const aiOut: OcrAnalyzeResult = {
+              ocrText: result.ocrText,
+              ocrTextRaw: result.ocrTextRaw,
+              altSuggestions: result.altSuggestions,
+              ctaSuggestions: result.ctaSuggestions,
+              nameSuggestions: result.nameSuggestions,
+              textLikelihood: result.textLikelihood,
+              skippedReason: result.skippedReason,
+              cacheHit: false,
+            };
+
+            cache.set(hash, { configKey, ...aiOut });
+            return aiOut;
+          } catch (e) {
+            console.warn("AI Backend failed, falling back to local Tesseract:", e);
+            // Fallthrough to local Tesseract logic
+          }
         }
 
         // PHASE 2: ROI & Preprocessing (10% - 25%)

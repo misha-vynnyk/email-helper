@@ -34,6 +34,7 @@ export interface ImageSettings {
 export type UploadCategory = "finance" | "health";
 
 export interface UploadResult {
+  fileId?: string;
   filename: string;
   url: string;
   success: boolean;
