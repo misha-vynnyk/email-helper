@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, FormControl, FormLabel, ToggleButtonGroup, ToggleButton, Typography, Box, Alert, LinearProgress, IconButton, Tooltip, Stack, useTheme, alpha, Divider, FormHelperText } from "@mui/material";
 import { CloudUpload as UploadIcon, CheckCircle as SuccessIcon, Error as ErrorIcon, Close as CloseIcon, Link as LinkIcon, CheckCircleOutline as CheckIcon } from "@mui/icons-material";
 
@@ -6,6 +6,7 @@ import { useThemeMode } from "../theme";
 import { getComponentStyles } from "../theme/componentStyles";
 import { spacingMUI, borderRadius } from "../theme/tokens";
 import { copyToClipboard } from "./utils/clipboard";
+import { AiBackendClient } from "./utils/ocr/aiClient";
 
 // import { normalizeCustomNameInput } from "./utils/imageAnalysis";
 import { useOcrAnalysis } from "./utils/useOcrAnalysis";
@@ -43,8 +44,47 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
   const [uploadResults, setUploadResults] = useState<UploadResult[]>([]);
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
   const [showOcrTextById, setShowOcrTextById] = useState<Record<string, boolean>>({});
+  const [aiBackendWarning, setAiBackendWarning] = useState<string | null>(null);
 
   const analysisEnabled = Boolean(imageAnalysisSettings?.enabled && imageAnalysisSettings.engine === "ocr");
+
+  // Check AI backend availability when analysis is enabled
+  useEffect(() => {
+    if (!analysisEnabled) {
+      setAiBackendWarning(null);
+      return;
+    }
+
+    let isMounted = true;
+
+    const checkAiBackend = async () => {
+      try {
+        const available = await AiBackendClient.isAvailable();
+        if (isMounted) {
+          if (!available) {
+            setAiBackendWarning(
+              "⚠️ Image analysis backend is not running. Please run: npm run dev:ai to enable image analysis."
+            );
+          } else {
+            setAiBackendWarning(null);
+          }
+        }
+      } catch {
+        if (isMounted) {
+          setAiBackendWarning("⚠️ Cannot connect to image analysis backend");
+        }
+      }
+    };
+
+    checkAiBackend();
+    // Re-check every 10 seconds
+    const interval = setInterval(checkAiBackend, 10000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [analysisEnabled]);
 
   // AI Analysis (kept here as it ties to complex state, though could be extracted)
   const {
@@ -235,6 +275,13 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
 
       <DialogContent sx={{ pt: spacingMUI.lg }}>
         <Stack spacing={spacingMUI.lg}>
+          {/* AI Backend Warning */}
+          {aiBackendWarning && (
+            <Alert severity='warning' sx={{ borderRadius: `${borderRadius.md}px` }}>
+              {aiBackendWarning}
+            </Alert>
+          )}
+
           {/* Input Section */}
           {uploadResults.length === 0 && (
             <>
