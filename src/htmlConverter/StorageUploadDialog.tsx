@@ -62,9 +62,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
         const available = await AiBackendClient.isAvailable();
         if (isMounted) {
           if (!available) {
-            setAiBackendWarning(
-              "⚠️ Image analysis backend is not running. Please run: npm run dev:ai to enable image analysis."
-            );
+            setAiBackendWarning("⚠️ Image analysis backend is not running. Please run: npm run dev:ai to enable image analysis.");
           } else {
             setAiBackendWarning(null);
           }
