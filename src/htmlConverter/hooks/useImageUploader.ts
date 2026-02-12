@@ -190,13 +190,13 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
               uploadedUrls[img.src] = fullUrl;
               successCount++;
               log(`✅ [${i + 1}/${completed.length}] ${filename} → storage`);
-              results.push({ filename, url: fullUrl, success: true });
+              results.push({ fileId: img.id, filename, url: fullUrl, success: true });
             }
           } catch (error) {
             const errorMsg = error instanceof Error ? error.message : "Unknown error";
             if ((error as { fatal?: boolean } | null)?.fatal) throw error;
 
-            results.push({ filename, url: "", success: false, error: errorMsg });
+            results.push({ fileId: img.id, filename, url: "", success: false, error: errorMsg });
             if (errorMsg === "Завантаження скасовано") throw error;
             log(`❌ ${filename}: ${errorMsg}`);
             continue;

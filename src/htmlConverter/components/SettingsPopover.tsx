@@ -254,43 +254,9 @@ export const SettingsPopover: React.FC<SettingsPopoverProps> = ({ open, anchorEl
                   </FormControl>
                 </Stack>
 
-                <Stack direction={{ xs: "column", sm: "row" }} spacing={spacingMUI.base}>
-                  <FormControl sx={{ flex: 1 }}>
-                    <TextField
-                      select
-                      size='small'
-                      label='Автопідстановка ALT'
-                      value={imageAnalysis.autoApplyAlt}
-                      onChange={(e) =>
-                        setImageAnalysis((prev) => ({
-                          ...prev,
-                          autoApplyAlt: e.target.value as ImageAnalysisSettings["autoApplyAlt"],
-                        }))
-                      }
-                      disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}>
-                      <MenuItem value='off'>Ні</MenuItem>
-                      <MenuItem value='ifEmpty'>Якщо поле пусте</MenuItem>
-                    </TextField>
-                  </FormControl>
-
-                  <FormControl sx={{ flex: 1 }}>
-                    <TextField
-                      select
-                      size='small'
-                      label='Автопідстановка назви файлу'
-                      value={imageAnalysis.autoApplyFilename}
-                      onChange={(e) =>
-                        setImageAnalysis((prev) => ({
-                          ...prev,
-                          autoApplyFilename: e.target.value as ImageAnalysisSettings["autoApplyFilename"],
-                        }))
-                      }
-                      disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}>
-                      <MenuItem value='off'>Ні</MenuItem>
-                      <MenuItem value='ifEmpty'>Якщо поле пусте</MenuItem>
-                    </TextField>
-                  </FormControl>
-                </Stack>
+                <Alert severity='info' sx={{ borderRadius: `${borderRadius.md}px` }}>
+                  Підстановка ALT та назв файлів виконується лише вручну.
+                </Alert>
 
                 <FormControlLabel control={<Switch size='small' checked={ui.showAdvancedOcrSettings} onChange={(e) => setUi((prev) => ({ ...prev, showAdvancedOcrSettings: e.target.checked }))} disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"} />} label={<Typography variant='body2'>Показати розширені налаштування</Typography>} />
 

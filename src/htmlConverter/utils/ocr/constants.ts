@@ -14,3 +14,30 @@ export const COMMON_3_LETTER_WORDS = new Set([
   "HER", "HOW", "NEW", "NOT", "NOW", "OUR", "OUT", "SEE", "THE", "TOP", "TRY",
   "USE", "WHY", "WIN", "YOU",
 ]);
+
+// Common stop words that should not become filename suggestions.
+export const FILENAME_STOP_WORDS = new Set([
+  "a",
+  "an",
+  "the",
+  "and",
+  "or",
+  "but",
+  "for",
+  "nor",
+  "of",
+  "to",
+  "in",
+  "on",
+  "at",
+  "by",
+  "from",
+  "with",
+  "as",
+  "is",
+  "are",
+  "this",
+  "that",
+  "these",
+  "those",
+]);

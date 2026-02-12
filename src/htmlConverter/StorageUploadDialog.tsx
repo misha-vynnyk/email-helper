@@ -6,8 +6,8 @@ import { useThemeMode } from "../theme";
 import { getComponentStyles } from "../theme/componentStyles";
 import { spacingMUI, borderRadius } from "../theme/tokens";
 import { copyToClipboard } from "./utils/clipboard";
+import { cleanupAltCandidate, truncateAlt } from "./utils/ocr/postprocess/cleanup";
 
-// import { normalizeCustomNameInput } from "./utils/imageAnalysis";
 import { useOcrAnalysis } from "./utils/useOcrAnalysis";
 import { UI_TIMINGS } from "./constants";
 import type { ImageAnalysisSettings, UploadResult } from "./types";
@@ -27,6 +27,39 @@ interface StorageUploadDialogProps {
   onAltsUpdate?: (altMap: Record<string, string>) => void; // For post-upload alt updates
   existingUrls?: Record<string, string>; // Existing storage URLs for files (id -> url)
   imageAnalysisSettings?: ImageAnalysisSettings;
+}
+
+function toBaseName(filename: string): string {
+  return filename.replace(/\.[^.]+$/, "");
+}
+
+function pickFinalAlt(alts: string[] | undefined): string {
+  if (!alts || alts.length === 0) return "";
+
+  const seen = new Set<string>();
+  for (const raw of alts) {
+    const cleaned = truncateAlt(cleanupAltCandidate(String(raw || "")));
+    if (!cleaned) continue;
+    const key = cleaned.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    return cleaned;
+  }
+
+  return "";
+}
+
+function resolveFileForResult(result: UploadResult, orderedFiles: Array<{ id: string; name: string }>, customNames: Record<string, string>) {
+  if (result.fileId) {
+    const byId = orderedFiles.find((f) => f.id === result.fileId);
+    if (byId) return byId;
+  }
+
+  const resultBase = toBaseName(result.filename);
+  return orderedFiles.find((f) => {
+    const baseName = customNames[f.id] || toBaseName(f.name);
+    return baseName === resultBase;
+  });
 }
 
 export default function StorageUploadDialog({ open, onClose, storageProvider = "default", files, onUpload, onCancel, initialFolderName = "", onHistoryAdd, onAltsUpdate, existingUrls, imageAnalysisSettings }: StorageUploadDialogProps) {
@@ -60,30 +93,14 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
 
   const handleAnalyzeFile = useCallback(
     async (file: { id: string; name: string; path?: string }, opts?: { force?: boolean }) => {
-      const result = await analyzeFile(file, { force: opts?.force });
-      if (!result) return;
-
-      // Auto-apply if settings dictate
-      // DISABLE AUTO-APPLY (User request: "remove automatic insertion")
-      /*
-      const bestAlt = result.altSuggestions[0] || result.ctaSuggestions?.[0];
-      if (imageAnalysisSettings?.autoApplyAlt === "ifEmpty" && bestAlt) {
-        setCustomAlts((prev) => (prev[file.id]?.length ? prev : { ...prev, [file.id]: [bestAlt] }));
-      }
-      if (imageAnalysisSettings?.autoApplyFilename === "ifEmpty" && result.nameSuggestions[0]) {
-        const normalized = normalizeCustomNameInput(result.nameSuggestions[0]);
-        if (normalized) {
-          setCustomNames((prev) => (prev[file.id] ? prev : { ...prev, [file.id]: normalized }));
-        }
-      }
-      */
+      await analyzeFile(file, { force: opts?.force });
     },
-    [analyzeFile, /* imageAnalysisSettings?.autoApplyAlt, imageAnalysisSettings?.autoApplyFilename, */ setCustomAlts, setCustomNames]
+    [analyzeFile]
   );
 
   // Handlers
   const [altsSaved, setAltsSaved] = useState(false);
-  const hasAltsToSave = orderedFiles.some((f) => customAlts[f.id]?.length > 0);
+  const hasAltsToSave = orderedFiles.some((f) => Boolean(pickFinalAlt(customAlts[f.id])));
 
   const handleSaveAlts = () => {
     if (!onAltsUpdate) return;
@@ -95,13 +112,10 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
     if (uploadResults.length > 0) {
       for (const res of uploadResults) {
         if (res.success) {
-          const file = orderedFiles.find((f) => {
-            const customName = customNames[f.id];
-            const baseName = customName || f.name.replace(/\.[^.]+$/, "");
-            return res.filename.startsWith(baseName);
-          });
-          if (file && customAlts[file.id]?.length) {
-            altMap[res.url] = customAlts[file.id].join(" | ");
+          const file = resolveFileForResult(res, orderedFiles, customNames);
+          const finalAlt = file ? pickFinalAlt(customAlts[file.id]) : "";
+          if (file && finalAlt) {
+            altMap[res.url] = finalAlt;
           }
         }
       }
@@ -110,8 +124,9 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
     // From existing URLs
     if (existingUrls) {
       for (const file of orderedFiles) {
-        if (existingUrls[file.id] && customAlts[file.id]?.length) {
-          altMap[existingUrls[file.id]] = customAlts[file.id].join(" | ");
+        const finalAlt = pickFinalAlt(customAlts[file.id]);
+        if (existingUrls[file.id] && finalAlt) {
+          altMap[existingUrls[file.id]] = finalAlt;
         }
       }
     }
@@ -140,10 +155,13 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
     try {
       const fileOrder = orderedFiles.map((f) => f.id);
       const effectiveCategory = showCategory ? category : "finance";
-      // Convert customAlts from array to pipe-separated string for API
+      // Keep a single final ALT per image (first valid user-selected option)
       const customAltsAsStrings: Record<string, string> = {};
       for (const [id, alts] of Object.entries(customAlts)) {
-        customAltsAsStrings[id] = alts.join(" | ");
+        const finalAlt = pickFinalAlt(alts);
+        if (finalAlt) {
+          customAltsAsStrings[id] = finalAlt;
+        }
       }
       const response = await onUpload(effectiveCategory, folderName.trim(), customNames, customAltsAsStrings, fileOrder);
       setUploadResults(response.results);
@@ -152,14 +170,10 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
         const altsByFilename: Record<string, string> = {};
         for (const res of response.results) {
           if (res.success) {
-            // Find the file by matching the result filename
-            const file = orderedFiles.find((f) => {
-              const customName = customNames[f.id];
-              const baseName = customName || f.name.replace(/\.[^.]+$/, "");
-              return res.filename.startsWith(baseName);
-            });
-            if (file && customAlts[file.id]?.length) {
-              altsByFilename[res.filename] = customAlts[file.id].join(" | ");
+            const file = resolveFileForResult(res, orderedFiles, customNames);
+            const finalAlt = file ? pickFinalAlt(customAlts[file.id]) : "";
+            if (file && finalAlt) {
+              altsByFilename[res.filename] = finalAlt;
             }
           }
         }

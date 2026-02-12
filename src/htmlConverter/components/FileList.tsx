@@ -73,6 +73,17 @@ export function FileList({ files, customNames, setCustomNames, customAlts, setCu
     }));
   };
 
+  const promoteTag = (fileId: string, tagToPromote: string) => {
+    const existing = customAlts[fileId] || [];
+    const idx = existing.findIndex((t) => t.toLowerCase() === tagToPromote.toLowerCase());
+    if (idx <= 0) return;
+
+    const next = [...existing];
+    const [picked] = next.splice(idx, 1);
+    next.unshift(picked);
+    setCustomAlts((prev) => ({ ...prev, [fileId]: next }));
+  };
+
   const updateTag = (fileId: string, index: number, newValue: string) => {
     const existing = [...(customAlts[fileId] || [])];
     const trimmed = newValue.trim();
@@ -250,10 +261,11 @@ export function FileList({ files, customNames, setCustomNames, customAlts, setCu
                               key={tagIndex}
                               label={tag}
                               size='small'
+                              onClick={() => promoteTag(file.id, tag)}
                               onDelete={() => removeTag(file.id, tag)}
                               onDoubleClick={() => setEditingTag({ fileId: file.id, index: tagIndex, value: tag })}
                               sx={{
-                                backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                                backgroundColor: alpha(theme.palette.primary.main, tagIndex === 0 ? 0.18 : 0.1),
                                 "& .MuiChip-label": { cursor: "text" },
                               }}
                             />
@@ -269,6 +281,7 @@ export function FileList({ files, customNames, setCustomNames, customAlts, setCu
                       label='ALT text'
                       placeholder={altTags.length ? "Add another..." : "Type and press Enter..."}
                       value={newTagInputs[file.id] || ""}
+                      helperText={altTags.length > 1 ? "Клік по тегу робить його основним ALT (перший тег)." : undefined}
                       onChange={(e) => setNewTagInputs((prev) => ({ ...prev, [file.id]: e.target.value }))}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {

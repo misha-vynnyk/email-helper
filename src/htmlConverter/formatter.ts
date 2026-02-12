@@ -2,34 +2,43 @@
  * Main HTML/MJML formatting logic
  */
 
-import { blueColors, config } from "./config";
+import { config } from "./config";
 import { htmlTemplates, mjmlTemplates } from "./templates";
 import * as utils from "./utils";
 import * as colorUtils from "./colorUtils";
 
-function isLinkColor(color: string): boolean {
-  // Sanitize: remove !important and trim
-  const sanitized = color.replace(/!important/gi, "").trim();
+function getInlineStyleValue(style: string, property: string): string | null {
+  const targetProperty = property.trim().toLowerCase();
+  const declarations = style.split(";");
 
-  // 1. Check against the explicit list from config
-  for (const pattern of blueColors) {
-    if (new RegExp("^" + pattern + "$", "i").test(sanitized)) return true;
+  for (const declaration of declarations) {
+    const [rawProperty, ...rawValueParts] = declaration.split(":");
+    if (!rawProperty || rawValueParts.length === 0) continue;
+
+    if (rawProperty.trim().toLowerCase() !== targetProperty) continue;
+
+    const rawValue = rawValueParts.join(":").trim();
+    return rawValue || null;
   }
 
-  // 2. Smart check for any blue-ish/purple-ish color
-  return colorUtils.isBlueish(sanitized);
+  return null;
 }
 
 function italicLinks(htmlContent: string): string {
   htmlContent = htmlContent.replace(/<a[^>]*>/gi, "").replace(/<\/a>/gi, "");
 
-  // Regex targets only Hex or RGB color values to skip "transparent" or other named containers
-  // and handle single/double quotes and !important
-  const regex = /<span[^>]*style=["'][^"']*color\s*:\s*(#[0-9a-fA-F]{3,6}|rgb\s*\([^)]+\))(?:[^"';]*!important)?[^"']*font-style\s*:\s*italic[^"']*["'][^>]*>(.*?)<\/span>/gi;
+  const regex = /<span\b[^>]*style=(["'])([\s\S]*?)\1[^>]*>([\s\S]*?)<\/span>/gi;
 
-  htmlContent = htmlContent.replace(regex, (match, color, innerText) => {
-    if (isLinkColor(color)) {
-      return `<a href="urlhere" style="font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: #0000EE;"><em>${innerText}</em></a>`;
+  htmlContent = htmlContent.replace(regex, (match, _quote, style, innerText) => {
+    const color = getInlineStyleValue(style, "color");
+    const fontStyle = getInlineStyleValue(style, "font-style");
+
+    if (!color || !fontStyle || !/italic/i.test(fontStyle)) {
+      return match;
+    }
+
+    if (colorUtils.isLinkColor(color)) {
+      return `<a href="urlhere" style="font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: ${config.colors.link};"><em>${innerText}</em></a>`;
     }
     return match;
   });
@@ -38,12 +47,14 @@ function italicLinks(htmlContent: string): string {
 }
 
 function linksStyles(htmlContent: string): string {
-  // Regex targets only Hex or RGB color values
-  const reg = /<span[^>]*style=["'][^"']*color\s*:\s*(#[0-9a-fA-F]{3,6}|rgb\s*\([^)]+\))(?:[^"';]*!important)?[^"']*["'][^>]*>(.*?)<\/span>/gi;
+  const reg = /<span\b[^>]*style=(["'])([\s\S]*?)\1[^>]*>([\s\S]*?)<\/span>/gi;
 
-  htmlContent = htmlContent.replace(reg, (match, color, innerText) => {
-    if (isLinkColor(color)) {
-      return `<a href="urlhere" style="font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: #0000EE;">${innerText}</a>`;
+  htmlContent = htmlContent.replace(reg, (match, _quote, style, innerText) => {
+    const color = getInlineStyleValue(style, "color");
+    if (!color) return match;
+
+    if (colorUtils.isLinkColor(color)) {
+      return `<a href="urlhere" style="font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: ${config.colors.link};">${innerText}</a>`;
     }
     return match;
   });

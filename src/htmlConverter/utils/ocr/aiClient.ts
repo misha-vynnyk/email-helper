@@ -1,5 +1,6 @@
 import { OcrAnalyzeResult } from "./analyzer";
 import { cleanupAltCandidate, formatCtaAsAction, truncateAlt } from "./postprocess/cleanup";
+import { FILENAME_STOP_WORDS } from "./constants";
 
 /**
  * Polish AI-generated alt text to follow accessibility best practices:
@@ -29,6 +30,18 @@ function polishAiAltText(text: string): string {
 
   // Apply standard cleanup and truncation
   return truncateAlt(cleanupAltCandidate(t));
+}
+
+function normalizeAiFilenameSuggestion(value: string): string {
+  const words = String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s_-]/g, " ")
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .filter((w) => !FILENAME_STOP_WORDS.has(w));
+
+  const normalized = words.join("-");
+  return normalized.replace(/-+/g, "-").replace(/^-+|-+$/g, "");
 }
 
 /**
@@ -84,6 +97,11 @@ export class AiBackendClient {
         .map((s: string) => polishAiAltText(s))
         .filter((s: string) => s && s.length >= 3);
 
+      const nameSuggestions = filenameCandidates
+        .filter((s: string) => s)
+        .map((s: string) => normalizeAiFilenameSuggestion(s))
+        .filter((s: string) => s && s.length >= 3);
+
       // Format CTA as action description
       const ctaSuggestions = cta ? [formatCtaAsAction(cta)] : [];
 
@@ -92,7 +110,7 @@ export class AiBackendClient {
         ocrTextRaw: ocrText,
         altSuggestions,
         ctaSuggestions,
-        nameSuggestions: filenameCandidates.filter((s: string) => s),
+        nameSuggestions,
         textLikelihood: 1,
         cacheHit: false,
       };
