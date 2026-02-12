@@ -37,13 +37,25 @@ function polishAiAltText(text: string): string {
  */
 export class AiBackendClient {
   private static readonly API_URL = "http://localhost:8000/api/analyze";
+  private static readonly HEALTH_URL = "http://localhost:8000/health";
+  private static readonly TIMEOUT = 60000; // 60 second timeout for analysis
+  private static readonly MAX_RETRIES = 3;
+  private static readonly RETRY_DELAY = 1000; // 1 second between retries
 
   /**
    * Checks if the AI backend is available
    */
   static async isAvailable(): Promise<boolean> {
     try {
-      const res = await fetch("http://localhost:8000/health", { method: "GET" });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+      const res = await fetch(this.HEALTH_URL, {
+        method: "GET",
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
       return res.ok;
     } catch {
       return false;
@@ -51,21 +63,66 @@ export class AiBackendClient {
   }
 
   /**
-   * Analyzes an image using the AI Backend
+   * Analyzes an image using the AI Backend with retry logic
    */
   static async analyzeImage(blob: Blob, mode: "fast" | "detailed" = "detailed"): Promise<OcrAnalyzeResult> {
+    // Check if backend is available first
+    const available = await this.isAvailable();
+    if (!available) {
+      throw new Error(
+        "AI Backend is not available. Please ensure the Python FastAPI server is running (npm run dev:ai)"
+      );
+    }
+
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= this.MAX_RETRIES; attempt++) {
+      try {
+        return await this.performAnalysis(blob, mode);
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+
+        // If it's a timeout or network error on last attempt, throw
+        if (attempt === this.MAX_RETRIES) {
+          throw new Error(
+            `AI analysis failed after ${this.MAX_RETRIES} attempts: ${lastError.message}`
+          );
+        }
+
+        // Wait before retrying
+        await new Promise((resolve) => setTimeout(resolve, this.RETRY_DELAY * attempt));
+      }
+    }
+
+    throw lastError || new Error("AI analysis failed");
+  }
+
+  /**
+   * Performs the actual analysis request
+   */
+  private static async performAnalysis(
+    blob: Blob,
+    mode: "fast" | "detailed"
+  ): Promise<OcrAnalyzeResult> {
     const formData = new FormData();
     formData.append("file", blob, "image.png");
     formData.append("mode", mode);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.TIMEOUT);
 
     try {
       const response = await fetch(this.API_URL, {
         method: "POST",
         body: formData,
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
-        throw new Error(`AI Backend Error: ${response.status} ${response.statusText}`);
+        const errorText = await response.text().catch(() => response.statusText);
+        throw new Error(`AI Backend Error: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
       const data = await response.json();
@@ -96,9 +153,8 @@ export class AiBackendClient {
         textLikelihood: 1,
         cacheHit: false,
       };
-    } catch (error) {
-      console.error("AI Backend Call Failed:", error);
-      throw error;
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 }

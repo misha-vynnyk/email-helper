@@ -171,9 +171,6 @@ export function createOcrAnalyzer(): OcrAnalyzer {
         try {
           if (onProgress) onProgress(0.1); // Connecting...
 
-          // Optional: Check availability first? Or just try-catch?
-          // Let's just try call.
-
           if (onProgress) onProgress(0.3); // Uploading...
           const result = await AiBackendClient.analyzeImage(blob, "detailed");
           if (onProgress) onProgress(1); // Done
@@ -188,8 +185,12 @@ export function createOcrAnalyzer(): OcrAnalyzer {
 
           return result;
         } catch (e) {
-          console.warn("AI Backend failed, falling back to local Tesseract:", e);
-          // Fallthrough to local Tesseract logic
+          const errorMsg = e instanceof Error ? e.message : String(e);
+          console.error("❌ AI Backend failed:", errorMsg);
+          
+          // Throw the error so UI can show it to user
+          // Don't silently fallback - user explicitly chose AI mode
+          throw new Error(`AI Backend error: ${errorMsg}`);
         }
       }
 

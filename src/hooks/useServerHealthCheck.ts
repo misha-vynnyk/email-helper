@@ -7,10 +7,32 @@ interface ServerHealthStatus {
   isChecking: boolean;
   error: string | null;
   lastCheck: number | null;
+  aiBackendHealthy?: boolean;
 }
 
 const MAX_RETRIES = 30; // Try for up to 30 seconds
 const RETRY_INTERVAL = 1000; // 1 second between retries
+const AI_BACKEND_URL = "http://localhost:8000"; // Python AI Backend
+
+/**
+ * Check if AI backend (Python FastAPI) is available
+ */
+const checkAiBackendHealth = async (): Promise<boolean> => {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+    const response = await fetch(`${AI_BACKEND_URL}/health`, {
+      method: "GET",
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+    return response.ok;
+  } catch {
+    return false;
+  }
+};
 
 /**
  * Hook to check server health on app startup
@@ -54,13 +76,22 @@ export const useServerHealthCheck = (): ServerHealthStatus => {
 
         if (isMounted) {
           if (response.ok) {
+            // Node.js server is healthy, now check AI backend
+            const aiHealthy = await checkAiBackendHealth();
+
             setStatus({
               isHealthy: true,
               isChecking: false,
               error: null,
               lastCheck: Date.now(),
+              aiBackendHealthy: aiHealthy,
             });
-            logger.info("useServerHealthCheck", "✅ Server is healthy");
+
+            if (aiHealthy) {
+              logger.info("useServerHealthCheck", "✅ Both servers are healthy");
+            } else {
+              logger.warn("useServerHealthCheck", "⚠️ Node server healthy, but AI backend not responding");
+            }
           } else {
             throw new Error(`Server returned ${response.status}`);
           }
