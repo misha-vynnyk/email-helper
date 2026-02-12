@@ -28,9 +28,10 @@ interface StorageUploadDialogProps {
   onAltsUpdate?: (altMap: Record<string, string>) => void; // For post-upload alt updates
   existingUrls?: Record<string, string>; // Existing storage URLs for files (id -> url)
   imageAnalysisSettings?: ImageAnalysisSettings;
+  setImageAnalysis?: (v: ((p: ImageAnalysisSettings) => ImageAnalysisSettings) | ImageAnalysisSettings) => void;
 }
 
-export default function StorageUploadDialog({ open, onClose, storageProvider = "default", files, onUpload, onCancel, initialFolderName = "", onHistoryAdd, onAltsUpdate, existingUrls, imageAnalysisSettings }: StorageUploadDialogProps) {
+export default function StorageUploadDialog({ open, onClose, storageProvider = "default", files, onUpload, onCancel, initialFolderName = "", onHistoryAdd, onAltsUpdate, existingUrls, imageAnalysisSettings, setImageAnalysis }: StorageUploadDialogProps) {
   const theme = useTheme();
   const { mode, style } = useThemeMode();
   const componentStyles = getComponentStyles(mode, style);
@@ -98,6 +99,19 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
 
   const handleAnalyzeFile = useCallback(
     async (file: { id: string; name: string; path?: string }, opts?: { force?: boolean }) => {
+      // If AI backend is not enabled in settings, enable it (if setter provided) so the user's click actually triggers server analysis
+      if (!(imageAnalysisSettings?.enabled && imageAnalysisSettings.engine === "ocr" && imageAnalysisSettings.useAiBackend)) {
+        if (setImageAnalysis) {
+          setAiBackendWarning("Enabling AI backend in settings...");
+          try {
+            setImageAnalysis((prev: ImageAnalysisSettings) => ({ ...prev, enabled: true, useAiBackend: true }));
+          } catch {}
+          // Give parent settings a moment to propagate
+          await new Promise((r) => setTimeout(r, 250));
+          setAiBackendWarning(null);
+        }
+      }
+
       const result = await analyzeFile(file, { force: opts?.force });
       if (!result) return;
 
