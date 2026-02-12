@@ -94,9 +94,7 @@ export class TemplateManager {
         await this.saveMetadata();
       }
 
-      console.log(
-        `✅ TemplateManager initialized with ${this.metadata.templates.length} templates`
-      );
+      console.log(`✅ TemplateManager initialized with ${this.metadata.templates.length} templates`);
     } catch (error) {
       console.error("❌ Failed to initialize TemplateManager:", error);
       throw error;
@@ -145,16 +143,17 @@ export class TemplateManager {
   /**
    * Add new template
    */
-  async addTemplate(
-    filePath: string,
-    metadata: Partial<
-      Omit<EmailTemplate, "id" | "filePath" | "fileSize" | "lastModified" | "createdAt">
-    >
-  ): Promise<EmailTemplate> {
+  async addTemplate(filePath: string, metadata: Partial<Omit<EmailTemplate, "id" | "filePath" | "fileSize" | "lastModified" | "createdAt">>): Promise<EmailTemplate> {
     try {
       // Expand tilde and normalize path
       const expandedPath = expandTilde(filePath);
       const normalizedPath = path.normalize(path.resolve(expandedPath));
+
+      // Skip macOS resource fork files (._filename)
+      const fileName = path.basename(normalizedPath);
+      if (fileName.startsWith("._")) {
+        throw new Error("Cannot add macOS resource fork file");
+      }
 
       // Validate path
       const validation = await this.validatePath(expandedPath);
@@ -262,9 +261,7 @@ export class TemplateManager {
       try {
         // Check if file exists
         if (!existsSync(template.filePath)) {
-          console.log(
-            `⚠️ Removing template with missing file: ${template.name} (${template.filePath})`
-          );
+          console.log(`⚠️ Removing template with missing file: ${template.name} (${template.filePath})`);
           removed.push(template);
         } else {
           validTemplates.push(template);
@@ -290,6 +287,33 @@ export class TemplateManager {
       removed: removed.length,
       templates: removed,
     };
+  }
+
+  /**
+   * Clean up templates with macOS resource fork files (._filename)
+   * These files are created by macOS when files are copied from external drives
+   */
+  async cleanupMacOSResourceForks(): Promise<{ removed: number }> {
+    const before = this.metadata.templates.length;
+    const validTemplates = this.metadata.templates.filter((template) => {
+      const fileName = path.basename(template.filePath);
+      if (fileName.startsWith("._")) {
+        console.log(`🧹 Removing macOS resource fork template: ${template.name}`);
+        return false;
+      }
+      return true;
+    });
+
+    const removed = before - validTemplates.length;
+
+    if (removed > 0) {
+      this.metadata.templates = validTemplates;
+      this.metadata.lastUpdated = Date.now();
+      await this.saveMetadata();
+      console.log(`✅ Cleaned up ${removed} macOS resource fork templates`);
+    }
+
+    return { removed };
   }
 
   /**
@@ -404,10 +428,7 @@ export class TemplateManager {
 
       // If access denied, try to register this path as a workspace
       if (!accessCheck.allowed) {
-        const result = await this.workspaceManager.requestWorkspaceAccess(
-          normalized,
-          "Template Directory"
-        );
+        const result = await this.workspaceManager.requestWorkspaceAccess(normalized, "Template Directory");
 
         if (result.success) {
           // Re-check access after registration
@@ -427,10 +448,7 @@ export class TemplateManager {
       }
 
       // For files, check extension
-      if (
-        !normalized.toLowerCase().endsWith(".html") &&
-        !normalized.toLowerCase().endsWith(".htm")
-      ) {
+      if (!normalized.toLowerCase().endsWith(".html") && !normalized.toLowerCase().endsWith(".htm")) {
         return { valid: false, reason: "Not an HTML file" };
       }
 
@@ -483,9 +501,7 @@ export class TemplateManager {
   /**
    * Remove allowed root and clean up templates from that directory
    */
-  async removeAllowedRoot(
-    rootPath: string
-  ): Promise<{ removed: number; templates: EmailTemplate[] }> {
+  async removeAllowedRoot(rootPath: string): Promise<{ removed: number; templates: EmailTemplate[] }> {
     const normalized = expandTilde(rootPath);
 
     // Remove from allowed roots
@@ -497,9 +513,7 @@ export class TemplateManager {
 
     for (const template of this.metadata.templates) {
       if (template.filePath.startsWith(normalized)) {
-        console.log(
-          `🗑️ Removing template from deleted directory: ${template.name} (${template.filePath})`
-        );
+        console.log(`🗑️ Removing template from deleted directory: ${template.name} (${template.filePath})`);
         templatesToRemove.push(template);
       } else {
         validTemplates.push(template);
@@ -511,9 +525,7 @@ export class TemplateManager {
       this.metadata.templates = validTemplates;
       this.metadata.lastUpdated = Date.now();
       await this.saveMetadata();
-      console.log(
-        `🧹 Removed ${templatesToRemove.length} templates from deleted directory: ${normalized}`
-      );
+      console.log(`🧹 Removed ${templatesToRemove.length} templates from deleted directory: ${normalized}`);
     }
 
     console.log(`✅ Removed allowed root: ${normalized}`);
@@ -547,6 +559,11 @@ export class TemplateManager {
       const entries = await fs.readdir(dir, { withFileTypes: true });
 
       for (const entry of entries) {
+        // Skip macOS resource fork files (._filename)
+        if (entry.name.startsWith("._")) {
+          continue;
+        }
+
         const fullPath = path.join(dir, entry.name);
 
         if (entry.isDirectory() && recursive) {

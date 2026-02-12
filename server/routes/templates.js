@@ -333,7 +333,12 @@ router.post("/sync-all", async (req, res) => {
 
     console.log("🔄 Starting full template sync...");
 
-    // First, cleanup templates with missing files
+    // First, cleanup macOS resource fork files
+    console.log("🧹 Cleaning up macOS resource fork templates...");
+    const macOSCleanup = await manager.cleanupMacOSResourceForks();
+    console.log(`✅ Removed ${macOSCleanup.removed} macOS resource fork templates`);
+
+    // Then, cleanup templates with missing files
     console.log("🧹 Cleaning up templates with missing files...");
     const cleanup = await manager.cleanupMissingFiles();
     console.log(`🧹 Removed ${cleanup.removed} templates with missing files`);
@@ -394,9 +399,10 @@ router.post("/sync-all", async (req, res) => {
       templatesFound: allTemplates.length,
       templates: allTemplates,
       removed: cleanup.removed,
+      macOSResourceForksRemoved: macOSCleanup.removed,
       errors: errors,
       scannedRoots: rootsToScan.length,
-      message: `Synced ${allTemplates.length} new templates from ${rootsToScan.length} roots. Removed ${cleanup.removed} missing files.`,
+      message: `Synced ${allTemplates.length} new templates from ${rootsToScan.length} roots. Removed ${macOSCleanup.removed} macOS resource forks and ${cleanup.removed} missing files.`,
     });
   } catch (error) {
     console.error("❌ Error syncing templates:", error);
