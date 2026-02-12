@@ -16,6 +16,21 @@ const scriptPath = path.join(__dirname, "scripts", "upload-playwright-brave.js")
 const configPath = path.join(__dirname, "config.json");
 const args = process.argv.slice(2);
 
+// Resolve first positional argument (file path) to absolute path when caller used relative path
+if (args.length > 0 && !args[0].startsWith("-")) {
+  const maybePath = args[0];
+  try {
+    const abs = require("path").resolve(process.cwd(), maybePath);
+    // If the file exists relative to the caller cwd, replace with absolute path
+    const fsLocal = require("fs");
+    if (fsLocal.existsSync(abs)) {
+      args[0] = abs;
+    }
+  } catch (e) {
+    // ignore resolution errors
+  }
+}
+
 function ensureAutomationDepsInstalled() {
   const automationDir = __dirname;
   const tryResolve = () => {
