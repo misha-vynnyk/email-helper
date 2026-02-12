@@ -69,9 +69,7 @@ export class AiBackendClient {
     // Check if backend is available first
     const available = await this.isAvailable();
     if (!available) {
-      throw new Error(
-        "AI Backend is not available. Please ensure the Python FastAPI server is running (npm run dev:ai)"
-      );
+      throw new Error("AI Backend is not available. Please ensure the Python FastAPI server is running (npm run dev:ai)");
     }
 
     let lastError: Error | null = null;
@@ -84,9 +82,7 @@ export class AiBackendClient {
 
         // If it's a timeout or network error on last attempt, throw
         if (attempt === this.MAX_RETRIES) {
-          throw new Error(
-            `AI analysis failed after ${this.MAX_RETRIES} attempts: ${lastError.message}`
-          );
+          throw new Error(`AI analysis failed after ${this.MAX_RETRIES} attempts: ${lastError.message}`);
         }
 
         // Wait before retrying
@@ -100,10 +96,7 @@ export class AiBackendClient {
   /**
    * Performs the actual analysis request
    */
-  private static async performAnalysis(
-    blob: Blob,
-    mode: "fast" | "detailed"
-  ): Promise<OcrAnalyzeResult> {
+  private static async performAnalysis(blob: Blob, mode: "fast" | "detailed"): Promise<OcrAnalyzeResult> {
     const formData = new FormData();
     formData.append("file", blob, "image.png");
     formData.append("mode", mode);

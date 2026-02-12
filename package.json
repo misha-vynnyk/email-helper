@@ -19,7 +19,7 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "automation:upload": "node automation/run-upload.js",
-    "postinstall": "cd server && npm install --legacy-peer-deps 2>/dev/null || true"
+    "postinstall": "node automation/setup.js && cd server && npm install --legacy-peer-deps 2>/dev/null || true"
   },
   "dependencies": {
     "@codemirror/lang-html": "^6.4.9",
