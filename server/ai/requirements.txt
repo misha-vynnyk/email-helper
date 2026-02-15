@@ -1,15 +1,14 @@
-fastapi==0.109.2
-uvicorn[standard]==0.27.1
+fastapi>=0.109.2
+uvicorn[standard]>=0.27.1
 urllib3<2.0.0
-python-multipart==0.0.9
-torch==2.2.0; sys_platform != 'darwin'
-torch==2.2.0; sys_platform == 'darwin'
-transformers==4.37.2
-pillow==10.2.0
-numpy==1.26.4
-# paddlepaddle vs paddlepaddle-gpu handled by install scripts usually,
-# but for simplicity we ask for cpu version by default or let user manage env
-paddlepaddle>=2.6.2
+python-multipart>=0.0.9
+# Allow pip to resolve appropriate torch for the platform (cpu/cuda/mps)
+torch>=2.2.0
+transformers>=4.37.2
+pillow>=10.2.0
+numpy>=1.26.4
+# paddlepaddle can be tricky on Mac; let's allow it to try install, but users might need manual install if it fails
+paddlepaddle>=2.6.0
 paddleocr>=2.7.0.3
-bitsandbytes==0.42.0; sys_platform != 'darwin'
-# bitsandbytes not fully supported on Mac/MPS yet, usually need alternatives or skip quantization
+# bitsandbytes is often problematic on non-CUDA; marking as optional or strictly Linux/Windows CUDA
+bitsandbytes>=0.42.0; sys_platform == 'linux' or sys_platform == 'win32'

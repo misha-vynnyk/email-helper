@@ -2,7 +2,7 @@
   "browser": {
     "executablePath": "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
     "debugPort": 9222,
-    "userDataDir": "/Users/vv_misha_vv/Library/Application Support/BravePlaywright",
+    "userDataDir": "/Users/mykhailo.vynnyk/Library/Application Support/BravePlaywright",
     "autoCloseTab": true,
     "closeDelaySuccess": 0,
     "closeDelayCancel": 3000
@@ -10,11 +10,11 @@
   "browserProfiles": {
     "default": {
       "debugPort": 9222,
-      "userDataDir": "/Users/vv_misha_vv/Library/Application Support/BravePlaywright"
+      "userDataDir": "/Users/mykhailo.vynnyk/Library/Application Support/BravePlaywright"
     },
     "alphaone": {
       "debugPort": 9223,
-      "userDataDir": "/Users/vv_misha_vv/Library/Application Support/BravePlaywright-AlfaOne"
+      "userDataDir": "/Users/mykhailo.vynnyk/Library/Application Support/BravePlaywright-AlfaOne"
     }
   },
   "storage": {
