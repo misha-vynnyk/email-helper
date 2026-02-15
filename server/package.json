@@ -4,7 +4,6 @@
   "description": "Backend server for email builder editor sample",
   "main": "index.js",
   "scripts": {
-    "predev": "npm install --legacy-peer-deps 2>/dev/null || true",
     "dev": "concurrently \"tsc --watch\" \"nodemon -w . -w dist index.js\"",
     "build": "tsc",
     "start": "node index.js",
