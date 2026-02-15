@@ -27,8 +27,33 @@ function run(cmd, args, opts) {
 }
 
 try {
+  const pyCmd = pythonCmd();
+  console.log(`Checking Python version for ${pyCmd}...`);
+
+  // Check version
+  const verOut = spawnSync(pyCmd, ["-c", "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"], { encoding: "utf8" });
+  if (verOut.error || verOut.status !== 0) {
+    console.error("❌ Failed to check Python version. Ensure python is in PATH.");
+    process.exit(1);
+  }
+
+  const version = verOut.stdout.trim();
+  const [major, minor] = version.split(".").map(Number);
+
+  console.log(`Python version: ${version}`);
+
+  // PaddlePaddle supports 3.8 - 3.12 (as of early 2026, 3.13/3.14 might be too new)
+  if (major !== 3 || minor < 8 || minor > 12) {
+    console.error(`\n❌ Incompatible Python version: ${version}`);
+    console.error("   The AI module (PaddlePaddle) requires Python 3.8 - 3.12.");
+    console.error("   Python 3.13+ (and 3.14) are NOT yet supported.");
+    console.error("\n   Please install Python 3.10, 3.11, or 3.12 and try again.");
+    console.error("   (Ensure it's in your PATH or set PYTHON_EXECUTABLE env var)\n");
+    process.exit(1);
+  }
+
   console.log("Ensuring Python venv for AI server...");
-  run(pythonCmd(), ["-m", "venv", "venv"]);
+  run(pyCmd, ["-m", "venv", "venv"]);
 
   const venvPython = pythonCmd();
   console.log("Using python:", venvPython);
