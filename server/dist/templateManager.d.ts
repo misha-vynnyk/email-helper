@@ -74,6 +74,13 @@ export declare class TemplateManager {
         templates: EmailTemplate[];
     }>;
     /**
+     * Clean up templates with macOS resource fork files (._filename)
+     * These files are created by macOS when files are copied from external drives
+     */
+    cleanupMacOSResourceForks(): Promise<{
+        removed: number;
+    }>;
+    /**
      * Import all .html files from a folder
      */
     importFolder(folderPath: string, options?: {
