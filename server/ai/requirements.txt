@@ -4,7 +4,8 @@ urllib3<2.0.0
 python-multipart>=0.0.9
 # Allow pip to resolve appropriate torch for the platform (cpu/cuda/mps)
 torch>=2.2.0
-transformers>=4.37.2
+# Pin transformers to avoid 5.x bleeding edge issues
+transformers==4.37.2
 pillow>=10.2.0
 numpy>=1.26.4
 # paddlepaddle can be tricky on Mac; let's allow it to try install, but users might need manual install if it fails
