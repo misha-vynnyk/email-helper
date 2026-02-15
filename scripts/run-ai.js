@@ -110,12 +110,27 @@ try {
   });
 
   // Handle graceful shutdown - forward signals to child
+  // Handle graceful shutdown
+  let isShuttingDown = false;
+
   function shutdown(signal) {
+    if (isShuttingDown) {
+      console.log("Force exiting...");
+      child.kill("SIGKILL");
+      process.exit(1);
+    }
+    isShuttingDown = true;
     console.log(`\nReceived ${signal}. Shutting down AI server...`);
+
+    // Send signal to child
     child.kill(signal);
-    // Wait for child to exit via the 'exit' handler above.
-    // If it hangs, the OS or user will force kill it eventually,
-    // but uvicorn usually handles SIGINT well.
+
+    // Force exit if child doesn't quit in 5 seconds
+    setTimeout(() => {
+      console.error("Child process timed out. Forcing exit.");
+      child.kill("SIGKILL");
+      process.exit(0);
+    }, 5000);
   }
 
   process.on("SIGINT", () => shutdown("SIGINT"));
