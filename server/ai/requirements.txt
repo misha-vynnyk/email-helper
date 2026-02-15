@@ -7,7 +7,8 @@ torch>=2.2.0
 # Pin transformers to avoid 5.x bleeding edge issues
 transformers==4.37.2
 pillow>=10.2.0
-numpy>=1.26.4
+# Torch/Paddle are incompatible with NumPy 2.0 (ABI issues)
+numpy<2.0.0
 # paddlepaddle can be tricky on Mac; let's allow it to try install, but users might need manual install if it fails
 paddlepaddle>=2.6.0
 paddleocr>=2.7.0.3
