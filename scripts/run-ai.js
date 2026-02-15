@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-const { spawnSync } = require("child_process");
+const { spawn, spawnSync } = require("child_process");
 const path = require("path");
 const fs = require("fs");
 
@@ -89,14 +89,37 @@ try {
   }
 
   console.log("Starting AI server...");
-  // Run start.py with the venv python and forward logs
-  const child = spawnSync(venvPython, ["start.py"], { cwd: aiDir, stdio: "inherit" });
-  if (child.error) throw child.error;
 
-  // If user kills via Ctrl+C, exit gracefully
-  if (child.signal === "SIGINT") process.exit(0);
+  // Use spawn (async) instead of spawnSync to handle signals gracefully
+  const child = spawn(venvPython, ["start.py"], { cwd: aiDir, stdio: "inherit" });
 
-  process.exit(child.status);
+  child.on("error", (err) => {
+    console.error("Failed to start subprocess.", err);
+    process.exit(1);
+  });
+
+  child.on("exit", (code, signal) => {
+    if (signal) {
+      console.log(`AI server killed by signal ${signal}`);
+    } else if (code !== 0) {
+      console.log(`AI server exited with code ${code}`);
+    } else {
+      console.log("AI server exited gracefully.");
+    }
+    process.exit(code || 0);
+  });
+
+  // Handle graceful shutdown - forward signals to child
+  function shutdown(signal) {
+    console.log(`\nReceived ${signal}. Shutting down AI server...`);
+    child.kill(signal);
+    // Wait for child to exit via the 'exit' handler above.
+    // If it hangs, the OS or user will force kill it eventually,
+    // but uvicorn usually handles SIGINT well.
+  }
+
+  process.on("SIGINT", () => shutdown("SIGINT"));
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
 } catch (e) {
   console.error("Failed to run AI server helper:", e && e.message);
   process.exit(1);
