@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, FormControl, FormLabel, ToggleButtonGroup, ToggleButton, Typography, Box, Alert, LinearProgress, IconButton, Tooltip, Stack, useTheme, alpha, Divider, FormHelperText } from "@mui/material";
 import { CloudUpload as UploadIcon, CheckCircle as SuccessIcon, Error as ErrorIcon, Close as CloseIcon, Link as LinkIcon, CheckCircleOutline as CheckIcon } from "@mui/icons-material";
 
@@ -7,6 +7,7 @@ import { getComponentStyles } from "../theme/componentStyles";
 import { spacingMUI, borderRadius } from "../theme/tokens";
 import { copyToClipboard } from "./utils/clipboard";
 import { cleanupAltCandidate, truncateAlt } from "./utils/ocr/postprocess/cleanup";
+import { AiBackendClient } from "./utils/ocr/aiClient";
 
 import { useOcrAnalysis } from "./utils/useOcrAnalysis";
 import { UI_TIMINGS } from "./constants";
@@ -27,6 +28,7 @@ interface StorageUploadDialogProps {
   onAltsUpdate?: (altMap: Record<string, string>) => void; // For post-upload alt updates
   existingUrls?: Record<string, string>; // Existing storage URLs for files (id -> url)
   imageAnalysisSettings?: ImageAnalysisSettings;
+  setImageAnalysis?: (v: ((p: ImageAnalysisSettings) => ImageAnalysisSettings) | ImageAnalysisSettings) => void;
 }
 
 function toBaseName(filename: string): string {
@@ -62,7 +64,7 @@ function resolveFileForResult(result: UploadResult, orderedFiles: Array<{ id: st
   });
 }
 
-export default function StorageUploadDialog({ open, onClose, storageProvider = "default", files, onUpload, onCancel, initialFolderName = "", onHistoryAdd, onAltsUpdate, existingUrls, imageAnalysisSettings }: StorageUploadDialogProps) {
+export default function StorageUploadDialog({ open, onClose, storageProvider = "default", files, onUpload, onCancel, initialFolderName = "", onHistoryAdd, onAltsUpdate, existingUrls, imageAnalysisSettings, setImageAnalysis }: StorageUploadDialogProps) {
   const theme = useTheme();
   const { mode, style } = useThemeMode();
   const componentStyles = getComponentStyles(mode, style);
@@ -76,8 +78,45 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
   const [uploadResults, setUploadResults] = useState<UploadResult[]>([]);
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
   const [showOcrTextById, setShowOcrTextById] = useState<Record<string, boolean>>({});
+  const [aiBackendWarning, setAiBackendWarning] = useState<string | null>(null);
 
   const analysisEnabled = Boolean(imageAnalysisSettings?.enabled && imageAnalysisSettings.engine === "ocr");
+
+  // Check AI backend availability when analysis is enabled
+  useEffect(() => {
+    if (!analysisEnabled) {
+      setAiBackendWarning(null);
+      return;
+    }
+
+    let isMounted = true;
+
+    const checkAiBackend = async () => {
+      try {
+        const available = await AiBackendClient.isAvailable();
+        if (isMounted) {
+          if (!available) {
+            setAiBackendWarning("⚠️ Image analysis backend is not running. Please run: npm run dev:ai to enable image analysis.");
+          } else {
+            setAiBackendWarning(null);
+          }
+        }
+      } catch {
+        if (isMounted) {
+          setAiBackendWarning("⚠️ Cannot connect to image analysis backend");
+        }
+      }
+    };
+
+    checkAiBackend();
+    // Re-check every 10 seconds
+    const interval = setInterval(checkAiBackend, 10000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [analysisEnabled]);
 
   // AI Analysis (kept here as it ties to complex state, though could be extracted)
   const {
@@ -93,7 +132,36 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
 
   const handleAnalyzeFile = useCallback(
     async (file: { id: string; name: string; path?: string }, opts?: { force?: boolean }) => {
-      await analyzeFile(file, { force: opts?.force });
+      // If AI backend is not enabled in settings, enable it (if setter provided) so the user's click actually triggers server analysis
+      if (!(imageAnalysisSettings?.enabled && imageAnalysisSettings.engine === "ocr" && imageAnalysisSettings.useAiBackend)) {
+        if (setImageAnalysis) {
+          setAiBackendWarning("Enabling AI backend in settings...");
+          try {
+            setImageAnalysis((prev: ImageAnalysisSettings) => ({ ...prev, enabled: true, useAiBackend: true }));
+          } catch {}
+          // Give parent settings a moment to propagate
+          await new Promise((r) => setTimeout(r, 250));
+          setAiBackendWarning(null);
+        }
+      }
+
+      const result = await analyzeFile(file, { force: opts?.force });
+      if (!result) return;
+
+      // Auto-apply if settings dictate
+      // DISABLE AUTO-APPLY (User request: "remove automatic insertion")
+      /*
+      const bestAlt = result.altSuggestions[0] || result.ctaSuggestions?.[0];
+      if (imageAnalysisSettings?.autoApplyAlt === "ifEmpty" && bestAlt) {
+        setCustomAlts((prev) => (prev[file.id]?.length ? prev : { ...prev, [file.id]: [bestAlt] }));
+      }
+      if (imageAnalysisSettings?.autoApplyFilename === "ifEmpty" && result.nameSuggestions[0]) {
+        const normalized = normalizeCustomNameInput(result.nameSuggestions[0]);
+        if (normalized) {
+          setCustomNames((prev) => (prev[file.id] ? prev : { ...prev, [file.id]: normalized }));
+        }
+      }
+      */
     },
     [analyzeFile]
   );
@@ -249,6 +317,13 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
 
       <DialogContent sx={{ pt: spacingMUI.lg }}>
         <Stack spacing={spacingMUI.lg}>
+          {/* AI Backend Warning */}
+          {aiBackendWarning && (
+            <Alert severity='warning' sx={{ borderRadius: `${borderRadius.md}px` }}>
+              {aiBackendWarning}
+            </Alert>
+          )}
+
           {/* Input Section */}
           {uploadResults.length === 0 && (
             <>

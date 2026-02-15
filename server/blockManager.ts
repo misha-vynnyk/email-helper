@@ -4,10 +4,10 @@
  * Cross-platform support (Windows, macOS, Linux)
  */
 
-import fs from 'fs/promises';
-import path from 'path';
-import { existsSync } from 'fs';
-import { getStoragePaths, initializeStorage } from './utils/storagePathResolver';
+import fs from "fs/promises";
+import path from "path";
+import { existsSync } from "fs";
+import { getStoragePaths, initializeStorage } from "./utils/storagePathResolver";
 
 /**
  * Block metadata structure (stored in JSON files)
@@ -59,8 +59,8 @@ export class BlockManager {
         await fs.mkdir(this.config.blocksDir, { recursive: true });
       }
     } catch (error) {
-      console.error('Failed to create blocks directory:', error);
-      throw new Error('Failed to initialize block storage');
+      console.error("Failed to create blocks directory:", error);
+      throw new Error("Failed to initialize block storage");
     }
   }
 
@@ -69,7 +69,7 @@ export class BlockManager {
    */
   private getBlockFilePath(blockId: string): string {
     // Sanitize block ID to prevent directory traversal
-    const sanitizedId = blockId.replace(/[^a-zA-Z0-9-_]/g, '');
+    const sanitizedId = blockId.replace(/[^a-zA-Z0-9-_]/g, "");
     return path.join(this.config.blocksDir, `${sanitizedId}.json`);
   }
 
@@ -78,23 +78,23 @@ export class BlockManager {
    */
   private validateBlock(block: Partial<BlockMetadata>): void {
     if (!block.name || block.name.trim().length === 0) {
-      throw new Error('Block name is required');
+      throw new Error("Block name is required");
     }
 
     if (!block.category || block.category.trim().length === 0) {
-      throw new Error('Block category is required');
+      throw new Error("Block category is required");
     }
 
     if (!block.html || block.html.trim().length === 0) {
-      throw new Error('Block HTML is required');
+      throw new Error("Block HTML is required");
     }
 
     if (!block.keywords || !Array.isArray(block.keywords) || block.keywords.length === 0) {
-      throw new Error('At least one keyword is required');
+      throw new Error("At least one keyword is required");
     }
 
     // Check HTML size
-    const htmlSize = Buffer.byteLength(block.html, 'utf8');
+    const htmlSize = Buffer.byteLength(block.html, "utf8");
     if (htmlSize > this.config.maxBlockSize) {
       throw new Error(`Block HTML exceeds maximum size of ${this.config.maxBlockSize} bytes`);
     }
@@ -110,13 +110,7 @@ export class BlockManager {
   /**
    * Create a new custom block
    */
-  async createBlock(data: {
-    name: string;
-    category: string;
-    keywords: string[];
-    html: string;
-    preview?: string;
-  }): Promise<BlockMetadata> {
+  async createBlock(data: { name: string; category: string; keywords: string[]; html: string; preview?: string }): Promise<BlockMetadata> {
     this.validateBlock(data);
 
     // Check if max blocks reached
@@ -143,11 +137,11 @@ export class BlockManager {
     const filePath = this.getBlockFilePath(blockId);
 
     try {
-      await fs.writeFile(filePath, JSON.stringify(block, null, 2), 'utf8');
+      await fs.writeFile(filePath, JSON.stringify(block, null, 2), "utf8");
       return block;
     } catch (error) {
-      console.error('Failed to create block:', error);
-      throw new Error('Failed to save block to file system');
+      console.error("Failed to create block:", error);
+      throw new Error("Failed to save block to file system");
     }
   }
 
@@ -162,11 +156,11 @@ export class BlockManager {
         return null;
       }
 
-      const content = await fs.readFile(filePath, 'utf8');
+      const content = await fs.readFile(filePath, "utf8");
       const block: BlockMetadata = JSON.parse(content);
       return block;
     } catch (error) {
-      console.error('Failed to read block:', error);
+      console.error("Failed to read block:", error);
       return null;
     }
   }
@@ -203,11 +197,11 @@ export class BlockManager {
     const filePath = this.getBlockFilePath(blockId);
 
     try {
-      await fs.writeFile(filePath, JSON.stringify(updatedBlock, null, 2), 'utf8');
+      await fs.writeFile(filePath, JSON.stringify(updatedBlock, null, 2), "utf8");
       return updatedBlock;
     } catch (error) {
-      console.error('Failed to update block:', error);
-      throw new Error('Failed to update block file');
+      console.error("Failed to update block:", error);
+      throw new Error("Failed to update block file");
     }
   }
 
@@ -225,8 +219,8 @@ export class BlockManager {
       await fs.unlink(filePath);
       return true;
     } catch (error) {
-      console.error('Failed to delete block:', error);
-      throw new Error('Failed to delete block file');
+      console.error("Failed to delete block:", error);
+      throw new Error("Failed to delete block file");
     }
   }
 
@@ -238,14 +232,15 @@ export class BlockManager {
       await this.ensureBlocksDirectory();
 
       const files = await fs.readdir(this.config.blocksDir);
-      const jsonFiles = files.filter((file) => file.endsWith('.json'));
+      // Filter out macOS resource fork files (._filename) and only keep JSON files
+      const jsonFiles = files.filter((file) => !file.startsWith("._") && file.endsWith(".json"));
 
       const blocks: BlockMetadata[] = [];
 
       for (const file of jsonFiles) {
         try {
           const filePath = path.join(this.config.blocksDir, file);
-          const content = await fs.readFile(filePath, 'utf8');
+          const content = await fs.readFile(filePath, "utf8");
           const block: BlockMetadata = JSON.parse(content);
           blocks.push(block);
         } catch (error) {
@@ -259,7 +254,7 @@ export class BlockManager {
 
       return blocks;
     } catch (error) {
-      console.error('Failed to list blocks:', error);
+      console.error("Failed to list blocks:", error);
       return [];
     }
   }
@@ -273,19 +268,14 @@ export class BlockManager {
     let filtered = allBlocks;
 
     // Filter by category
-    if (category && category !== 'All') {
+    if (category && category !== "All") {
       filtered = filtered.filter((block) => block.category === category);
     }
 
     // Filter by search query
     if (query.trim()) {
       const lowerQuery = query.toLowerCase();
-      filtered = filtered.filter(
-        (block) =>
-          block.name.toLowerCase().includes(lowerQuery) ||
-          block.keywords.some((keyword) => keyword.toLowerCase().includes(lowerQuery)) ||
-          block.category.toLowerCase().includes(lowerQuery)
-      );
+      filtered = filtered.filter((block) => block.name.toLowerCase().includes(lowerQuery) || block.keywords.some((keyword) => keyword.toLowerCase().includes(lowerQuery)) || block.category.toLowerCase().includes(lowerQuery));
     }
 
     return filtered;
@@ -312,7 +302,7 @@ export class BlockManager {
       stats.categories[block.category] = (stats.categories[block.category] || 0) + 1;
 
       // Calculate total size
-      stats.totalSize += Buffer.byteLength(block.html, 'utf8');
+      stats.totalSize += Buffer.byteLength(block.html, "utf8");
     }
 
     return stats;
@@ -352,9 +342,7 @@ export class BlockManager {
         result.imported++;
       } catch (error) {
         result.failed++;
-        result.errors.push(
-          `Failed to import block "${block.name}": ${error instanceof Error ? error.message : 'Unknown error'}`
-        );
+        result.errors.push(`Failed to import block "${block.name}": ${error instanceof Error ? error.message : "Unknown error"}`);
       }
     }
 

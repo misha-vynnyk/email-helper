@@ -25,13 +25,7 @@ export type OcrAnalyzeResult = {
 };
 
 export type OcrAnalyzer = {
-  analyzeFromUrl: (args: {
-    url: string;
-    settings: ImageAnalysisSettings;
-    force?: boolean;
-    signal: AbortSignal;
-    onProgress?: (progress01: number) => void;
-  }) => Promise<OcrAnalyzeResult>;
+  analyzeFromUrl: (args: { url: string; settings: ImageAnalysisSettings; force?: boolean; signal: AbortSignal; onProgress?: (progress01: number) => void }) => Promise<OcrAnalyzeResult>;
   clearCache: () => void;
   dispose: () => Promise<void>;
 };
@@ -95,7 +89,6 @@ function getAnalysisConfigKey(s: ImageAnalysisSettings): string {
  */
 import { ALLOWED_SHORT_ALL_CAPS, COMMON_3_LETTER_WORDS } from "./constants";
 
-
 /**
  * Compute quality score for OCR text output
  */
@@ -131,15 +124,7 @@ function qualityScore(text: string): number {
   const sparsePenalty = tokens.length >= 10 && letters < 20 ? 35 : 0;
 
   // Prefer outputs with more word-like tokens; heavily penalize punctuation-heavy gibberish.
-  return (
-    wordLike * 10 +
-    Math.min(alphaNum, 250) * 0.15 +
-    Math.min(tokens.length, 40) * 1.5 -
-    shortTok * 2.5 -
-    punctRatio * 80 -
-    repeatPenalty -
-    sparsePenalty
-  );
+  return wordLike * 10 + Math.min(alphaNum, 250) * 0.15 + Math.min(tokens.length, 40) * 1.5 - shortTok * 2.5 - punctRatio * 80 - repeatPenalty - sparsePenalty;
 }
 
 /**
@@ -189,29 +174,22 @@ export function createOcrAnalyzer(): OcrAnalyzer {
           try {
             if (onProgress) onProgress(0.1); // Connecting...
 
-            // Optional: Check availability first? Or just try-catch?
-            // Let's just try call.
-
             if (onProgress) onProgress(0.3); // Uploading...
             const result = await AiBackendClient.analyzeImage(blob, "detailed");
             if (onProgress) onProgress(1); // Done
 
-            const aiOut: OcrAnalyzeResult = {
-              ocrText: result.ocrText,
-              ocrTextRaw: result.ocrTextRaw,
-              altSuggestions: result.altSuggestions,
-              ctaSuggestions: result.ctaSuggestions,
-              nameSuggestions: result.nameSuggestions,
-              textLikelihood: result.textLikelihood,
-              skippedReason: result.skippedReason,
-              cacheHit: false,
-            };
+            // Cache this result?
+            // result fits OcrAnalyzeResult, just add cache info
+            cache.set(hash, { configKey, ...result, cacheHit: true });
 
-            cache.set(hash, { configKey, ...aiOut });
-            return aiOut;
+            return result;
           } catch (e) {
-            console.warn("AI Backend failed, falling back to local Tesseract:", e);
-            // Fallthrough to local Tesseract logic
+            const errorMsg = e instanceof Error ? e.message : String(e);
+            console.error("❌ AI Backend failed:", errorMsg);
+
+            // Throw the error so UI can show it to user
+            // Don't silently fallback - user explicitly chose AI mode
+            throw new Error(`AI Backend error: ${errorMsg}`);
           }
         }
 
@@ -298,7 +276,7 @@ export function createOcrAnalyzer(): OcrAnalyzer {
               rois.push(cand);
             };
 
-            addIfTexty({ x: 0, y: 0, w: 1, h: 0.30 }); // title area
+            addIfTexty({ x: 0, y: 0, w: 1, h: 0.3 }); // title area
             addIfTexty({ x: 0, y: 0.66, w: 1, h: 0.34 }); // CTA / footer
 
             // If still empty, fall back to full.
@@ -307,7 +285,7 @@ export function createOcrAnalyzer(): OcrAnalyzer {
           return [{ x: settings.roiX, y: settings.roiY, w: settings.roiW, h: settings.roiH }];
         })();
 
-        onProgress?.(0.20); // ROI Done
+        onProgress?.(0.2); // ROI Done
 
         const baseCanvases: HTMLCanvasElement[] = roiFracs.map((r) => {
           if (r.x <= 0.001 && r.y <= 0.001 && r.w >= 0.999 && r.h >= 0.999) return fullCanvas;
@@ -327,7 +305,7 @@ export function createOcrAnalyzer(): OcrAnalyzer {
         // PHASE 3: Worker Init (25% - 30%)
         await engine.getWorker(signal);
 
-        onProgress?.(0.30); // Worker Ready
+        onProgress?.(0.3); // Worker Ready
 
         // Apply base OCR parameters
         const basePsm = String(settings.ocrPsm ?? "11");
@@ -369,8 +347,8 @@ export function createOcrAnalyzer(): OcrAnalyzer {
         }
 
         // PHASE 4: OCR Execution (30% - 90%)
-        const OCR_START = 0.30;
-        const OCR_END = 0.90;
+        const OCR_START = 0.3;
+        const OCR_END = 0.9;
         const OCR_RANGE = OCR_END - OCR_START;
 
         // Helper to map engine progress (0-1) to our range
@@ -424,14 +402,14 @@ export function createOcrAnalyzer(): OcrAnalyzer {
           // The old logic had "pushLinesFromText" with filters.
           // Since processor.ts does heavy filtering, we can be more permissive here.
           if (list[1] && list[1].score > list[0].score * 0.8) {
-             mergedTextParts.push(list[1].text);
+            mergedTextParts.push(list[1].text);
           }
         }
 
         const mergedText = mergedTextParts.join("\n");
         // Use the new efficient pipeline
         const result = processOcrOutput(mergedText, {
-          spellCorrect: Boolean(settings.spellCorrectionBanner)
+          spellCorrect: Boolean(settings.spellCorrectionBanner),
         });
 
         const { ocrText, ocrTextRaw, altSuggestions, ctaSuggestions, nameSuggestions } = result;
@@ -439,12 +417,12 @@ export function createOcrAnalyzer(): OcrAnalyzer {
         onProgress?.(0.96);
 
         // Universal fallback: if ROI is enabled (esp. auto) but we got almost nothing, try full image once.
-        const textAmount = ((ocrText).match(/[A-Za-z0-9]/g) || []).length;
+        const textAmount = (ocrText.match(/[A-Za-z0-9]/g) || []).length;
         if (settings.roiEnabled && settings.roiPreset === "auto" && textAmount < 12 && !signal.aborted) {
           // ... fallback code ...
           const fullBase = fullCanvas;
           const retryPasses: Array<{ id: string; canvas: HTMLCanvasElement }> = [];
-           if (!usePreprocess) retryPasses.push({ id: "full-raw", canvas: fullBase });
+          if (!usePreprocess) retryPasses.push({ id: "full-raw", canvas: fullBase });
           else {
             retryPasses.push({
               id: "full-hard-otsu",
@@ -465,12 +443,12 @@ export function createOcrAnalyzer(): OcrAnalyzer {
           const r2 = await engine.recognize(retryPasses[0].canvas);
           const t2 = String(r2?.data?.text ?? "");
           const res2 = processOcrOutput(t2, {
-            spellCorrect: Boolean(settings.spellCorrectionBanner)
+            spellCorrect: Boolean(settings.spellCorrectionBanner),
           });
 
           if ((res2.ocrText.match(/[A-Za-z0-9]/g) || []).length > textAmount) {
-             onProgress?.(1);
-             const out2: OcrAnalyzeResult = {
+            onProgress?.(1);
+            const out2: OcrAnalyzeResult = {
               ocrText: res2.ocrText,
               ocrTextRaw: res2.ocrTextRaw,
               altSuggestions: res2.altSuggestions,

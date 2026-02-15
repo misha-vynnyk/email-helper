@@ -86,11 +86,7 @@ export class BlockFileManager {
       if (!existsSync(configDir)) {
         await fs.mkdir(configDir, { recursive: true });
       }
-      await fs.writeFile(
-        this.configFilePath,
-        JSON.stringify({ scanDirectories: this.config.scanDirectories }, null, 2),
-        "utf8"
-      );
+      await fs.writeFile(this.configFilePath, JSON.stringify({ scanDirectories: this.config.scanDirectories }, null, 2), "utf8");
     } catch (error) {
       console.error("Failed to save config:", error);
     }
@@ -109,10 +105,7 @@ export class BlockFileManager {
     // Don't add if already in list or if it's a default path
     const defaultPaths = [path.normalize(this.config.blocksDir), path.normalize(srcBlocksDir)];
 
-    if (
-      !this.config.scanDirectories.includes(normalizedPath) &&
-      !defaultPaths.includes(normalizedPath)
-    ) {
+    if (!this.config.scanDirectories.includes(normalizedPath) && !defaultPaths.includes(normalizedPath)) {
       this.config.scanDirectories.push(normalizedPath);
       await this.saveConfig();
       console.log(`📁 Added scan directory: ${normalizedPath}`);
@@ -122,21 +115,11 @@ export class BlockFileManager {
   /**
    * Generate TypeScript code for a block
    */
-  private generateBlockCode(block: {
-    id: string;
-    name: string;
-    category: string;
-    keywords: string[];
-    html: string;
-    preview?: string;
-  }): string {
+  private generateBlockCode(block: { id: string; name: string; category: string; keywords: string[]; html: string; preview?: string }): string {
     const previewValue = block.preview || "";
 
     // Use original block HTML without wrapping
-    const htmlEscaped = block.html
-      .replace(/\\/g, "\\\\")
-      .replace(/`/g, "\\`")
-      .replace(/\$/g, "\\$");
+    const htmlEscaped = block.html.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$/g, "\\$");
 
     // Format keywords with single quotes
     const keywordsFormatted = `[${block.keywords.map((k) => `'${k}'`).join(", ")}]`;
@@ -235,7 +218,8 @@ export default ${this.toPascalCase(block.id)};
       }
 
       const files = await fs.readdir(dirPath);
-      const tsFiles = files.filter((file) => file.endsWith(".ts") && file !== "README.md");
+      // Filter out macOS resource fork files (._filename) and only keep TypeScript files
+      const tsFiles = files.filter((file) => !file.startsWith("._") && file.endsWith(".ts") && file !== "README.md");
 
       for (const file of tsFiles) {
         const filePath = path.join(dirPath, file);
@@ -276,9 +260,7 @@ export default ${this.toPascalCase(block.id)};
       }
 
       // Remove duplicates based on file path
-      const uniqueBlocks = Array.from(
-        new Map(blocks.map((block) => [block.filePath, block])).values()
-      );
+      const uniqueBlocks = Array.from(new Map(blocks.map((block) => [block.filePath, block])).values());
 
       // Sort by creation date (newest first)
       uniqueBlocks.sort((a, b) => b.createdAt - a.createdAt);
@@ -329,10 +311,7 @@ export default ${this.toPascalCase(block.id)};
 
     // If access denied, try to register this path as a workspace
     if (!accessCheck.allowed) {
-      const result = await this.workspaceManager.requestWorkspaceAccess(
-        normalizedPath,
-        "Custom Blocks"
-      );
+      const result = await this.workspaceManager.requestWorkspaceAccess(normalizedPath, "Custom Blocks");
 
       if (result.success) {
         // Re-check access after registration
@@ -533,12 +512,7 @@ export default ${this.toPascalCase(block.id)};
     // Filter by search query
     if (query.trim()) {
       const lowerQuery = query.toLowerCase();
-      filtered = filtered.filter(
-        (block) =>
-          block.name.toLowerCase().includes(lowerQuery) ||
-          block.keywords.some((keyword) => keyword.toLowerCase().includes(lowerQuery)) ||
-          block.id.toLowerCase().includes(lowerQuery)
-      );
+      filtered = filtered.filter((block) => block.name.toLowerCase().includes(lowerQuery) || block.keywords.some((keyword) => keyword.toLowerCase().includes(lowerQuery)) || block.id.toLowerCase().includes(lowerQuery));
     }
 
     return filtered;
@@ -591,9 +565,7 @@ export default ${this.toPascalCase(block.id)};
     // Note: In a real implementation, you would update the configuration
     // to remove the directory from allowed roots and clean up the database
 
-    console.log(
-      `🧹 Would remove ${blocksToRemove.length} blocks from deleted directory: ${normalizedPath}`
-    );
+    console.log(`🧹 Would remove ${blocksToRemove.length} blocks from deleted directory: ${normalizedPath}`);
 
     return {
       removed: blocksToRemove.length,

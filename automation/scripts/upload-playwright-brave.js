@@ -4,14 +4,14 @@ const { chromium } = require("playwright-core");
 const fs = require("fs");
 const pathModule = require("path");
 const { execSync, exec, execFileSync } = require("child_process");
+const os = require("os");
 const http = require("http");
 
 // === Завантаження конфігурації ===
 const configPath = pathModule.join(__dirname, "..", "config.json");
 const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
 // Env overrides for cross-machine setup (no edit of config.json needed)
-if (process.env.BRAVE_EXECUTABLE_PATH)
-  config.browser.executablePath = process.env.BRAVE_EXECUTABLE_PATH;
+if (process.env.BRAVE_EXECUTABLE_PATH) config.browser.executablePath = process.env.BRAVE_EXECUTABLE_PATH;
 if (process.env.BRAVE_USER_DATA_DIR) config.browser.userDataDir = process.env.BRAVE_USER_DATA_DIR;
 
 // === Константи ===
@@ -27,20 +27,11 @@ function getArgValue(flag) {
   return val;
 }
 
-const provider = String(
-  getArgValue("--provider") || process.env.STORAGE_PROVIDER || "default"
-).toLowerCase();
+const provider = String(getArgValue("--provider") || process.env.STORAGE_PROVIDER || "default").toLowerCase();
 
 let sharedStorageConfig = null;
 try {
-  const sharedConfigPath = pathModule.join(
-    __dirname,
-    "..",
-    "..",
-    "src",
-    "htmlConverter",
-    "storageProviders.json"
-  );
+  const sharedConfigPath = pathModule.join(__dirname, "..", "..", "src", "htmlConverter", "storageProviders.json");
   sharedStorageConfig = JSON.parse(fs.readFileSync(sharedConfigPath, "utf8"));
 } catch {
   // optional config
@@ -81,13 +72,7 @@ const browserProfiles = sharedStorageConfig?.browserProfiles ||
   };
 const selectedBrowser = browserProfiles[provider] || browserProfiles.default;
 
-const consoleBaseUrl =
-  sharedStorageConfig?.consoleBaseUrl ||
-  config.storage?.baseUrl ||
-  config.storage?.baseURL ||
-  config.storage?.url ||
-  config.storage?.base ||
-  "https://storage.epcnetwork.dev";
+const consoleBaseUrl = sharedStorageConfig?.consoleBaseUrl || config.storage?.baseUrl || config.storage?.baseURL || config.storage?.url || config.storage?.base || "https://storage.epcnetwork.dev";
 if (selectedBrowser?.debugPort) config.browser.debugPort = selectedBrowser.debugPort;
 if (selectedBrowser?.userDataDir) config.browser.userDataDir = selectedBrowser.userDataDir;
 if (typeof selectedBrowser?.autoCloseTab === "boolean") {
@@ -274,11 +259,28 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
     // === Запускаємо Brave / підключаємось по CDP ===
     console.log("🚀 Brave (CDP)...");
     const cdpUrl = `http://127.0.0.1:${config.browser.debugPort}`;
-    const browserCmd = `${escapeShellArg(
-      config.browser.executablePath
-    )} --remote-debugging-port=${config.browser.debugPort} --user-data-dir=${escapeShellArg(
-      config.browser.userDataDir
-    )} --remote-debugging-address=127.0.0.1 &`;
+
+    // Ensure userDataDir is writable. If not, fall back to a temp directory.
+    let effectiveUserDataDir = config.browser.userDataDir;
+    try {
+      // Try to create directory if it doesn't exist and check writability
+      if (!fs.existsSync(effectiveUserDataDir)) {
+        fs.mkdirSync(effectiveUserDataDir, { recursive: true });
+      }
+      fs.accessSync(effectiveUserDataDir, fs.constants.W_OK);
+    } catch (e) {
+      const fallbackDir = pathModule.join(os.tmpdir(), `BravePlaywright-${Date.now()}`);
+      try {
+        fs.mkdirSync(fallbackDir, { recursive: true });
+        effectiveUserDataDir = fallbackDir;
+        console.warn(`⚠️ userDataDir ${config.browser.userDataDir} is not writable — falling back to ${effectiveUserDataDir}`);
+      } catch (ee) {
+        console.error(`❌ Cannot create fallback userDataDir (${fallbackDir}): ${ee.message}`);
+        throw ee;
+      }
+    }
+
+    const browserCmd = `${escapeShellArg(config.browser.executablePath)} --remote-debugging-port=${config.browser.debugPort} --user-data-dir=${escapeShellArg(effectiveUserDataDir)} --remote-debugging-address=127.0.0.1 &`;
 
     const connectOverCdp = async () => chromium.connectOverCDP(cdpUrl);
 
@@ -298,10 +300,24 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
       console.log(`🧭 CDP недоступний на ${cdpUrl} — запускаємо Brave...`);
       exec(browserCmd);
       console.log("⏳ Очікування запуску браузера...");
-      await new Promise((resolve) => setTimeout(resolve, config.timeouts.browserStart));
 
-      console.log(`🔗 Повторне підключення до Brave: ${cdpUrl}`);
-      browser = await connectOverCdp();
+      // Poll for CDP availability (give Brave more time to start)
+      const attemptDelay = 500;
+      const maxAttempts = Math.max(10, Math.ceil((config.timeouts.browserStart || 1500) / attemptDelay));
+      let connected = false;
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        try {
+          browser = await connectOverCdp();
+          connected = true;
+          break;
+        } catch (e) {
+          await new Promise((resolve) => setTimeout(resolve, attemptDelay));
+        }
+      }
+
+      if (!connected) {
+        throw new Error(`browserType.connectOverCDP: connect ECONNREFUSED 127.0.0.1:${config.browser.debugPort}`);
+      }
     }
     context = browser.contexts()[0] || (await browser.newContext());
     page = context.pages()[0] || (await context.newPage());
@@ -335,9 +351,7 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
       if (selectedStorage.usesCategory) {
         // Категорія обов'язкова
         if (!categoryArg || !VALID_CATEGORIES.includes(categoryArg.toLowerCase())) {
-          console.error(
-            `Помилка: в режимі --no-confirm потрібна категорія (${VALID_CATEGORIES.join("|")})`
-          );
+          console.error(`Помилка: в режимі --no-confirm потрібна категорія (${VALID_CATEGORIES.join("|")})`);
           process.exit(1);
         }
         serverCategory = categoryArg.toLowerCase();
@@ -346,12 +360,9 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
       }
 
       // folderName: з argv (крос-платформно) або з буфера на macOS
-      clipboardContent =
-        folderNameArg || (process.platform === "darwin" ? safeExec("pbpaste", false) : null);
+      clipboardContent = folderNameArg || (process.platform === "darwin" ? safeExec("pbpaste", false) : null);
       if (!clipboardContent) {
-        console.error(
-          "Помилка: в режимі --no-confirm потрібна назва папки (4-й аргумент) або буфер обміну (macOS)"
-        );
+        console.error("Помилка: в режимі --no-confirm потрібна назва папки (4-й аргумент) або буфер обміну (macOS)");
         process.exit(1);
       }
 
@@ -388,11 +399,7 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
       await new Promise((resolve) => setTimeout(resolve, 500));
 
       // Відкриваємо форму в поточній вкладці Brave
-      const formUrl = `http://127.0.0.1:${FORM_SERVER_PORT}/?file=${encodeURIComponent(
-        fileName
-      )}&size=${encodeURIComponent(fileSizeFormatted)}&path=${encodeURIComponent(filePath)}${
-        presetCategory ? `&category=${presetCategory}` : ""
-      }${clipboardPreview ? `&folder=${encodeURIComponent(clipboardPreview)}` : ""}`;
+      const formUrl = `http://127.0.0.1:${FORM_SERVER_PORT}/?file=${encodeURIComponent(fileName)}&size=${encodeURIComponent(fileSizeFormatted)}&path=${encodeURIComponent(filePath)}${presetCategory ? `&category=${presetCategory}` : ""}${clipboardPreview ? `&folder=${encodeURIComponent(clipboardPreview)}` : ""}`;
 
       console.log("📝 Відкриття форми в Brave...");
       await page.goto(formUrl, { waitUntil: "domcontentloaded" });
@@ -463,9 +470,7 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
 
     // === Формуємо шлях та ім'я ===
     const formattedName = `${letters}/lift-${digits}`;
-    console.log(
-      `📁 Сформовано шлях: ${selectedStorage.usesCategory ? `${serverCategory}/` : ""}${formattedName}`
-    );
+    console.log(`📁 Сформовано шлях: ${selectedStorage.usesCategory ? `${serverCategory}/` : ""}${formattedName}`);
 
     // === Використовуємо ту ж вкладку для переходу на storage ===
     console.log("🌐 Перехід до storage в тій же вкладці Brave...");
@@ -475,26 +480,18 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
     consoleParts.push(formattedName);
     const consolePath = consoleParts.filter(Boolean).join("/");
 
-    const targetURL = `${consoleBaseUrl}/browser/${selectedStorage.bucket}/${encodeURIComponent(
-      consolePath
-    )}%2F`;
+    const targetURL = `${consoleBaseUrl}/browser/${selectedStorage.bucket}/${encodeURIComponent(consolePath)}%2F`;
     console.log(`🌐 Завантажуємо сторінку: ${targetURL}`);
     await page.goto(targetURL, { waitUntil: "domcontentloaded" });
 
     // === Логін / UI ready (robust, slow-friendly) ===
     console.log("🔍 Очікуємо MinIO UI або логін...");
 
-    const state = await Promise.any([
-      page.waitForSelector("#upload-main", { timeout: bootstrapWaitMs }).then(() => "upload"),
-      page.waitForSelector("button#go-to-login", { timeout: bootstrapWaitMs }).then(() => "login"),
-    ]).catch(() => null);
+    const state = await Promise.any([page.waitForSelector("#upload-main", { timeout: bootstrapWaitMs }).then(() => "upload"), page.waitForSelector("button#go-to-login", { timeout: bootstrapWaitMs }).then(() => "login")]).catch(() => null);
 
     if (state === "login") {
       playSound("error");
-      showNotification(
-        "Storage Upload",
-        `🔒 Потрібен логін. Очікую до ${Math.round(loginWaitMs / 1000)}s...`
-      );
+      showNotification("Storage Upload", `🔒 Потрібен логін. Очікую до ${Math.round(loginWaitMs / 1000)}s...`);
 
       // Best-effort: navigate to login screen
       try {
@@ -503,9 +500,7 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
         // ignore
       }
 
-      console.log(
-        `🔒 Login required — waiting for #upload-main (timeout ${Math.round(loginWaitMs / 1000)}s)...`
-      );
+      console.log(`🔒 Login required — waiting for #upload-main (timeout ${Math.round(loginWaitMs / 1000)}s)...`);
       try {
         await page.waitForSelector("#upload-main", { timeout: loginWaitMs });
       } catch (e) {
@@ -539,10 +534,7 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
       await page.waitForTimeout(config.timeouts.interfaceCheck);
     }
 
-    await Promise.race([
-      page.waitForSelector(".fileNameText", { timeout: 3000 }).catch(() => {}),
-      page.waitForSelector('text="Empty folder"', { timeout: 3000 }).catch(() => {}),
-    ]);
+    await Promise.race([page.waitForSelector(".fileNameText", { timeout: 3000 }).catch(() => {}), page.waitForSelector('text="Empty folder"', { timeout: 3000 }).catch(() => {})]);
 
     console.log("✅ Інтерфейс готовий — продовжуємо.");
 
@@ -569,9 +561,7 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
     // === Функція завантаження з авто-повтором ===
     async function uploadFile(retry = false) {
       try {
-        console.log(
-          retry ? "🔁 Повторна спроба завантаження..." : "📦 Відкриваємо меню завантаження..."
-        );
+        console.log(retry ? "🔁 Повторна спроба завантаження..." : "📦 Відкриваємо меню завантаження...");
         await page.click("#upload-main", { timeout: config.timeouts.elementWait });
 
         const uploadButton = await page.waitForSelector('div[label="Upload File"]', {
@@ -579,10 +569,7 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
         });
         console.log('🖱 Натискаємо "Upload File" і чекаємо filechooser...');
 
-        const [fileChooser] = await Promise.all([
-          page.waitForEvent("filechooser"),
-          uploadButton.click(),
-        ]);
+        const [fileChooser] = await Promise.all([page.waitForEvent("filechooser"), uploadButton.click()]);
 
         await fileChooser.setFiles(filePath);
         console.log(`✅ Файл ${fileName} успішно завантажено!`);
@@ -590,14 +577,11 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
         const publicUrl = `${String(selectedStorage.publicBaseUrl).replace(/\/+$/, "")}/${serverFilePath}`;
 
         // Безпечне копіювання в буфер
-        process.platform === "darwin" &&
-          safeExec(`printf %s ${escapeShellArg(serverFilePath)} | pbcopy`, false);
+        process.platform === "darwin" && safeExec(`printf %s ${escapeShellArg(serverFilePath)} | pbcopy`, false);
         playSound("success");
         showNotification("Storage Upload", `✅ Файл завантажено: ${publicUrl}`);
         console.log(`📋 Скопійовано в буфер: ${serverFilePath}`);
-        console.log(
-          `RESULT_JSON=${JSON.stringify({ provider, filePath: serverFilePath, publicUrl })}`
-        );
+        console.log(`RESULT_JSON=${JSON.stringify({ provider, filePath: serverFilePath, publicUrl })}`);
         return true;
       } catch (err) {
         console.warn("⚠️ Помилка при завантаженні файлу:", err.message);
@@ -675,10 +659,7 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    if (
-      msg.includes("Target page, context or browser has been closed") ||
-      msg.toLowerCase().includes("browser has been closed")
-    ) {
+    if (msg.includes("Target page, context or browser has been closed") || msg.toLowerCase().includes("browser has been closed")) {
       console.error("ERROR:BROWSER_CLOSED (user closed Brave before completing flow)");
     }
     console.error("❌ Критична помилка:", msg);
