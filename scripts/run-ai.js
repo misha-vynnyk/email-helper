@@ -69,12 +69,23 @@ try {
   // Use --no-warn-script-location to avoid path warnings on Windows
   run(venvPython, ["-m", "pip", "install", "--upgrade", "pip", "--no-warn-script-location"]);
 
+  // Install requirements - Fail hard if this errors
+  run(venvPython, ["-m", "pip", "install", "-r", "requirements.txt", "--no-warn-script-location"]);
+
+  // Verify Critical Dependencies
+  console.log("Verifying Torch installation...");
   try {
-    run(venvPython, ["-m", "pip", "install", "-r", "requirements.txt", "--no-warn-script-location"]);
-  } catch (pipError) {
-    console.error("❌ Failed to install strict requirements.");
-    console.error("   Attempting to continue despite install errors (some packages might be optional)...");
-    // We could retry with looser constraints or just let it fail at runtime if critical imports miss
+    const check = spawnSync(venvPython, ["-c", "import torch; print(f'Torch {torch.__version__} verified')"], { encoding: "utf8" });
+    if (check.status !== 0) {
+      console.error("❌ Torch check failed even after install.");
+      console.error(check.stderr || check.stdout);
+      throw new Error("Torch verification failed");
+    }
+    console.log("✅ " + check.stdout.trim());
+  } catch (verifyError) {
+    console.error("❌ Critical dependency verification failed.");
+    console.error("   Please try running: 'pip install torch' manually in the venv.");
+    process.exit(1);
   }
 
   console.log("Starting AI server...");
