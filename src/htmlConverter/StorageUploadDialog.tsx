@@ -52,7 +52,8 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
   const [showOcrTextById, setShowOcrTextById] = useState<Record<string, boolean>>({});
   const [editingTag, setEditingTag] = useState<{ fileId: string; tagIdx: number } | null>(null);
 
-  const analysisEnabled = Boolean(imageAnalysisSettings?.enabled && imageAnalysisSettings.engine === "ocr");
+  const analysisEnabled = Boolean(imageAnalysisSettings?.enabled && (imageAnalysisSettings.engine === "ocr" || imageAnalysisSettings.useAiBackend));
+  const analysisLabel = imageAnalysisSettings?.useAiBackend ? "Analyze (AI)" : "Analyze (OCR)";
 
   // AI (step 1): OCR-based suggestions (configured globally in HtmlConverterPanel)
   const {
@@ -530,7 +531,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
                         <Box sx={{ pl: 0, pt: spacingMUI.xs }}>
                           <Stack direction='row' spacing={spacingMUI.xs} alignItems='center' flexWrap='wrap'>
                             <Button size='small' variant='outlined' onClick={() => handleAnalyzeFile(file)} disabled={uploading || aiById[file.id]?.status === "running"} sx={{ textTransform: "none" }}>
-                              {aiById[file.id]?.status === "running" ? "Analyzing…" : "Analyze (OCR)"}
+                              {aiById[file.id]?.status === "running" ? "Analyzing…" : analysisLabel}
                             </Button>
 
                             {aiById[file.id]?.skippedReason === "lowTextLikelihood" && (
