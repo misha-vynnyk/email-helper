@@ -1,30 +1,6 @@
 import { useState, useEffect } from "react";
-import {
-  Box,
-  Typography,
-  Stack,
-  Button,
-  Chip,
-  Paper,
-  Collapse,
-  IconButton,
-  useTheme,
-  alpha,
-  Tooltip,
-  Pagination,
-} from "@mui/material";
-import {
-  History as HistoryIcon,
-  ContentCopy as CopyIcon,
-  Link as LinkIcon,
-  CheckCircleOutline as CheckIcon,
-  ExpandMore as ExpandMoreIcon,
-  ExpandLess as ExpandLessIcon,
-  Delete as DeleteIcon,
-  Folder as FolderIcon,
-  Schedule as TimeIcon,
-  Image as ImageIcon,
-} from "@mui/icons-material";
+import { Box, Typography, Stack, Button, Chip, Paper, Collapse, IconButton, useTheme, alpha, Tooltip, Pagination } from "@mui/material";
+import { History as HistoryIcon, ContentCopy as CopyIcon, Link as LinkIcon, CheckCircleOutline as CheckIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Delete as DeleteIcon, Folder as FolderIcon, Schedule as TimeIcon, Image as ImageIcon, Description as AltIcon } from "@mui/icons-material";
 
 import { useThemeMode } from "../theme";
 import { getComponentStyles } from "../theme/componentStyles";
@@ -92,14 +68,14 @@ export default function UploadHistory({ sessions, onClear }: UploadHistoryProps)
     const isToday = date.toDateString() === today.toDateString();
 
     if (isToday) {
-      return date.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
+      return date.toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" });
     }
 
-    return date.toLocaleString('uk-UA', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    return date.toLocaleString("uk-UA", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -118,39 +94,37 @@ export default function UploadHistory({ sessions, onClear }: UploadHistoryProps)
         WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
         border: componentStyles.card.border || `1px solid ${alpha(theme.palette.divider, 0.1)}`,
         boxShadow: componentStyles.card.boxShadow,
-      }}
-    >
+      }}>
       {/* Header */}
-      <Box display="flex" alignItems="center" justifyContent="space-between" mb={spacingMUI.base}>
-        <Box display="flex" alignItems="center" gap={spacingMUI.sm}>
+      <Box display='flex' alignItems='center' justifyContent='space-between' mb={spacingMUI.base}>
+        <Box display='flex' alignItems='center' gap={spacingMUI.sm}>
           <HistoryIcon sx={{ color: theme.palette.primary.main }} />
-          <Typography variant="h6" fontWeight={600}>
+          <Typography variant='h6' fontWeight={600}>
             Upload History
           </Typography>
           <Chip
             label={sessions.reduce((sum, s) => sum + s.files.length, 0)}
-            size="small"
+            size='small'
             sx={{
               backgroundColor: alpha(theme.palette.primary.main, 0.1),
               color: theme.palette.primary.main,
               fontWeight: 600,
-              fontSize: '0.75rem',
+              fontSize: "0.75rem",
             }}
           />
         </Box>
         <Button
-          size="small"
+          size='small'
           onClick={onClear}
           startIcon={<DeleteIcon />}
           sx={{
-            textTransform: 'none',
+            textTransform: "none",
             borderRadius: `${borderRadius.md}px`,
             color: theme.palette.error.main,
-            '&:hover': {
+            "&:hover": {
               backgroundColor: alpha(theme.palette.error.main, 0.08),
-            }
-          }}
-        >
+            },
+          }}>
           Clear All
         </Button>
       </Box>
@@ -159,7 +133,7 @@ export default function UploadHistory({ sessions, onClear }: UploadHistoryProps)
       <Stack spacing={spacingMUI.sm}>
         {paginatedSessions.map((session) => {
           const isExpanded = expandedSessions.has(session.id);
-          const successCount = session.files.filter(f => f.url).length;
+          const successCount = session.files.filter((f) => f.url).length;
 
           return (
             <Box
@@ -167,69 +141,61 @@ export default function UploadHistory({ sessions, onClear }: UploadHistoryProps)
               sx={{
                 borderRadius: `${borderRadius.md}px`,
                 border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                overflow: 'hidden',
-                transition: 'all 0.2s ease',
-                '&:hover': {
+                overflow: "hidden",
+                transition: "all 0.2s ease",
+                "&:hover": {
                   borderColor: alpha(theme.palette.primary.main, 0.3),
                   boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.08)}`,
-                }
-              }}
-            >
+                },
+              }}>
               {/* Session Header */}
               <Box
                 onClick={() => toggleSession(session.id)}
                 sx={{
                   p: spacingMUI.base,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  cursor: 'pointer',
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  cursor: "pointer",
                   backgroundColor: alpha(theme.palette.background.default, 0.3),
-                  '&:hover': {
+                  "&:hover": {
                     backgroundColor: alpha(theme.palette.primary.main, 0.03),
-                  }
-                }}
-              >
-                <Box display="flex" alignItems="center" gap={spacingMUI.sm} flex={1}>
+                  },
+                }}>
+                <Box display='flex' alignItems='center' gap={spacingMUI.sm} flex={1}>
                   <FolderIcon sx={{ fontSize: 20, color: theme.palette.primary.main }} />
                   <Box flex={1}>
-                    <Box display="flex" alignItems="center" gap={spacingMUI.xs} mb={0.25}>
-                      <Typography variant="body2" fontWeight={600}>
+                    <Box display='flex' alignItems='center' gap={spacingMUI.xs} mb={0.25}>
+                      <Typography variant='body2' fontWeight={600}>
                         {session.folderName}
                       </Typography>
                       <Chip
                         label={session.category}
-                        size="small"
+                        size='small'
                         sx={{
                           height: 18,
-                          fontSize: '0.65rem',
+                          fontSize: "0.65rem",
                           fontWeight: 600,
-                          backgroundColor: session.category === 'finance'
-                            ? alpha(theme.palette.success.main, 0.1)
-                            : alpha(theme.palette.info.main, 0.1),
-                          color: session.category === 'finance'
-                            ? theme.palette.success.main
-                            : theme.palette.info.main,
+                          backgroundColor: session.category === "finance" ? alpha(theme.palette.success.main, 0.1) : alpha(theme.palette.info.main, 0.1),
+                          color: session.category === "finance" ? theme.palette.success.main : theme.palette.info.main,
                         }}
                       />
                     </Box>
-                    <Box display="flex" alignItems="center" gap={spacingMUI.sm}>
-                      <Typography variant="caption" color="text.secondary" display="flex" alignItems="center" gap={0.5}>
+                    <Box display='flex' alignItems='center' gap={spacingMUI.sm}>
+                      <Typography variant='caption' color='text.secondary' display='flex' alignItems='center' gap={0.5}>
                         <TimeIcon sx={{ fontSize: 12 }} />
                         {formatTime(session.timestamp)}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography variant='caption' color='text.secondary'>
                         •
                       </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {successCount} file{successCount !== 1 ? 's' : ''}
+                      <Typography variant='caption' color='text.secondary'>
+                        {successCount} file{successCount !== 1 ? "s" : ""}
                       </Typography>
                     </Box>
                   </Box>
                 </Box>
-                <IconButton size="small">
-                  {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                </IconButton>
+                <IconButton size='small'>{isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}</IconButton>
               </Box>
 
               {/* Session Files */}
@@ -243,71 +209,67 @@ export default function UploadHistory({ sessions, onClear }: UploadHistoryProps)
                           p: spacingMUI.sm,
                           borderRadius: `${borderRadius.sm}px`,
                           backgroundColor: alpha(theme.palette.background.default, 0.5),
-                          display: 'flex',
-                          alignItems: 'center',
+                          display: "flex",
+                          alignItems: "center",
                           gap: spacingMUI.sm,
-                          transition: 'all 0.2s ease',
-                          '&:hover': {
+                          transition: "all 0.2s ease",
+                          "&:hover": {
                             backgroundColor: alpha(theme.palette.primary.main, 0.05),
-                          }
-                        }}
-                      >
+                          },
+                        }}>
                         <ImageIcon sx={{ fontSize: 16, color: theme.palette.text.secondary }} />
                         <Box flex={1} minWidth={0}>
-                          <Typography
-                            variant="body2"
-                            fontWeight={500}
-                            sx={{ mb: 0.25 }}
-                          >
+                          <Typography variant='body2' fontWeight={500} sx={{ mb: 0.25 }}>
                             {file.filename}
                           </Typography>
                           <Typography
-                            variant="caption"
+                            variant='caption'
                             sx={{
-                              fontFamily: 'monospace',
+                              fontFamily: "monospace",
                               color: theme.palette.text.secondary,
-                              display: 'block',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
+                              display: "block",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}>
                             {file.shortPath}
                           </Typography>
+                          {file.alt && (
+                            <Typography
+                              variant='caption'
+                              sx={{
+                                color: theme.palette.info.main,
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 0.5,
+                                mt: 0.5,
+                                fontSize: "0.75rem",
+                                "& span": { fontWeight: 600 },
+                              }}>
+                              <AltIcon sx={{ fontSize: 14 }} />
+                              <span>ALT:</span> {file.alt}
+                            </Typography>
+                          )}
                         </Box>
-                        <Box display="flex" gap={spacingMUI.xs}>
-                          <Tooltip title="Copy full URL" arrow>
+                        <Box display='flex' gap={spacingMUI.xs}>
+                          <Tooltip title='Copy full URL' arrow>
                             <IconButton
-                              size="small"
+                              size='small'
                               onClick={() => handleCopy(file.url, `${file.id}-url`)}
                               sx={{
-                                color: copiedUrl === `${file.id}-url`
-                                  ? theme.palette.success.main
-                                  : theme.palette.primary.main,
-                              }}
-                            >
-                              {copiedUrl === `${file.id}-url` ? (
-                                <CheckIcon sx={{ fontSize: 18 }} />
-                              ) : (
-                                <LinkIcon sx={{ fontSize: 18 }} />
-                              )}
+                                color: copiedUrl === `${file.id}-url` ? theme.palette.success.main : theme.palette.primary.main,
+                              }}>
+                              {copiedUrl === `${file.id}-url` ? <CheckIcon sx={{ fontSize: 18 }} /> : <LinkIcon sx={{ fontSize: 18 }} />}
                             </IconButton>
                           </Tooltip>
-                          <Tooltip title="Copy short path" arrow>
+                          <Tooltip title='Copy short path' arrow>
                             <IconButton
-                              size="small"
+                              size='small'
                               onClick={() => handleCopy(file.shortPath, `${file.id}-path`)}
                               sx={{
-                                color: copiedUrl === `${file.id}-path`
-                                  ? theme.palette.success.main
-                                  : theme.palette.text.secondary,
-                              }}
-                            >
-                              {copiedUrl === `${file.id}-path` ? (
-                                <CheckIcon sx={{ fontSize: 18 }} />
-                              ) : (
-                                <CopyIcon sx={{ fontSize: 18 }} />
-                              )}
+                                color: copiedUrl === `${file.id}-path` ? theme.palette.success.main : theme.palette.text.secondary,
+                              }}>
+                              {copiedUrl === `${file.id}-path` ? <CheckIcon sx={{ fontSize: 18 }} /> : <CopyIcon sx={{ fontSize: 18 }} />}
                             </IconButton>
                           </Tooltip>
                         </Box>
@@ -323,27 +285,21 @@ export default function UploadHistory({ sessions, onClear }: UploadHistoryProps)
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <Box
-          display="flex"
-          justifyContent="center"
-          mt={spacingMUI.lg}
-          pt={spacingMUI.base}
-          borderTop={`1px solid ${alpha(theme.palette.divider, 0.1)}`}
-        >
+        <Box display='flex' justifyContent='center' mt={spacingMUI.lg} pt={spacingMUI.base} borderTop={`1px solid ${alpha(theme.palette.divider, 0.1)}`}>
           <Pagination
             count={totalPages}
             page={currentPage}
             onChange={handlePageChange}
-            color="primary"
-            shape="rounded"
+            color='primary'
+            shape='rounded'
             showFirstButton
             showLastButton
             sx={{
-              '& .MuiPaginationItem-root': {
+              "& .MuiPaginationItem-root": {
                 borderRadius: `${borderRadius.sm}px`,
                 fontWeight: 500,
               },
-              '& .Mui-selected': {
+              "& .Mui-selected": {
                 fontWeight: 700,
               },
             }}

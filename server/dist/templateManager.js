@@ -134,6 +134,11 @@ class TemplateManager {
             // Expand tilde and normalize path
             const expandedPath = (0, storagePathResolver_1.expandTilde)(filePath);
             const normalizedPath = path.normalize(path.resolve(expandedPath));
+            // Skip macOS resource fork files (._filename)
+            const fileName = path.basename(normalizedPath);
+            if (fileName.startsWith("._")) {
+                throw new Error("Cannot add macOS resource fork file");
+            }
             // Validate path
             const validation = await this.validatePath(expandedPath);
             if (!validation.valid) {
@@ -253,6 +258,29 @@ class TemplateManager {
         };
     }
     /**
+     * Clean up templates with macOS resource fork files (._filename)
+     * These files are created by macOS when files are copied from external drives
+     */
+    async cleanupMacOSResourceForks() {
+        const before = this.metadata.templates.length;
+        const validTemplates = this.metadata.templates.filter((template) => {
+            const fileName = path.basename(template.filePath);
+            if (fileName.startsWith("._")) {
+                console.log(`🧹 Removing macOS resource fork template: ${template.name}`);
+                return false;
+            }
+            return true;
+        });
+        const removed = before - validTemplates.length;
+        if (removed > 0) {
+            this.metadata.templates = validTemplates;
+            this.metadata.lastUpdated = Date.now();
+            await this.saveMetadata();
+            console.log(`✅ Cleaned up ${removed} macOS resource fork templates`);
+        }
+        return { removed };
+    }
+    /**
      * Import all .html files from a folder
      */
     async importFolder(folderPath, options = {}) {
@@ -361,8 +389,7 @@ class TemplateManager {
                 return { valid: true };
             }
             // For files, check extension
-            if (!normalized.toLowerCase().endsWith(".html") &&
-                !normalized.toLowerCase().endsWith(".htm")) {
+            if (!normalized.toLowerCase().endsWith(".html") && !normalized.toLowerCase().endsWith(".htm")) {
                 return { valid: false, reason: "Not an HTML file" };
             }
             // Check file size
@@ -459,6 +486,10 @@ class TemplateManager {
         const scan = async (dir) => {
             const entries = await fs.readdir(dir, { withFileTypes: true });
             for (const entry of entries) {
+                // Skip macOS resource fork files (._filename)
+                if (entry.name.startsWith("._")) {
+                    continue;
+                }
                 const fullPath = path.join(dir, entry.name);
                 if (entry.isDirectory() && recursive) {
                     await scan(fullPath);

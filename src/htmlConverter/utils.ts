@@ -11,6 +11,8 @@ export function cleanEmptyHtmlTags(htmlContent: string): string {
   htmlContent = htmlContent.replace(/<li>\s*<\/li>/g, "");
   htmlContent = htmlContent.replace(/<br>\s*<br>\s*<br>\s*<br>/g, "<br><br>");
   htmlContent = htmlContent.replace(/<br>\s*<br>\s*<br>/g, "<br><br>");
+  // Safety net: crush any sequence of 3+ breaks into 2
+  htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*){3,}/gi, "<br><br>");
   htmlContent = htmlContent.replace(/(<span[^>]*>)\s*<br><br>/gi, "$1");
   htmlContent = htmlContent.replace(/<\/a>\s*<a[^>]*>/g, " ");
   htmlContent = htmlContent.replace(/<pre>/g, "");
@@ -53,20 +55,20 @@ export function cleanEmptyHtmlTags(htmlContent: string): string {
   return htmlContent;
 }
 
+export function isSignatureImageTag(imgTag: string): boolean {
+  // Simple check: if alt contains "signature", skip replacement
+  return /alt=["'].*signature.*["']/i.test(imgTag);
+}
+
 export function addOneBr(htmlContent: string): string {
   return htmlContent.replace(new RegExp(SYMBOLS.ONE_BR, "gi"), function (_match, _content) {
-    return `
-                    <br>
-        `;
+    return "<br>";
   });
 }
 
 export function replaceTripleBrWithSingle(htmlContent: string): string {
   const BR = `<br>\n`;
-  htmlContent = htmlContent.replace(
-    /<\w+[^>]*>\s*<\w+[^>]*>\s*<br\s*\/?>\s*<\/\w+>\s*<\/\w+>/gi,
-    BR
-  );
+  htmlContent = htmlContent.replace(/<\w+[^>]*>\s*<\w+[^>]*>\s*<br\s*\/?>\s*<\/\w+>\s*<\/\w+>/gi, BR);
 
   htmlContent = htmlContent.replace(/<\w+[^>]*>\s*<br\s*\/?>\s*<\/\w+>/gi, BR);
 
@@ -87,37 +89,26 @@ export function addBrAfterClosingP(htmlContent: string): string {
   });
 
   // Handle sequences of empty paragraphs (p tags with only br inside)
-  // Replace sequences of empty paragraphs with a marker
-  htmlContent = htmlContent.replace(
-    /(<p[^>]*>[\s\S]*?<\/p>)(\s*<p[^>]*>\s*<br\s*\/?>\s*<\/p>\s*){2,}(<p[^>]*>[\s\S]*?<\/p>)/gi,
-    (_match, beforeP, emptyPs, afterP) => {
-      // Count how many empty paragraphs we have
-      const emptyCount = (emptyPs.match(/<p[^>]*>\s*<br\s*\/?>\s*<\/p>/gi) || []).length;
-      // For 2+ empty paragraphs between text, we want <br><br> (2 line breaks)
-      // Mark this sequence for later processing
-      return beforeP + `[[EMPTY_P_SEQ_${emptyCount}]]` + afterP;
-    }
-  );
+  // We want to treat even a single empty paragraph as a spacer, but NOT add extra breaks if it's just one.
+  // The goal: merge the line break from the empty paragraph with the standard paragraph break.
+  htmlContent = htmlContent.replace(/(<p[^>]*>[\s\S]*?<\/p>)(\s*<p[^>]*>\s*<br\s*\/?>\s*<\/p>\s*){1,}(<p[^>]*>[\s\S]*?<\/p>)/gi, (_match, beforeP, _emptyPs, afterP) => {
+    // We just ignore the empty P in the middle, because the </p> replacement below will add <br><br>
+    // effectively doing P -> BR BR -> P.
+    // If we kept the empty P, we'd get P -> BR BR -> BR (from empty P) -> BR BR -> P, which is too much.
+    return beforeP + afterP;
+  });
 
-  // Delete extra <br>
-  htmlContent = htmlContent.replace(/<br\s*\/?>/gi, "");
+  // Delete extra inline <br> (optional, but good for cleanup)
+  // htmlContent = htmlContent.replace(/<br\s*\/?>/gi, "");
 
   // Add <br><br> after each </p> (but not inside lists - they're already processed)
   // Use negative lookahead to skip </p> that are inside <li> elements
-  // Pattern: </p> that is NOT followed by </li> and is NOT inside an open <li>
-  htmlContent = htmlContent.replace(
-    /<\/p>(?!\s*\[\[EMPTY_P_SEQ)(?!\s*<\/li>)/gi,
-    "</p>\n<br><br>\n"
-  );
-
-  // Replace empty paragraph sequence markers with <br><br>
-  htmlContent = htmlContent.replace(/\[\[EMPTY_P_SEQ_\d+\]\]/gi, "\n<br><br>\n");
+  htmlContent = htmlContent.replace(/<\/p>(?!\s*<\/li>)/gi, "</p>\n<br><br>\n");
 
   // Delete extra <p> tags (but not inside lists - already processed)
   htmlContent = htmlContent.replace(/<p[^>]*>/gi, "").replace(/<\/p>/gi, "");
 
   // Remove <br> between <li> elements (lists should not have <br> between items)
-  // This must be done after deleting <p> tags to catch any remaining <br>
   htmlContent = htmlContent.replace(/<\/li>\s*<br>\s*<br>\s*<li>/gi, "</li>\n<li>");
   htmlContent = htmlContent.replace(/<\/li>\s*<br>\s*<li>/gi, "</li>\n<li>");
   // Also remove <br> at the start of <li> (if any were added incorrectly)
@@ -141,6 +132,9 @@ export function removeStylesFromLists(htmlContent: string): string {
 export function replaceAllEmojisAndSymbolsExcludingHTML(htmlContent: string): string {
   const rx = /(?:\p{Extended_Pictographic}|(?![<>=&%"'#;:_-])[\p{S}\p{No}])(?:\uFE0F)?/gu;
 
+  // Remove Zero Width Space and other invisible characters that cause issues
+  htmlContent = htmlContent.replace(/[\u200B-\u200D\uFEFF]/g, "");
+
   return htmlContent.replace(rx, (match) => {
     return Array.from(match)
       .map((ch) => `&#${ch.codePointAt(0)};`)
@@ -150,52 +144,10 @@ export function replaceAllEmojisAndSymbolsExcludingHTML(htmlContent: string): st
 
 export function mergeSimilarTags(htmlContent: string): string {
   // Merge adjacent h1-h6 tags and add <br><br> between them
-  // Special handling for h6: merge all h6 tags even if separated by other elements (div, br, table, etc.)
-  const tagsWithoutH6 = ["h1", "h4", "h5"];
+  const tagsToMerge = ["h1", "h4", "h5", "h6"];
 
-  // Step 1: For h6, find patterns where </h6> is followed by any content (including div, br, table) then <h6
-  // Replace the content between with [[BR_SEP]]
-  const h6SeparatedRegex = /<\/h6>([\s\S]*?)<h6/gi;
-  let h6Count = 0;
-  let maxIterations = 50;
-  let iterations = 0;
-
-  while (iterations < maxIterations) {
-    const before = htmlContent;
-    htmlContent = htmlContent.replace(h6SeparatedRegex, (_match, _middle) => {
-      h6Count++;
-      return "</h6>[[BR_SEP]]<h6";
-    });
-    if (htmlContent === before) break; // No more replacements
-    iterations++;
-  }
-
-  // Step 2: Now merge consecutive h6 tags: <h6>content1</h6>[[BR_SEP]]<h6>content2</h6>
-  // -> <h6>content1[[BR_SEP]]content2</h6>
-  const h6MergeRegex =
-    /(<h6[^>]*>)([\s\S]*?)(<\/h6>)\s*\[\[BR_SEP\]\]\s*(<h6[^>]*>)([\s\S]*?)(<\/h6>)/gi;
-  let mergeCount = 0;
-  iterations = 0;
-
-  while (iterations < maxIterations) {
-    const before = htmlContent;
-    htmlContent = htmlContent.replace(
-      h6MergeRegex,
-      (_match, open1, content1, close1, _open2, content2, _close2) => {
-        mergeCount++;
-        // Merge: keep first h6 tag, combine content with [[BR_SEP]], remove second h6
-        return open1 + content1 + "[[BR_SEP]]" + content2 + close1;
-      }
-    );
-    if (htmlContent === before) break; // No more replacements
-    iterations++;
-  }
-
-  // Debug tracking for h6 processing
-  // h6Count and mergeCount are tracked for optimization
-
-  // Now handle other tags normally (merge them)
-  tagsWithoutH6.forEach((tag) => {
+  // Now handle tags normally (merge them)
+  tagsToMerge.forEach((tag) => {
     const regex = new RegExp(`(<\\/${tag}>)\\s*<${tag}[^>]*>`, "gi");
 
     let matchFound = true;

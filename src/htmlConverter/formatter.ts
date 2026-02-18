@@ -2,73 +2,102 @@
  * Main HTML/MJML formatting logic
  */
 
-import { blueColors, config } from './config';
-import { htmlTemplates, mjmlTemplates } from './templates';
-import * as utils from './utils';
+import { config } from "./config";
+import { htmlTemplates, mjmlTemplates } from "./templates";
+import * as utils from "./utils";
+import * as colorUtils from "./colorUtils";
+
+function getInlineStyleValue(style: string, property: string): string | null {
+  const targetProperty = property.trim().toLowerCase();
+  const declarations = style.split(";");
+
+  for (const declaration of declarations) {
+    const [rawProperty, ...rawValueParts] = declaration.split(":");
+    if (!rawProperty || rawValueParts.length === 0) continue;
+
+    if (rawProperty.trim().toLowerCase() !== targetProperty) continue;
+
+    const rawValue = rawValueParts.join(":").trim();
+    return rawValue || null;
+  }
+
+  return null;
+}
 
 function italicLinks(htmlContent: string): string {
-  htmlContent = htmlContent.replace(/<a[^>]*>/gi, '').replace(/<\/a>/gi, '');
-  blueColors.forEach((color) => {
-    const regex = new RegExp(`<span[^>]*style="[^"]*color:\\s*${color}[^"]*;[^"]*font-style:\\s*italic[^"]*"[^>]*>(.*?)<\\/span>`, 'gi');
-    htmlContent = htmlContent.replace(regex,
-      '<a href="urlhere" style="font-family:\'Roboto\', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: #0000EE;"><em>$1</em></a>'
-    );
+  htmlContent = htmlContent.replace(/<a[^>]*>/gi, "").replace(/<\/a>/gi, "");
+
+  const regex = /<span\b[^>]*style=(["'])([\s\S]*?)\1[^>]*>([\s\S]*?)<\/span>/gi;
+
+  htmlContent = htmlContent.replace(regex, (match, _quote, style, innerText) => {
+    const color = getInlineStyleValue(style, "color");
+    const fontStyle = getInlineStyleValue(style, "font-style");
+
+    if (!color || !fontStyle || !/italic/i.test(fontStyle)) {
+      return match;
+    }
+
+    if (colorUtils.isLinkColor(color)) {
+      return `<a href="urlhere" style="font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: ${config.colors.link};"><em>${innerText}</em></a>`;
+    }
+    return match;
   });
+
   return htmlContent;
 }
 
 function linksStyles(htmlContent: string): string {
-  blueColors.forEach((color) => {
-    const reg = new RegExp(`<span[^>]*style="[^"]*color:\\s*(${color})[^"]*"[^>]*>(.*?)<\\/span>`, 'gi');
-    htmlContent = htmlContent.replace(reg,
-      '<a href="urlhere" style="font-family:\'Roboto\', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: #0000EE;">$2</a>'
-    );
+  const reg = /<span\b[^>]*style=(["'])([\s\S]*?)\1[^>]*>([\s\S]*?)<\/span>/gi;
+
+  htmlContent = htmlContent.replace(reg, (match, _quote, style, innerText) => {
+    const color = getInlineStyleValue(style, "color");
+    if (!color) return match;
+
+    if (colorUtils.isLinkColor(color)) {
+      return `<a href="urlhere" style="font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: ${config.colors.link};">${innerText}</a>`;
+    }
+    return match;
   });
   return htmlContent;
 }
 
 function processStyles(htmlContent: string): string {
-  htmlContent = htmlContent.replace(/<b[^>]*>/gi, '').replace(/<\/b>/gi, '');
+  htmlContent = htmlContent.replace(/<b[^>]*>/gi, "").replace(/<\/b>/gi, "");
 
   // i and b and u
-  htmlContent = htmlContent.replace(/<span[^>]*style="[^"]*font-weight:\s*700[^"]*;[^"]*font-style:\s*italic[^"]*;[^"]*text-decoration-line:\s*underline[^"]*"[^>]*>(.*?)<\/span>/gi,
-    '<em style="text-decoration: underline;font-weight: bold;">$1</em>');
+  htmlContent = htmlContent.replace(/<span[^>]*style="[^"]*font-weight:\s*700[^"]*;[^"]*font-style:\s*italic[^"]*;[^"]*text-decoration-line:\s*underline[^"]*"[^>]*>(.*?)<\/span>/gi, '<em style="text-decoration: underline;font-weight: bold;">$1</em>');
 
   // i and u
-  htmlContent = htmlContent.replace(/<span[^>]*style="[^"]*font-style:\s*italic[^"]*;[^"]*text-decoration-line:\s*underline[^"]*"[^>]*>(.*?)<\/span>/gi,
-    '<em style="text-decoration: underline;">$1</em>');
+  htmlContent = htmlContent.replace(/<span[^>]*style="[^"]*font-style:\s*italic[^"]*;[^"]*text-decoration-line:\s*underline[^"]*"[^>]*>(.*?)<\/span>/gi, '<em style="text-decoration: underline;">$1</em>');
 
   // i and b
-  htmlContent = htmlContent.replace(/<span[^>]*style="[^"]*font-weight:\s*700[^"]*;[^"]*font-style:\s*italic[^"]*"[^>]*>(.*?)<\/span>/gi,
-    '<b style="font-style: italic;">$1</b>');
+  htmlContent = htmlContent.replace(/<span[^>]*style="[^"]*font-weight:\s*700[^"]*;[^"]*font-style:\s*italic[^"]*"[^>]*>(.*?)<\/span>/gi, '<b style="font-style: italic;">$1</b>');
 
   // b and u
-  htmlContent = htmlContent.replace(/<span[^>]*style="[^"]*font-weight:\s*700[^"]*;[^"]*text-decoration-line:\s*underline[^"]*"[^>]*>(.*?)<\/span>/gi,
-    '<b style="text-decoration: underline;">$1</b>');
+  htmlContent = htmlContent.replace(/<span[^>]*style="[^"]*font-weight:\s*700[^"]*;[^"]*text-decoration-line:\s*underline[^"]*"[^>]*>(.*?)<\/span>/gi, '<b style="text-decoration: underline;">$1</b>');
 
   // u
-  htmlContent = htmlContent.replace(/<span[^>]*style="[^"]*text-decoration-line:\s*underline[^"]*"[^>]*>(.*?)<\/span>/gi,
-    '<u>$1</u>');
+  htmlContent = htmlContent.replace(/<span[^>]*style="[^"]*text-decoration-line:\s*underline[^"]*"[^>]*>(.*?)<\/span>/gi, "<u>$1</u>");
 
   // b
-  htmlContent = htmlContent.replace(/<span[^>]*style="[^"]*font-weight:\s*700[^"]*"[^>]*>(.*?)<\/span>/gi, '<b>$1</b>');
+  htmlContent = htmlContent.replace(/<span[^>]*style="[^"]*font-weight:\s*700[^"]*"[^>]*>(.*?)<\/span>/gi, "<b>$1</b>");
 
   // i
-  htmlContent = htmlContent.replace(/<span[^>]*style="[^"]*font-style:\s*italic[^"]*"[^>]*>(.*?)<\/span>/gi, '<em>$1</em>');
+  htmlContent = htmlContent.replace(/<span[^>]*style="[^"]*font-style:\s*italic[^"]*"[^>]*>(.*?)<\/span>/gi, "<em>$1</em>");
 
   //delete tags
-  htmlContent = htmlContent.replace(/<a[^>]*>\s*<\/a>/g, ' ');
-  htmlContent = htmlContent.replace(/<div[^>]*>/gi, '').replace(/<\/div>/gi, '');
-  htmlContent = htmlContent.replace(/<span[^>]*>/gi, '').replace(/<\/span>/gi, '');
-  htmlContent = htmlContent.replace(/<b>\s*<\/b>/g, '');
+  htmlContent = htmlContent.replace(/<a[^>]*>\s*<\/a>/g, " ");
+  htmlContent = htmlContent.replace(/<div[^>]*>/gi, "").replace(/<\/div>/gi, "");
+  htmlContent = htmlContent.replace(/<span[^>]*>/gi, "").replace(/<\/span>/gi, "");
+  htmlContent = htmlContent.replace(/<b>\s*<\/b>/g, "");
 
   //delete table tags update
-  htmlContent = htmlContent.replace(/<table[^>]*>/gi, '').replace(/<\/table>/gi, '');
-  htmlContent = htmlContent.replace(/<tbody[^>]*>/gi, '').replace(/<\/tbody>/gi, '');
-  htmlContent = htmlContent.replace(/<tr[^>]*>/gi, '').replace(/<\/tr>/gi, '');
-  htmlContent = htmlContent.replace(/<td[^>]*>/gi, '').replace(/<\/td>/gi, '');
-  htmlContent = htmlContent.replace(/<col[^>]*>/gi, '').replace(/<\/col>/gi, '');
-  htmlContent = htmlContent.replace(/<colgroup[^>]*>/gi, '').replace(/<\/colgroup>/gi, '');
+  htmlContent = htmlContent.replace(/<table[^>]*>/gi, "").replace(/<\/table>/gi, "");
+  htmlContent = htmlContent.replace(/<tbody[^>]*>/gi, "").replace(/<\/tbody>/gi, "");
+  htmlContent = htmlContent.replace(/<tr[^>]*>/gi, "").replace(/<\/tr>/gi, "");
+  htmlContent = htmlContent.replace(/<td[^>]*>/gi, "").replace(/<\/td>/gi, "");
+  htmlContent = htmlContent.replace(/<col[^>]*>/gi, "").replace(/<\/col>/gi, "");
+  htmlContent = htmlContent.replace(/<colgroup[^>]*>/gi, "").replace(/<\/colgroup>/gi, "");
 
   return htmlContent;
 }
@@ -78,14 +107,14 @@ function applyTemplate(content: string, regex: RegExp, templateFn: (content: str
 }
 
 // Special handling for the function that wraps images AND the whole content
-function wrapTextInSpan(htmlContent: string, templateFn: (content: string) => string, type: 'html' | 'mjml' = 'html'): string {
+function wrapTextInSpan(htmlContent: string, templateFn: (content: string) => string, type: "html" | "mjml" = "html"): string {
   // 1. Replace Images
   htmlContent = htmlContent.replace(/<img[^>]*src="([^"]*)"[^>]*>/gi, function (_match, src) {
     return templateFn(src);
   });
 
   // 2. Wrap the whole result in a default span block
-  if (type === 'html') {
+  if (type === "html") {
     htmlContent = `<tr>
                       <td style="font-family:${config.fontFamily};font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;padding-top: 14px; padding-bottom: 14px;">
                                 <span style="font-family:${config.fontFamily};font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;">
@@ -127,11 +156,11 @@ export function formatHtml(editorContent: string): string {
 
   content = utils.addBrAfterClosingP(content);
   // Clean up whitespace around [[BR_SEP]] and replace with <br><br> on its own line
-  content = content.replace(/\s*\[\[BR_SEP\]\]\s*/g, '\n<br><br>\n');
+  content = content.replace(/\s*\[\[BR_SEP\]\]\s*/g, "\n<br><br>\n");
   content = utils.removeStylesFromLists(content);
 
   // Complex wrapping (Images + Body)
-  content = wrapTextInSpan(content, htmlTemplates.wrapImg, 'html');
+  content = wrapTextInSpan(content, htmlTemplates.wrapImg, "html");
 
   // More wrappers
   content = applyTemplate(content, /i-r-s([\s\S]*?)i-r-s-e/gi, htmlTemplates.rightSideImg);
@@ -168,11 +197,11 @@ export function formatMjml(editorContent: string): string {
 
   content = utils.addBrAfterClosingP(content);
   // Clean up whitespace around [[BR_SEP]] and replace with <br><br> on its own line
-  content = content.replace(/\s*\[\[BR_SEP\]\]\s*/g, '\n<br><br>\n');
+  content = content.replace(/\s*\[\[BR_SEP\]\]\s*/g, "\n<br><br>\n");
   content = utils.removeStylesFromLists(content);
 
   // Complex wrapping
-  content = wrapTextInSpan(content, mjmlTemplates.wrapImg, 'mjml');
+  content = wrapTextInSpan(content, mjmlTemplates.wrapImg, "mjml");
 
   // More wrappers
   content = applyTemplate(content, /i-l-s([\s\S]*?)i-l-s-e/gi, mjmlTemplates.leftSideImg);
