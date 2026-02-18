@@ -54,26 +54,25 @@ export function toSentenceCase(text: string): string {
 export function formatCtaAsAction(text: string): string {
   const lower = text.toLowerCase().trim();
 
-  // Common CTA patterns -> action descriptions (Ukrainian context)
+  // Common CTA patterns -> action descriptions (English context)
   const ctaMap: Record<string, string> = {
-    "click here": "Перейти за посиланням",
-    "learn more": "Дізнатися більше",
-    "read more": "Читати далі",
-    "sign up": "Зареєструватися",
-    subscribe: "Підписатися",
-    "buy now": "Купити зараз",
-    "shop now": "Перейти до магазину",
-    "get started": "Розпочати",
-    "view more": "Переглянути більше",
-    "see more": "Переглянути більше",
-    download: "Завантажити",
-    "join now": "Приєднатися",
-    register: "Зареєструватися",
-    "order now": "Замовити зараз",
-    "apply now": "Подати заявку",
-    "contact us": "Зв'язатися з нами",
-    "call now": "Зателефонувати",
-    "book now": "Забронювати",
+    "click here": "Go to link",
+    "learn more": "Learn more",
+    "read more": "Read more",
+    "sign up": "Sign up",
+    subscribe: "Subscribe",
+    "buy now": "Buy now",
+    "shop now": "Shop now",
+    "get started": "Get started",
+    "view more": "View more",
+    download: "Download",
+    "join now": "Join now",
+    register: "Register",
+    "order now": "Order now",
+    "apply now": "Apply now",
+    "contact us": "Contact us",
+    "call now": "Call now",
+    "book now": "Book now",
   };
 
   for (const [pattern, action] of Object.entries(ctaMap)) {
@@ -90,7 +89,7 @@ import { ALLOWED_SHORT_ALL_CAPS } from "../constants";
  * Words to remove from alt text (accessibility best practice:
  * screen readers already announce "image", so these are redundant)
  */
-const REDUNDANT_ALT_WORDS = new Set(["image", "images", "photo", "photos", "picture", "pictures", "icon", "icons", "graphic", "graphics", "banner", "banners", "зображення", "фото", "картинка", "іконка", "банер", "img", "pic", "logo"]);
+const REDUNDANT_ALT_WORDS = new Set(["image", "images", "photo", "photos", "picture", "pictures", "icon", "icons", "graphic", "graphics", "banner", "banners", "img", "pic", "logo"]);
 
 /**
  * Clean up an alt text candidate:
@@ -109,7 +108,7 @@ export function cleanupAltCandidate(text: string): string {
   // Remove redundant words at the start ("Image of...", "Photo:...")
   const words = t.split(" ").filter(Boolean);
   while (words.length > 0) {
-    const first = words[0].toLowerCase().replace(/[^a-zа-яіїєґ]/gi, "");
+    const first = words[0].toLowerCase().replace(/[^a-z]/gi, "");
     if (REDUNDANT_ALT_WORDS.has(first)) {
       words.shift();
       // Also remove "of" after "image", "photo"
