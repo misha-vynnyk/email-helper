@@ -48,34 +48,40 @@ export function toSentenceCase(text: string): string {
 
 /**
  * Format CTA text as an action description
- * Instead of "CLICK HERE" -> "Натиснути для переходу"
- * Instead of "LEARN MORE" -> "Дізнатися більше"
+ * Instead of "CLICK HERE" -> "Go to link"
+ * Instead of "LEARN MORE" -> "Learn more"
  */
+
+// Pre-built Map for O(1) CTA lookups
+const CTA_MAP = new Map<string, string>([
+  ["click here", "Go to link"],
+  ["learn more", "Learn more"],
+  ["read more", "Read more"],
+  ["sign up", "Sign up"],
+  ["subscribe", "Subscribe"],
+  ["buy now", "Buy now"],
+  ["shop now", "Shop now"],
+  ["get started", "Get started"],
+  ["view more", "View more"],
+  ["download", "Download"],
+  ["join now", "Join now"],
+  ["register", "Register"],
+  ["order now", "Order now"],
+  ["apply now", "Apply now"],
+  ["contact us", "Contact us"],
+  ["call now", "Call now"],
+  ["book now", "Book now"],
+]);
+
 export function formatCtaAsAction(text: string): string {
   const lower = text.toLowerCase().trim();
 
-  // Common CTA patterns -> action descriptions (English context)
-  const ctaMap: Record<string, string> = {
-    "click here": "Go to link",
-    "learn more": "Learn more",
-    "read more": "Read more",
-    "sign up": "Sign up",
-    subscribe: "Subscribe",
-    "buy now": "Buy now",
-    "shop now": "Shop now",
-    "get started": "Get started",
-    "view more": "View more",
-    download: "Download",
-    "join now": "Join now",
-    register: "Register",
-    "order now": "Order now",
-    "apply now": "Apply now",
-    "contact us": "Contact us",
-    "call now": "Call now",
-    "book now": "Book now",
-  };
+  // O(1) exact-match lookup
+  const exact = CTA_MAP.get(lower);
+  if (exact) return exact;
 
-  for (const [pattern, action] of Object.entries(ctaMap)) {
+  // Fallback: partial match (e.g. "click here now" contains "click here")
+  for (const [pattern, action] of CTA_MAP) {
     if (lower.includes(pattern)) return action;
   }
 
@@ -83,13 +89,7 @@ export function formatCtaAsAction(text: string): string {
   return toSentenceCase(text);
 }
 
-import { ALLOWED_SHORT_ALL_CAPS } from "../constants";
-
-/**
- * Words to remove from alt text (accessibility best practice:
- * screen readers already announce "image", so these are redundant)
- */
-const REDUNDANT_ALT_WORDS = new Set(["image", "images", "photo", "photos", "picture", "pictures", "icon", "icons", "graphic", "graphics", "banner", "banners", "img", "pic", "logo"]);
+import { ALLOWED_SHORT_ALL_CAPS, REDUNDANT_ALT_WORDS } from "../constants";
 
 /**
  * Clean up an alt text candidate:

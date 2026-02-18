@@ -213,7 +213,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
   const handleCancel = () => {
     if (uploading && onCancel) {
       onCancel();
-      setError("Завантаження скасовано");
+      setError("Upload cancelled");
       setUploading(false);
     }
   };
