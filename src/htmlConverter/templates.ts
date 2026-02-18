@@ -2,7 +2,7 @@
  * HTML and MJML templates for email generation
  */
 
-import { config } from './config';
+import { config } from "./config";
 
 // --- HTML Helpers ---
 
@@ -15,6 +15,8 @@ interface BlockOptions {
   paddingBottom?: string;
   tag?: string;
   extraStyle?: string;
+  paddingLeft?: string;
+  paddingRight?: string;
 }
 
 /**
@@ -23,18 +25,11 @@ interface BlockOptions {
  * and then opens a new row/cell for the subsequent content.
  */
 function createHtmlBlock(content: string, options: BlockOptions = {}): string {
-  const {
-    align = 'left',
-    fontSize = '18px',
-    fontWeight = 'normal',
-    color = '#000000',
-    paddingTop = '14px',
-    paddingBottom = '14px',
-    tag = 'span',
-    extraStyle = ''
-  } = options;
+  const { align = "left", fontSize = "18px", fontWeight = "normal", color = "#000000", paddingTop = "14px", paddingBottom = "14px", paddingLeft, paddingRight, tag = "span", extraStyle = "" } = options;
 
   const fontStyle = `font-family:${config.fontFamily};font-size:${fontSize};font-style:normal;font-weight:${fontWeight};line-height:1.5;text-align:${align};color:${color};${extraStyle}`;
+
+  const paddingLR = paddingLeft || paddingRight ? `padding-left: ${paddingLeft || "0"}; padding-right: ${paddingRight || "0"};` : "";
 
   // The "Close Previous / Open Next" pattern
   return `
@@ -42,7 +37,7 @@ function createHtmlBlock(content: string, options: BlockOptions = {}): string {
                 </td>
             </tr>
             <tr>
-                <td align="${align}" style="${fontStyle} padding-top: ${paddingTop}; padding-bottom: ${paddingBottom};">
+                <td align="${align}" style="${fontStyle} ${paddingLR} padding-top: ${paddingTop}; padding-bottom: ${paddingBottom};">
                   <${tag} style="${fontStyle}">
                     ${content}
                   </${tag}>
@@ -52,6 +47,20 @@ function createHtmlBlock(content: string, options: BlockOptions = {}): string {
                <td style="font-family:${config.fontFamily};font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;padding-top: 14px; padding-bottom: 14px;">
                   <span style="font-family:${config.fontFamily};font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;">
         `;
+}
+
+// --- Shared Button inner HTML (used by both HTML and MJML) ---
+
+function buttonTableHtml(content: string): string {
+  return `<table cellpadding="0" cellspacing="0" role="presentation">
+    <tr>
+      <td height="51" align="center" style="border-radius: 10px;font-family:${config.fontFamily};font-size:18px;font-style:normal;line-height:1.5;text-align:center;font-weight: bold; color: #FFFFFF; padding: 3px 5px; background-color: ${config.colors.button};" bgcolor="${config.colors.button}">
+        <a href="urlhere" target="_blank" style="font-weight: bold;text-decoration:none;color:#ffffff;padding: 9px 15px;display: block;font-family:${config.fontFamily};font-size:18px;font-style:normal;line-height:1.5;text-align:center;background-color: ${config.colors.button};border-radius: 10px;">
+          ${content}
+        </a>
+      </td>
+    </tr>
+  </table>`;
 }
 
 // --- MJML Helpers ---
@@ -68,16 +77,7 @@ interface MjmlBlockOptions {
 }
 
 function createMjmlBlock(content: string, options: MjmlBlockOptions = {}): string {
-  const {
-    align = 'left',
-    fontSize = '18px',
-    fontWeight = 'normal',
-    color = '#000000',
-    paddingTop = '10px',
-    paddingBottom = '10px',
-    paddingX = '25px',
-    extraStyle = ''
-  } = options;
+  const { align = "left", fontSize = "18px", fontWeight = "normal", color = "#000000", paddingTop = "10px", paddingBottom = "10px", paddingX = "25px", extraStyle = "" } = options;
 
   const fontStyle = `font-family:${config.fontFamily};font-size:${fontSize};font-style:normal;font-weight:${fontWeight};line-height:1.5;text-align:${align};color:${color};${extraStyle}`;
 
@@ -99,47 +99,19 @@ function createMjmlBlock(content: string, options: MjmlBlockOptions = {}): strin
 }
 
 export const htmlTemplates = {
-  smallCenterText: (content: string) => createHtmlBlock(content, { align: 'center', fontSize: '12px' }),
+  smallCenterText: (content: string) => createHtmlBlock(content, { align: "center", fontSize: "12px" }),
 
-  smallText: (content: string) => createHtmlBlock(content, { fontSize: '12px' }),
+  smallText: (content: string) => createHtmlBlock(content, { fontSize: "12px" }),
 
-  centerHeadline: (content: string) => createHtmlBlock(content, { align: 'center', fontSize: '22px', fontWeight: 'bold', tag: 'strong' }),
+  centerHeadline: (content: string) => createHtmlBlock(content, { align: "center", fontSize: "22px", fontWeight: "bold", tag: "strong" }),
 
-  headline: (content: string) => createHtmlBlock(content, { fontSize: '22px', fontWeight: 'bold', tag: 'strong' }),
+  headline: (content: string) => createHtmlBlock(content, { fontSize: "22px", fontWeight: "bold", tag: "strong" }),
 
-  centerQuote: (content: string) => `
-            </span>
-                </td>
-            </tr>
-            <tr>
-                <td align="center" style="font-family:${config.fontFamily};font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000; padding-left: 20px;padding-right: 20px;padding-top: 14px; padding-bottom: 14px;">
-                  <span style="font-family:${config.fontFamily};font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;">
-                    ${content}
-                  </span>
-                </td>
-            </tr>
-            <tr>
-               <td style="font-family:${config.fontFamily};font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;padding-top: 14px; padding-bottom: 14px;">
-                  <span style="font-family:${config.fontFamily};font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;">
-        `,
+  centerQuote: (content: string) => createHtmlBlock(content, { align: "center", paddingLeft: "20px", paddingRight: "20px" }),
 
-  quote: (content: string) => `
-            </span>
-                </td>
-            </tr>
-            <tr>
-                <td style="font-family:${config.fontFamily};font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-left: 20px;padding-right: 20px;padding-top: 14px; padding-bottom: 14px;">
-                  <span style="font-family:${config.fontFamily};font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;">
-                    ${content}
-                  </span>
-                </td>
-            </tr>
-            <tr>
-               <td style="font-family:${config.fontFamily};font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;padding-top: 14px; padding-bottom: 14px;">
-                  <span style="font-family:${config.fontFamily};font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;">
-        `,
+  quote: (content: string) => createHtmlBlock(content, { paddingLeft: "20px", paddingRight: "20px" }),
 
-  centerText: (content: string) => createHtmlBlock(content, { align: 'center' }),
+  centerText: (content: string) => createHtmlBlock(content, { align: "center" }),
 
   button: (content: string) => `
             </span>
@@ -147,16 +119,7 @@ export const htmlTemplates = {
             </tr>
              <tr>
                 <td align="center" style="padding-top: 14px; padding-bottom: 14px;">
-
-                  <table cellpadding="0" cellspacing="0" role="presentation">
-                       <tr>
-                           <td height="51" align="center" style="border-radius: 10px;font-family:${config.fontFamily};font-size:18px;font-style:normal;line-height:1.5;text-align:center;font-weight: bold; color: #FFFFFF; padding: 3px 5px; background-color: ${config.colors.button};" bgcolor="${config.colors.button}">
-                               <a href="urlhere" target="_blank" style="font-weight: bold;text-decoration:none;color:#ffffff;padding: 9px 15px;display: block;font-family:${config.fontFamily};font-size:18px;font-style:normal;line-height:1.5;text-align:center;background-color: ${config.colors.button};border-radius: 10px;">
-                                    ${content}
-                               </a>
-                          </td>
-                       </tr>
-                  </table>
+                  ${buttonTableHtml(content)}
                 </td>
               </tr>
             <tr>
@@ -210,9 +173,9 @@ export const htmlTemplates = {
                   <span style="font-family:${config.fontFamily};font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;">
         `,
 
-  footerBlock: (content: string) => createHtmlBlock(content, { fontSize: '12px', paddingTop: '34px' }),
+  footerBlock: (content: string) => createHtmlBlock(content, { fontSize: "12px", paddingTop: "34px" }),
 
-  footerCenterBlock: (content: string) => createHtmlBlock(content, { align: 'center', fontSize: '12px', paddingTop: '34px' }),
+  footerCenterBlock: (content: string) => createHtmlBlock(content, { align: "center", fontSize: "12px", paddingTop: "34px" }),
 
   signatureImg: (_content: string) => {
     void _content;
@@ -277,23 +240,23 @@ export const htmlTemplates = {
                 </table>
             </td>
         </tr>
-    </table>`
+    </table>`,
 };
 
 export const mjmlTemplates = {
-  smallCenterText: (content: string) => createMjmlBlock(content, { align: 'center', fontSize: '12px' }),
+  smallCenterText: (content: string) => createMjmlBlock(content, { align: "center", fontSize: "12px" }),
 
-  smallText: (content: string) => createMjmlBlock(content, { fontSize: '12px' }),
+  smallText: (content: string) => createMjmlBlock(content, { fontSize: "12px" }),
 
-  centerHeadline: (content: string) => createMjmlBlock(content, { align: 'center', fontSize: '22px', fontWeight: 'bold' }),
+  centerHeadline: (content: string) => createMjmlBlock(content, { align: "center", fontSize: "22px", fontWeight: "bold" }),
 
-  headline: (content: string) => createMjmlBlock(content, { fontSize: '22px', fontWeight: 'bold' }),
+  headline: (content: string) => createMjmlBlock(content, { fontSize: "22px", fontWeight: "bold" }),
 
-  centerQuote: (content: string) => createMjmlBlock(content, { align: 'center', paddingX: '45px' }),
+  centerQuote: (content: string) => createMjmlBlock(content, { align: "center", paddingX: "45px" }),
 
-  quote: (content: string) => createMjmlBlock(content, { paddingX: '45px' }),
+  quote: (content: string) => createMjmlBlock(content, { paddingX: "45px" }),
 
-  centerText: (content: string) => createMjmlBlock(content, { align: 'center' }),
+  centerText: (content: string) => createMjmlBlock(content, { align: "center" }),
 
   button: (content: string) => `
                        </div>
@@ -301,15 +264,7 @@ export const mjmlTemplates = {
                     </tr>
                     <tr>
                       <td align="center" style="font-size:0px;padding:10px 25px; word-break:break-word;">
-                        <table cellpadding="0" cellspacing="0" role="presentation">
-                          <tr>
-                              <td height="51" align="center" style="border-radius: 10px;font-family:${config.fontFamily};font-size:18px;font-style:normal;line-height:1.5;text-align:center;font-weight: bold; color: #FFFFFF; padding: 3px 5px; background-color: ${config.colors.button};" bgcolor="${config.colors.button}">
-                                  <a href="urlhere" target="_blank" style="font-weight: bold;text-decoration:none;color:#ffffff;padding: 9px 15px;display: block;font-family:${config.fontFamily};font-size:18px;font-style:normal;line-height:1.5;text-align:center;background-color: ${config.colors.button};border-radius: 10px;">
-                                       ${content}
-                                  </a>
-                             </td>
-                          </tr>
-                        </table>
+                        ${buttonTableHtml(content)}
                       </td>
                     </tr>
                     <tr>
@@ -402,9 +357,9 @@ export const mjmlTemplates = {
         `;
   },
 
-  footerBlock: (content: string) => createMjmlBlock(content, { fontSize: '12px', paddingTop: '30px', paddingBottom: '10px' }),
+  footerBlock: (content: string) => createMjmlBlock(content, { fontSize: "12px", paddingTop: "30px", paddingBottom: "10px" }),
 
-  footerCenterBlock: (content: string) => createMjmlBlock(content, { align: 'center', fontSize: '12px', paddingTop: '30px', paddingBottom: '10px' }),
+  footerCenterBlock: (content: string) => createMjmlBlock(content, { align: "center", fontSize: "12px", paddingTop: "30px", paddingBottom: "10px" }),
 
   wrapImg: (_content: string) => {
     void _content;
@@ -455,5 +410,5 @@ export const mjmlTemplates = {
             </table>
         </div>
         <!--[if mso | IE]></td></tr></table><![endif]-->
-    </div>`
+    </div>`,
 };

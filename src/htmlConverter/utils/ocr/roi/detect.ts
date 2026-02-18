@@ -5,10 +5,7 @@
 /**
  * Convert a Blob to HTMLCanvasElement with size constraints
  */
-export async function blobToCanvasFit(
-  blob: Blob,
-  opts: { minWidth: number; maxWidth: number }
-): Promise<HTMLCanvasElement> {
+export async function blobToCanvasFit(blob: Blob, opts: { minWidth: number; maxWidth: number }): Promise<HTMLCanvasElement> {
   const bmp = await createImageBitmap(blob);
   const w = bmp.width;
   const h = bmp.height;
@@ -31,7 +28,7 @@ export async function blobToCanvasFit(
   if (!ctx) return canvas;
 
   ctx.imageSmoothingEnabled = true;
-  (ctx as any).imageSmoothingQuality = "high";
+  if ("imageSmoothingQuality" in ctx) ctx.imageSmoothingQuality = "high";
   ctx.drawImage(bmp, 0, 0, outW, outH);
   return canvas;
 }
@@ -46,13 +43,7 @@ export async function blobToCanvas(blob: Blob, maxWidth: number): Promise<HTMLCa
 /**
  * Crop a canvas by fractional coordinates [0,1]
  */
-export function cropCanvasByFrac(
-  src: HTMLCanvasElement,
-  x: number,
-  y: number,
-  w: number,
-  h: number
-): HTMLCanvasElement {
+export function cropCanvasByFrac(src: HTMLCanvasElement, x: number, y: number, w: number, h: number): HTMLCanvasElement {
   const fx = Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
   const fy = Math.max(0, Math.min(1, Number.isFinite(y) ? y : 0));
   const fw = Math.max(0.05, Math.min(1, Number.isFinite(w) ? w : 1));
@@ -70,7 +61,7 @@ export function cropCanvasByFrac(
   if (!ctx) return out;
 
   ctx.imageSmoothingEnabled = true;
-  (ctx as any).imageSmoothingQuality = "high";
+  if ("imageSmoothingQuality" in ctx) ctx.imageSmoothingQuality = "high";
   ctx.drawImage(src, sx, sy, out.width, out.height, 0, 0, out.width, out.height);
   return out;
 }
@@ -118,11 +109,7 @@ export function estimateTextLikelihood(canvas: HTMLCanvasElement, edgeThreshold:
  * Auto-detect text regions using edge-based clustering
  * @returns Array of fractional bounding boxes {x, y, w, h} in range [0, 1]
  */
-export function autoDetectRoiFracs(
-  canvas: HTMLCanvasElement,
-  edgeThreshold: number,
-  maxRegions: number
-): Array<{ x: number; y: number; w: number; h: number }> {
+export function autoDetectRoiFracs(canvas: HTMLCanvasElement, edgeThreshold: number, maxRegions: number): Array<{ x: number; y: number; w: number; h: number }> {
   // Downscale should already be small-ish (e.g. 256-400px width).
   const ctx = canvas.getContext("2d");
   if (!ctx) return [];
@@ -206,7 +193,10 @@ export function autoDetectRoiFracs(
       let qx: number[] = [gx];
       let qy: number[] = [gy];
       seen[i0] = 1;
-      let minX = gx, maxX = gx, minY = gy, maxY = gy;
+      let minX = gx,
+        maxX = gx,
+        minY = gy,
+        maxY = gy;
       let weight = densities[i0];
 
       for (let qi = 0; qi < qx.length; qi++) {

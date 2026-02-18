@@ -272,7 +272,7 @@ export function useImageConversion({ editorRef, onLog, onVisibilityChange, autoP
           )
         );
       } catch (error) {
-        if ((error as any).name === "AbortError") return;
+        if (error instanceof DOMException && error.name === "AbortError") return;
         setImages((prev) =>
           prev.map((img) =>
             img.id === id
@@ -382,8 +382,9 @@ export function useImageConversion({ editorRef, onLog, onVisibilityChange, autoP
       } else {
         log("⏸️ Автообробка вимкнена. Натисніть 'Обробити все'");
       }
-    } catch (e: any) {
-      log(`❌ Помилка витягування: ${e.message}`);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Unknown error";
+      log(`❌ Помилка витягування: ${message}`);
     } finally {
       isExtractingRef.current = false;
     }
