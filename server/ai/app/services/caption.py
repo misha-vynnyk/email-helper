@@ -1,11 +1,13 @@
 from transformers import BlipProcessor, BlipForConditionalGeneration
 from PIL import Image
 import io
+import threading
 
 class CaptionService:
     _instance = None
     _processor = None
     _model = None
+    _lock = threading.Lock()
 
     @classmethod
     def get_instance(cls):
@@ -14,12 +16,14 @@ class CaptionService:
         return cls._instance
 
     def _get_model(self):
-        """Lazy load the BLIP model"""
+        """Lazy load the BLIP model (thread-safe)"""
         if self._model is None:
-            print("Loading BLIP model... (Salesforce/blip-image-captioning-large)")
-            self._processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
-            self._model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-large")
-            print("BLIP model loaded.")
+            with self._lock:
+                if self._model is None:  # Double-check after acquiring lock
+                    print("Loading BLIP model... (Salesforce/blip-image-captioning-large)")
+                    self._processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
+                    self._model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-large")
+                    print("BLIP model loaded.")
         return self._processor, self._model
 
     def generate_caption_from_pil(self, image: Image.Image) -> str:
