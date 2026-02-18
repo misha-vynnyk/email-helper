@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio, Typography, Box, Alert, LinearProgress, Chip, Stack, useTheme, alpha, Divider } from "@mui/material";
-import { CloudUpload as UploadIcon, CheckCircle as SuccessIcon, Error as ErrorIcon, ContentCopy as CopyIcon, Image as ImageIcon, CheckCircleOutline as CheckIcon, Close as CloseIcon, Link as LinkIcon, DragIndicator as DragIcon } from "@mui/icons-material";
+import { CloudUpload as UploadIcon, CheckCircle as SuccessIcon, Error as ErrorIcon, ContentCopy as CopyIcon, Close as CloseIcon, DragIndicator as DragIcon } from "@mui/icons-material";
 import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
 
@@ -14,15 +14,7 @@ import { UI_TIMINGS } from "./constants";
 import { STORAGE_PROVIDERS_CONFIG } from "./constants";
 import type { ImageAnalysisSettings, UploadResult } from "./types";
 import type { StorageProviderKey } from "./constants";
-
-function toShortPath(url: string): string {
-  try {
-    const u = new URL(url);
-    return u.pathname.startsWith("/") ? u.pathname.slice(1) : u.pathname;
-  } catch {
-    return url;
-  }
-}
+import { UploadResults, toShortPath } from "./components/UploadResults";
 
 interface StorageUploadDialogProps {
   open: boolean;
@@ -826,161 +818,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
           )}
 
           {/* Upload Results */}
-          {uploadResults.length > 0 && (
-            <Box
-              sx={{
-                p: spacingMUI.base,
-                borderRadius: `${borderRadius.lg}px`,
-                backgroundColor: componentStyles.card.background || alpha(theme.palette.background.paper, 0.5),
-                backdropFilter: componentStyles.card.backdropFilter,
-                WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
-                border: `1px solid ${alpha(theme.palette.success.main, 0.2)}`,
-              }}>
-              <Box display='flex' alignItems='center' justifyContent='space-between' mb={spacingMUI.base}>
-                <Box display='flex' alignItems='center' gap={spacingMUI.xs}>
-                  <SuccessIcon sx={{ color: theme.palette.success.main, fontSize: 20 }} />
-                  <Typography variant='subtitle2' fontWeight={600}>
-                    Uploaded Files ({uploadResults.filter((r) => r.success).length}/{uploadResults.length})
-                  </Typography>
-                </Box>
-                {uploadResults.filter((r) => r.success).length > 0 && (
-                  <Box display='flex' gap={spacingMUI.xs}>
-                    <Tooltip title='Copy all full URLs' arrow placement='top'>
-                      <Button
-                        size='small'
-                        onClick={() => handleCopyAllUrls(false)}
-                        startIcon={copiedUrl === "all" ? <CheckIcon /> : <LinkIcon />}
-                        sx={{
-                          textTransform: "none",
-                          borderRadius: `${borderRadius.md}px`,
-                          fontSize: "0.75rem",
-                          fontWeight: 600,
-                        }}>
-                        {copiedUrl === "all" ? "✓" : "Copy URLs"}
-                      </Button>
-                    </Tooltip>
-                    <Tooltip title='Copy all short paths' arrow placement='top'>
-                      <Button
-                        size='small'
-                        onClick={() => handleCopyAllUrls(true)}
-                        startIcon={copiedUrl === "all-short" ? <CheckIcon /> : <CopyIcon />}
-                        variant='outlined'
-                        sx={{
-                          textTransform: "none",
-                          borderRadius: `${borderRadius.md}px`,
-                          fontSize: "0.75rem",
-                          fontWeight: 600,
-                        }}>
-                        {copiedUrl === "all-short" ? "✓" : "Copy Paths"}
-                      </Button>
-                    </Tooltip>
-                  </Box>
-                )}
-              </Box>
-
-              <Stack spacing={spacingMUI.xs}>
-                {uploadResults.map((result, index) => (
-                  <Box
-                    key={index}
-                    sx={{
-                      p: spacingMUI.sm,
-                      borderRadius: `${borderRadius.md}px`,
-                      backgroundColor: result.success ? alpha(theme.palette.success.main, 0.05) : alpha(theme.palette.error.main, 0.05),
-                      border: `1px solid ${result.success ? alpha(theme.palette.success.main, 0.15) : alpha(theme.palette.error.main, 0.15)}`,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: spacingMUI.sm,
-                      transition: "all 0.2s ease",
-                      "&:hover": {
-                        backgroundColor: result.success ? alpha(theme.palette.success.main, 0.08) : alpha(theme.palette.error.main, 0.08),
-                      },
-                    }}>
-                    <ImageIcon
-                      sx={{
-                        fontSize: 18,
-                        color: result.success ? theme.palette.success.main : theme.palette.error.main,
-                      }}
-                    />
-                    <Box flex={1} minWidth={0}>
-                      <Typography
-                        variant='body2'
-                        fontWeight={500}
-                        sx={{
-                          mb: 0.25,
-                          color: theme.palette.text.primary,
-                        }}>
-                        {result.filename}
-                      </Typography>
-                      {result.success ? (
-                        <Typography
-                          variant='caption'
-                          sx={{
-                            fontFamily: "monospace",
-                            color: theme.palette.text.secondary,
-                            display: "block",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}>
-                          {result.url}
-                        </Typography>
-                      ) : (
-                        <Typography variant='caption' color='error.main'>
-                          {result.error || "Upload failed"}
-                        </Typography>
-                      )}
-                    </Box>
-                    {result.success && (
-                      <Box display='flex' gap={spacingMUI.xs}>
-                        <Tooltip title='Copy full URL' arrow placement='top'>
-                          <Button
-                            size='small'
-                            onClick={() => handleCopyUrl(result.url, false)}
-                            startIcon={copiedUrl === result.url ? <CheckIcon /> : <LinkIcon />}
-                            sx={{
-                              minWidth: "auto",
-                              px: spacingMUI.sm,
-                              py: spacingMUI.xs,
-                              textTransform: "none",
-                              borderRadius: `${borderRadius.sm}px`,
-                              fontSize: "0.7rem",
-                              fontWeight: 600,
-                              color: copiedUrl === result.url ? theme.palette.success.main : theme.palette.primary.main,
-                              "&:hover": {
-                                backgroundColor: alpha(theme.palette.primary.main, 0.08),
-                              },
-                            }}>
-                            {copiedUrl === result.url ? "✓" : "URL"}
-                          </Button>
-                        </Tooltip>
-                        <Tooltip title='Copy short path' arrow placement='top'>
-                          <Button
-                            size='small'
-                            onClick={() => handleCopyUrl(result.url, true)}
-                            startIcon={copiedUrl === `${result.url}-short` ? <CheckIcon /> : <CopyIcon />}
-                            sx={{
-                              minWidth: "auto",
-                              px: spacingMUI.sm,
-                              py: spacingMUI.xs,
-                              textTransform: "none",
-                              borderRadius: `${borderRadius.sm}px`,
-                              fontSize: "0.7rem",
-                              fontWeight: 600,
-                              color: copiedUrl === `${result.url}-short` ? theme.palette.success.main : theme.palette.text.secondary,
-                              "&:hover": {
-                                backgroundColor: alpha(theme.palette.text.secondary, 0.08),
-                              },
-                            }}>
-                            {copiedUrl === `${result.url}-short` ? "✓" : "Path"}
-                          </Button>
-                        </Tooltip>
-                      </Box>
-                    )}
-                  </Box>
-                ))}
-              </Stack>
-            </Box>
-          )}
+          {uploadResults.length > 0 && <UploadResults results={uploadResults} copiedUrl={copiedUrl} onCopyUrl={handleCopyUrl} onCopyAllUrls={handleCopyAllUrls} cardBackground={componentStyles.card.background} cardBackdropFilter={componentStyles.card.backdropFilter} cardWebkitBackdropFilter={componentStyles.card.WebkitBackdropFilter} />}
         </Stack>
       </DialogContent>
 
@@ -1010,7 +848,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
                 borderRadius: `${borderRadius.md}px`,
                 fontWeight: uploading ? 600 : 400,
               }}>
-              {uploading ? "Скасувати" : "Cancel"}
+              Cancel
             </Button>
             <Button
               variant='contained'
@@ -1022,7 +860,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
                 fontWeight: 600,
                 borderRadius: `${borderRadius.md}px`,
               }}>
-              {uploading ? "Завантаження..." : "Upload"}
+              {uploading ? "Uploading..." : "Upload"}
             </Button>
           </>
         )}
