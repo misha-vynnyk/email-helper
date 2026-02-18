@@ -108,8 +108,7 @@ class BlockFileManager {
         const normalizedPath = path.normalize(dirPath);
         // Don't add if already in list or if it's a default path
         const defaultPaths = [path.normalize(this.config.blocksDir), path.normalize(srcBlocksDir)];
-        if (!this.config.scanDirectories.includes(normalizedPath) &&
-            !defaultPaths.includes(normalizedPath)) {
+        if (!this.config.scanDirectories.includes(normalizedPath) && !defaultPaths.includes(normalizedPath)) {
             this.config.scanDirectories.push(normalizedPath);
             await this.saveConfig();
             console.log(`📁 Added scan directory: ${normalizedPath}`);
@@ -121,10 +120,7 @@ class BlockFileManager {
     generateBlockCode(block) {
         const previewValue = block.preview || "";
         // Use original block HTML without wrapping
-        const htmlEscaped = block.html
-            .replace(/\\/g, "\\\\")
-            .replace(/`/g, "\\`")
-            .replace(/\$/g, "\\$");
+        const htmlEscaped = block.html.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$/g, "\\$");
         // Format keywords with single quotes
         const keywordsFormatted = `[${block.keywords.map((k) => `'${k}'`).join(", ")}]`;
         return `import { EmailBlock } from '../types/block';
@@ -213,7 +209,8 @@ export default ${this.toPascalCase(block.id)};
                 return blocks;
             }
             const files = await fs.readdir(dirPath);
-            const tsFiles = files.filter((file) => file.endsWith(".ts") && file !== "README.md");
+            // Filter out macOS resource fork files (._filename) and only keep TypeScript files
+            const tsFiles = files.filter((file) => !file.startsWith("._") && file.endsWith(".ts") && file !== "README.md");
             for (const file of tsFiles) {
                 const filePath = path.join(dirPath, file);
                 const block = await this.parseBlockFile(filePath, file);
@@ -446,9 +443,7 @@ export default ${this.toPascalCase(block.id)};
         // Filter by search query
         if (query.trim()) {
             const lowerQuery = query.toLowerCase();
-            filtered = filtered.filter((block) => block.name.toLowerCase().includes(lowerQuery) ||
-                block.keywords.some((keyword) => keyword.toLowerCase().includes(lowerQuery)) ||
-                block.id.toLowerCase().includes(lowerQuery));
+            filtered = filtered.filter((block) => block.name.toLowerCase().includes(lowerQuery) || block.keywords.some((keyword) => keyword.toLowerCase().includes(lowerQuery)) || block.id.toLowerCase().includes(lowerQuery));
         }
         return filtered;
     }

@@ -1,5 +1,6 @@
 import { OcrAnalyzeResult } from "./analyzer";
 import { cleanupAltCandidate, formatCtaAsAction, truncateAlt } from "./postprocess/cleanup";
+import { FILENAME_STOP_WORDS } from "./constants";
 
 /**
  * Polish AI-generated alt text to follow accessibility best practices:
@@ -31,19 +32,43 @@ function polishAiAltText(text: string): string {
   return truncateAlt(cleanupAltCandidate(t));
 }
 
+function normalizeAiFilenameSuggestion(value: string): string {
+  const words = String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s_-]/g, " ")
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .filter((w) => !FILENAME_STOP_WORDS.has(w));
+
+  const normalized = words.join("-");
+  return normalized.replace(/-+/g, "-").replace(/^-+|-+$/g, "");
+}
+
 /**
  * Client for the Python AI Backend (PaddleOCR + BLIP + CLIP)
  * Endpoint: http://localhost:8000/api/analyze
  */
 export class AiBackendClient {
   private static readonly API_URL = "http://localhost:8000/api/analyze";
+  private static readonly HEALTH_URL = "http://localhost:8000/health";
+  private static readonly TIMEOUT = 60000; // 60 second timeout for analysis
+  private static readonly MAX_RETRIES = 3;
+  private static readonly RETRY_DELAY = 1000; // 1 second between retries
 
   /**
    * Checks if the AI backend is available
    */
   static async isAvailable(): Promise<boolean> {
     try {
-      const res = await fetch("http://localhost:8000/health", { method: "GET" });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+      const res = await fetch(this.HEALTH_URL, {
+        method: "GET",
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
       return res.ok;
     } catch {
       return false;
@@ -51,21 +76,59 @@ export class AiBackendClient {
   }
 
   /**
-   * Analyzes an image using the AI Backend
+   * Analyzes an image using the AI Backend with retry logic
    */
   static async analyzeImage(blob: Blob, mode: "fast" | "detailed" = "detailed"): Promise<OcrAnalyzeResult> {
+    // Check if backend is available first
+    const available = await this.isAvailable();
+    if (!available) {
+      throw new Error("AI Backend is not available. Please ensure the Python FastAPI server is running (npm run dev:ai)");
+    }
+
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= this.MAX_RETRIES; attempt++) {
+      try {
+        return await this.performAnalysis(blob, mode);
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+
+        // If it's a timeout or network error on last attempt, throw
+        if (attempt === this.MAX_RETRIES) {
+          throw new Error(`AI analysis failed after ${this.MAX_RETRIES} attempts: ${lastError.message}`);
+        }
+
+        // Wait before retrying
+        await new Promise((resolve) => setTimeout(resolve, this.RETRY_DELAY * attempt));
+      }
+    }
+
+    throw lastError || new Error("AI analysis failed");
+  }
+
+  /**
+   * Performs the actual analysis request
+   */
+  private static async performAnalysis(blob: Blob, mode: "fast" | "detailed"): Promise<OcrAnalyzeResult> {
     const formData = new FormData();
-    formData.append("file", blob, "image.png"); // Filename doesn't matter much here
+    formData.append("file", blob, "image.png");
     formData.append("mode", mode);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.TIMEOUT);
 
     try {
       const response = await fetch(this.API_URL, {
         method: "POST",
         body: formData,
+        signal: controller.signal,
       });
 
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
-        throw new Error(`AI Backend Error: ${response.status} ${response.statusText}`);
+        const errorText = await response.text().catch(() => response.statusText);
+        throw new Error(`AI Backend Error: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
       const data = await response.json();
@@ -84,6 +147,11 @@ export class AiBackendClient {
         .map((s: string) => polishAiAltText(s))
         .filter((s: string) => s && s.length >= 3);
 
+      const nameSuggestions = filenameCandidates
+        .filter((s: string) => s)
+        .map((s: string) => normalizeAiFilenameSuggestion(s))
+        .filter((s: string) => s && s.length >= 3);
+
       // Format CTA as action description
       const ctaSuggestions = cta ? [formatCtaAsAction(cta)] : [];
 
@@ -92,13 +160,12 @@ export class AiBackendClient {
         ocrTextRaw: ocrText,
         altSuggestions,
         ctaSuggestions,
-        nameSuggestions: filenameCandidates.filter((s: string) => s),
-        textLikelihood: 1, // Assume 1 if backend processed it
-        cacheHit: false, // Backend might cache internally, but treated as fresh here
+        nameSuggestions,
+        textLikelihood: 1,
+        cacheHit: false,
       };
-    } catch (error) {
-      console.error("AI Backend Call Failed:", error);
-      throw error;
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 }

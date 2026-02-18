@@ -17,12 +17,18 @@ Email template builder: блоки, превʼю, HTML Converter, конверт
 1. Відкрий термінал (на Mac — «Термінал», на Windows — «Командний рядок» або PowerShell).
 2. Перейди в папку проєкту: `cd email-helper` (або як у тебе називається папка).
 3. Встанови залежності:
+
    ```bash
    npm install
-   cd server && npm install && cd ..
-   cd automation && npm install && cd ..
    ```
-4. Готово. Це треба зробити лише один раз після клонування (або після `git pull`, якщо змінили залежності).
+
+   **Це автоматично встановить все:**
+   - Залежності основного проекту
+   - Залежності серверу (`server/`)
+   - Залежності automation модуля (`automation/`)
+   - Валідує та налаштує всі шляхи для твоєї системи (Windows, Mac, Linux)
+
+4. Готово! Це треба зробити лише один раз після клонування.
 
 ### Як запускати щодня
 
@@ -38,19 +44,47 @@ npm run dev
 
 ---
 
-### Що треба змінити на **Mac**
+### ⚙️ Автоматичне налаштування залежностей
 
-Після клонування зазвичай нічого міняти не треба: Brave у стандартному місці, а профілі вже налаштовані.
+При `npm install` **автоматично**:
 
-Якщо Brave встановлено в інше місце — задай змінну середовища `BRAVE_EXECUTABLE_PATH` **або** відредагуй `automation/config.json` → `browser.executablePath`.
+- ✅ Встановлює залежності серверу й automation модуля
+- ✅ Валідує шляхи до Brave браузера
+- ✅ Налаштовує шляхи для твоєї ОС (Windows, macOS, Linux)
+- ✅ Показує помилку й способи виправлення, якщо щось не те
 
-Якщо Upload відкриває Brave “без логіну” або ламається профіль — перевір `src/htmlConverter/storageProviders.json` → `browserProfiles.*.userDataDir` (це окремі профілі для різних storage-провайдерів).
+Більше деталей: [automation/README.md](automation/README.md)
 
 ---
 
-### Що треба змінити на **Windows**
+### Що робити на **Windows**
 
-У репо за замовчуванням шляхи під Mac. На Windows треба один раз вказати, де у тебе Brave, і (опційно) куди складати профіль(і).
+Все налаштовується автоматично при `npm install`!
+
+Якщо Brave не знайдено:
+
+1. Встанови Brave: https://brave.com/download/
+2. Або задай шлях через змінну та перезапусти:
+
+```batch
+set BRAVE_EXECUTABLE_PATH=C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe
+npm run dev
+```
+
+Детальнее: [AUTOMATION_SETUP_WINDOWS.md](AUTOMATION_SETUP_WINDOWS.md)
+
+---
+
+### Що робити на **Mac / Linux**
+
+Все налаштовується автоматично! Якщо Brave в іншому місці:
+
+```bash
+export BRAVE_EXECUTABLE_PATH="/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
+npm run dev
+```
+
+---
 
 **Варіант 1 — через змінні середовища (зручно, не чіпаєш файли):**
 
