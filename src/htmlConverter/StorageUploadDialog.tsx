@@ -297,7 +297,14 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
                     Files to upload ({orderedFiles.length}):
                   </Typography>
                   {analysisEnabled && orderedFiles.length > 1 && (
-                    <Button size='small' variant='outlined' onClick={() => orderedFiles.forEach((f) => handleAnalyzeFile(f))} disabled={uploading || orderedFiles.some((f) => aiById[f.id]?.status === "running")} sx={{ textTransform: "none" }}>
+                    <Button
+                      size='small'
+                      variant='outlined'
+                      onClick={async () => {
+                        for (const f of orderedFiles) await handleAnalyzeFile(f);
+                      }}
+                      disabled={uploading || orderedFiles.some((f) => aiById[f.id]?.status === "running")}
+                      sx={{ textTransform: "none" }}>
                       {orderedFiles.some((f) => aiById[f.id]?.status === "running") ? "Analyzing…" : `${analysisLabel.replace("Analyze", "Analyze All")} (${orderedFiles.length})`}
                     </Button>
                   )}
