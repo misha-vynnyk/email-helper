@@ -48,23 +48,38 @@ class MergeService:
         candidates = []
 
         meaningful_lines = [l for l in ocr_lines if len(l) > 2]
+        primary_ocr = meaningful_lines[0] if meaningful_lines else ""
 
-        # Option A: Each meaningful text line as separate candidate
-        for line in meaningful_lines[:5]:  # Limit to top 5 lines
-            if line not in candidates:
-                candidates.append(line)
-
-        # Option B: Caption Only
-        if caption and caption not in candidates:
+        # Priority 1: Caption (describes what's IN the image — best for ALT)
+        if caption:
             candidates.append(caption)
 
-        # Option C: Combined (Caption + Main Text) - only if we have both
-        if caption and meaningful_lines:
-            combined = f"{caption}. Text: '{meaningful_lines[0]}'."
-            if combined not in candidates:
-                candidates.append(combined)
+        # Priority 2: Combined caption + OCR (most informative)
+        if caption and primary_ocr:
+            # Short OCR → inline: "Woman in dress. Text: 'Shop Now'"
+            if len(primary_ocr) <= 40:
+                combined = f"{caption}. Text: '{primary_ocr}'"
+                if combined not in candidates:
+                    candidates.append(combined)
+            else:
+                # Long OCR → summarize
+                short_ocr = " ".join(primary_ocr.split()[:6])
+                combined = f"{caption}. Banner text: '{short_ocr}...'"
+                if combined not in candidates:
+                    candidates.append(combined)
 
-        # Option D: Tags based fallback
+        # Priority 3: Promotional banner template (if OCR text looks like a headline)
+        if primary_ocr and len(primary_ocr) > 3:
+            banner_alt = f"Promotional banner: {primary_ocr}"
+            if banner_alt not in candidates:
+                candidates.append(banner_alt)
+
+        # Priority 4: Additional meaningful OCR lines as separate candidates
+        for line in meaningful_lines[1:3]:  # Lines 2-3 only
+            if line not in candidates and len(line) > 5:
+                candidates.append(line)
+
+        # Fallback: Tags-based description
         if not candidates and tags:
             candidates.append(f"Image of {', '.join(tags[:3])}")
 

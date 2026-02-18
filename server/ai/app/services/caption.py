@@ -16,9 +16,9 @@ class CaptionService:
     def _get_model(self):
         """Lazy load the BLIP model"""
         if self._model is None:
-            print("Loading BLIP model... (Salesforce/blip-image-captioning-base)")
-            self._processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
-            self._model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base")
+            print("Loading BLIP model... (Salesforce/blip-image-captioning-large)")
+            self._processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
+            self._model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-large")
             print("BLIP model loaded.")
         return self._processor, self._model
 
@@ -34,7 +34,7 @@ class CaptionService:
                 image = image.convert('RGB')
 
             inputs = processor(image, return_tensors="pt")
-            out = model.generate(**inputs, max_new_tokens=50)
+            out = model.generate(**inputs, max_new_tokens=75)
             caption = processor.decode(out[0], skip_special_tokens=True)
             return caption
         except Exception as e:
