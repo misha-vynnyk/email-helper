@@ -3,41 +3,16 @@
  */
 
 // 2-letter words allowed in ALL CAPS
-export const ALLOWED_SHORT_ALL_CAPS = new Set([
-  "AI", "AN", "AS", "AT", "BE", "BY", "DO", "EX", "GO", "IF", "IN", "IS", "IT", "MY",
-  "NO", "OF", "OK", "ON", "OR", "TO", "UP", "US", "WE",
-]);
+export const ALLOWED_SHORT_ALL_CAPS = new Set(["AI", "AN", "AS", "AT", "BE", "BY", "DO", "EX", "GO", "IF", "IN", "IS", "IT", "MY", "NO", "OF", "OK", "ON", "OR", "TO", "UP", "US", "WE"]);
 
 // Common 3-letter words
-export const COMMON_3_LETTER_WORDS = new Set([
-  "ALL", "AND", "ANY", "ARE", "BUT", "BUY", "CAN", "DID", "FOR", "GET", "HIS",
-  "HER", "HOW", "NEW", "NOT", "NOW", "OUR", "OUT", "SEE", "THE", "TOP", "TRY",
-  "USE", "WHY", "WIN", "YOU",
-]);
+export const COMMON_3_LETTER_WORDS = new Set(["ALL", "AND", "ANY", "ARE", "BUT", "BUY", "CAN", "DID", "FOR", "GET", "HIS", "HER", "HOW", "NEW", "NOT", "NOW", "OUR", "OUT", "SEE", "THE", "TOP", "TRY", "USE", "WHY", "WIN", "YOU"]);
 
 // Common stop words that should not become filename suggestions.
-export const FILENAME_STOP_WORDS = new Set([
-  "a",
-  "an",
-  "the",
-  "and",
-  "or",
-  "but",
-  "for",
-  "nor",
-  "of",
-  "to",
-  "in",
-  "on",
-  "at",
-  "by",
-  "from",
-  "with",
-  "as",
-  "is",
-  "are",
-  "this",
-  "that",
-  "these",
-  "those",
-]);
+export const FILENAME_STOP_WORDS = new Set(["a", "an", "the", "and", "or", "but", "for", "nor", "of", "to", "in", "on", "at", "by", "from", "with", "as", "is", "are", "this", "that", "these", "those"]);
+
+/**
+ * Words to remove from alt text (accessibility best practice:
+ * screen readers already announce "image", so these are redundant)
+ */
+export const REDUNDANT_ALT_WORDS = new Set(["image", "images", "photo", "photos", "picture", "pictures", "icon", "icons", "graphic", "graphics", "banner", "banners", "img", "pic", "logo"]);

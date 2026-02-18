@@ -64,40 +64,32 @@ function linksStyles(htmlContent: string): string {
 function processStyles(htmlContent: string): string {
   htmlContent = htmlContent.replace(/<b[^>]*>/gi, "").replace(/<\/b>/gi, "");
 
-  // i and b and u
-  htmlContent = htmlContent.replace(/<span[^>]*style="[^"]*font-weight:\s*700[^"]*;[^"]*font-style:\s*italic[^"]*;[^"]*text-decoration-line:\s*underline[^"]*"[^>]*>(.*?)<\/span>/gi, '<em style="text-decoration: underline;font-weight: bold;">$1</em>');
+  // Single-pass style detection: parse style once, emit correct semantic tag
+  // This fixes order-sensitivity (e.g. italic before bold) that the old 7-regex approach had
+  htmlContent = htmlContent.replace(/<span[^>]*style=["']([^"']*)["'][^>]*>(.*?)<\/span>/gi, (_match: string, style: string, inner: string) => {
+    const bold = /font-weight:\s*700/i.test(style);
+    const italic = /font-style:\s*italic/i.test(style);
+    const underline = /text-decoration-line:\s*underline/i.test(style);
 
-  // i and u
-  htmlContent = htmlContent.replace(/<span[^>]*style="[^"]*font-style:\s*italic[^"]*;[^"]*text-decoration-line:\s*underline[^"]*"[^>]*>(.*?)<\/span>/gi, '<em style="text-decoration: underline;">$1</em>');
+    if (bold && italic && underline) return `<em style="text-decoration: underline;font-weight: bold;">${inner}</em>`;
+    if (italic && underline) return `<em style="text-decoration: underline;">${inner}</em>`;
+    if (bold && italic) return `<b style="font-style: italic;">${inner}</b>`;
+    if (bold && underline) return `<b style="text-decoration: underline;">${inner}</b>`;
+    if (underline) return `<u>${inner}</u>`;
+    if (bold) return `<b>${inner}</b>`;
+    if (italic) return `<em>${inner}</em>`;
 
-  // i and b
-  htmlContent = htmlContent.replace(/<span[^>]*style="[^"]*font-weight:\s*700[^"]*;[^"]*font-style:\s*italic[^"]*"[^>]*>(.*?)<\/span>/gi, '<b style="font-style: italic;">$1</b>');
+    return inner; // No formatting — strip the span
+  });
 
-  // b and u
-  htmlContent = htmlContent.replace(/<span[^>]*style="[^"]*font-weight:\s*700[^"]*;[^"]*text-decoration-line:\s*underline[^"]*"[^>]*>(.*?)<\/span>/gi, '<b style="text-decoration: underline;">$1</b>');
-
-  // u
-  htmlContent = htmlContent.replace(/<span[^>]*style="[^"]*text-decoration-line:\s*underline[^"]*"[^>]*>(.*?)<\/span>/gi, "<u>$1</u>");
-
-  // b
-  htmlContent = htmlContent.replace(/<span[^>]*style="[^"]*font-weight:\s*700[^"]*"[^>]*>(.*?)<\/span>/gi, "<b>$1</b>");
-
-  // i
-  htmlContent = htmlContent.replace(/<span[^>]*style="[^"]*font-style:\s*italic[^"]*"[^>]*>(.*?)<\/span>/gi, "<em>$1</em>");
-
-  //delete tags
+  // Delete remaining empty/wrapper tags
   htmlContent = htmlContent.replace(/<a[^>]*>\s*<\/a>/g, " ");
   htmlContent = htmlContent.replace(/<div[^>]*>/gi, "").replace(/<\/div>/gi, "");
   htmlContent = htmlContent.replace(/<span[^>]*>/gi, "").replace(/<\/span>/gi, "");
   htmlContent = htmlContent.replace(/<b>\s*<\/b>/g, "");
 
-  //delete table tags update
-  htmlContent = htmlContent.replace(/<table[^>]*>/gi, "").replace(/<\/table>/gi, "");
-  htmlContent = htmlContent.replace(/<tbody[^>]*>/gi, "").replace(/<\/tbody>/gi, "");
-  htmlContent = htmlContent.replace(/<tr[^>]*>/gi, "").replace(/<\/tr>/gi, "");
-  htmlContent = htmlContent.replace(/<td[^>]*>/gi, "").replace(/<\/td>/gi, "");
-  htmlContent = htmlContent.replace(/<col[^>]*>/gi, "").replace(/<\/col>/gi, "");
-  htmlContent = htmlContent.replace(/<colgroup[^>]*>/gi, "").replace(/<\/colgroup>/gi, "");
+  // Delete table tags in one pass
+  htmlContent = htmlContent.replace(/<\/?(table|tbody|tr|td|col|colgroup)[^>]*>/gi, "");
 
   return htmlContent;
 }

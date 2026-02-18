@@ -4,14 +4,14 @@
 
 import { SYMBOLS } from "./constants";
 
+// Pre-compiled regexes
+const ONE_BR_RE = new RegExp(SYMBOLS.ONE_BR, "gi");
+
 export function cleanEmptyHtmlTags(htmlContent: string): string {
   htmlContent = htmlContent.replace(/&nbsp;/g, " ");
-  // <brbrbrbr>
   htmlContent = htmlContent.replace(/<b>\s*<\/b>/g, "");
   htmlContent = htmlContent.replace(/<li>\s*<\/li>/g, "");
-  htmlContent = htmlContent.replace(/<br>\s*<br>\s*<br>\s*<br>/g, "<br><br>");
-  htmlContent = htmlContent.replace(/<br>\s*<br>\s*<br>/g, "<br><br>");
-  // Safety net: crush any sequence of 3+ breaks into 2
+  // Crush any sequence of 3+ breaks into 2
   htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*){3,}/gi, "<br><br>");
   htmlContent = htmlContent.replace(/(<span[^>]*>)\s*<br><br>/gi, "$1");
   htmlContent = htmlContent.replace(/<\/a>\s*<a[^>]*>/g, " ");
@@ -32,21 +32,13 @@ export function cleanEmptyHtmlTags(htmlContent: string): string {
   htmlContent = htmlContent.replace(/<a[^>]*>\s*<\/div>/g, "</div>");
   htmlContent = htmlContent.replace(/<b[^>]*>\s*<\/div>/g, "</div>");
 
-  htmlContent = htmlContent.replace(/<h1[^>]*>/gi, "").replace(/<\/h1>/gi, "");
-  htmlContent = htmlContent.replace(/<h2[^>]*>/gi, "").replace(/<\/h2>/gi, "");
-  htmlContent = htmlContent.replace(/<h3[^>]*>/gi, "").replace(/<\/h3>/gi, "");
-  htmlContent = htmlContent.replace(/<h4[^>]*>/gi, "").replace(/<\/h4>/gi, "");
-  htmlContent = htmlContent.replace(/<h5[^>]*>/gi, "").replace(/<\/h5>/gi, "");
-  htmlContent = htmlContent.replace(/<h6[^>]*>/gi, "").replace(/<\/h6>/gi, "");
+  // Strip heading tags (h1-h6) in one pass
+  htmlContent = htmlContent.replace(/<\/?(h[1-6])[^>]*>/gi, "");
+  // Strip leftover <br><br> adjacent to block boundaries
   htmlContent = htmlContent.replace(/<br><br>\s*<br><br>/g, "<br><br>");
-  htmlContent = htmlContent.replace(/<br><br>\s*<\/div>/g, "</div>");
-  htmlContent = htmlContent.replace(/(<div[^>]*>)\s*<br><br>/gi, "$1");
-  htmlContent = htmlContent.replace(/(<span[^>]*>)\s*<br><br>/gi, "$1");
-  htmlContent = htmlContent.replace(/<br><br>\s*<\/span>/g, "</span>");
-  htmlContent = htmlContent.replace(/(<div[^>]*>)\s*<br><br>/gi, "$1");
-  htmlContent = htmlContent.replace(/<br><br>\s*<\/div>/g, "</div>");
-  htmlContent = htmlContent.replace(/<br>\s*<\/div>/g, "</div>");
-  htmlContent = htmlContent.replace(/<br>\s*<\/span>/g, "</span>");
+  htmlContent = htmlContent.replace(/<br>?<br>?\s*<\/(div|span)>/gi, "</$1>");
+  htmlContent = htmlContent.replace(/(<(div|span)[^>]*>)\s*<br><br>/gi, "$1");
+  htmlContent = htmlContent.replace(/<br>\s*<\/(div|span)>/g, "</$1>");
 
   htmlContent = htmlContent.replace(/<span[^>]*>\s*<\/span>/g, "");
   htmlContent = htmlContent.replace(/<div[^>]*>\s*<\/div>/g, "");
@@ -61,9 +53,7 @@ export function isSignatureImageTag(imgTag: string): boolean {
 }
 
 export function addOneBr(htmlContent: string): string {
-  return htmlContent.replace(new RegExp(SYMBOLS.ONE_BR, "gi"), function (_match, _content) {
-    return "<br>";
-  });
+  return htmlContent.replace(ONE_BR_RE, "<br>");
 }
 
 export function replaceTripleBrWithSingle(htmlContent: string): string {
