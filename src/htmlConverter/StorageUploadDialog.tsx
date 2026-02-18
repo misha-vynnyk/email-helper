@@ -25,10 +25,11 @@ interface StorageUploadDialogProps {
   onCancel?: () => void;
   initialFolderName?: string;
   onHistoryAdd?: (category: string, folderName: string, results: UploadResult[]) => void;
+  onAltsUpdate?: (altMap: Record<string, string>) => void;
   imageAnalysisSettings?: ImageAnalysisSettings;
 }
 
-export default function StorageUploadDialog({ open, onClose, storageProvider = "default", files, onUpload, onCancel, initialFolderName = "", onHistoryAdd, imageAnalysisSettings }: StorageUploadDialogProps) {
+export default function StorageUploadDialog({ open, onClose, storageProvider = "default", files, onUpload, onCancel, initialFolderName = "", onHistoryAdd, onAltsUpdate, imageAnalysisSettings }: StorageUploadDialogProps) {
   const theme = useTheme();
   const { mode, style } = useThemeMode();
   const componentStyles = getComponentStyles(mode, style);
@@ -95,6 +96,11 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
     setEditingTag(null);
     resetOcrState();
   }, [open]);
+
+  // Propagate ALT text changes to parent
+  useEffect(() => {
+    if (onAltsUpdate) onAltsUpdate(customAlts);
+  }, [customAlts, onAltsUpdate]);
 
   // Reset category when provider changes
   useEffect(() => {
@@ -286,10 +292,17 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
             <>
               {/* Files list with thumbnails, rename, and drag & drop */}
               <Box>
-                <Typography variant='body2' color='text.secondary' fontWeight={500} gutterBottom>
-                  Files to upload ({orderedFiles.length}):
-                </Typography>
-                <Stack spacing={spacingMUI.sm} mt={spacingMUI.sm}>
+                <Stack direction='row' justifyContent='space-between' alignItems='center' mb={spacingMUI.sm}>
+                  <Typography variant='body2' color='text.secondary' fontWeight={500}>
+                    Files to upload ({orderedFiles.length}):
+                  </Typography>
+                  {analysisEnabled && orderedFiles.length > 1 && (
+                    <Button size='small' variant='outlined' onClick={() => orderedFiles.forEach((f) => handleAnalyzeFile(f))} disabled={uploading || orderedFiles.some((f) => aiById[f.id]?.status === "running")} sx={{ textTransform: "none" }}>
+                      {orderedFiles.some((f) => aiById[f.id]?.status === "running") ? "Analyzing…" : `${analysisLabel.replace("Analyze", "Analyze All")} (${orderedFiles.length})`}
+                    </Button>
+                  )}
+                </Stack>
+                <Stack spacing={spacingMUI.sm}>
                   {orderedFiles.map((file, index) => (
                     <Box
                       key={file.id}
@@ -402,7 +415,10 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
                           />
 
                           {/* ALT Input with Tags */}
-                          {analysisEnabled && (
+                          <Box>
+                            <Typography variant='caption' color='text.secondary' sx={{ mb: 0.5, display: "block" }}>
+                              ALT text
+                            </Typography>
                             <Box
                               sx={{
                                 border: `1px solid ${theme.palette.divider}`,
@@ -522,7 +538,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
                                 }}
                               />
                             </Box>
-                          )}
+                          </Box>
                         </Box>
                       </Box>
 
@@ -536,7 +552,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
 
                             {aiById[file.id]?.skippedReason === "lowTextLikelihood" && (
                               <Button size='small' variant='text' onClick={() => handleAnalyzeFile(file, { force: true })} disabled={uploading || aiById[file.id]?.status === "running"} sx={{ textTransform: "none" }}>
-                                Force OCR
+                                {imageAnalysisSettings?.useAiBackend ? "Force Analyze" : "Force OCR"}
                               </Button>
                             )}
 
@@ -561,7 +577,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
                             <Box sx={{ mt: spacingMUI.xs }}>
                               {aiById[file.id]?.skippedReason === "lowTextLikelihood" && (
                                 <Typography variant='caption' color='text.secondary' display='block' sx={{ mb: 0.5 }}>
-                                  OCR пропущено (текст малоймовірний). Натисни <b>Force OCR</b>, якщо це банер/кнопка з текстом.
+                                  Skipped (low text likelihood). Click <b>{imageAnalysisSettings?.useAiBackend ? "Force Analyze" : "Force OCR"}</b> if this is a banner/button with text.
                                 </Typography>
                               )}
 
@@ -578,7 +594,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
                                         }))
                                       }
                                       sx={{ textTransform: "none", px: 0.5 }}>
-                                      {showOcrTextById[file.id] ? "Сховати OCR текст" : "Показати OCR текст"}
+                                      {showOcrTextById[file.id] ? "Hide OCR text" : "Show OCR text"}
                                     </Button>
 
                                     <Tooltip title='Copy OCR text'>
