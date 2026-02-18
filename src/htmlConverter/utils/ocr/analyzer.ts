@@ -244,7 +244,7 @@ export function createOcrAnalyzer(): OcrAnalyzer {
           const ctx = c.getContext("2d");
           if (!ctx) return src;
           ctx.imageSmoothingEnabled = true;
-          (ctx as any).imageSmoothingQuality = "high";
+          if ("imageSmoothingQuality" in ctx) ctx.imageSmoothingQuality = "high";
           ctx.drawImage(src, 0, 0, c.width, c.height);
           return c;
         };
