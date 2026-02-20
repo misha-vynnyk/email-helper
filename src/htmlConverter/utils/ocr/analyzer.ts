@@ -3,12 +3,9 @@
  */
 
 import type { ImageAnalysisSettings } from "../../types";
-import { blobToCanvas, blobToCanvasFit, cropCanvasByFrac, estimateTextLikelihood, autoDetectRoiFracs } from "./roi/detect";
-import { buildPasses, pickAttempts, preprocessForOcrV2 } from "./preprocess/pipeline";
 import { cleanOcrText } from "./postprocess/cleanup";
 // import { spellCorrectBannerText, postFixBannerText } from "./postprocess/bannerSpell"; // Unused - kept for potential future use
-import { OcrEngine, pickOcrParamsForRoi } from "./engine";
-import { processOcrOutput } from "./postprocess/processor";
+import { OcrEngine } from "./engine";
 import { AiBackendClient } from "./aiClient";
 
 export type OcrSkipReason = "lowTextLikelihood";
@@ -221,6 +218,7 @@ export function createOcrAnalyzer(): OcrAnalyzer {
 
         // PHASE 2: ROI & Preprocessing (10% - 25%)
         onProgress?.(0.15);
+        throw new Error("Classic OCR pipeline (Phase 2+) is not implemented in this build.");
       } finally {
         engine.setProgressTracking(undefined, 0, 1);
       }
