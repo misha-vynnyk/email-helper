@@ -147,9 +147,26 @@ export function createOcrAnalyzer(): OcrAnalyzer {
       // PHASE 1: Initialization & Fetching (0% - 10%)
       onProgress?.(0.05);
 
+      // Helper: route external URLs through the server proxy to avoid browser CORS blocks
+      const fetchImage = async (imageUrl: string): Promise<Blob> => {
+        const isExternal = imageUrl.startsWith("http://") || imageUrl.startsWith("https://");
+        const isSameOrigin = imageUrl.startsWith(window.location.origin) || imageUrl.includes("localhost") || imageUrl.includes("127.0.0.1");
+
+        if (isExternal && !isSameOrigin) {
+          // Proxy through our server to bypass CORS
+          const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(imageUrl)}`;
+          const res = await fetch(proxyUrl, { signal });
+          if (!res.ok) throw new Error(`Proxy fetch failed: ${res.status} ${res.statusText}`);
+          return res.blob();
+        }
+        // Same-origin or blob: fetch directly
+        const res = await fetch(imageUrl, { signal });
+        if (!res.ok) throw new Error(`Fetch failed: ${res.status} ${res.statusText}`);
+        return res.blob();
+      };
+
       try {
-        const res = await fetch(url, { signal });
-        const blob = await res.blob();
+        const blob = await fetchImage(url);
         onProgress?.(0.1); // Downloaded
 
         const configKey = getAnalysisConfigKey(settings);
