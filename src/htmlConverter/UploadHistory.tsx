@@ -7,6 +7,7 @@ import { getComponentStyles } from "../theme/componentStyles";
 import { borderRadius, spacingMUI } from "../theme/tokens";
 import { copyToClipboard } from "./utils/clipboard";
 import { UI_TIMINGS, UPLOAD_CONFIG } from "./constants";
+import { formatTimeRelative } from "./utils/formatters";
 import type { UploadSession } from "./types";
 
 interface UploadHistoryProps {
@@ -61,24 +62,6 @@ export default function UploadHistory({ sessions, onClear }: UploadHistoryProps)
       setTimeout(() => setCopiedUrl(null), UI_TIMINGS.COPIED_FEEDBACK);
     }
   };
-
-  const formatTime = (timestamp: number) => {
-    const date = new Date(timestamp);
-    const today = new Date();
-    const isToday = date.toDateString() === today.toDateString();
-
-    if (isToday) {
-      return date.toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" });
-    }
-
-    return date.toLocaleString("uk-UA", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
   if (sessions.length === 0) {
     return null;
   }
@@ -184,7 +167,7 @@ export default function UploadHistory({ sessions, onClear }: UploadHistoryProps)
                     <Box display='flex' alignItems='center' gap={spacingMUI.sm}>
                       <Typography variant='caption' color='text.secondary' display='flex' alignItems='center' gap={0.5}>
                         <TimeIcon sx={{ fontSize: 12 }} />
-                        {formatTime(session.timestamp)}
+                        {formatTimeRelative(session.timestamp)}
                       </Typography>
                       <Typography variant='caption' color='text.secondary'>
                         •

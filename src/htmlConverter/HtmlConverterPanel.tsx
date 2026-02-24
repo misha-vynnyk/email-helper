@@ -163,7 +163,6 @@ export default function HtmlConverterPanel() {
         autoProcess={state.autoProcess}
         storageProvider={state.useAlfaOne ? "alphaone" : "default"}
         imageAnalysisSettings={imageAnalysis}
-        setImageAnalysis={setImageAnalysis}
       />
 
       {/* Output Blocks */}

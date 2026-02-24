@@ -49,6 +49,9 @@ export const STORAGE_URL_PREFIX = "https://storage.5th-elementagency.com/";
 /** Placeholder URL used in generated link templates (replaced by the user manually) */
 export const PLACEHOLDER_URL = "urlhere";
 
+/** Allowed folder name format: letters followed by digits (e.g., ABCD123, Finance456) */
+export const FOLDER_NAME_REGEX = /[a-zA-Z]+\d+/;
+
 /** Exclude images with alt containing this (e.g. Signature, sign-i) from extraction & URL replacement */
 export const IMAGE_EXCLUSION_ALT_REGEX = /Signature/i;
 

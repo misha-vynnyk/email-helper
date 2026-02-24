@@ -38,7 +38,7 @@ export const extractFolderName = (name: string): string => {
 
   // If no uppercase match, clean and extract pattern, then uppercase it
   // Remove all non-alphanumeric characters (except keep letters and digits together)
-  const cleaned = name.replace(/[^a-zA-Z0-9]/g, '');
+  const cleaned = name.replace(/[^a-zA-Z0-9]/g, "");
 
   // Extract pattern: letters followed by digits
   const match = cleaned.match(/([a-zA-Z]+\d+)/);
@@ -58,12 +58,12 @@ export const extractFolderName = (name: string): string => {
  */
 export const formatTime = (timestamp: number): string => {
   const date = new Date(timestamp);
-  return date.toLocaleString('uk-UA', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+  return date.toLocaleString("uk-UA", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 };
 
@@ -78,5 +78,25 @@ export const formatTime = (timestamp: number): string => {
  * // "images/test.jpg"
  */
 export const getShortPath = (url: string, prefix: string): string => {
-  return url.replace(prefix, '');
+  return url.replace(prefix, "");
+};
+
+/**
+ * Formats timestamp relative to today:
+ * - Today → "HH:MM"
+ * - Older → "DD Mon, HH:MM"
+ */
+export const formatTimeRelative = (timestamp: number): string => {
+  const date = new Date(timestamp);
+  const today = new Date();
+  const isToday = date.toDateString() === today.toDateString();
+  if (isToday) {
+    return date.toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" });
+  }
+  return date.toLocaleString("uk-UA", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 };

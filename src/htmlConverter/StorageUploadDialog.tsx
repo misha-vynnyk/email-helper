@@ -9,8 +9,7 @@ import { spacingMUI, borderRadius } from "../theme/tokens";
 import { copyToClipboard } from "./utils/clipboard";
 import { normalizeCustomNameInput } from "./utils/imageAnalysis";
 import { useOcrAnalysis } from "./utils/useOcrAnalysis";
-import { UI_TIMINGS } from "./constants";
-import { STORAGE_PROVIDERS_CONFIG } from "./constants";
+import { UI_TIMINGS, STORAGE_PROVIDERS_CONFIG, FOLDER_NAME_REGEX } from "./constants";
 import type { ImageAnalysisSettings, UploadResult } from "./types";
 import type { StorageProviderKey } from "./constants";
 import { UploadResults, toShortPath } from "./components/UploadResults";
@@ -26,8 +25,6 @@ interface StorageUploadDialogProps {
   onHistoryAdd?: (category: string, folderName: string, results: UploadResult[], customAlts?: Record<string, string>) => void;
   onAltsUpdate?: (altMap: Record<string, string>) => void;
   imageAnalysisSettings?: ImageAnalysisSettings;
-  existingUrls?: Record<string, string>;
-  setImageAnalysis?: (v: ((p: ImageAnalysisSettings) => ImageAnalysisSettings) | ImageAnalysisSettings) => void;
 }
 
 export default function StorageUploadDialog({ open, onClose, storageProvider = "default", files, onUpload, onCancel, initialFolderName = "", onHistoryAdd, onAltsUpdate, imageAnalysisSettings }: StorageUploadDialogProps) {
@@ -40,6 +37,9 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
 
   const categories = (showCategory && providerCfg.categories && providerCfg.categories.length > 0 ? providerCfg.categories : STORAGE_PROVIDERS_CONFIG.providers.default.categories) || ["finance", "health"];
   const defaultCategory = (showCategory && providerCfg.defaultCategory) || STORAGE_PROVIDERS_CONFIG.providers.default.defaultCategory || categories[0] || "finance";
+
+  /** Returns the list of ALT tags for a given file, parsed from pipe-separated string */
+  const getAltTags = (fileId: string) => (customAlts[fileId] || "").split(" | ").filter(Boolean);
 
   const [category, setCategory] = useState<string>(defaultCategory);
   const [folderName, setFolderName] = useState<string>("");
@@ -70,13 +70,9 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
 
   const handleAnalyzeFile = useCallback(
     async (file: { id: string; name: string; path?: string }, opts?: { force?: boolean }) => {
-      const result = await analyzeFile(file, { force: opts?.force });
-      if (!result) return;
-
-      // Auto-apply logic removed per user request (to prevent unwanted tag insertion)
-      // if (imageAnalysisSettings?.autoApplyAlt === "ifEmpty" && bestAlt) { ... }
+      await analyzeFile(file, { force: opts?.force });
     },
-    [analyzeFile, imageAnalysisSettings?.autoApplyAlt, imageAnalysisSettings?.autoApplyFilename]
+    [analyzeFile]
   );
 
   // Sync orderedFiles when files prop changes
@@ -112,7 +108,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
   useEffect(() => {
     if (open) {
       // Priority 1: Use initialFolderName from fileName input
-      if (initialFolderName && /[a-zA-Z]+\d+/.test(initialFolderName)) {
+      if (initialFolderName && FOLDER_NAME_REGEX.test(initialFolderName)) {
         setFolderName(initialFolderName);
         return;
       }
@@ -123,7 +119,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
           .readText()
           .then((text) => {
             // Check if clipboard contains valid format (e.g., "ABCD123")
-            if (/[a-zA-Z]+\d+/.test(text.trim())) {
+            if (FOLDER_NAME_REGEX.test(text.trim())) {
               setFolderName(text.trim());
             }
           })
@@ -167,7 +163,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
       return;
     }
 
-    if (!/[a-zA-Z]+\d+/.test(folderName)) {
+    if (!FOLDER_NAME_REGEX.test(folderName)) {
       setError("Invalid format. Expected: Letters + Numbers (e.g., ABCD123)");
       return;
     }
@@ -457,7 +453,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
                                         autoFocus
                                         onBlur={(e) => {
                                           const newValue = e.target.value.trim();
-                                          const tags = (customAlts[file.id] || "").split(" | ").filter(Boolean);
+                                          const tags = getAltTags(file.id);
                                           if (newValue) {
                                             tags[idx] = newValue;
                                           } else {
@@ -493,7 +489,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
                                       label={tag}
                                       onDoubleClick={() => setEditingTag({ fileId: file.id, tagIdx: idx })}
                                       onDelete={() => {
-                                        const tags = (customAlts[file.id] || "").split(" | ").filter(Boolean);
+                                        const tags = getAltTags(file.id);
                                         tags.splice(idx, 1);
                                         setCustomAlts((prev) => ({ ...prev, [file.id]: tags.join(" | ") }));
                                       }}
@@ -521,7 +517,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
                                   if (e.key === "Enter" && (e.target as HTMLInputElement).value.trim()) {
                                     e.preventDefault();
                                     const newTag = (e.target as HTMLInputElement).value.trim();
-                                    const existing = (customAlts[file.id] || "").split(" | ").filter(Boolean);
+                                    const existing = getAltTags(file.id);
                                     if (!existing.includes(newTag)) {
                                       setCustomAlts((prev) => ({
                                         ...prev,
@@ -594,7 +590,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
                                   </Typography>
                                   <Stack direction='row' spacing={0.75} flexWrap='wrap' useFlexGap sx={{ gap: 0.75 }}>
                                     {aiById[file.id]?.altSuggestions?.map((s) => {
-                                      const existing = (customAlts[file.id] || "").split(" | ").filter(Boolean);
+                                      const existing = getAltTags(file.id);
                                       const isSelected = existing.includes(s);
                                       return (
                                         <Chip
@@ -638,7 +634,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
                                   </Typography>
                                   <Stack direction='row' spacing={0.75} flexWrap='wrap' useFlexGap sx={{ gap: 0.75 }}>
                                     {aiById[file.id]?.ctaSuggestions?.map((s) => {
-                                      const existing = (customAlts[file.id] || "").split(" | ").filter(Boolean);
+                                      const existing = getAltTags(file.id);
                                       const isSelected = existing.includes(s);
                                       return (
                                         <Chip
@@ -762,7 +758,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
               />
 
               {/* Upload Path Preview */}
-              {folderName && /[a-zA-Z]+\d+/.test(folderName) && (
+              {folderName && FOLDER_NAME_REGEX.test(folderName) && (
                 <Alert
                   severity='info'
                   sx={{

@@ -27,13 +27,6 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
 
   const uploadAbortControllerRef = useRef<AbortController | null>(null);
 
-  const log = useCallback(
-    (msg: string) => {
-      if (onLog) onLog(msg);
-    },
-    [onLog]
-  );
-
   const abortUploads = useCallback(() => {
     if (uploadAbortControllerRef.current) {
       uploadAbortControllerRef.current.abort();
@@ -87,7 +80,7 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
       setIsUploading(true);
       uploadAbortControllerRef.current = new AbortController();
 
-      log(`🚀 Початок завантаження ${completed.length} зображень на storage...`);
+      onLog?.(`🚀 Початок завантаження ${completed.length} зображень на storage...`);
 
       const uploadedUrls: Record<string, string> = {};
       const results: Array<UploadResult> = [];
@@ -151,12 +144,12 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
           const filename = `${baseName}${ext}`;
 
           if (uploadAbortControllerRef.current?.signal.aborted) {
-            log(`⚠️ Завантаження скасовано користувачем`);
+            onLog?.(`⚠️ Завантаження скасовано користувачем`);
             throw new Error("Завантаження скасовано");
           }
 
           try {
-            log(`📤 [${i + 1}/${completed.length}] Завантаження ${filename}...`);
+            onLog?.(`📤 [${i + 1}/${completed.length}] Завантаження ${filename}...`);
             const tempPath = await getTempPathInner(img, filename);
 
             const storageResponse = await Promise.race([
@@ -189,7 +182,7 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
               const fullUrl = result.publicUrl || `${STORAGE_URL_PREFIX}${result.filePath}`;
               uploadedUrls[img.src] = fullUrl;
               successCount++;
-              log(`✅ [${i + 1}/${completed.length}] ${filename} → storage`);
+              onLog?.(`✅ [${i + 1}/${completed.length}] ${filename} → storage`);
               results.push({ fileId: img.id, filename, url: fullUrl, success: true });
             }
           } catch (error) {
@@ -198,7 +191,7 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
 
             results.push({ fileId: img.id, filename, url: "", success: false, error: errorMsg });
             if (errorMsg === "Завантаження скасовано") throw error;
-            log(`❌ ${filename}: ${errorMsg}`);
+            onLog?.(`❌ ${filename}: ${errorMsg}`);
             continue;
           }
         }
@@ -219,7 +212,7 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
               imgEl.src = uploadedUrls[imgEl.src];
             }
           });
-          log(`🔄 Замінено ${Object.keys(uploadedUrls).length} зображень в HTML editor`);
+          onLog?.(`🔄 Замінено ${Object.keys(uploadedUrls).length} зображень в HTML editor`);
         }
 
         // Update state logic
@@ -243,11 +236,11 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
 
         const errorCount = results.filter((r) => !r.success).length;
         if (successCount === completed.length) {
-          log(`🎉 Успішно завантажено всі ${successCount} зображень`);
+          onLog?.(`🎉 Успішно завантажено всі ${successCount} зображень`);
         } else if (successCount > 0) {
-          log(`⚠️ Завантажено ${successCount} з ${completed.length} зображень (${errorCount} помилок)`);
+          onLog?.(`⚠️ Завантажено ${successCount} з ${completed.length} зображень (${errorCount} помилок)`);
         } else {
-          log(`❌ Не вдалося завантажити жодного зображення`);
+          onLog?.(`❌ Не вдалося завантажити жодного зображення`);
         }
 
         return { results, category, folderName };
@@ -258,14 +251,14 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ provider: storageProvider }),
-          }).catch((e) => log(`⚠️ finalize failed: ${e.message}`));
+          }).catch((e) => onLog?.(`⚠️ finalize failed: ${e.message}`));
         }
 
         setIsUploading(false);
         uploadAbortControllerRef.current = null;
       }
     },
-    [images, imagesSessionId, isUploading, storageProvider, format, log, editorRef, onUploadedUrlsChange, onUploadedAltsChange]
+    [images, imagesSessionId, isUploading, storageProvider, format, onLog, editorRef, onUploadedUrlsChange, onUploadedAltsChange]
   );
 
   const handleReplaceInOutput = useCallback(() => {
@@ -282,10 +275,10 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
     if (onReplaceUrls && n > 0) {
       onReplaceUrls(lastUploadedUrls);
       setReplacementDone(true);
-      log(`✅ Замінено ${n} посилань в Output`);
+      onLog?.(`✅ Замінено ${n} посилань в Output`);
       showSnackbar(`🔄 Посилання та ALT тексти замінено (${n})`, "success");
     }
-  }, [isUploading, lastUploadedSessionId, imagesSessionId, lastUploadedUrls, onReplaceUrls, log, showSnackbar]);
+  }, [isUploading, lastUploadedSessionId, imagesSessionId, lastUploadedUrls, onReplaceUrls, onLog, showSnackbar]);
 
   // Expose methods to reset state
   const resetUploadState = useCallback(() => {
