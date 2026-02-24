@@ -162,13 +162,18 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
               createTimeout(UPLOAD_CONFIG.STORAGE_TIMEOUT, "Timeout: storage не відповідає (180s)"),
             ]);
 
+            let result: any = {};
+            try {
+              result = await storageResponse.json();
+            } catch (e) {
+              // ignore parse error if ok
+            }
+
             if (!storageResponse.ok) {
-              const errorData = await storageResponse.json().catch(() => ({}));
-              const msg = errorData.error || `Storage HTTP ${storageResponse.status}`;
+              const msg = result.error || `Storage HTTP ${storageResponse.status}`;
               throw new Error(msg);
             }
 
-            const result = await storageResponse.json();
             if (result.filePath) {
               const fullUrl = result.publicUrl || `${STORAGE_URL_PREFIX}${result.filePath}`;
               uploadedUrls[img.src] = fullUrl;
