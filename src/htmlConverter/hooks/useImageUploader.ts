@@ -52,6 +52,11 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
       let completed = images.filter((img) => (img.status === "done" && img.convertedBlob) || (img.status === "pending" && isCrossOrigin(img.src)));
 
       if (fileOrder && fileOrder.length > 0) {
+        // Filter to only include images in the requested order
+        const requestedIds = new Set(fileOrder);
+        completed = completed.filter((img) => requestedIds.has(img.id));
+
+        // Then sort...
         completed = completed.sort((a, b) => {
           const indexA = fileOrder.indexOf(a.id);
           const indexB = fileOrder.indexOf(b.id);
