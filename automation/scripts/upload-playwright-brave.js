@@ -245,10 +245,23 @@ const fileSize = isFinalize ? 0 : fs.statSync(filePath).size;
 const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB";
 
 (async () => {
+  // === Функція для безпечного виходу ===
+  const safeExit = async (code) => {
+    clearTimeout(timeoutId);
+    if (typeof browser !== "undefined" && browser) {
+      try {
+        await browser.disconnect();
+      } catch (e) {
+        // ignore
+      }
+    }
+    process.exit(code);
+  };
+
   // === Глобальний таймаут для всього процесу ===
-  const timeoutId = setTimeout(() => {
+  const timeoutId = setTimeout(async () => {
     console.error("⏱️ Перевищено глобальний таймаут!");
-    process.exit(1);
+    await safeExit(1);
   }, GLOBAL_TIMEOUT);
 
   try {
@@ -293,8 +306,7 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
 
       if (isFinalize) {
         // Nothing to close if browser isn't running
-        clearTimeout(timeoutId);
-        process.exit(0);
+        await safeExit(0);
       }
 
       console.log(`🧭 CDP недоступний на ${cdpUrl} — запускаємо Brave...`);
@@ -334,8 +346,7 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
       } catch {
         // ignore
       }
-      clearTimeout(timeoutId);
-      process.exit(0);
+      await safeExit(0);
     }
 
     // Автоматично закриваємо всі JavaScript діалоги (confirm, alert, etc)
@@ -352,7 +363,7 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
         // Категорія обов'язкова
         if (!categoryArg || !VALID_CATEGORIES.includes(categoryArg.toLowerCase())) {
           console.error(`Помилка: в режимі --no-confirm потрібна категорія (${VALID_CATEGORIES.join("|")})`);
-          process.exit(1);
+          await safeExit(1);
         }
         serverCategory = categoryArg.toLowerCase();
       } else {
@@ -363,7 +374,7 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
       clipboardContent = folderNameArg || (process.platform === "darwin" ? safeExec("pbpaste", false) : null);
       if (!clipboardContent) {
         console.error("Помилка: в режимі --no-confirm потрібна назва папки (4-й аргумент) або буфер обміну (macOS)");
-        process.exit(1);
+        await safeExit(1);
       }
 
       if (selectedStorage.usesCategory) console.log(`📂 Категорія: ${serverCategory}`);
@@ -431,16 +442,7 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
           }
         }
 
-        // Відключаємось від браузера
-        try {
-          await browser.disconnect();
-          console.log("✓ Відключено від браузера");
-        } catch (e) {
-          // Ігноруємо помилки
-        }
-
-        clearTimeout(timeoutId);
-        process.exit(0);
+        await safeExit(0);
       }
 
       serverCategory = formData.category;
@@ -465,7 +467,7 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
       console.error(`Отримано: "${clipboardContent}"`);
       console.error(`Літери: "${letters || "(немає)"}", Цифри: "${digits || "(немає)"}"`);
       clearTimeout(timeoutId);
-      process.exit(1);
+      await safeExit(1);
     }
 
     // === Формуємо шлях та ім'я ===
@@ -510,13 +512,12 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
         } else {
           console.error("ERROR:LOGIN_TIMEOUT (user did not login in time)");
         }
-        clearTimeout(timeoutId);
-        process.exit(1);
+        await safeExit(1);
       }
     } else if (state !== "upload") {
       console.error("ERROR:UPLOAD_UI_TIMEOUT (MinIO UI did not show upload/login controls)");
       clearTimeout(timeoutId);
-      process.exit(1);
+      await safeExit(1);
     }
 
     // === Розумне очікування готовності інтерфейсу ===
@@ -636,26 +637,9 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
         }
       }
 
-      // Відключаємось від браузера (не закриваємо сам браузер!)
-      try {
-        await browser.disconnect();
-        console.log("✓ Відключено від браузера");
-      } catch (e) {
-        // Ігноруємо помилки
-      }
-
-      process.exit(0);
+      await safeExit(0);
     } else {
-      console.error("❌ Завантаження не вдалося");
-
-      // Відключаємось від браузера
-      try {
-        await browser.disconnect();
-      } catch (e) {
-        // Ігноруємо помилки
-      }
-
-      process.exit(1);
+      await safeExit(1);
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -666,15 +650,6 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
     playSound("error");
     showNotification("Storage Upload", `❌ Помилка: ${msg}`);
 
-    // Відключаємось від браузера перед виходом
-    try {
-      if (typeof browser !== "undefined") {
-        await browser.disconnect();
-      }
-    } catch (e) {
-      // Ігноруємо помилки
-    }
-
-    process.exit(1);
+    await safeExit(1);
   }
 })();
