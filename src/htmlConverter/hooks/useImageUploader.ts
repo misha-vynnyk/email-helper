@@ -42,7 +42,8 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
       folderName: string,
       customNames: Record<string, string> = {},
       customAlts: Record<string, string> = {},
-      fileOrder?: string[]
+      fileOrder?: string[],
+      onProgress?: (result: { fileId: string; filename: string; url: string; success: boolean; error?: string }) => void
     ): Promise<{
       results: Array<{ filename: string; url: string; success: boolean; error?: string }>;
       category: string;
@@ -179,13 +180,18 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
               uploadedUrls[img.src] = fullUrl;
               successCount++;
               onLog?.(`✅ [${i + 1}/${completed.length}] ${filename} → storage`);
-              results.push({ fileId: img.id, filename, url: fullUrl, success: true });
+              const resObj = { fileId: img.id, filename, url: fullUrl, success: true };
+              results.push(resObj);
+              onProgress?.(resObj);
             }
           } catch (error) {
             const errorMsg = error instanceof Error ? error.message : "Unknown error";
             if ((error as { fatal?: boolean } | null)?.fatal) throw error;
 
-            results.push({ fileId: img.id, filename, url: "", success: false, error: errorMsg });
+            const resObj = { fileId: img.id, filename, url: "", success: false, error: errorMsg };
+            results.push(resObj);
+            onProgress?.(resObj);
+
             if (errorMsg === "Завантаження скасовано") throw error;
             onLog?.(`❌ ${filename}: ${errorMsg}`);
             continue;

@@ -19,7 +19,7 @@ interface StorageUploadDialogProps {
   onClose: () => void;
   storageProvider?: StorageProviderKey;
   files: Array<{ id: string; name: string; path?: string }>;
-  onUpload: (category: string, folderName: string, customNames: Record<string, string>, customAlts: Record<string, string>, fileOrder?: string[]) => Promise<{ results: UploadResult[]; category: string; folderName: string }>;
+  onUpload: (category: string, folderName: string, customNames: Record<string, string>, customAlts: Record<string, string>, fileOrder?: string[], onProgress?: (result: UploadResult) => void) => Promise<{ results: UploadResult[]; category: string; folderName: string }>;
   onCancel?: () => void;
   initialFolderName?: string;
   onHistoryAdd?: (category: string, folderName: string, results: UploadResult[], customAlts?: Record<string, string>) => void;
@@ -175,14 +175,17 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
     try {
       const fileOrder = orderedFiles.map((f) => f.id);
       const effectiveCategory = showCategory ? category : "finance";
-      const response = await onUpload(effectiveCategory, folderName.trim(), customNames, customAlts, fileOrder);
+      const response = await onUpload(effectiveCategory, folderName.trim(), customNames, customAlts, fileOrder, (progressResult) => {
+        setUploadResults((prev) => {
+          // Remove previous attempt of the SAME file if it exists, replace with new one
+          const filtered = prev.filter((r) => r.fileId !== progressResult.fileId);
+          return [...filtered, progressResult];
+        });
 
-      // Append to uploadResults instead of replacing entirely, so we keep history of successful ones
-      // in case of partial success across multiple retry attempts
-      setUploadResults((prev) => {
-        // Keep previous successes that aren't in the new response
-        const previousSuccesses = prev.filter((p) => p.success && !response.results.some((r) => r.fileId === p.fileId));
-        return [...previousSuccesses, ...response.results];
+        // Also dynamically remove from orderedFiles on success
+        if (progressResult.success) {
+          setOrderedFiles((prev) => prev.filter((f) => f.id !== progressResult.fileId));
+        }
       });
 
       // Remove successful uploads from orderedFiles to prepare for potential retry of failed ones
