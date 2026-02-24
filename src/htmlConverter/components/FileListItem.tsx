@@ -6,8 +6,8 @@
  */
 
 import React from "react";
-import { Box, Button, Chip, LinearProgress, Stack, TextField, Typography, useTheme, alpha } from "@mui/material";
-import { DragIndicator as DragIcon } from "@mui/icons-material";
+import { Box, Button, Chip, LinearProgress, Stack, TextField, Typography, useTheme, alpha, Tooltip, IconButton } from "@mui/material";
+import { DragIndicator as DragIcon, Close as CloseIcon } from "@mui/icons-material";
 
 import { spacingMUI, borderRadius } from "../../theme/tokens";
 import { normalizeCustomNameInput } from "../utils/imageAnalysis";
@@ -55,6 +55,7 @@ export interface FileListItemProps {
   onDragStart: (index: number) => void;
   onDragOver: (e: React.DragEvent, index: number) => void;
   onDragEnd: () => void;
+  onRemove: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -104,7 +105,7 @@ function addTag(altString: string, newTag: string): string {
 // Component
 // ---------------------------------------------------------------------------
 
-export default function FileListItem({ file, index, uploading, draggedIndex, customName, customAltString, aiState, analysisEnabled, analysisLabel, editingTag, useAiBackend, onNameChange, onAltChange, onEditingTagChange, onAnalyze, onDragStart, onDragOver, onDragEnd }: FileListItemProps) {
+export default function FileListItem({ file, index, uploading, draggedIndex, customName, customAltString, aiState, analysisEnabled, analysisLabel, editingTag, useAiBackend, onNameChange, onAltChange, onEditingTagChange, onAnalyze, onDragStart, onDragOver, onDragEnd, onRemove }: FileListItemProps) {
   const theme = useTheme();
   const isDragged = draggedIndex === index;
   const altTags = getAltTags(customAltString);
@@ -134,69 +135,128 @@ export default function FileListItem({ file, index, uploading, draggedIndex, cus
               borderColor: theme.palette.primary.light,
             },
       }}>
-      {/* Top row: drag handle + thumbnail + index + name/alt inputs */}
-      <Box sx={{ display: "flex", alignItems: "center", gap: spacingMUI.sm }}>
-        {/* Drag Handle */}
-        <DragIcon
-          sx={{
-            color: theme.palette.text.disabled,
-            cursor: uploading ? "default" : "grab",
-            "&:active": { cursor: uploading ? "default" : "grabbing" },
-          }}
-        />
-
-        {/* Thumbnail */}
-        {file.path && (
-          <Box
+      {/* Top row: drag handle + thumbnail + index + name/alt inputs + remove button */}
+      <Box sx={{ display: "flex", alignItems: "flex-start", gap: spacingMUI.sm }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: spacingMUI.sm, pt: 1 }}>
+          {/* Drag Handle */}
+          <DragIcon
             sx={{
-              width: 48,
-              height: 48,
-              borderRadius: `${borderRadius.sm}px`,
-              overflow: "hidden",
-              flexShrink: 0,
-              border: `1px solid ${theme.palette.divider}`,
-              backgroundColor: alpha(theme.palette.background.default, 0.5),
-            }}>
-            <img src={file.path} alt={file.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          </Box>
-        )}
-
-        {/* Index Chip */}
-        <Chip
-          label={`#${index + 1}`}
-          size='small'
-          sx={{
-            minWidth: 36,
-            fontWeight: 700,
-            backgroundColor: alpha(theme.palette.primary.main, 0.1),
-            color: theme.palette.primary.main,
-          }}
-        />
-
-        <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: spacingMUI.xs }}>
-          {/* Name Input */}
-          <TextField
-            size='small'
-            fullWidth
-            placeholder={file.name.replace(/\.[^/.]+$/, "")}
-            value={customName}
-            onChange={(e) => onNameChange(file.id, normalizeCustomNameInput(e.target.value))}
-            disabled={uploading}
-            helperText={customName ? `${customName}.jpg` : file.name}
-            sx={{
-              "& .MuiOutlinedInput-root": {
-                borderRadius: `${borderRadius.sm}px`,
-                "&.Mui-focused": { backgroundColor: "transparent" },
-              },
-              "& .MuiFormHelperText-root": {
-                fontFamily: "monospace",
-                fontSize: "0.7rem",
-              },
+              color: theme.palette.text.disabled,
+              cursor: uploading ? "default" : "grab",
+              "&:active": { cursor: uploading ? "default" : "grabbing" },
             }}
           />
 
-          {/* ALT Input with Tags */}
-          <AltTagInput fileId={file.id} altTags={altTags} customAltString={customAltString} uploading={uploading} editingTag={editingTag} onAltChange={onAltChange} onEditingTagChange={onEditingTagChange} />
+          {/* Thumbnail */}
+          {file.path && (
+            <Tooltip
+              title={
+                <Box sx={{ p: 0.5 }}>
+                  <img
+                    src={file.path}
+                    alt={file.name}
+                    style={{
+                      maxWidth: 350,
+                      maxHeight: 350,
+                      display: "block",
+                      objectFit: "contain",
+                      borderRadius: 4,
+                    }}
+                  />
+                </Box>
+              }
+              placement='left'
+              enterDelay={800}
+              enterNextDelay={800}
+              arrow
+              slotProps={{
+                tooltip: {
+                  sx: {
+                    bgcolor: "background.paper",
+                    boxShadow: theme.shadows[6],
+                    border: `1px solid ${theme.palette.divider}`,
+                    p: 0,
+                    maxWidth: "none",
+                  },
+                },
+                arrow: {
+                  sx: {
+                    color: "background.paper",
+                    "&::before": {
+                      border: `1px solid ${theme.palette.divider}`,
+                    },
+                  },
+                },
+              }}>
+              <Box
+                sx={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: `${borderRadius.sm}px`,
+                  overflow: "hidden",
+                  flexShrink: 0,
+                  border: `1px solid ${theme.palette.divider}`,
+                  backgroundColor: alpha(theme.palette.background.default, 0.5),
+                  cursor: "zoom-in",
+                }}>
+                <img src={file.path} alt={file.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              </Box>
+            </Tooltip>
+          )}
+
+          {/* Index Chip */}
+          <Chip
+            label={`#${index + 1}`}
+            size='small'
+            sx={{
+              minWidth: 36,
+              fontWeight: 700,
+              backgroundColor: alpha(theme.palette.primary.main, 0.1),
+              color: theme.palette.primary.main,
+            }}
+          />
+
+          <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: spacingMUI.xs }}>
+            {/* Name Input */}
+            <TextField
+              size='small'
+              fullWidth
+              placeholder={file.name.replace(/\.[^/.]+$/, "")}
+              value={customName}
+              onChange={(e) => onNameChange(file.id, normalizeCustomNameInput(e.target.value))}
+              disabled={uploading}
+              helperText={customName ? `${customName}.jpg` : file.name}
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: `${borderRadius.sm}px`,
+                  "&.Mui-focused": { backgroundColor: "transparent" },
+                },
+                "& .MuiFormHelperText-root": {
+                  fontFamily: "monospace",
+                  fontSize: "0.7rem",
+                },
+              }}
+            />
+
+            {/* ALT Input with Tags */}
+            <AltTagInput fileId={file.id} altTags={altTags} customAltString={customAltString} uploading={uploading} editingTag={editingTag} onAltChange={onAltChange} onEditingTagChange={onEditingTagChange} />
+          </Box>
+
+          {/* Remove Button */}
+          <Box sx={{ pt: 0.5 }}>
+            <Tooltip title='Remove file from upload list' arrow>
+              <IconButton
+                size='small'
+                onClick={onRemove}
+                disabled={uploading}
+                sx={{
+                  color: theme.palette.text.secondary,
+                  "&:hover": { color: theme.palette.error.main, backgroundColor: alpha(theme.palette.error.main, 0.1) },
+                }}>
+                <CloseIcon fontSize='small' />
+              </IconButton>
+            </Tooltip>
+          </Box>
         </Box>
       </Box>
 
