@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio, Typography, Box, Alert, LinearProgress, Chip, Stack, useTheme, alpha, Divider } from "@mui/material";
-import { CloudUpload as UploadIcon, CheckCircle as SuccessIcon, Error as ErrorIcon, ContentCopy as CopyIcon, Close as CloseIcon, DragIndicator as DragIcon } from "@mui/icons-material";
+import { CloudUpload as UploadIcon, CheckCircle as SuccessIcon, Error as ErrorIcon, Close as CloseIcon, DragIndicator as DragIcon } from "@mui/icons-material";
 import IconButton from "@mui/material/IconButton";
-import Tooltip from "@mui/material/Tooltip";
 
 import { useThemeMode } from "../theme";
 import { getComponentStyles } from "../theme/componentStyles";
@@ -24,9 +23,11 @@ interface StorageUploadDialogProps {
   onUpload: (category: string, folderName: string, customNames: Record<string, string>, customAlts: Record<string, string>, fileOrder?: string[]) => Promise<{ results: UploadResult[]; category: string; folderName: string }>;
   onCancel?: () => void;
   initialFolderName?: string;
-  onHistoryAdd?: (category: string, folderName: string, results: UploadResult[]) => void;
+  onHistoryAdd?: (category: string, folderName: string, results: UploadResult[], customAlts?: Record<string, string>) => void;
   onAltsUpdate?: (altMap: Record<string, string>) => void;
   imageAnalysisSettings?: ImageAnalysisSettings;
+  existingUrls?: Record<string, string>;
+  setImageAnalysis?: (v: ((p: ImageAnalysisSettings) => ImageAnalysisSettings) | ImageAnalysisSettings) => void;
 }
 
 export default function StorageUploadDialog({ open, onClose, storageProvider = "default", files, onUpload, onCancel, initialFolderName = "", onHistoryAdd, onAltsUpdate, imageAnalysisSettings }: StorageUploadDialogProps) {
@@ -50,7 +51,6 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
   const [customAlts, setCustomAlts] = useState<Record<string, string>>({});
   const [orderedFiles, setOrderedFiles] = useState(files);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const [showOcrTextById, setShowOcrTextById] = useState<Record<string, boolean>>({});
   const [editingTag, setEditingTag] = useState<{ fileId: string; tagIdx: number } | null>(null);
 
   const analysisEnabled = Boolean(imageAnalysisSettings?.enabled && (imageAnalysisSettings.engine === "ocr" || imageAnalysisSettings.useAiBackend));
@@ -92,7 +92,6 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
     setCopiedUrl(null);
     setCustomNames({});
     setCustomAlts({});
-    setShowOcrTextById({});
     setEditingTag(null);
     resetOcrState();
   }, [open]);
@@ -183,7 +182,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
 
       // Add to history
       if (onHistoryAdd && response.results.length > 0) {
-        onHistoryAdd(response.category, response.folderName, response.results);
+        onHistoryAdd(response.category, response.folderName, response.results, customAlts);
       }
 
       // Don't auto-close, let user review results and copy URLs
@@ -586,35 +585,6 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
                                 <Typography variant='caption' color='text.secondary' display='block' sx={{ mb: 0.5 }}>
                                   Skipped (low text likelihood). Click <b>{imageAnalysisSettings?.useAiBackend ? "Force Analyze" : "Force OCR"}</b> if this is a banner/button with text.
                                 </Typography>
-                              )}
-
-                              {(aiById[file.id]?.ocrText || aiById[file.id]?.ocrTextRaw) && (
-                                <Box sx={{ mb: spacingMUI.xs }}>
-                                  <Stack direction='row' spacing={spacingMUI.xs} alignItems='center' flexWrap='wrap'>
-                                    <Button
-                                      size='small'
-                                      variant='text'
-                                      onClick={() =>
-                                        setShowOcrTextById((prev) => ({
-                                          ...prev,
-                                          [file.id]: !prev[file.id],
-                                        }))
-                                      }
-                                      sx={{ textTransform: "none", px: 0.5 }}>
-                                      {showOcrTextById[file.id] ? "Hide OCR text" : "Show OCR text"}
-                                    </Button>
-
-                                    <Tooltip title='Copy OCR text'>
-                                      <IconButton size='small' onClick={() => copyToClipboard(aiById[file.id]?.ocrTextRaw || aiById[file.id]?.ocrText || "")}>
-                                        <CopyIcon fontSize='small' />
-                                      </IconButton>
-                                    </Tooltip>
-                                  </Stack>
-
-                                  {showOcrTextById[file.id] && <TextField fullWidth size='small' multiline minRows={3} maxRows={10} value={aiById[file.id]?.ocrText || ""} label='OCR (clean)' InputProps={{ readOnly: true }} sx={{ mt: spacingMUI.xs }} />}
-
-                                  {showOcrTextById[file.id] && aiById[file.id]?.ocrTextRaw && <TextField fullWidth size='small' multiline minRows={3} maxRows={10} value={aiById[file.id]?.ocrTextRaw || ""} label='OCR (raw debug)' InputProps={{ readOnly: true }} sx={{ mt: spacingMUI.xs }} />}
-                                </Box>
                               )}
 
                               {(aiById[file.id]?.altSuggestions?.length ?? 0) > 0 && (
