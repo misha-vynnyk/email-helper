@@ -46,6 +46,9 @@ export const IMAGE_DEFAULTS = {
 // Storage URLs
 export const STORAGE_URL_PREFIX = "https://storage.5th-elementagency.com/";
 
+/** Placeholder URL used in generated link templates (replaced by the user manually) */
+export const PLACEHOLDER_URL = "urlhere";
+
 /** Exclude images with alt containing this (e.g. Signature, sign-i) from extraction & URL replacement */
 export const IMAGE_EXCLUSION_ALT_REGEX = /Signature/i;
 

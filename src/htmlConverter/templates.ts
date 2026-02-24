@@ -3,6 +3,7 @@
  */
 
 import { config } from "./config";
+import { PLACEHOLDER_URL } from "./constants";
 
 // --- HTML Helpers ---
 
@@ -55,7 +56,7 @@ function buttonTableHtml(content: string): string {
   return `<table cellpadding="0" cellspacing="0" role="presentation">
     <tr>
       <td height="51" align="center" style="border-radius: 10px;font-family:${config.fontFamily};font-size:18px;font-style:normal;line-height:1.5;text-align:center;font-weight: bold; color: #FFFFFF; padding: 3px 5px; background-color: ${config.colors.button};" bgcolor="${config.colors.button}">
-        <a href="urlhere" target="_blank" style="font-weight: bold;text-decoration:none;color:#ffffff;padding: 9px 15px;display: block;font-family:${config.fontFamily};font-size:18px;font-style:normal;line-height:1.5;text-align:center;background-color: ${config.colors.button};border-radius: 10px;">
+        <a href="${PLACEHOLDER_URL}" target="_blank" style="font-weight: bold;text-decoration:none;color:#ffffff;padding: 9px 15px;display: block;font-family:${config.fontFamily};font-size:18px;font-style:normal;line-height:1.5;text-align:center;background-color: ${config.colors.button};border-radius: 10px;">
           ${content}
         </a>
       </td>
@@ -133,7 +134,7 @@ export const htmlTemplates = {
             </tr>
               <tr>
                 <td align="left" style="font-family:${config.fontFamily};font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;padding-bottom: 14px; padding-top: 14px;">
-                  <a align="right" href="urlhere" target="_blank" style="display: inline-block; float: right; width: 50%; max-width: 50%; margin-left: 18px; margin-bottom: 12px;">
+                  <a align="right" href="${PLACEHOLDER_URL}" target="_blank" style="display: inline-block; float: right; width: 50%; max-width: 50%; margin-left: 18px; margin-bottom: 12px;">
                     <img alt="Preview" height="224"
                          align="right"
                          src="${config.storageUrl}"
@@ -156,7 +157,7 @@ export const htmlTemplates = {
             </tr>
               <tr>
                 <td align="left" style="font-family:${config.fontFamily};font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;padding-bottom: 14px; padding-top: 14px;">
-                  <a align="left" href="urlhere" target="_blank" style="display: inline-block; float: left; width: 50%; max-width: 50%; margin-right: 18px; margin-bottom: 12px;">
+                  <a align="left" href="${PLACEHOLDER_URL}" target="_blank" style="display: inline-block; float: left; width: 50%; max-width: 50%; margin-right: 18px; margin-bottom: 12px;">
                     <img alt="Preview" height="224"
                          align="left"
                          src="${config.storageUrl}"
@@ -204,7 +205,7 @@ export const htmlTemplates = {
                    </tr>
                    <tr>
                        <td class="img-bg-block" align="center" style="padding-top: 14px; padding-bottom: 14px;">
-                           <a href="urlhere" target="_blank">
+                           <a href="${PLACEHOLDER_URL}" target="_blank">
                                <img alt="Video preview" height="auto"
                                     src="${config.storageUrl}"
                                     style="border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;max-width: 560px;font-size:13px;"
@@ -282,7 +283,7 @@ export const mjmlTemplates = {
                                    cellpadding="0" width="100%" style="width: 100%;">
                                 <tr>
                                     <td align="left" style="font-family:${config.fontFamily};font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;padding-bottom: 14px; padding-top: 14px;">
-                                        <a align="right" href="urlhere" target="_blank" style="display: inline-block; float: right; width: 50%; max-width: 50%; margin-left: 18px; margin-bottom: 12px;">
+                                        <a align="right" href="${PLACEHOLDER_URL}" target="_blank" style="display: inline-block; float: right; width: 50%; max-width: 50%; margin-left: 18px; margin-bottom: 12px;">
                                             <img alt="Preview" height="224"
                                                  align="right"
                                                  src="${config.storageUrl}"
@@ -312,7 +313,7 @@ export const mjmlTemplates = {
                                    cellpadding="0" width="100%" style="width: 100%;">
                                       <tr>
                                         <td align="left" style="font-family:${config.fontFamily};font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;padding-bottom: 14px; padding-top: 14px;">
-                                          <a align="left" href="urlhere" target="_blank" style="display: inline-block; float: left; width: 50%; max-width: 50%; margin-right: 18px; margin-bottom: 12px;">
+                                          <a align="left" href="${PLACEHOLDER_URL}" target="_blank" style="display: inline-block; float: left; width: 50%; max-width: 50%; margin-right: 18px; margin-bottom: 12px;">
                                             <img alt="Preview" height="224"
                                                  align="left"
                                                  src="${config.storageUrl}"
@@ -372,7 +373,7 @@ export const mjmlTemplates = {
                            <tbody>
                              <tr>
                                <td style="width:550px;">
-                                 <a href="urlhere" target="_blank">
+                                 <a href="${PLACEHOLDER_URL}" target="_blank">
                                    <img alt="Video preview" src="${config.storageUrl}" style="border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;font-size:13px;" width="550" height="auto" />
                                  </a>
                                </td>

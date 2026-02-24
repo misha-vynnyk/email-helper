@@ -15,7 +15,6 @@ import { getFileExtension, getImageFormat, isCrossOrigin } from "./imageUtils"; 
 import { UI_TIMINGS } from "./constants";
 import type { ImageAnalysisSettings, ImageFormatOverride } from "./types";
 import { useImageConversion } from "./hooks/useImageConversion";
-import type { ImageAnalysisSettings } from "./types";
 import { useImageUploader } from "./hooks/useImageUploader";
 import { ImageGrid } from "./components/ImageGrid";
 import { StyledPaper } from "./components/StyledPaper";
@@ -36,10 +35,9 @@ interface ImageProcessorProps {
   autoProcess?: boolean;
   storageProvider?: "default" | "alphaone";
   imageAnalysisSettings?: ImageAnalysisSettings;
-
 }
 
-export default function ImageProcessor({ editorRef, onLog, visible, onVisibilityChange, triggerExtract = 0, fileName = "", onHistoryAdd, onReplaceUrls, onUploadedUrlsChange, onUploadedAltsChange, onResetReplacement, hasOutput = false, autoProcess: autoProcessProp, storageProvider = "default", imageAnalysisSettings, setImageAnalysis}: ImageProcessorProps & { setImageAnalysis?: (v: ((p: ImageAnalysisSettings) => ImageAnalysisSettings) | ImageAnalysisSettings) => void }) {
+export default function ImageProcessor({ editorRef, onLog, visible, onVisibilityChange, triggerExtract = 0, fileName = "", onHistoryAdd, onReplaceUrls, onUploadedUrlsChange, onUploadedAltsChange, onResetReplacement, hasOutput = false, autoProcess: autoProcessProp, storageProvider = "default", imageAnalysisSettings, setImageAnalysis }: ImageProcessorProps & { setImageAnalysis?: (v: ((p: ImageAnalysisSettings) => ImageAnalysisSettings) | ImageAnalysisSettings) => void }) {
   const theme = useTheme();
 
   // 1. Conversion Logic
@@ -286,7 +284,6 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
         })()}
         imageAnalysisSettings={imageAnalysisSettings}
         setImageAnalysis={setImageAnalysis}
-
       />
 
       <Snackbar open={snackbar.open} autoHideDuration={UI_TIMINGS.SNACKBAR_DURATION} onClose={() => setSnackbar((p) => ({ ...p, open: false }))} anchorOrigin={{ vertical: "bottom", horizontal: "right" }}>

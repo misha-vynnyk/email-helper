@@ -6,6 +6,7 @@ import { config } from "./config";
 import { htmlTemplates, mjmlTemplates } from "./templates";
 import * as utils from "./utils";
 import * as colorUtils from "./colorUtils";
+import { PLACEHOLDER_URL } from "./constants";
 
 function getInlineStyleValue(style: string, property: string): string | null {
   const targetProperty = property.trim().toLowerCase();
@@ -25,11 +26,25 @@ function getInlineStyleValue(style: string, property: string): string | null {
 }
 
 function italicLinks(htmlContent: string): string {
+  // Save native <a href="https://..."> links before stripping so they survive.
+  const savedLinks: string[] = [];
+  htmlContent = htmlContent.replace(/<a\s[^>]*href=(["'])(https?:\/\/[^"']+)\1[^>]*>([\s\S]*?)<\/a>/gi, (_match, _q, _href, inner) => {
+    const text = inner.replace(/<[^>]+>/g, "").trim();
+    if (!text) return "";
+    const placeholder = `\x02LINK${savedLinks.length}\x03`;
+    savedLinks.push(`<a href="${PLACEHOLDER_URL}" style="font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: ${config.colors.link};">${text}</a>`);
+    return placeholder;
+  });
+
   htmlContent = htmlContent.replace(/<a[^>]*>/gi, "").replace(/<\/a>/gi, "");
 
-  const regex = /<span\b[^>]*style=(["'])([\s\S]*?)\1[^>]*>([\s\S]*?)<\/span>/gi;
+  const regex = /(<span\b[^>]*style=(["'])[\s\S]*?\2[^>]*>[\s\S]*?<\/span>)/gi;
 
-  htmlContent = htmlContent.replace(regex, (match, _quote, style, innerText) => {
+  htmlContent = htmlContent.replace(regex, (match, _full, _quote) => {
+    const styleMatch = match.match(/style=(["'])([\s\S]*?)\1/i);
+    if (!styleMatch) return match;
+    const style = styleMatch[2];
+    const innerText = match.replace(/<[^>]+>/g, "");
     const color = getInlineStyleValue(style, "color");
     const fontStyle = getInlineStyleValue(style, "font-style");
 
@@ -38,10 +53,12 @@ function italicLinks(htmlContent: string): string {
     }
 
     if (colorUtils.isLinkColor(color)) {
-      return `<a href="urlhere" style="font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: ${config.colors.link};"><em>${innerText}</em></a>`;
+      return `<a href="${PLACEHOLDER_URL}" style="font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: ${config.colors.link};"><em>${innerText}</em></a>`;
     }
     return match;
   });
+
+  htmlContent = htmlContent.replace(/\x02LINK(\d+)\x03/g, (_, i) => savedLinks[+i] ?? "");
 
   return htmlContent;
 }
@@ -54,7 +71,7 @@ function linksStyles(htmlContent: string): string {
     if (!color) return match;
 
     if (colorUtils.isLinkColor(color)) {
-      return `<a href="urlhere" style="font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: ${config.colors.link};">${innerText}</a>`;
+      return `<a href="${PLACEHOLDER_URL}" style="font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: ${config.colors.link};">${innerText}</a>`;
     }
     return match;
   });
