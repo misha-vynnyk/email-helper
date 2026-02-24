@@ -13,14 +13,6 @@ jest.mock("../hooks/useHtmlConverterSettings", () => ({
   },
 }));
 
-jest.mock("../hooks/useContentReplacer", () => ({
-  useContentReplacer: () => ({
-    replaceUrlsInContentByMap: jest.fn(),
-    replaceUrlsInContent: jest.fn(),
-    replaceAltsInContent: jest.fn(),
-  }),
-}));
-
 describe("useHtmlConverterLogic", () => {
   // Mock Refs
   const mockEditorRef = { current: document.createElement("div") };

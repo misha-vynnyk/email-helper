@@ -4,7 +4,7 @@
 
 import { config } from "./config";
 import { htmlTemplates, mjmlTemplates } from "./templates";
-import * as utils from "./utils";
+import * as utils from "./htmlUtils";
 import * as colorUtils from "./colorUtils";
 import { PLACEHOLDER_URL } from "./constants";
 

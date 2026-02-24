@@ -5,12 +5,29 @@
 import { BANNER_DICT } from "./postprocess/bannerSpell";
 import { normalizeOcrLine } from "./postprocess/cleanup";
 
+export interface OcrWorker {
+  setParameters(params: Record<string, string>): Promise<void>;
+  recognize(canvas: HTMLCanvasElement): Promise<OcrResult>;
+  terminate(): Promise<void>;
+}
+
+export interface OcrResult {
+  data: {
+    text: string;
+    lines?: Array<{
+      text: string;
+      confidence?: number;
+      conf?: number;
+    }>;
+  };
+}
+
 /**
  * OCR engine worker manager
  */
 export class OcrEngine {
-  private worker: any = null;
-  private workerInit: Promise<any> | null = null;
+  private worker: OcrWorker | null = null;
+  private workerInit: Promise<OcrWorker> | null = null;
   private progressCb: ((p: number) => void) | undefined;
   private passIndex = 0;
   private passCount = 1;
@@ -25,7 +42,7 @@ export class OcrEngine {
   /**
    * Initialize or get existing Tesseract worker
    */
-  async getWorker(signal: AbortSignal): Promise<any> {
+  async getWorker(signal: AbortSignal): Promise<OcrWorker> {
     if (this.worker) return this.worker;
     if (this.workerInit) return await this.workerInit;
 
@@ -99,7 +116,7 @@ export class OcrEngine {
   /**
    * Recognize text from canvas
    */
-  async recognize(canvas: HTMLCanvasElement): Promise<any> {
+  async recognize(canvas: HTMLCanvasElement): Promise<OcrResult> {
     if (!this.worker) throw new Error("Worker not initialized");
     return await this.worker.recognize(canvas);
   }
@@ -107,9 +124,9 @@ export class OcrEngine {
   /**
    * Extract confident text from recognition result
    */
-  extractConfidentText(r: any, opts: { useThreshold: boolean }): string {
+  extractConfidentText(r: OcrResult, opts: { useThreshold: boolean }): string {
     const rawText = String(r?.data?.text ?? "");
-    const lines: any[] = Array.isArray(r?.data?.lines) ? r.data.lines : [];
+    const lines = Array.isArray(r?.data?.lines) ? r.data.lines : [];
     if (lines.length === 0) return rawText;
 
     // Be stricter on non-important lines to avoid garbage in "max" modes.
@@ -183,21 +200,13 @@ export class OcrEngine {
 /**
  * Pick OCR parameters based on ROI characteristics
  */
-export function pickOcrParamsForRoi(
-  canvas: HTMLCanvasElement,
-  baseWhitelist: string
-): { psm: string; whitelist: string | null; isLine: boolean } {
+export function pickOcrParamsForRoi(canvas: HTMLCanvasElement, baseWhitelist: string): { psm: string; whitelist: string | null; isLine: boolean } {
   // If ROI is a wide, short band (CTA/button or title), PSM 7 (single line) often wins.
   // Also apply a conservative whitelist when user didn't set one:
   // banners often need only letters/numbers/spaces and this helps suppress junk glyphs.
   const ratio = canvas.height / Math.max(1, canvas.width);
   const isLine = ratio <= 0.18;
   const psm = isLine ? "7" : "11";
-  const wl =
-    baseWhitelist.trim().length > 0
-      ? null
-      : isLine
-        ? "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 "
-        : "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789:.'\"- ";
+  const wl = baseWhitelist.trim().length > 0 ? null : isLine ? "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 " : "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789:.'\"- ";
   return { psm, whitelist: wl, isLine };
 }
