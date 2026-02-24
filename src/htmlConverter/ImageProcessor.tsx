@@ -37,7 +37,7 @@ interface ImageProcessorProps {
   imageAnalysisSettings?: ImageAnalysisSettings;
 }
 
-export default function ImageProcessor({ editorRef, onLog, visible, onVisibilityChange, triggerExtract = 0, fileName = "", onHistoryAdd, onReplaceUrls, onUploadedUrlsChange, onUploadedAltsChange, onResetReplacement, hasOutput = false, autoProcess: autoProcessProp, storageProvider = "default", imageAnalysisSettings, setImageAnalysis }: ImageProcessorProps & { setImageAnalysis?: (v: ((p: ImageAnalysisSettings) => ImageAnalysisSettings) | ImageAnalysisSettings) => void }) {
+export default function ImageProcessor({ editorRef, onLog, visible, onVisibilityChange, triggerExtract = 0, fileName = "", onHistoryAdd, onReplaceUrls, onUploadedUrlsChange, onUploadedAltsChange, onResetReplacement, hasOutput = false, autoProcess: autoProcessProp, storageProvider = "default", imageAnalysisSettings }: ImageProcessorProps) {
   const theme = useTheme();
 
   // 1. Conversion Logic
@@ -275,15 +275,7 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
         initialFolderName={initialFolderName}
         onHistoryAdd={onHistoryAdd}
         onAltsUpdate={onUploadedAltsChange}
-        existingUrls={(() => {
-          const map: Record<string, string> = {};
-          images.forEach((img) => {
-            if (lastUploadedUrls[img.src]) map[img.id] = lastUploadedUrls[img.src];
-          });
-          return map;
-        })()}
         imageAnalysisSettings={imageAnalysisSettings}
-        setImageAnalysis={setImageAnalysis}
       />
 
       <Snackbar open={snackbar.open} autoHideDuration={UI_TIMINGS.SNACKBAR_DURATION} onClose={() => setSnackbar((p) => ({ ...p, open: false }))} anchorOrigin={{ vertical: "bottom", horizontal: "right" }}>

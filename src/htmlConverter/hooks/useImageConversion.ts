@@ -43,20 +43,13 @@ export function useImageConversion({ editorRef, onLog, onVisibilityChange, autoP
   const [format, setFormat] = useState<ImageFormat>(savedSettings.format);
   const [quality, setQuality] = useState(savedSettings.quality);
   const [maxWidth, setMaxWidth] = useState(savedSettings.maxWidth);
-  const [autoProcess, setAutoProcess] = useState(autoProcessProp ?? savedSettings.autoProcess);
+  const [autoProcess, setAutoProcess] = useState(autoProcessProp ?? false);
 
   // Session tracking to invalidate old uploads
   const [sessionId, setSessionId] = useState(0);
 
   const convertAbortControllerRef = useRef<AbortController | null>(null);
   const isExtractingRef = useRef(false);
-
-  const log = useCallback(
-    (message: string) => {
-      if (onLog) onLog(message);
-    },
-    [onLog]
-  );
 
   const abortConversions = useCallback(() => {
     if (convertAbortControllerRef.current) {
@@ -241,7 +234,7 @@ export function useImageConversion({ editorRef, onLog, onVisibilityChange, autoP
     async (id: string) => {
       const image = images.find((img) => img.id === id);
       if (!image) {
-        log(`⚠️ Зображення з id ${id} не знайдено в state`);
+        onLog?.(`⚠️ Зображення з id ${id} не знайдено в state`);
         return;
       }
 
@@ -286,7 +279,7 @@ export function useImageConversion({ editorRef, onLog, onVisibilityChange, autoP
         );
       }
     },
-    [images, format, quality, maxWidth, convertImage, log]
+    [images, format, quality, maxWidth, convertImage, onLog]
   );
 
   const processAllPending = useCallback(async () => {
@@ -330,7 +323,7 @@ export function useImageConversion({ editorRef, onLog, onVisibilityChange, autoP
 
       const imgElements = editorRef.current.querySelectorAll("img");
       if (imgElements.length === 0) {
-        log("❌ Зображення не знайдено");
+        onLog?.("❌ Зображення не знайдено");
         clearImagesAndRevoke();
         onVisibilityChange(false);
         isExtractingRef.current = false;
@@ -339,14 +332,14 @@ export function useImageConversion({ editorRef, onLog, onVisibilityChange, autoP
 
       const eligible = Array.from(imgElements).filter((img) => img.src && !isSignatureImageAlt(img.getAttribute("alt")));
       if (eligible.length === 0) {
-        log("✅ Зображень не знайдено (тільки підписи або порожні)");
+        onLog?.("✅ Зображень не знайдено (тільки підписи або порожні)");
         clearImagesAndRevoke();
         onVisibilityChange(false);
         isExtractingRef.current = false;
         return;
       }
 
-      log(`✅ Знайдено ${eligible.length} зображень` + (eligible.length < imgElements.length ? ` (пропущено ${imgElements.length - eligible.length} підписів)` : ""));
+      onLog?.(`✅ Знайдено ${eligible.length} зображень` + (eligible.length < imgElements.length ? ` (пропущено ${imgElements.length - eligible.length} підписів)` : ""));
 
       const newImages: ProcessedImage[] = [];
       for (let i = 0; i < eligible.length; i++) {
@@ -369,26 +362,18 @@ export function useImageConversion({ editorRef, onLog, onVisibilityChange, autoP
       setImages(newImages);
       onVisibilityChange(true);
 
-      // Auto process immediately if enabled
-      if (autoProcess) {
-        // We need to process them.
-        // Since setImages is async, we can't iterate 'images' yet.
-        // We iterate 'newImages'.
-        // But processImage needs 'images' state to be updated...
-        // OR processImage takes image object?
-        // My processImage implementation uses 'images.find'.
-        // So we must wait for state update.
-        // Best to use a Effect to trigger processing if pending exists and autoProcess is true.
-      } else {
-        log("⏸️ Автообробка вимкнена. Натисніть 'Обробити все'");
+      if (!autoProcess) {
+        onLog?.("⏸️ Автообробка вимкнена. Натисніть 'Обробити все'");
       }
+      // Auto-processing of new images is handled by the useEffect below
+      // (reacts to images state changes when autoProcess is true)
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Unknown error";
-      log(`❌ Помилка витягування: ${message}`);
+      onLog?.(`❌ Помилка витягування: ${message}`);
     } finally {
       isExtractingRef.current = false;
     }
-  }, [editorRef, log, autoProcess, onVisibilityChange, clearImagesAndRevoke, abortConversions]);
+  }, [editorRef, onLog, autoProcess, onVisibilityChange, clearImagesAndRevoke, abortConversions]);
 
   // Clean up
   useEffect(() => {

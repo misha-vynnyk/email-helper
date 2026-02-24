@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { formatHtml, formatMjml } from "../formatter";
-import { useContentReplacer } from "./useContentReplacer";
+import { replaceUrlsInContentByMap, replaceUrlsInContent, replaceAltsInContent } from "../utils/contentReplacer";
 import { STORAGE_KEYS, UPLOAD_CONFIG, IMAGE_DEFAULTS } from "../constants";
 import type { UploadSession, UploadResult } from "../types";
 import { useHtmlConverterSettings } from "./useHtmlConverterSettings";
@@ -159,8 +159,6 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
       setFileName(textPart + (numberPart + delta));
     }
   };
-
-  const { replaceUrlsInContentByMap, replaceUrlsInContent, replaceAltsInContent } = useContentReplacer();
 
   const handleAddToHistory = useCallback((category: string, folderName: string, results: UploadResult[], customAlts?: Record<string, string>) => {
     const newSession: UploadSession = {
