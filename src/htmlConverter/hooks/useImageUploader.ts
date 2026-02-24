@@ -86,12 +86,6 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
       const results: Array<UploadResult> = [];
       let successCount = 0;
 
-      const fatalError = (message: string) => {
-        const err = new Error(message) as Error & { fatal?: boolean };
-        err.fatal = true;
-        return err;
-      };
-
       // Local helper with closure access
       const getTempPathInner = async (image: ProcessedImage, fname: string): Promise<string> => {
         const signal = uploadAbortControllerRef.current?.signal;
@@ -171,9 +165,6 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
             if (!storageResponse.ok) {
               const errorData = await storageResponse.json().catch(() => ({}));
               const msg = errorData.error || `Storage HTTP ${storageResponse.status}`;
-              if (storageResponse.status === 401 || storageResponse.status === 499) {
-                throw fatalError(msg);
-              }
               throw new Error(msg);
             }
 
