@@ -19,7 +19,7 @@ interface StorageUploadDialogProps {
   open: boolean;
   onClose: () => void;
   storageProvider?: StorageProviderKey;
-  files: Array<{ id: string; name: string; path?: string }>;
+  files: Array<{ id: string; name: string; path?: string; size?: number }>;
   onUpload: (category: string, folderName: string, customNames: Record<string, string>, customAlts: Record<string, string>, fileOrder?: string[], onProgress?: (result: UploadResult) => void) => Promise<{ results: UploadResult[]; category: string; folderName: string }>;
   onCancel?: () => void;
   initialFolderName?: string;
@@ -78,7 +78,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
   });
 
   const handleAnalyzeFile = useCallback(
-    async (file: { id: string; name: string; path?: string }, opts?: { force?: boolean }) => {
+    async (file: { id: string; name: string; path?: string; size?: number }, opts?: { force?: boolean }) => {
       await analyzeFile(file, { force: opts?.force });
     },
     [analyzeFile]
@@ -391,6 +391,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
                     analysisLabel={analysisLabel}
                     editingTag={editingTag}
                     useAiBackend={imageAnalysisSettings?.useAiBackend}
+                    warningFileSizeKB={ui.warningFileSizeKB}
                     onNameChange={(fileId: string, value: string) => setCustomNames((prev) => ({ ...prev, [fileId]: value }))}
                     onAltChange={(fileId: string, newAltString: string) => setCustomAlts((prev) => ({ ...prev, [fileId]: newAltString }))}
                     onEditingTagChange={setEditingTag}
