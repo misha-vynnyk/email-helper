@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio, Typography, Box, Alert, LinearProgress, Stack, useTheme, alpha, Divider } from "@mui/material";
 import { CloudUpload as UploadIcon, CheckCircle as SuccessIcon, Error as ErrorIcon, Close as CloseIcon } from "@mui/icons-material";
 import IconButton from "@mui/material/IconButton";
@@ -51,6 +51,16 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
   const [orderedFiles, setOrderedFiles] = useState(files);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [editingTag, setEditingTag] = useState<{ fileId: string; tagIdx: number } | null>(null);
+
+  // Refs for handleClose to access the latest state without closure staleness
+  const latestResultsRef = useRef<UploadResult[]>(uploadResults);
+  latestResultsRef.current = uploadResults;
+  const latestCategoryRef = useRef<string>(category);
+  latestCategoryRef.current = category;
+  const latestFolderNameRef = useRef<string>(folderName);
+  latestFolderNameRef.current = folderName;
+  const latestAltsRef = useRef<Record<string, string>>(customAlts);
+  latestAltsRef.current = customAlts;
 
   const analysisEnabled = Boolean(imageAnalysisSettings?.enabled && (imageAnalysisSettings.engine === "ocr" || imageAnalysisSettings.useAiBackend));
   const analysisLabel = imageAnalysisSettings?.useAiBackend ? "Analyze (AI)" : "Analyze (OCR)";
@@ -161,7 +171,6 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
 
   const handleUpload = async () => {
     setError(null);
-    setUploadResults([]);
 
     // Validation
     if (!folderName.trim()) {
@@ -181,9 +190,14 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
       const effectiveCategory = showCategory ? category : "finance";
       const response = await onUpload(effectiveCategory, folderName.trim(), customNames, customAlts, fileOrder, (progressResult) => {
         setUploadResults((prev) => {
-          // Remove previous attempt of the SAME file if it exists, replace with new one
-          const filtered = prev.filter((r) => r.fileId !== progressResult.fileId);
-          return [...filtered, progressResult];
+          // Replace previous attempt if exists (to maintain order), otherwise append
+          const idx = prev.findIndex((r) => r.fileId === progressResult.fileId);
+          if (idx !== -1) {
+            const copy = [...prev];
+            copy[idx] = progressResult;
+            return copy;
+          }
+          return [...prev, progressResult];
         });
 
         // Also dynamically remove from orderedFiles on success
@@ -199,15 +213,6 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
       } else if (successfulIds.size === response.results.length) {
         // all successful, clear orderedFiles
         setOrderedFiles([]);
-      }
-
-      // Add to history (only what was successfully uploaded in THIS batch)
-      if (onHistoryAdd && response.results.length > 0) {
-        // Pass only the newly successful results to history so we don't duplicate them in the history view
-        const newSuccesses = response.results.filter((r) => r.success);
-        if (newSuccesses.length > 0) {
-          onHistoryAdd(response.category, response.folderName, newSuccesses, customAlts);
-        }
       }
 
       // Auto-close if all files in this batch succeeded AND the setting is enabled
@@ -228,6 +233,15 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
       // If uploading, trigger cancel instead of close
       handleCancel();
     } else {
+      const currentResults = latestResultsRef.current;
+      const successfulUploads = currentResults.filter((r) => r.success);
+
+      // Save all successes in THIS dialog session to history right before closing
+      if (onHistoryAdd && successfulUploads.length > 0) {
+        const effectiveCategory = showCategory ? latestCategoryRef.current : "finance";
+        onHistoryAdd(effectiveCategory, latestFolderNameRef.current.trim(), successfulUploads, latestAltsRef.current);
+      }
+
       onClose();
       setError(null);
       setUploadResults([]);
@@ -509,7 +523,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
                 borderRadius: `${borderRadius.md}px`,
                 fontWeight: uploading ? 600 : 400,
               }}>
-              {uploadResults.some((r) => r.success) ? "Close" : "Cancel"}
+              {uploadResults.some((r: UploadResult) => r.success) ? "Close" : "Cancel"}
             </Button>
             <Button
               variant='contained'
@@ -521,7 +535,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
                 fontWeight: 600,
                 borderRadius: `${borderRadius.md}px`,
               }}>
-              {uploading ? "Uploading..." : uploadResults.some((r) => !r.success) ? "Retry Failed" : "Upload"}
+              {uploading ? "Uploading..." : uploadResults.some((r: UploadResult) => !r.success) ? "Retry Failed" : "Upload"}
             </Button>
           </>
         )}
