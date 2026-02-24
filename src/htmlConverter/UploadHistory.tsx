@@ -272,6 +272,18 @@ export default function UploadHistory({ sessions, onClear }: UploadHistoryProps)
                               {copiedUrl === `${file.id}-path` ? <CheckIcon sx={{ fontSize: 18 }} /> : <CopyIcon sx={{ fontSize: 18 }} />}
                             </IconButton>
                           </Tooltip>
+                          {file.alt && (
+                            <Tooltip title='Copy ALT text' arrow>
+                              <IconButton
+                                size='small'
+                                onClick={() => handleCopy(file.alt!, `${file.id}-alt`)}
+                                sx={{
+                                  color: copiedUrl === `${file.id}-alt` ? theme.palette.success.main : theme.palette.info.main,
+                                }}>
+                                {copiedUrl === `${file.id}-alt` ? <CheckIcon sx={{ fontSize: 18 }} /> : <AltIcon sx={{ fontSize: 18 }} />}
+                              </IconButton>
+                            </Tooltip>
+                          )}
                         </Box>
                       </Box>
                     ))}
