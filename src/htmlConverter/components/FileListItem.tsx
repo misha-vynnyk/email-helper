@@ -21,6 +21,7 @@ export interface FileItem {
   id: string;
   name: string;
   path?: string;
+  size?: number;
 }
 
 export interface FileListItemProps {
@@ -46,6 +47,8 @@ export interface FileListItemProps {
   editingTag: { fileId: string; tagIdx: number } | null;
   /** Whether the AI backend is used (for text labels) */
   useAiBackend?: boolean;
+  /** File size threshold in KB to show a warning */
+  warningFileSizeKB?: number;
 
   // --- Callbacks ---
   onNameChange: (fileId: string, value: string) => void;
@@ -105,7 +108,7 @@ function addTag(altString: string, newTag: string): string {
 // Component
 // ---------------------------------------------------------------------------
 
-export default function FileListItem({ file, index, uploading, draggedIndex, customName, customAltString, aiState, analysisEnabled, analysisLabel, editingTag, useAiBackend, onNameChange, onAltChange, onEditingTagChange, onAnalyze, onDragStart, onDragOver, onDragEnd, onRemove }: FileListItemProps) {
+export default function FileListItem({ file, index, uploading, draggedIndex, customName, customAltString, aiState, analysisEnabled, analysisLabel, editingTag, useAiBackend, warningFileSizeKB = 1024, onNameChange, onAltChange, onEditingTagChange, onAnalyze, onDragStart, onDragOver, onDragEnd, onRemove }: FileListItemProps) {
   const theme = useTheme();
   const isDragged = draggedIndex === index;
   const altTags = getAltTags(customAltString);
@@ -146,6 +149,15 @@ export default function FileListItem({ file, index, uploading, draggedIndex, cus
               "&:active": { cursor: uploading ? "default" : "grabbing" },
             }}
           />
+
+          {/* Warning Icon if file is too large */}
+          {warningFileSizeKB && file.size && file.size > warningFileSizeKB * 1024 && (
+            <Tooltip title={`Увага: файл завеликий (${(file.size / 1024).toFixed(0)} KB). Рекомендовано до ${warningFileSizeKB} KB.`} arrow placement='top'>
+              <Box sx={{ display: "flex", color: theme.palette.warning.main, cursor: "help" }}>
+                <Typography sx={{ fontSize: "1.2rem", lineHeight: 1 }}>⚠️</Typography>
+              </Box>
+            </Tooltip>
+          )}
 
           {/* Thumbnail */}
           {file.path && (

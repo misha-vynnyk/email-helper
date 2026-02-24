@@ -14,6 +14,7 @@ export type UiSettings = {
   approveNeededValue: boolean;
   ocrSimpleMode: "custom" | "fast" | "balanced" | "banner" | "max";
   autoCloseUploadDialog: boolean;
+  warningFileSizeKB: number;
 };
 
 export const DEFAULT_UI_SETTINGS: UiSettings = {
@@ -28,6 +29,7 @@ export const DEFAULT_UI_SETTINGS: UiSettings = {
   approveNeededValue: false,
   ocrSimpleMode: "custom",
   autoCloseUploadDialog: true,
+  warningFileSizeKB: 1024,
 };
 
 export const DEFAULT_IMAGE_ANALYSIS_SETTINGS: ImageAnalysisSettings = {

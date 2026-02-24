@@ -266,7 +266,7 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
         open={uploadDialogOpen}
         onClose={() => setUploadDialogOpen(false)}
         storageProvider={storageProvider}
-        files={images.filter((img) => (img.status === "done" && img.convertedBlob) || (img.status === "pending" && isCrossOrigin(img.src))).map((img) => ({ id: img.id, name: img.name, path: img.previewUrl }))}
+        files={images.filter((img) => (img.status === "done" && img.convertedBlob) || (img.status === "pending" && isCrossOrigin(img.src))).map((img) => ({ id: img.id, name: img.name, path: img.previewUrl, size: img.convertedSize ?? img.originalSize }))}
         onUpload={handleUploadToStorage}
         onCancel={() => {
           abortUploads();
