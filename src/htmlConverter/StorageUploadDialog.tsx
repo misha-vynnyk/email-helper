@@ -8,6 +8,7 @@ import { getComponentStyles } from "../theme/componentStyles";
 import { spacingMUI, borderRadius } from "../theme/tokens";
 import { copyToClipboard } from "./utils/clipboard";
 import { useOcrAnalysis } from "./utils/useOcrAnalysis";
+import { useHtmlConverterSettings } from "./hooks/useHtmlConverterSettings";
 import { UI_TIMINGS, STORAGE_PROVIDERS_CONFIG, FOLDER_NAME_REGEX } from "./constants";
 import type { ImageAnalysisSettings, UploadResult } from "./types";
 import type { StorageProviderKey } from "./constants";
@@ -31,6 +32,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
   const theme = useTheme();
   const { mode, style } = useThemeMode();
   const componentStyles = getComponentStyles(mode, style);
+  const { ui } = useHtmlConverterSettings();
 
   const providerCfg = STORAGE_PROVIDERS_CONFIG.providers[storageProvider] || STORAGE_PROVIDERS_CONFIG.providers.default;
   const showCategory = providerCfg.usesCategory;
@@ -208,8 +210,8 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
         }
       }
 
-      // Auto-close if all files in this batch succeeded
-      if (successfulIds.size === response.results.length) {
+      // Auto-close if all files in this batch succeeded AND the setting is enabled
+      if (successfulIds.size === response.results.length && ui.autoCloseUploadDialog) {
         setTimeout(() => {
           handleClose();
         }, 800);

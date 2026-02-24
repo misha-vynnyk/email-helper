@@ -22,6 +22,7 @@ export const UiSettingsTab: React.FC<UiSettingsTabProps> = ({ ui, setUi }) => {
         <FormControlLabel control={<Switch size='small' checked={ui.compactMode} onChange={(e) => setUi((prev) => ({ ...prev, compactMode: e.target.checked }))} />} label={<Typography variant='body2'>Компактний режим</Typography>} />
         <FormControlLabel control={<Switch size='small' checked={ui.stickyActions} onChange={(e) => setUi((prev) => ({ ...prev, stickyActions: e.target.checked }))} />} label={<Typography variant='body2'>Закріпити кнопки зверху</Typography>} />
         <FormControlLabel control={<Switch size='small' checked={ui.showApproveNeeded} onChange={(e) => setUi((prev) => ({ ...prev, showApproveNeeded: e.target.checked }))} />} label={<Typography variant='body2'>Показувати "Approve Needed"</Typography>} />
+        <FormControlLabel control={<Switch size='small' checked={ui.autoCloseUploadDialog} onChange={(e) => setUi((prev) => ({ ...prev, autoCloseUploadDialog: e.target.checked }))} />} label={<Typography variant='body2'>Авто-закриття після завантаження</Typography>} />
       </FormGroup>
       <Typography variant='caption' color='text.secondary' display='block' mt={spacingMUI.sm}>
         Якщо вимкнути «Запамʼятовувати вигляд» — ці налаштування не збережуться після перезавантаження.
