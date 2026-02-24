@@ -560,8 +560,7 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
       console.log(`⚠️ Файл "${fileName}" вже існує — завантаження пропущено.`);
       playSound("warning");
       showNotification("Storage Upload", "❌ Файл вже існує");
-      clearTimeout(timeoutId);
-      return;
+      await safeExit(1);
     }
 
     // === Функція завантаження з авто-повтором ===
