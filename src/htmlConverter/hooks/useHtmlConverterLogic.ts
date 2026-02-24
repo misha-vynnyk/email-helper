@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { formatHtml, formatMjml } from "../formatter";
 import { useContentReplacer } from "./useContentReplacer";
 import { STORAGE_KEYS, UPLOAD_CONFIG, IMAGE_DEFAULTS } from "../constants";
-import type { UploadSession } from "../types";
+import type { UploadSession, UploadResult } from "../types";
 import { useHtmlConverterSettings } from "./useHtmlConverterSettings";
 
 const LOG_LIMIT = 500;
@@ -162,7 +162,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
 
   const { replaceUrlsInContentByMap, replaceUrlsInContent, replaceAltsInContent } = useContentReplacer();
 
-  const handleAddToHistory = useCallback((category: string, folderName: string, results: Array<{ filename: string; url: string; success: boolean }>, customAlts?: Record<string, string>) => {
+  const handleAddToHistory = useCallback((category: string, folderName: string, results: UploadResult[], customAlts?: Record<string, string>) => {
     const newSession: UploadSession = {
       id: `${Date.now()}-${Math.random()}`,
       timestamp: Date.now(),
@@ -185,7 +185,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
           })(),
           category,
           folderName,
-          alt: customAlts?.[r.filename] || undefined,
+          alt: (r.fileId ? customAlts?.[r.fileId] : undefined) || customAlts?.[r.filename] || undefined,
         })),
     };
 
