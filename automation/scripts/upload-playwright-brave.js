@@ -249,6 +249,11 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
   const safeExit = async (code) => {
     clearTimeout(timeoutId);
     if (typeof browser !== "undefined" && browser) {
+      if (code !== 0 && typeof page !== "undefined" && page) {
+        try {
+          await page.close(); // Close stuck tab on error so next run gets a fresh one
+        } catch (e) {}
+      }
       try {
         await browser.disconnect();
       } catch (e) {
