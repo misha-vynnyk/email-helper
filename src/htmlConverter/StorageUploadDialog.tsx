@@ -72,10 +72,12 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
     [analyzeFile]
   );
 
-  // Sync orderedFiles when files prop changes
+  // Sync orderedFiles when files prop changes, but ONLY when dialog is closed
   useEffect(() => {
-    setOrderedFiles(files);
-  }, [files]);
+    if (!open) {
+      setOrderedFiles(files);
+    }
+  }, [files, open]);
 
   // Reset per-open transient state
   useEffect(() => {
@@ -206,7 +208,12 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
         }
       }
 
-      // Don't auto-close, let user review results and copy URLs
+      // Auto-close if all files in this batch succeeded
+      if (successfulIds.size === response.results.length) {
+        setTimeout(() => {
+          handleClose();
+        }, 800);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
