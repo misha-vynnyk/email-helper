@@ -150,6 +150,11 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
     setDraggedIndex(null);
   };
 
+  const handleRemoveFile = (fileId: string) => {
+    setOrderedFiles((prev) => prev.filter((f) => f.id !== fileId));
+    // also remove from customNames/Alts if you want, but they're harmless
+  };
+
   const handleUpload = async () => {
     setError(null);
     setUploadResults([]);
@@ -171,11 +176,31 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
       const fileOrder = orderedFiles.map((f) => f.id);
       const effectiveCategory = showCategory ? category : "finance";
       const response = await onUpload(effectiveCategory, folderName.trim(), customNames, customAlts, fileOrder);
-      setUploadResults(response.results);
 
-      // Add to history
+      // Append to uploadResults instead of replacing entirely, so we keep history of successful ones
+      // in case of partial success across multiple retry attempts
+      setUploadResults((prev) => {
+        // Keep previous successes that aren't in the new response
+        const previousSuccesses = prev.filter((p) => p.success && !response.results.some((r) => r.fileId === p.fileId));
+        return [...previousSuccesses, ...response.results];
+      });
+
+      // Remove successful uploads from orderedFiles to prepare for potential retry of failed ones
+      const successfulIds = new Set(response.results.filter((r) => r.success).map((r) => r.fileId));
+      if (successfulIds.size > 0 && response.results.some((r) => !r.success)) {
+        setOrderedFiles((prev) => prev.filter((f) => !successfulIds.has(f.id)));
+      } else if (successfulIds.size === response.results.length) {
+        // all successful, clear orderedFiles
+        setOrderedFiles([]);
+      }
+
+      // Add to history (only what was successfully uploaded in THIS batch)
       if (onHistoryAdd && response.results.length > 0) {
-        onHistoryAdd(response.category, response.folderName, response.results, customAlts);
+        // Pass only the newly successful results to history so we don't duplicate them in the history view
+        const newSuccesses = response.results.filter((r) => r.success);
+        if (newSuccesses.length > 0) {
+          onHistoryAdd(response.category, response.folderName, newSuccesses, customAlts);
+        }
       }
 
       // Don't auto-close, let user review results and copy URLs
@@ -255,9 +280,9 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
       <DialogTitle sx={{ pb: spacingMUI.sm }}>
         <Box display='flex' alignItems='center' justifyContent='space-between'>
           <Box display='flex' alignItems='center' gap={spacingMUI.sm}>
-            {uploadResults.length > 0 ? <SuccessIcon sx={{ color: theme.palette.success.main }} /> : <UploadIcon color='primary' />}
+            {orderedFiles.length === 0 && uploadResults.length > 0 ? <SuccessIcon sx={{ color: theme.palette.success.main }} /> : <UploadIcon color='primary' />}
             <Typography variant='h6' component='span' fontWeight={600}>
-              {uploadResults.length > 0 ? "Upload Complete" : "Upload to Storage"}
+              {orderedFiles.length === 0 && uploadResults.length > 0 ? "Upload Complete" : uploadResults.some((r) => r.success) ? "Partial Upload Complete" : "Upload to Storage"}
             </Typography>
           </Box>
           <IconButton
@@ -279,8 +304,8 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
 
       <DialogContent sx={{ pt: spacingMUI.lg }}>
         <Stack spacing={spacingMUI.lg}>
-          {/* Hide input section if upload is complete */}
-          {uploadResults.length === 0 && (
+          {/* Hide input section if upload is fully complete (no errors and at least one result) */}
+          {orderedFiles.length > 0 && (
             <>
               {/* Files list with thumbnails, rename, and drag & drop */}
               <Box>
@@ -301,7 +326,28 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
                     </Button>
                   )}
                 </Stack>
-                <Stack spacing={spacingMUI.sm}>
+                <Stack
+                  spacing={spacingMUI.sm}
+                  sx={{
+                    maxHeight: "45vh",
+                    overflowY: "auto",
+                    pr: 1, // small padding to make scrollbar look nice
+                    mr: -1, // offset padding
+                    // styling for webkit scrollbar
+                    "&::-webkit-scrollbar": {
+                      width: "6px",
+                    },
+                    "&::-webkit-scrollbar-track": {
+                      background: "transparent",
+                    },
+                    "&::-webkit-scrollbar-thumb": {
+                      backgroundColor: alpha(theme.palette.text.disabled, 0.4),
+                      borderRadius: "4px",
+                    },
+                    "&::-webkit-scrollbar-thumb:hover": {
+                      backgroundColor: alpha(theme.palette.text.disabled, 0.6),
+                    },
+                  }}>
                   {orderedFiles.map((file, index) => (
                     <FileListItem
                       key={file.id}
@@ -323,13 +369,14 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
                       onDragStart={handleDragStart}
                       onDragOver={handleDragOver}
                       onDragEnd={handleDragEnd}
+                      onRemove={() => handleRemoveFile(file.id)}
                     />
                   ))}
                 </Stack>
               </Box>
 
               {/* Category Selection */}
-              {showCategory ? (
+              {showCategory && (
                 <FormControl component='fieldset'>
                   <FormLabel
                     component='legend'
@@ -346,10 +393,6 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
                     ))}
                   </RadioGroup>
                 </FormControl>
-              ) : (
-                <Alert severity='info' sx={{ borderRadius: `${borderRadius.md}px` }}>
-                  AlfaOne: категорія не використовується (root: <code>{providerCfg.publicRootPrefix}/</code>)
-                </Alert>
               )}
 
               {/* Folder Name Input */}
@@ -360,7 +403,8 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
                 onChange={(e) => setFolderName(e.target.value)}
                 fullWidth
                 disabled={uploading}
-                helperText='Format: Letters + Numbers (e.g., ABCD123, Finance456)'
+                error={Boolean(folderName.trim() && !FOLDER_NAME_REGEX.test(folderName))}
+                helperText={folderName.trim() && !FOLDER_NAME_REGEX.test(folderName) ? "Invalid format. Use letters and numbers only." : "Format: Letters + Numbers (e.g., ABCD123, Finance456)"}
                 autoFocus
                 sx={{
                   "& .MuiOutlinedInput-root": {
@@ -422,14 +466,14 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
             </>
           )}
 
-          {/* Upload Results */}
-          {uploadResults.length > 0 && <UploadResults results={uploadResults} copiedUrl={copiedUrl} onCopyUrl={handleCopyUrl} onCopyAllUrls={handleCopyAllUrls} cardBackground={componentStyles.card.background} cardBackdropFilter={componentStyles.card.backdropFilter} cardWebkitBackdropFilter={componentStyles.card.WebkitBackdropFilter} />}
+          {/* Upload Results (only show successful ones when retrying) */}
+          {uploadResults.some((r) => r.success) && <UploadResults results={uploadResults.filter((r) => r.success)} copiedUrl={copiedUrl} onCopyUrl={handleCopyUrl} onCopyAllUrls={handleCopyAllUrls} cardBackground={componentStyles.card.background} cardBackdropFilter={componentStyles.card.backdropFilter} cardWebkitBackdropFilter={componentStyles.card.WebkitBackdropFilter} />}
         </Stack>
       </DialogContent>
 
       <DialogActions sx={{ px: spacingMUI.lg, pb: spacingMUI.base, pt: spacingMUI.sm }}>
-        {uploadResults.length > 0 ? (
-          // After upload is complete
+        {orderedFiles.length === 0 && uploadResults.length > 0 ? (
+          // After upload is fully complete (no pending files)
           <Button
             fullWidth
             variant='contained'
@@ -442,7 +486,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
             Done
           </Button>
         ) : (
-          // Before/during upload
+          // Before/during upload or if there are files left to process
           <>
             <Button
               onClick={handleClose}
@@ -453,19 +497,19 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
                 borderRadius: `${borderRadius.md}px`,
                 fontWeight: uploading ? 600 : 400,
               }}>
-              Cancel
+              {uploadResults.some((r) => r.success) ? "Close" : "Cancel"}
             </Button>
             <Button
               variant='contained'
               onClick={handleUpload}
-              disabled={uploading || !folderName.trim()}
+              disabled={uploading || orderedFiles.length === 0 || !folderName.trim() || !FOLDER_NAME_REGEX.test(folderName)}
               startIcon={<UploadIcon />}
               sx={{
                 textTransform: "none",
                 fontWeight: 600,
                 borderRadius: `${borderRadius.md}px`,
               }}>
-              {uploading ? "Uploading..." : "Upload"}
+              {uploading ? "Uploading..." : uploadResults.some((r) => !r.success) ? "Retry Failed" : "Upload"}
             </Button>
           </>
         )}
