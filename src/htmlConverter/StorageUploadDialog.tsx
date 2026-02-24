@@ -52,8 +52,6 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [editingTag, setEditingTag] = useState<{ fileId: string; tagIdx: number } | null>(null);
 
-  const pendingFiles = orderedFiles.filter((f) => !uploadResults.some((r) => r.success && r.fileId === f.id));
-
   const analysisEnabled = Boolean(imageAnalysisSettings?.enabled && (imageAnalysisSettings.engine === "ocr" || imageAnalysisSettings.useAiBackend));
   const analysisLabel = imageAnalysisSettings?.useAiBackend ? "Analyze (AI)" : "Analyze (OCR)";
 
@@ -179,7 +177,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
     setUploading(true);
 
     try {
-      const fileOrder = pendingFiles.map((f) => f.id);
+      const fileOrder = orderedFiles.map((f) => f.id);
       const effectiveCategory = showCategory ? category : "finance";
       const response = await onUpload(effectiveCategory, folderName.trim(), customNames, customAlts, fileOrder, (progressResult) => {
         setUploadResults((prev) => {
@@ -187,9 +185,21 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
           const filtered = prev.filter((r) => r.fileId !== progressResult.fileId);
           return [...filtered, progressResult];
         });
+
+        // Also dynamically remove from orderedFiles on success
+        if (progressResult.success) {
+          setOrderedFiles((prev) => prev.filter((f) => f.id !== progressResult.fileId));
+        }
       });
 
+      // Remove successful uploads from orderedFiles to prepare for potential retry of failed ones
       const successfulIds = new Set(response.results.filter((r) => r.success).map((r) => r.fileId));
+      if (successfulIds.size > 0 && response.results.some((r) => !r.success)) {
+        setOrderedFiles((prev) => prev.filter((f) => !successfulIds.has(f.id)));
+      } else if (successfulIds.size === response.results.length) {
+        // all successful, clear orderedFiles
+        setOrderedFiles([]);
+      }
 
       // Add to history (only what was successfully uploaded in THIS batch)
       if (onHistoryAdd && response.results.length > 0) {
@@ -282,9 +292,9 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
       <DialogTitle sx={{ pb: spacingMUI.sm }}>
         <Box display='flex' alignItems='center' justifyContent='space-between'>
           <Box display='flex' alignItems='center' gap={spacingMUI.sm}>
-            {pendingFiles.length === 0 && uploadResults.length > 0 ? <SuccessIcon sx={{ color: theme.palette.success.main }} /> : <UploadIcon color='primary' />}
+            {orderedFiles.length === 0 && uploadResults.length > 0 ? <SuccessIcon sx={{ color: theme.palette.success.main }} /> : <UploadIcon color='primary' />}
             <Typography variant='h6' component='span' fontWeight={600}>
-              {pendingFiles.length === 0 && uploadResults.length > 0 ? "Upload Complete" : uploadResults.some((r) => r.success) ? "Partial Upload Complete" : "Upload to Storage"}
+              {orderedFiles.length === 0 && uploadResults.length > 0 ? "Upload Complete" : uploadResults.some((r) => r.success) ? "Partial Upload Complete" : "Upload to Storage"}
             </Typography>
           </Box>
           <IconButton
@@ -306,7 +316,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
 
       <DialogContent sx={{ pt: spacingMUI.lg }}>
         <Stack spacing={spacingMUI.lg}>
-          {/* Always show input section so UI doesn't visually jump to a new "Upload Complete" screen */}
+          {/* Hide input section if upload is fully complete (no errors and at least one result) */}
           {orderedFiles.length > 0 && (
             <>
               {/* Files list with thumbnails, rename, and drag & drop */}
@@ -474,7 +484,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
       </DialogContent>
 
       <DialogActions sx={{ px: spacingMUI.lg, pb: spacingMUI.base, pt: spacingMUI.sm }}>
-        {pendingFiles.length === 0 && uploadResults.length > 0 ? (
+        {orderedFiles.length === 0 && uploadResults.length > 0 ? (
           // After upload is fully complete (no pending files)
           <Button
             fullWidth
@@ -488,7 +498,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
             Done
           </Button>
         ) : (
-          // Before/during upload or if there are pending files left to process
+          // Before/during upload or if there are files left to process
           <>
             <Button
               onClick={handleClose}
@@ -504,7 +514,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
             <Button
               variant='contained'
               onClick={handleUpload}
-              disabled={uploading || pendingFiles.length === 0 || !folderName.trim() || !FOLDER_NAME_REGEX.test(folderName)}
+              disabled={uploading || orderedFiles.length === 0 || !folderName.trim() || !FOLDER_NAME_REGEX.test(folderName)}
               startIcon={<UploadIcon />}
               sx={{
                 textTransform: "none",
