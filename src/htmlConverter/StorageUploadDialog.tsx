@@ -334,167 +334,165 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
 
       <DialogContent sx={{ pt: spacingMUI.lg }}>
         <Stack spacing={spacingMUI.lg}>
-          {/* Hide input section if upload is fully complete (no errors and at least one result) */}
-          {orderedFiles.length > 0 && (
-            <>
-              {/* Files list with thumbnails, rename, and drag & drop */}
-              <Box>
-                <Stack direction='row' justifyContent='space-between' alignItems='center' mb={spacingMUI.sm}>
-                  <Typography variant='body2' color='text.secondary' fontWeight={500}>
-                    Files to upload ({orderedFiles.length}):
-                  </Typography>
-                  {analysisEnabled && orderedFiles.length > 1 && (
-                    <Button
-                      size='small'
-                      variant='outlined'
-                      onClick={async () => {
-                        for (const f of orderedFiles) await handleAnalyzeFile(f);
-                      }}
-                      disabled={uploading || orderedFiles.some((f) => aiById[f.id]?.status === "running")}
-                      sx={{ textTransform: "none" }}>
-                      {orderedFiles.some((f) => aiById[f.id]?.status === "running") ? "Analyzing…" : `${analysisLabel.replace("Analyze", "Analyze All")} (${orderedFiles.length})`}
-                    </Button>
-                  )}
-                </Stack>
-                <Stack
-                  spacing={spacingMUI.sm}
-                  sx={{
-                    maxHeight: "45vh",
-                    overflowY: "auto",
-                    pr: 1, // small padding to make scrollbar look nice
-                    mr: -1, // offset padding
-                    // styling for webkit scrollbar
-                    "&::-webkit-scrollbar": {
-                      width: "6px",
-                    },
-                    "&::-webkit-scrollbar-track": {
-                      background: "transparent",
-                    },
-                    "&::-webkit-scrollbar-thumb": {
-                      backgroundColor: alpha(theme.palette.text.disabled, 0.4),
-                      borderRadius: "4px",
-                    },
-                    "&::-webkit-scrollbar-thumb:hover": {
-                      backgroundColor: alpha(theme.palette.text.disabled, 0.6),
-                    },
-                  }}>
-                  {orderedFiles.map((file, index) => (
-                    <FileListItem
-                      key={file.id}
-                      file={file}
-                      index={index}
-                      uploading={uploading}
-                      draggedIndex={draggedIndex}
-                      customName={customNames[file.id] || ""}
-                      customAltString={customAlts[file.id] || ""}
-                      aiState={aiById[file.id]}
-                      analysisEnabled={analysisEnabled}
-                      analysisLabel={analysisLabel}
-                      editingTag={editingTag}
-                      useAiBackend={imageAnalysisSettings?.useAiBackend}
-                      onNameChange={(fileId: string, value: string) => setCustomNames((prev) => ({ ...prev, [fileId]: value }))}
-                      onAltChange={(fileId: string, newAltString: string) => setCustomAlts((prev) => ({ ...prev, [fileId]: newAltString }))}
-                      onEditingTagChange={setEditingTag}
-                      onAnalyze={handleAnalyzeFile}
-                      onDragStart={handleDragStart}
-                      onDragOver={handleDragOver}
-                      onDragEnd={handleDragEnd}
-                      onRemove={() => handleRemoveFile(file.id)}
-                    />
-                  ))}
-                </Stack>
-              </Box>
-
-              {/* Category Selection */}
-              {showCategory && (
-                <FormControl component='fieldset'>
-                  <FormLabel
-                    component='legend'
-                    sx={{
-                      fontWeight: 500,
-                      mb: spacingMUI.sm,
-                      color: theme.palette.text.primary,
-                    }}>
-                    Category
-                  </FormLabel>
-                  <RadioGroup row value={category} onChange={(e) => setCategory(e.target.value)}>
-                    {categories.map((c) => (
-                      <FormControlLabel key={c} value={c} control={<Radio />} label={c} />
-                    ))}
-                  </RadioGroup>
-                </FormControl>
-              )}
-
-              {/* Folder Name Input */}
-              <TextField
-                label='Folder Name'
-                placeholder='e.g., ABCD123'
-                value={folderName}
-                onChange={(e) => setFolderName(e.target.value)}
-                fullWidth
-                disabled={uploading}
-                error={Boolean(folderName.trim() && !FOLDER_NAME_REGEX.test(folderName))}
-                helperText={folderName.trim() && !FOLDER_NAME_REGEX.test(folderName) ? "Invalid format. Use letters and numbers only." : "Format: Letters + Numbers (e.g., ABCD123, Finance456)"}
-                autoFocus
+          {/* Hide input section via CSS rather than unmounting so UI doesn't visually jump to a new "Upload Complete" screen abruptly */}
+          <Box sx={{ display: orderedFiles.length > 0 ? "block" : "none" }}>
+            {/* Files list with thumbnails, rename, and drag & drop */}
+            <Box>
+              <Stack direction='row' justifyContent='space-between' alignItems='center' mb={spacingMUI.sm}>
+                <Typography variant='body2' color='text.secondary' fontWeight={500}>
+                  Files to upload ({orderedFiles.length}):
+                </Typography>
+                {analysisEnabled && orderedFiles.length > 1 && (
+                  <Button
+                    size='small'
+                    variant='outlined'
+                    onClick={async () => {
+                      for (const f of orderedFiles) await handleAnalyzeFile(f);
+                    }}
+                    disabled={uploading || orderedFiles.some((f) => aiById[f.id]?.status === "running")}
+                    sx={{ textTransform: "none" }}>
+                    {orderedFiles.some((f) => aiById[f.id]?.status === "running") ? "Analyzing…" : `${analysisLabel.replace("Analyze", "Analyze All")} (${orderedFiles.length})`}
+                  </Button>
+                )}
+              </Stack>
+              <Stack
+                spacing={spacingMUI.sm}
                 sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: `${borderRadius.md}px`,
-                    "&.Mui-focused": {
-                      backgroundColor: "transparent",
-                    },
+                  maxHeight: "45vh",
+                  overflowY: "auto",
+                  pr: 1, // small padding to make scrollbar look nice
+                  mr: -1, // offset padding
+                  // styling for webkit scrollbar
+                  "&::-webkit-scrollbar": {
+                    width: "6px",
                   },
-                }}
-              />
+                  "&::-webkit-scrollbar-track": {
+                    background: "transparent",
+                  },
+                  "&::-webkit-scrollbar-thumb": {
+                    backgroundColor: alpha(theme.palette.text.disabled, 0.4),
+                    borderRadius: "4px",
+                  },
+                  "&::-webkit-scrollbar-thumb:hover": {
+                    backgroundColor: alpha(theme.palette.text.disabled, 0.6),
+                  },
+                }}>
+                {orderedFiles.map((file, index) => (
+                  <FileListItem
+                    key={file.id}
+                    file={file}
+                    index={index}
+                    uploading={uploading}
+                    draggedIndex={draggedIndex}
+                    customName={customNames[file.id] || ""}
+                    customAltString={customAlts[file.id] || ""}
+                    aiState={aiById[file.id]}
+                    analysisEnabled={analysisEnabled}
+                    analysisLabel={analysisLabel}
+                    editingTag={editingTag}
+                    useAiBackend={imageAnalysisSettings?.useAiBackend}
+                    onNameChange={(fileId: string, value: string) => setCustomNames((prev) => ({ ...prev, [fileId]: value }))}
+                    onAltChange={(fileId: string, newAltString: string) => setCustomAlts((prev) => ({ ...prev, [fileId]: newAltString }))}
+                    onEditingTagChange={setEditingTag}
+                    onAnalyze={handleAnalyzeFile}
+                    onDragStart={handleDragStart}
+                    onDragOver={handleDragOver}
+                    onDragEnd={handleDragEnd}
+                    onRemove={() => handleRemoveFile(file.id)}
+                  />
+                ))}
+              </Stack>
+            </Box>
 
-              {/* Upload Path Preview */}
-              {folderName && FOLDER_NAME_REGEX.test(folderName) && (
-                <Alert
-                  severity='info'
+            {/* Category Selection */}
+            {showCategory && (
+              <FormControl component='fieldset'>
+                <FormLabel
+                  component='legend'
                   sx={{
-                    borderRadius: `${borderRadius.md}px`,
-                    "& .MuiAlert-message": {
-                      width: "100%",
-                    },
+                    fontWeight: 500,
+                    mb: spacingMUI.sm,
+                    color: theme.palette.text.primary,
                   }}>
-                  <Typography variant='caption' sx={{ fontFamily: "monospace" }}>
-                    <strong>Upload path:</strong>
-                    <br />
-                    {(() => {
-                      const letters = folderName.replace(/[^a-zA-Z]/g, "").toLowerCase();
-                      const digits = folderName.replace(/[^0-9]/g, "");
-                      const parts = [providerCfg.publicRootPrefix];
-                      if (showCategory) parts.push(category);
-                      parts.push(letters, `lift-${digits}`);
-                      return `${parts.filter(Boolean).join("/")}/`;
-                    })()}
-                  </Typography>
-                </Alert>
-              )}
+                  Category
+                </FormLabel>
+                <RadioGroup row value={category} onChange={(e) => setCategory(e.target.value)}>
+                  {categories.map((c) => (
+                    <FormControlLabel key={c} value={c} control={<Radio />} label={c} />
+                  ))}
+                </RadioGroup>
+              </FormControl>
+            )}
 
-              {/* Progress */}
-              {uploading && (
-                <Box
-                  sx={{
-                    p: spacingMUI.base,
-                    borderRadius: `${borderRadius.md}px`,
-                    backgroundColor: alpha(theme.palette.primary.main, 0.05),
-                    border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-                  }}>
-                  <LinearProgress sx={{ mb: spacingMUI.sm, borderRadius: `${borderRadius.sm}px` }} />
-                  <Typography variant='body2' color='text.secondary' align='center'>
-                    Uploading files...
-                  </Typography>
-                </Box>
-              )}
+            {/* Folder Name Input */}
+            <TextField
+              label='Folder Name'
+              placeholder='e.g., ABCD123'
+              value={folderName}
+              onChange={(e) => setFolderName(e.target.value)}
+              fullWidth
+              disabled={uploading}
+              error={Boolean(folderName.trim() && !FOLDER_NAME_REGEX.test(folderName))}
+              helperText={folderName.trim() && !FOLDER_NAME_REGEX.test(folderName) ? "Invalid format. Use letters and numbers only." : "Format: Letters + Numbers (e.g., ABCD123, Finance456)"}
+              autoFocus
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: `${borderRadius.md}px`,
+                  "&.Mui-focused": {
+                    backgroundColor: "transparent",
+                  },
+                },
+              }}
+            />
 
-              {/* Error Message */}
-              {error && (
-                <Alert icon={<ErrorIcon />} severity='error' sx={{ borderRadius: `${borderRadius.md}px` }}>
-                  {error}
-                </Alert>
-              )}
-            </>
-          )}
+            {/* Upload Path Preview */}
+            {folderName && FOLDER_NAME_REGEX.test(folderName) && (
+              <Alert
+                severity='info'
+                sx={{
+                  borderRadius: `${borderRadius.md}px`,
+                  "& .MuiAlert-message": {
+                    width: "100%",
+                  },
+                }}>
+                <Typography variant='caption' sx={{ fontFamily: "monospace" }}>
+                  <strong>Upload path:</strong>
+                  <br />
+                  {(() => {
+                    const letters = folderName.replace(/[^a-zA-Z]/g, "").toLowerCase();
+                    const digits = folderName.replace(/[^0-9]/g, "");
+                    const parts = [providerCfg.publicRootPrefix];
+                    if (showCategory) parts.push(category);
+                    parts.push(letters, `lift-${digits}`);
+                    return `${parts.filter(Boolean).join("/")}/`;
+                  })()}
+                </Typography>
+              </Alert>
+            )}
+
+            {/* Progress */}
+            {uploading && (
+              <Box
+                sx={{
+                  p: spacingMUI.base,
+                  borderRadius: `${borderRadius.md}px`,
+                  backgroundColor: alpha(theme.palette.primary.main, 0.05),
+                  border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+                }}>
+                <LinearProgress sx={{ mb: spacingMUI.sm, borderRadius: `${borderRadius.sm}px` }} />
+                <Typography variant='body2' color='text.secondary' align='center'>
+                  Uploading files...
+                </Typography>
+              </Box>
+            )}
+
+            {/* Error Message */}
+            {error && (
+              <Alert icon={<ErrorIcon />} severity='error' sx={{ borderRadius: `${borderRadius.md}px` }}>
+                {error}
+              </Alert>
+            )}
+          </Box>
 
           {/* Upload Results (only show successful ones when retrying) */}
           {uploadResults.some((r) => r.success) && <UploadResults results={uploadResults.filter((r) => r.success)} copiedUrl={copiedUrl} onCopyUrl={handleCopyUrl} onCopyAllUrls={handleCopyAllUrls} cardBackground={componentStyles.card.background} cardBackdropFilter={componentStyles.card.backdropFilter} cardWebkitBackdropFilter={componentStyles.card.WebkitBackdropFilter} />}
