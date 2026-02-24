@@ -33,8 +33,8 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
     }
   }, []);
 
-  // Helper: Prepare Timeout
-  const prepareTimeout = () => new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Timeout: сервер не відповідає (30s)")), UPLOAD_CONFIG.PREPARE_TIMEOUT));
+  /** Creates a Promise that rejects after `ms` milliseconds with the given message */
+  const createTimeout = (ms: number, msg: string) => new Promise<never>((_, reject) => setTimeout(() => reject(new Error(msg)), ms));
 
   const handleUploadToStorage = useCallback(
     async (
@@ -106,7 +106,7 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
               body: formData,
               signal,
             }),
-            prepareTimeout(),
+            createTimeout(UPLOAD_CONFIG.PREPARE_TIMEOUT, "Timeout: сервер не відповідає (30s)"),
           ]);
           if (!res.ok) {
             const err = await res.json().catch(() => ({}));
@@ -122,7 +122,7 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
             body: JSON.stringify({ url: image.src, filename: fname }),
             signal,
           }),
-          prepareTimeout(),
+          createTimeout(UPLOAD_CONFIG.PREPARE_TIMEOUT, "Timeout: сервер не відповідає (30s)"),
         ]);
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
@@ -165,7 +165,7 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
                 }),
                 signal: uploadAbortControllerRef.current.signal,
               }),
-              new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Timeout: storage не відповідає (180s)")), UPLOAD_CONFIG.STORAGE_TIMEOUT)),
+              createTimeout(UPLOAD_CONFIG.STORAGE_TIMEOUT, "Timeout: storage не відповідає (180s)"),
             ]);
 
             if (!storageResponse.ok) {
