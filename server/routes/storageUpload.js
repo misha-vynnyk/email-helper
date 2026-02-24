@@ -329,6 +329,10 @@ router.post("/api/storage-upload", async (req, res) => {
       }
 
       if (!uploadedPath) {
+        console.error("❌ Upload did not return file path. Script output:");
+        console.error("STDOUT:", stdout);
+        console.error("STDERR:", stderr);
+
         return res.status(500).json({
           success: false,
           error: "Upload did not return file path (not logged in, cancelled, or UI changed).",
