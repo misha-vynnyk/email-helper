@@ -46,6 +46,14 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     }
   }, []);
 
+  // Sync mode with Tailwind's dark mode via data-theme or class
+  useEffect(() => {
+    const root = window.document.documentElement;
+    root.classList.remove("light", "dark");
+    root.classList.add(mode);
+    root.setAttribute("data-theme", mode);
+  }, [mode]);
+
   const toggleMode = useMemo(
     () => () => {
       setMode((prev) => (prev === "light" ? "dark" : "light"));

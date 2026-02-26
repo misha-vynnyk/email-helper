@@ -22,6 +22,7 @@ export default defineConfig({
     alias: {
       // Point to the source files instead of built files for hot reload
       "@usewaypoint/block-library": path.resolve(__dirname, "../block-library/src"),
+      "@": path.resolve(__dirname, "./src"),
     },
   },
   optimizeDeps: {

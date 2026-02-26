@@ -1,6 +1,8 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 
+import "./index.css";
+import "./i18n";
 import App from "./App";
 import { ThemeProvider } from "./theme/ThemeContext";
 
@@ -14,14 +16,7 @@ console.error = (...args) => {
   const firstArg = args[0];
 
   // Перевіряємо чи це помилка GET запиту або завантаження ресурсу
-  if (typeof firstArg === 'string' && (
-    firstArg.includes('GET chrome-extension://') ||
-    firstArg.includes('Failed to load resource') ||
-    firstArg.includes('net::ERR_FILE_NOT_FOUND') ||
-    firstArg.includes('net::ERR_CONNECTION_REFUSED') ||
-    firstArg.includes('chrome-extension://pejdijmoenmkgeppbflobdenhhabjlaj') ||
-    firstArg.includes('storage.5th-elementagency.com')
-  )) {
+  if (typeof firstArg === "string" && (firstArg.includes("GET chrome-extension://") || firstArg.includes("Failed to load resource") || firstArg.includes("net::ERR_FILE_NOT_FOUND") || firstArg.includes("net::ERR_CONNECTION_REFUSED") || firstArg.includes("chrome-extension://pejdijmoenmkgeppbflobdenhhabjlaj") || firstArg.includes("storage.5th-elementagency.com"))) {
     return; // Don't log browser extension network errors or image loading errors
   }
 
@@ -114,18 +109,7 @@ window.addEventListener("error", (event) => {
 window.addEventListener("unhandledrejection", (event) => {
   // Ignore promise rejections from browser extensions
   const message = event.reason?.message || String(event.reason);
-  if (
-    message.includes("_controlUniqueID") ||
-    message.includes("FormMetadata") ||
-    message.includes("FrameDoesNotExistError") ||
-    message.includes("FrameIsBrowserFrameError") ||
-    message.includes("Could not establish connection") ||
-    message.includes("The message port closed") ||
-    message.includes("Receiving end does not exist") ||
-    message.includes("about:srcdoc") ||
-    message.includes("sandboxed") ||
-    message.includes("Blocked script execution")
-  ) {
+  if (message.includes("_controlUniqueID") || message.includes("FormMetadata") || message.includes("FrameDoesNotExistError") || message.includes("FrameIsBrowserFrameError") || message.includes("Could not establish connection") || message.includes("The message port closed") || message.includes("Receiving end does not exist") || message.includes("about:srcdoc") || message.includes("sandboxed") || message.includes("Blocked script execution")) {
     event.preventDefault();
     return false;
   }

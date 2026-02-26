@@ -1,18 +1,16 @@
 import React, { Dispatch, SetStateAction } from "react";
-import { Box, Typography, Popover, IconButton, Tabs, Tab, Divider, alpha, useTheme } from "@mui/material";
-import { Close as CloseIcon } from "@mui/icons-material";
-import { spacingMUI, borderRadius } from "../../theme/tokens";
-import { getComponentStyles } from "../../theme/componentStyles";
 import type { ImageAnalysisSettings } from "../types";
 import type { UiSettings } from "../hooks/useHtmlConverterSettings";
-import { useThemeMode } from "../../theme";
 import { UiSettingsTab } from "./UiSettingsTab";
 import { ImageSettingsTab } from "./ImageSettingsTab";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { X } from "lucide-react";
 
 type SettingsPopoverProps = {
   open: boolean;
-  anchorEl: HTMLElement | null;
-  onClose: () => void;
+  onOpenChange: (open: boolean) => void;
+  triggerElement: React.ReactNode;
   settingsTab: "ui" | "image";
   setSettingsTab: Dispatch<SetStateAction<"ui" | "image">>;
   ui: UiSettings;
@@ -24,78 +22,45 @@ type SettingsPopoverProps = {
   aiBackendStatus: "checking" | "online" | "offline";
 };
 
-export const SettingsPopover: React.FC<SettingsPopoverProps> = ({ open, anchorEl, onClose, settingsTab, setSettingsTab, ui, setUi, imageAnalysis, setImageAnalysis, autoProcess, setAutoProcess, aiBackendStatus }) => {
-  const theme = useTheme();
-  const { mode, style } = useThemeMode();
-  const componentStyles = getComponentStyles(mode, style);
-
+export const SettingsPopover: React.FC<SettingsPopoverProps> = ({ open, onOpenChange, triggerElement, settingsTab, setSettingsTab, ui, setUi, imageAnalysis, setImageAnalysis, autoProcess, setAutoProcess, aiBackendStatus }) => {
   return (
-    <Popover
-      open={open}
-      anchorEl={anchorEl}
-      onClose={onClose}
-      anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-      transformOrigin={{ vertical: "top", horizontal: "right" }}
-      PaperProps={{
-        sx: {
-          borderRadius: `${borderRadius.lg}px`,
-          background: componentStyles.card.background || alpha(theme.palette.background.paper, 0.92),
-          backdropFilter: componentStyles.card.backdropFilter,
-          WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
-          border: componentStyles.card.border,
-          boxShadow: componentStyles.card.boxShadow,
-          overflow: "hidden",
-        },
-      }}>
-      <Box sx={{ minWidth: 420, maxWidth: 520 }}>
-        <Box
-          sx={{
-            px: spacingMUI.base,
-            pt: spacingMUI.base,
-            pb: spacingMUI.sm,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: spacingMUI.sm,
-          }}>
-          <Box>
-            <Typography variant='subtitle2' fontWeight={700}>
-              Налаштування
-            </Typography>
-            <Typography variant='caption' color='text.secondary'>
-              HTML Converter
-            </Typography>
-          </Box>
-          <IconButton size='small' onClick={onClose}>
-            <CloseIcon fontSize='small' />
-          </IconButton>
-        </Box>
+    <Popover open={open} onOpenChange={onOpenChange}>
+      <PopoverTrigger asChild>{triggerElement}</PopoverTrigger>
+      <PopoverContent className='w-[420px] sm:w-[520px] p-0 rounded-2xl border-border shadow-soft-lg overflow-hidden bg-card/95 backdrop-blur-md' align='end' sideOffset={8}>
+        <div className='flex items-center justify-between p-4 pb-2'>
+          <div>
+            <h4 className='text-sm font-bold'>Налаштування</h4>
+            <p className='text-xs text-muted-foreground'>HTML Converter</p>
+          </div>
+          <button onClick={() => onOpenChange(false)} className='p-1 rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground'>
+            <X className='w-4 h-4' />
+          </button>
+        </div>
 
-        <Tabs
-          value={settingsTab}
-          onChange={(_, v) => setSettingsTab(v)}
-          variant='fullWidth'
-          sx={{
-            px: spacingMUI.xs,
-            minHeight: 40,
-            "& .MuiTab-root": { minHeight: 40, textTransform: "none", fontWeight: 600 },
-          }}>
-          <Tab value='ui' label='Інтерфейс' />
-          <Tab value='image' label='Зображення' />
+        <Tabs value={settingsTab} onValueChange={(v) => setSettingsTab(v as "ui" | "image")} className='w-full'>
+          <div className='px-3 pb-2'>
+            <TabsList className='w-full h-9 grid grid-cols-2 rounded-lg bg-muted/50 p-1'>
+              <TabsTrigger value='ui' className='text-xs rounded-md'>
+                Інтерфейс
+              </TabsTrigger>
+              <TabsTrigger value='image' className='text-xs rounded-md'>
+                Зображення
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          <div className='h-px bg-border' />
+
+          <div className='p-4 max-h-[60vh] overflow-y-auto'>
+            <TabsContent value='ui' className='m-0 border-none p-0 outline-none'>
+              <UiSettingsTab ui={ui} setUi={setUi} />
+            </TabsContent>
+            <TabsContent value='image' className='m-0 border-none p-0 outline-none'>
+              <ImageSettingsTab ui={ui} setUi={setUi} imageAnalysis={imageAnalysis} setImageAnalysis={setImageAnalysis} autoProcess={autoProcess} setAutoProcess={setAutoProcess} aiBackendStatus={aiBackendStatus} />
+            </TabsContent>
+          </div>
         </Tabs>
-
-        <Divider />
-
-        <Box
-          sx={{
-            p: spacingMUI.base,
-            maxHeight: 520,
-            overflowY: "auto",
-          }}>
-          {settingsTab === "ui" && <UiSettingsTab ui={ui} setUi={setUi} />}
-          {settingsTab === "image" && <ImageSettingsTab ui={ui} setUi={setUi} imageAnalysis={imageAnalysis} setImageAnalysis={setImageAnalysis} autoProcess={autoProcess} setAutoProcess={setAutoProcess} aiBackendStatus={aiBackendStatus} />}
-        </Box>
-      </Box>
+      </PopoverContent>
     </Popover>
   );
 };

@@ -1,7 +1,8 @@
 import React, { Dispatch, SetStateAction } from "react";
-import { Typography, FormGroup, FormControlLabel, Switch, Stack, TextField } from "@mui/material";
-import { spacingMUI } from "../../theme/tokens";
 import type { UiSettings } from "../hooks/useHtmlConverterSettings";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 type UiSettingsTabProps = {
   ui: UiSettings;
@@ -10,41 +11,87 @@ type UiSettingsTabProps = {
 
 export const UiSettingsTab: React.FC<UiSettingsTabProps> = ({ ui, setUi }) => {
   return (
-    <>
-      <Typography variant='subtitle2' fontWeight={600} mb={spacingMUI.sm}>
-        Інтерфейс
-      </Typography>
-      <FormGroup>
-        <FormControlLabel control={<Switch size='small' checked={ui.showLogsPanel} onChange={(e) => setUi((prev) => ({ ...prev, showLogsPanel: e.target.checked }))} />} label={<Typography variant='body2'>Показувати лог</Typography>} />
-        <FormControlLabel control={<Switch size='small' checked={ui.showInputHtml} onChange={(e) => setUi((prev) => ({ ...prev, showInputHtml: e.target.checked }))} />} label={<Typography variant='body2'>Показувати вхідний HTML</Typography>} />
-        <FormControlLabel control={<Switch size='small' checked={ui.showUploadHistory} onChange={(e) => setUi((prev) => ({ ...prev, showUploadHistory: e.target.checked }))} />} label={<Typography variant='body2'>Показувати історію завантажень</Typography>} />
-        <FormControlLabel control={<Switch size='small' checked={ui.rememberUiLayout} onChange={(e) => setUi((prev) => ({ ...prev, rememberUiLayout: e.target.checked }))} />} label={<Typography variant='body2'>Запамʼятовувати вигляд (layout)</Typography>} />
-        <FormControlLabel control={<Switch size='small' checked={ui.compactMode} onChange={(e) => setUi((prev) => ({ ...prev, compactMode: e.target.checked }))} />} label={<Typography variant='body2'>Компактний режим</Typography>} />
-        <FormControlLabel control={<Switch size='small' checked={ui.stickyActions} onChange={(e) => setUi((prev) => ({ ...prev, stickyActions: e.target.checked }))} />} label={<Typography variant='body2'>Закріпити кнопки зверху</Typography>} />
-        <FormControlLabel control={<Switch size='small' checked={ui.showApproveNeeded} onChange={(e) => setUi((prev) => ({ ...prev, showApproveNeeded: e.target.checked }))} />} label={<Typography variant='body2'>Показувати "Approve Needed"</Typography>} />
-        <FormControlLabel control={<Switch size='small' checked={ui.autoCloseUploadDialog} onChange={(e) => setUi((prev) => ({ ...prev, autoCloseUploadDialog: e.target.checked }))} />} label={<Typography variant='body2'>Авто-закриття після завантаження</Typography>} />
-      </FormGroup>
+    <div className='flex flex-col gap-6'>
+      <div className='space-y-4'>
+        <h3 className='text-sm font-semibold tracking-tight'>Інтерфейс</h3>
+        <div className='grid gap-4'>
+          <div className='flex items-center justify-between'>
+            <Label htmlFor='showLogsPanel' className='text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70'>
+              Показувати лог
+            </Label>
+            <Switch id='showLogsPanel' checked={ui.showLogsPanel} onCheckedChange={(checked) => setUi((prev) => ({ ...prev, showLogsPanel: checked }))} />
+          </div>
 
-      <Stack direction='row' alignItems='center' spacing={2} mt={spacingMUI.base} mb={spacingMUI.base}>
-        <Typography variant='body2' sx={{ minWidth: 200 }}>
+          <div className='flex items-center justify-between'>
+            <Label htmlFor='showInputHtml' className='text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70'>
+              Показувати вхідний HTML
+            </Label>
+            <Switch id='showInputHtml' checked={ui.showInputHtml} onCheckedChange={(checked) => setUi((prev) => ({ ...prev, showInputHtml: checked }))} />
+          </div>
+
+          <div className='flex items-center justify-between'>
+            <Label htmlFor='showUploadHistory' className='text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70'>
+              Показувати історію завантажень
+            </Label>
+            <Switch id='showUploadHistory' checked={ui.showUploadHistory} onCheckedChange={(checked) => setUi((prev) => ({ ...prev, showUploadHistory: checked }))} />
+          </div>
+
+          <div className='flex items-center justify-between'>
+            <Label htmlFor='rememberUiLayout' className='text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70'>
+              Запамʼятовувати вигляд (layout)
+            </Label>
+            <Switch id='rememberUiLayout' checked={ui.rememberUiLayout} onCheckedChange={(checked) => setUi((prev) => ({ ...prev, rememberUiLayout: checked }))} />
+          </div>
+
+          <div className='flex items-center justify-between'>
+            <Label htmlFor='compactMode' className='text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70'>
+              Компактний режим
+            </Label>
+            <Switch id='compactMode' checked={ui.compactMode} onCheckedChange={(checked) => setUi((prev) => ({ ...prev, compactMode: checked }))} />
+          </div>
+
+          <div className='flex items-center justify-between'>
+            <Label htmlFor='stickyActions' className='text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70'>
+              Закріпити кнопки зверху
+            </Label>
+            <Switch id='stickyActions' checked={ui.stickyActions} onCheckedChange={(checked) => setUi((prev) => ({ ...prev, stickyActions: checked }))} />
+          </div>
+
+          <div className='flex items-center justify-between'>
+            <Label htmlFor='showApproveNeeded' className='text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70'>
+              Показувати "Approve Needed"
+            </Label>
+            <Switch id='showApproveNeeded' checked={ui.showApproveNeeded} onCheckedChange={(checked) => setUi((prev) => ({ ...prev, showApproveNeeded: checked }))} />
+          </div>
+
+          <div className='flex items-center justify-between'>
+            <Label htmlFor='autoCloseUploadDialog' className='text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70'>
+              Авто-закриття після завантаження
+            </Label>
+            <Switch id='autoCloseUploadDialog' checked={ui.autoCloseUploadDialog} onCheckedChange={(checked) => setUi((prev) => ({ ...prev, autoCloseUploadDialog: checked }))} />
+          </div>
+        </div>
+      </div>
+
+      <div className='flex items-center gap-4'>
+        <Label htmlFor='warningSize' className='min-w-[200px] text-sm font-medium leading-none'>
           Попередження про розмір файлу (KB):
-        </Typography>
-        <TextField
-          size='small'
+        </Label>
+        <Input
+          id='warningSize'
           type='number'
           value={ui.warningFileSizeKB}
           onChange={(e) => {
             const val = parseInt(e.target.value, 10);
             if (!isNaN(val)) setUi((prev) => ({ ...prev, warningFileSizeKB: val }));
           }}
-          inputProps={{ min: 0, step: 100 }}
-          sx={{ width: 120 }}
+          min={0}
+          step={100}
+          className='w-24'
         />
-      </Stack>
+      </div>
 
-      <Typography variant='caption' color='text.secondary' display='block' mt={spacingMUI.sm}>
-        Якщо вимкнути «Запамʼятовувати вигляд» — ці налаштування не збережуться після перезавантаження.
-      </Typography>
-    </>
+      <p className='text-[13px] text-muted-foreground'>Якщо вимкнути «Запамʼятовувати вигляд» — ці налаштування не збережуться після перезавантаження.</p>
+    </div>
   );
 };
