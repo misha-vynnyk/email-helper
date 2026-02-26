@@ -1,10 +1,16 @@
 import React, { Dispatch, SetStateAction } from "react";
-import { Box, Typography, Divider, FormGroup, FormControlLabel, Switch, Checkbox, Stack, FormControl, TextField, MenuItem, Alert, Slider, Tooltip } from "@mui/material";
-import { spacingMUI, borderRadius } from "../../theme/tokens";
 import { STORAGE_KEYS } from "../constants";
 import type { ImageAnalysisSettings } from "../types";
 import type { UiSettings } from "../hooks/useHtmlConverterSettings";
 import { OCR_PRESETS } from "../ocrPresets";
+
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type ImageSettingsTabProps = {
   ui: UiSettings;
@@ -17,13 +23,12 @@ type ImageSettingsTabProps = {
 };
 
 export const ImageSettingsTab: React.FC<ImageSettingsTabProps> = ({ ui, setUi, imageAnalysis, setImageAnalysis, autoProcess, setAutoProcess, aiBackendStatus }) => {
-  const handleAutoProcessChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.checked;
-    setAutoProcess(newValue);
+  const handleAutoProcessChange = (checked: boolean) => {
+    setAutoProcess(checked);
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.IMAGE_SETTINGS);
       const settings = stored ? JSON.parse(stored) : {};
-      settings.autoProcess = newValue;
+      settings.autoProcess = checked;
       localStorage.setItem(STORAGE_KEYS.IMAGE_SETTINGS, JSON.stringify(settings));
     } catch {
       // ignore
@@ -31,491 +36,341 @@ export const ImageSettingsTab: React.FC<ImageSettingsTabProps> = ({ ui, setUi, i
   };
 
   return (
-    <>
-      <Typography variant='subtitle2' fontWeight={600} mb={spacingMUI.sm}>
-        Зображення
-      </Typography>
+    <div className='flex flex-col gap-6'>
+      <div className='space-y-4'>
+        <h3 className='text-sm font-semibold tracking-tight'>Зображення</h3>
+        <div className='flex items-center space-x-2'>
+          <Checkbox id='autoProcess' checked={autoProcess} onCheckedChange={handleAutoProcessChange} />
+          <Label htmlFor='autoProcess' className='text-sm font-medium leading-none'>
+            Автообробка зображень
+          </Label>
+        </div>
+      </div>
 
-      <FormGroup>
-        <FormControlLabel control={<Checkbox checked={autoProcess} onChange={handleAutoProcessChange} size='small' />} label={<Typography variant='body2'>Автообробка зображень</Typography>} />
-      </FormGroup>
+      <div className='h-px bg-border my-2' />
 
-      <Divider sx={{ my: spacingMUI.base }} />
+      <div className='space-y-4'>
+        <div>
+          <h3 className='text-sm font-semibold tracking-tight mb-1'>Розпізнавання тексту на зображеннях (ALT/назви)</h3>
+          <p className='text-[13px] text-muted-foreground'>Працює в діалозі «Upload to Storage». Якщо не хочеш думати — вибери режим нижче.</p>
+        </div>
 
-      <Typography variant='subtitle2' fontWeight={600} mb={spacingMUI.sm}>
-        Розпізнавання тексту на зображеннях (ALT/назви)
-      </Typography>
-      <Typography variant='caption' color='text.secondary' display='block' mb={spacingMUI.base}>
-        Працює в діалозі «Upload to Storage». Якщо не хочеш думати — вибери режим нижче.
-      </Typography>
+        <div className='flex items-center justify-between'>
+          <Label htmlFor='enableOcr' className='text-sm font-medium leading-none'>
+            Увімкнути розпізнавання тексту
+          </Label>
+          <Switch id='enableOcr' checked={imageAnalysis.enabled} onCheckedChange={(c) => setImageAnalysis((prev) => ({ ...prev, enabled: c }))} />
+        </div>
 
-      <Stack spacing={spacingMUI.base}>
-        <FormControlLabel control={<Switch size='small' checked={imageAnalysis.enabled} onChange={(e) => setImageAnalysis((prev) => ({ ...prev, enabled: e.target.checked }))} />} label={<Typography variant='body2'>Увімкнути розпізнавання тексту</Typography>} />
-
-        <FormControl fullWidth disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}>
-          <TextField
-            select
-            size='small'
-            label='Режим (простий вибір)'
+        <div className='space-y-2'>
+          <Label>Режим (простий вибір)</Label>
+          <Select
+            disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
             value={ui.ocrSimpleMode}
-            onChange={(e) => {
-              const v = e.target.value;
+            onValueChange={(v) => {
               setUi((prev) => ({ ...prev, ocrSimpleMode: v as UiSettings["ocrSimpleMode"] }));
               if (v !== "custom" && OCR_PRESETS[v]) {
                 setImageAnalysis((prev) => ({ ...prev, ...OCR_PRESETS[v] }));
               }
-            }}
-            helperText='Швидко = легше для ноутбука. Банер = найкраще для картинок з великим текстом. Максимально = повільніше.'>
-            <MenuItem value='custom'>Не вибрано</MenuItem>
-            <MenuItem value='fast'>Швидко (економно)</MenuItem>
-            <MenuItem value='balanced'>Звичайно (рекомендовано)</MenuItem>
-            <MenuItem value='banner'>Банер з текстом (найкраще)</MenuItem>
-            <MenuItem value='max'>Максимальна якість (повільно)</MenuItem>
-          </TextField>
-        </FormControl>
+            }}>
+            <SelectTrigger>
+              <SelectValue placeholder='Виберіть режим' />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value='custom'>Не вибрано</SelectItem>
+              <SelectItem value='fast'>Швидко (економно)</SelectItem>
+              <SelectItem value='balanced'>Звичайно (рекомендовано)</SelectItem>
+              <SelectItem value='banner'>Банер з текстом (найкраще)</SelectItem>
+              <SelectItem value='max'>Максимальна якість (повільно)</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className='text-[12px] text-muted-foreground'>Швидко = легше для ноутбука. Банер = найкраще для картинок з великим текстом. Максимально = повільніше.</p>
+        </div>
 
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={spacingMUI.base}>
-          <FormControl sx={{ flex: 1 }}>
-            <TextField
-              select
-              size='small'
-              label='Інструмент аналізу'
-              value={imageAnalysis.engine}
-              onChange={(e) =>
-                setImageAnalysis((prev) => ({
-                  ...prev,
-                  engine: e.target.value as ImageAnalysisSettings["engine"],
-                }))
-              }
-              disabled={!imageAnalysis.enabled}>
-              <MenuItem value='off'>Вимкнено</MenuItem>
-              <MenuItem value='ocr'>Tesseract.js (Browser)</MenuItem>
-            </TextField>
-          </FormControl>
+        <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+          <div className='space-y-2'>
+            <Label>Інструмент аналізу</Label>
+            <Select disabled={!imageAnalysis.enabled} value={imageAnalysis.engine} onValueChange={(v) => setImageAnalysis((prev) => ({ ...prev, engine: v as ImageAnalysisSettings["engine"] }))}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='off'>Вимкнено</SelectItem>
+                <SelectItem value='ocr'>Tesseract.js (Browser)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-          <FormControlLabel
-            control={
-              <Switch
-                checked={imageAnalysis.useAiBackend || false}
-                onChange={(e) =>
-                  setImageAnalysis((prev) => ({
-                    ...prev,
-                    useAiBackend: e.target.checked,
-                  }))
-                }
-                color='secondary'
-              />
-            }
-            label={
-              <Box>
-                <Stack direction='row' alignItems='center' spacing={0.5}>
-                  <Typography variant='body2' fontWeight={600}>
-                    AI Backend 🐍
-                  </Typography>
-                  {imageAnalysis.useAiBackend && (
-                    <Tooltip title={aiBackendStatus === "online" ? "Сервер працює" : aiBackendStatus === "checking" ? "Перевірка..." : "Сервер не доступний"}>
-                      <Box
-                        sx={{
-                          width: 8,
-                          height: 8,
-                          borderRadius: "50%",
-                          backgroundColor: aiBackendStatus === "online" ? "#4caf50" : aiBackendStatus === "checking" ? "#ff9800" : "#f44336",
-                          animation: aiBackendStatus === "checking" ? "pulse 1s infinite" : "none",
-                          "@keyframes pulse": {
-                            "0%, 100%": { opacity: 1 },
-                            "50%": { opacity: 0.4 },
-                          },
-                        }}
-                      />
-                    </Tooltip>
-                  )}
-                </Stack>
-                <Typography variant='caption' color='text.secondary'>
-                  PaddleOCR + BLIP + CLIP
-                </Typography>
-              </Box>
-            }
-          />
-        </Stack>
+          <div className='flex flex-col justify-center gap-1.5 p-3 rounded-xl border border-border/50 bg-muted/20'>
+            <div className='flex items-center justify-between'>
+              <Label htmlFor='useAiBackend' className='text-sm font-bold flex items-center gap-2 cursor-pointer'>
+                AI Backend 🐍
+                {imageAnalysis.useAiBackend && (
+                  <div
+                    title={aiBackendStatus === "online" ? "Сервер працює" : aiBackendStatus === "checking" ? "Перевірка..." : "Сервер не доступний"}
+                    className='w-2 h-2 rounded-full'
+                    style={{
+                      backgroundColor: aiBackendStatus === "online" ? "#10B981" : aiBackendStatus === "checking" ? "#F59E0B" : "#EF4444",
+                      animation: aiBackendStatus === "checking" ? "pulse 1s infinite" : "none",
+                    }}
+                  />
+                )}
+              </Label>
+              <Switch id='useAiBackend' checked={imageAnalysis.useAiBackend || false} onCheckedChange={(c) => setImageAnalysis((prev) => ({ ...prev, useAiBackend: c }))} />
+            </div>
+            <p className='text-[11px] text-muted-foreground'>PaddleOCR + BLIP + CLIP</p>
+          </div>
+        </div>
 
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={spacingMUI.base}>
-          <FormControl sx={{ flex: 1 }}>
-            <TextField
-              select
-              size='small'
-              label='Запуск'
-              value={imageAnalysis.runMode}
-              onChange={(e) =>
-                setImageAnalysis((prev) => ({
-                  ...prev,
-                  runMode: e.target.value as ImageAnalysisSettings["runMode"],
-                }))
-              }
-              disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}>
-              <MenuItem value='manual'>Тільки вручну</MenuItem>
-              <MenuItem value='auto'>Автоматично (обережно)</MenuItem>
-            </TextField>
-          </FormControl>
-        </Stack>
+        <div className='space-y-2'>
+          <Label>Запуск</Label>
+          <Select disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"} value={imageAnalysis.runMode} onValueChange={(v) => setImageAnalysis((prev) => ({ ...prev, runMode: v as ImageAnalysisSettings["runMode"] }))}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value='manual'>Тільки вручну</SelectItem>
+              <SelectItem value='auto'>Автоматично (обережно)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-        <Alert severity='info' sx={{ borderRadius: `${borderRadius.md}px` }}>
-          Підстановка ALT та назв файлів виконується лише вручну.
+        <Alert className='bg-primary/5 border-primary/20 text-foreground'>
+          <AlertDescription>Підстановка ALT та назв файлів виконується лише вручну.</AlertDescription>
         </Alert>
 
-        <FormControlLabel control={<Switch size='small' checked={ui.showAdvancedOcrSettings} onChange={(e) => setUi((prev) => ({ ...prev, showAdvancedOcrSettings: e.target.checked }))} disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"} />} label={<Typography variant='body2'>Показати розширені налаштування</Typography>} />
+        <div className='flex items-center space-x-2 mt-2'>
+          <Checkbox id='advancedOcrSettings' disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"} checked={ui.showAdvancedOcrSettings} onCheckedChange={(c) => setUi((prev) => ({ ...prev, showAdvancedOcrSettings: !!c }))} />
+          <Label htmlFor='advancedOcrSettings' className='text-sm font-medium leading-none'>
+            Показати розширені налаштування
+          </Label>
+        </div>
 
         {!ui.showAdvancedOcrSettings && (
-          <Alert severity='info' sx={{ borderRadius: `${borderRadius.md}px` }}>
-            Якщо щось розпізнається погано — вибери «Банер з текстом». Якщо ноут слабкий — «Швидко».
+          <Alert className='bg-muted border-border/50 text-muted-foreground mt-2'>
+            <AlertDescription>Якщо щось розпізнається погано — вибери «Банер з текстом». Якщо ноут слабкий — «Швидко».</AlertDescription>
           </Alert>
         )}
 
         {ui.showAdvancedOcrSettings && (
-          <>
-            <Box>
-              <Typography variant='body2' fontWeight={600} mb={0.5}>
-                OCR min width: {imageAnalysis.ocrMinWidth}px
-              </Typography>
-              <Typography variant='caption' color='text.secondary' display='block' mb={1}>
-                Якщо картинка маленька — збільшимо перед OCR (часто сильно покращує точність).
-              </Typography>
-              <Slider size='small' value={imageAnalysis.ocrMinWidth} onChange={(_, v) => setImageAnalysis((prev) => ({ ...prev, ocrMinWidth: v as number }))} min={0} max={1600} step={50} disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"} />
-            </Box>
+          <div className='mt-4 space-y-6 pt-4 border-t border-border/50'>
+            <div className='space-y-3'>
+              <div className='flex items-center justify-between'>
+                <Label className='font-semibold'>OCR min width: {imageAnalysis.ocrMinWidth}px</Label>
+              </div>
+              <p className='text-[12px] text-muted-foreground -mt-1'>Якщо картинка маленька — збільшимо перед OCR (часто сильно покращує точність).</p>
+              <div className='pt-2'>
+                <Slider disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"} min={0} max={1600} step={50} value={[imageAnalysis.ocrMinWidth]} onValueChange={([v]) => setImageAnalysis((prev) => ({ ...prev, ocrMinWidth: v }))} />
+              </div>
+            </div>
 
-            <Box>
-              <Typography variant='body2' fontWeight={600} mb={0.5}>
-                OCR max width: {imageAnalysis.ocrMaxWidth}px
-              </Typography>
-              <Slider size='small' value={imageAnalysis.ocrMaxWidth} onChange={(_, v) => setImageAnalysis((prev) => ({ ...prev, ocrMaxWidth: v as number }))} min={600} max={2000} step={50} disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"} />
-            </Box>
+            <div className='space-y-3'>
+              <Label className='font-semibold'>OCR max width: {imageAnalysis.ocrMaxWidth}px</Label>
+              <div className='pt-2'>
+                <Slider disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"} min={600} max={2000} step={50} value={[imageAnalysis.ocrMaxWidth]} onValueChange={([v]) => setImageAnalysis((prev) => ({ ...prev, ocrMaxWidth: v }))} />
+              </div>
+            </div>
 
-            <Divider />
+            <div className='h-px bg-border my-2' />
 
-            <FormControlLabel control={<Switch size='small' checked={imageAnalysis.smartPrecheck} onChange={(e) => setImageAnalysis((prev) => ({ ...prev, smartPrecheck: e.target.checked }))} disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"} />} label={<Typography variant='body2'>Smart precheck (пропускати OCR якщо текст малоймовірний)</Typography>} />
+            <div className='flex items-center space-x-2'>
+              <Checkbox id='smartPrecheck' disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"} checked={imageAnalysis.smartPrecheck} onCheckedChange={(c) => setImageAnalysis((prev) => ({ ...prev, smartPrecheck: !!c }))} />
+              <Label htmlFor='smartPrecheck' className='text-sm font-medium leading-none'>
+                Smart precheck (пропускати OCR якщо текст малоймовірний)
+              </Label>
+            </div>
 
             {imageAnalysis.smartPrecheck && (
-              <>
-                <Box>
-                  <Typography variant='body2' fontWeight={600} mb={0.5}>
-                    Text likelihood threshold: {imageAnalysis.textLikelihoodThreshold.toFixed(3)}
-                  </Typography>
-                  <Typography variant='caption' color='text.secondary' display='block' mb={1}>
-                    Нижче = OCR запускається частіше. Вище = економить CPU, але може пропускати текст.
-                  </Typography>
-                  <Slider
-                    size='small'
-                    value={imageAnalysis.textLikelihoodThreshold}
-                    onChange={(_, v) =>
-                      setImageAnalysis((prev) => ({
-                        ...prev,
-                        textLikelihoodThreshold: v as number,
-                      }))
-                    }
-                    min={0.02}
-                    max={0.18}
-                    step={0.005}
-                    disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
-                  />
-                </Box>
-
-                <Box>
-                  <Typography variant='body2' fontWeight={600} mb={0.5}>
-                    Precheck edge threshold: {imageAnalysis.precheckEdgeThreshold}
-                  </Typography>
-                  <Typography variant='caption' color='text.secondary' display='block' mb={1}>
-                    Чутливість до дрібних контрастних контурів (текст).
-                  </Typography>
-                  <Slider
-                    size='small'
-                    value={imageAnalysis.precheckEdgeThreshold}
-                    onChange={(_, v) =>
-                      setImageAnalysis((prev) => ({
-                        ...prev,
-                        precheckEdgeThreshold: v as number,
-                      }))
-                    }
-                    min={30}
-                    max={140}
-                    step={5}
-                    disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
-                  />
-                </Box>
-              </>
+              <div className='pl-6 space-y-6 border-l-2 border-border/30 ml-2'>
+                <div className='space-y-3'>
+                  <Label className='font-semibold'>Text likelihood threshold: {imageAnalysis.textLikelihoodThreshold.toFixed(3)}</Label>
+                  <p className='text-[12px] text-muted-foreground -mt-1'>Нижче = OCR запускається частіше. Вище = економить CPU, але може пропускати текст.</p>
+                  <div className='pt-2'>
+                    <Slider disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"} min={0.02} max={0.18} step={0.005} value={[imageAnalysis.textLikelihoodThreshold]} onValueChange={([v]) => setImageAnalysis((prev) => ({ ...prev, textLikelihoodThreshold: v }))} />
+                  </div>
+                </div>
+                <div className='space-y-3'>
+                  <Label className='font-semibold'>Precheck edge threshold: {imageAnalysis.precheckEdgeThreshold}</Label>
+                  <p className='text-[12px] text-muted-foreground -mt-1'>Чутливість до дрібних контрастних контурів (текст).</p>
+                  <div className='pt-2'>
+                    <Slider disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"} min={30} max={140} step={5} value={[imageAnalysis.precheckEdgeThreshold]} onValueChange={([v]) => setImageAnalysis((prev) => ({ ...prev, precheckEdgeThreshold: v }))} />
+                  </div>
+                </div>
+              </div>
             )}
 
-            <Divider />
+            <div className='h-px bg-border my-2' />
 
-            <FormControlLabel control={<Switch size='small' checked={imageAnalysis.preprocess} onChange={(e) => setImageAnalysis((prev) => ({ ...prev, preprocess: e.target.checked }))} disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"} />} label={<Typography variant='body2'>Preprocess перед OCR (grayscale/contrast/threshold)</Typography>} />
+            <div className='flex items-center space-x-2'>
+              <Checkbox id='preprocess' disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"} checked={imageAnalysis.preprocess} onCheckedChange={(c) => setImageAnalysis((prev) => ({ ...prev, preprocess: !!c }))} />
+              <Label htmlFor='preprocess' className='text-sm font-medium leading-none'>
+                Preprocess перед OCR (grayscale/contrast/threshold)
+              </Label>
+            </div>
 
             {imageAnalysis.preprocess && (
-              <>
-                <Stack direction={{ xs: "column", sm: "row" }} spacing={spacingMUI.base}>
-                  <FormControl sx={{ flex: 1 }}>
-                    <TextField
-                      select
-                      size='small'
-                      label='PSM (page segmentation)'
-                      value={imageAnalysis.ocrPsm}
-                      onChange={(e) =>
-                        setImageAnalysis((prev) => ({
-                          ...prev,
-                          ocrPsm: e.target.value as ImageAnalysisSettings["ocrPsm"],
-                        }))
-                      }
-                      disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}>
-                      <MenuItem value='11'>11 — Sparse text (банери/UI)</MenuItem>
-                      <MenuItem value='6'>6 — Single block</MenuItem>
-                      <MenuItem value='7'>7 — Single line</MenuItem>
-                      <MenuItem value='8'>8 — Single word</MenuItem>
-                      <MenuItem value='4'>4 — Single column</MenuItem>
-                      <MenuItem value='3'>3 — Auto</MenuItem>
-                    </TextField>
-                  </FormControl>
+              <div className='pl-6 space-y-6 border-l-2 border-border/30 ml-2'>
+                <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+                  <div className='space-y-2'>
+                    <Label>PSM (page segmentation)</Label>
+                    <Select disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"} value={imageAnalysis.ocrPsm} onValueChange={(v) => setImageAnalysis((prev) => ({ ...prev, ocrPsm: v as ImageAnalysisSettings["ocrPsm"] }))}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value='11'>11 — Sparse text (банери/UI)</SelectItem>
+                        <SelectItem value='6'>6 — Single block</SelectItem>
+                        <SelectItem value='7'>7 — Single line</SelectItem>
+                        <SelectItem value='8'>8 — Single word</SelectItem>
+                        <SelectItem value='4'>4 — Single column</SelectItem>
+                        <SelectItem value='3'>3 — Auto</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                  <FormControl sx={{ flex: 1 }}>
-                    <TextField
-                      select
-                      size='small'
-                      label='Scale factor'
-                      value={imageAnalysis.ocrScaleFactor}
-                      onChange={(e) =>
-                        setImageAnalysis((prev) => ({
-                          ...prev,
-                          ocrScaleFactor: Number(e.target.value),
-                        }))
-                      }
-                      disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
-                      helperText='2× часто дає +точність, але важче для CPU'>
-                      <MenuItem value={1}>1×</MenuItem>
-                      <MenuItem value={2}>2×</MenuItem>
-                      <MenuItem value={3}>3×</MenuItem>
-                    </TextField>
-                  </FormControl>
-                </Stack>
+                  <div className='space-y-2'>
+                    <Label>Scale factor</Label>
+                    <Select disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"} value={String(imageAnalysis.ocrScaleFactor)} onValueChange={(v) => setImageAnalysis((prev) => ({ ...prev, ocrScaleFactor: Number(v) }))}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value='1'>1×</SelectItem>
+                        <SelectItem value='2'>2×</SelectItem>
+                        <SelectItem value='3'>3×</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className='text-[11px] text-muted-foreground'>2× часто дає +точність, але важче для CPU</p>
+                  </div>
+                </div>
 
-                <Box>
-                  <Typography variant='body2' fontWeight={600} mb={0.5}>
-                    Contrast: {imageAnalysis.preprocessContrast.toFixed(1)}×
-                  </Typography>
-                  <Slider
-                    size='small'
-                    value={imageAnalysis.preprocessContrast}
-                    onChange={(_, v) =>
-                      setImageAnalysis((prev) => ({
-                        ...prev,
-                        preprocessContrast: v as number,
-                      }))
-                    }
-                    min={1}
-                    max={3}
-                    step={0.1}
-                    disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
-                  />
-                </Box>
+                <div className='space-y-3'>
+                  <Label className='font-semibold'>Contrast: {imageAnalysis.preprocessContrast.toFixed(1)}×</Label>
+                  <div className='pt-2'>
+                    <Slider disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"} min={1} max={3} step={0.1} value={[imageAnalysis.preprocessContrast]} onValueChange={([v]) => setImageAnalysis((prev) => ({ ...prev, preprocessContrast: v }))} />
+                  </div>
+                </div>
 
-                <Box>
-                  <Typography variant='body2' fontWeight={600} mb={0.5}>
-                    Brightness: {imageAnalysis.preprocessBrightness.toFixed(2)}×
-                  </Typography>
-                  <Slider
-                    size='small'
-                    value={imageAnalysis.preprocessBrightness}
-                    onChange={(_, v) =>
-                      setImageAnalysis((prev) => ({
-                        ...prev,
-                        preprocessBrightness: v as number,
-                      }))
-                    }
-                    min={0.8}
-                    max={1.4}
-                    step={0.02}
-                    disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
-                  />
-                </Box>
+                <div className='space-y-3'>
+                  <Label className='font-semibold'>Brightness: {imageAnalysis.preprocessBrightness.toFixed(2)}×</Label>
+                  <div className='pt-2'>
+                    <Slider disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"} min={0.8} max={1.4} step={0.02} value={[imageAnalysis.preprocessBrightness]} onValueChange={([v]) => setImageAnalysis((prev) => ({ ...prev, preprocessBrightness: v }))} />
+                  </div>
+                </div>
 
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={imageAnalysis.preprocessUseThreshold}
-                      onChange={(e) =>
-                        setImageAnalysis((prev) => ({
-                          ...prev,
-                          preprocessUseThreshold: e.target.checked,
-                        }))
-                      }
-                      size='small'
-                      disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
-                    />
-                  }
-                  label={<Typography variant='body2'>Threshold (binarize)</Typography>}
-                />
+                <div className='flex items-center space-x-2'>
+                  <Checkbox id='useThreshold' disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"} checked={imageAnalysis.preprocessUseThreshold} onCheckedChange={(c) => setImageAnalysis((prev) => ({ ...prev, preprocessUseThreshold: !!c }))} />
+                  <Label htmlFor='useThreshold' className='text-sm font-medium'>
+                    Threshold (binarize)
+                  </Label>
+                </div>
 
                 {imageAnalysis.preprocessUseThreshold && (
-                  <Box>
-                    <Typography variant='body2' fontWeight={600} mb={0.5}>
-                      Threshold: {imageAnalysis.preprocessThreshold}
-                    </Typography>
-                    <Slider
-                      size='small'
-                      value={imageAnalysis.preprocessThreshold}
-                      onChange={(_, v) =>
-                        setImageAnalysis((prev) => ({
-                          ...prev,
-                          preprocessThreshold: v as number,
-                        }))
-                      }
-                      min={0}
-                      max={255}
-                      step={5}
-                      disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
-                    />
-                  </Box>
+                  <div className='pl-6 space-y-3 border-l-2 border-border/30 ml-2'>
+                    <Label className='font-semibold'>Threshold: {imageAnalysis.preprocessThreshold}</Label>
+                    <div className='pt-2'>
+                      <Slider disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"} min={0} max={255} step={5} value={[imageAnalysis.preprocessThreshold]} onValueChange={([v]) => setImageAnalysis((prev) => ({ ...prev, preprocessThreshold: v }))} />
+                    </div>
+                  </div>
                 )}
 
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={imageAnalysis.preprocessBlur}
-                      onChange={(e) =>
-                        setImageAnalysis((prev) => ({
-                          ...prev,
-                          preprocessBlur: e.target.checked,
-                        }))
-                      }
-                      size='small'
-                      disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
-                    />
-                  }
-                  label={<Typography variant='body2'>Blur background (reduce noise)</Typography>}
-                />
+                <div className='flex items-center space-x-2'>
+                  <Checkbox id='blur' disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"} checked={imageAnalysis.preprocessBlur} onCheckedChange={(c) => setImageAnalysis((prev) => ({ ...prev, preprocessBlur: !!c }))} />
+                  <Label htmlFor='blur' className='text-sm font-medium'>
+                    Blur background (reduce noise)
+                  </Label>
+                </div>
 
                 {imageAnalysis.preprocessBlur && (
-                  <Box>
-                    <Typography variant='body2' fontWeight={600} mb={0.5}>
-                      Blur radius: {imageAnalysis.preprocessBlurRadius}
-                    </Typography>
-                    <Slider
-                      size='small'
-                      value={imageAnalysis.preprocessBlurRadius}
-                      onChange={(_, v) =>
-                        setImageAnalysis((prev) => ({
-                          ...prev,
-                          preprocessBlurRadius: v as number,
-                        }))
-                      }
-                      min={1}
-                      max={3}
-                      step={1}
-                      disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
-                    />
-                  </Box>
+                  <div className='pl-6 space-y-3 border-l-2 border-border/30 ml-2'>
+                    <Label className='font-semibold'>Blur radius: {imageAnalysis.preprocessBlurRadius}</Label>
+                    <div className='pt-2'>
+                      <Slider disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"} min={1} max={3} step={1} value={[imageAnalysis.preprocessBlurRadius]} onValueChange={([v]) => setImageAnalysis((prev) => ({ ...prev, preprocessBlurRadius: v }))} />
+                    </div>
+                  </div>
                 )}
 
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={imageAnalysis.preprocessSharpen}
-                      onChange={(e) =>
-                        setImageAnalysis((prev) => ({
-                          ...prev,
-                          preprocessSharpen: e.target.checked,
-                        }))
-                      }
-                      size='small'
-                      disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
-                    />
-                  }
-                  label={<Typography variant='body2'>Sharpen (edge enhance)</Typography>}
-                />
+                <div className='flex items-center space-x-2'>
+                  <Checkbox id='sharpen' disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"} checked={imageAnalysis.preprocessSharpen} onCheckedChange={(c) => setImageAnalysis((prev) => ({ ...prev, preprocessSharpen: !!c }))} />
+                  <Label htmlFor='sharpen' className='text-sm font-medium'>
+                    Sharpen (edge enhance)
+                  </Label>
+                </div>
 
-                <TextField size='small' label='Whitelist (optional)' value={imageAnalysis.ocrWhitelist} onChange={(e) => setImageAnalysis((prev) => ({ ...prev, ocrWhitelist: e.target.value }))} disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"} placeholder='Напр: ABCDEFGHIJKLMNOPQRSTUVWXYZ' helperText='Задай, якщо знаєш формат (наприклад тільки A–Z/0–9). Порожньо = без whitelist.' />
+                <div className='space-y-2'>
+                  <Label>Whitelist (optional)</Label>
+                  <Input disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"} placeholder='Напр: ABCDEFGHIJKLMNOPQRSTUVWXYZ' value={imageAnalysis.ocrWhitelist} onChange={(e) => setImageAnalysis((prev) => ({ ...prev, ocrWhitelist: e.target.value }))} />
+                  <p className='text-[11px] text-muted-foreground'>Задай, якщо знаєш формат (наприклад тільки A–Z/0–9). Порожньо = без whitelist.</p>
+                </div>
 
-                <FormControl sx={{ minWidth: 240 }}>
-                  <TextField
-                    select
-                    size='small'
-                    label='Text area (crop)'
-                    value={imageAnalysis.roiPreset}
-                    onChange={(e) => {
-                      const p = e.target.value as ImageAnalysisSettings["roiPreset"];
-                      setImageAnalysis((prev) => {
-                        if (p === "full") {
-                          return { ...prev, roiEnabled: false, roiPreset: p, roiX: 0, roiY: 0, roiW: 1, roiH: 1 };
-                        }
-                        if (p === "auto") {
-                          return { ...prev, roiEnabled: true, roiPreset: p, roiX: 0, roiY: 0, roiW: 1, roiH: 1 };
-                        }
-                        if (p === "top60") {
-                          return { ...prev, roiEnabled: true, roiPreset: p, roiX: 0, roiY: 0, roiW: 1, roiH: 0.6 };
-                        }
-                        if (p === "top60_left70") {
-                          return { ...prev, roiEnabled: true, roiPreset: p, roiX: 0, roiY: 0, roiW: 0.7, roiH: 0.6 };
-                        }
-                        return { ...prev, roiEnabled: true, roiPreset: p };
-                      });
-                    }}
+                <div className='space-y-2'>
+                  <Label>Text area (crop)</Label>
+                  <Select
                     disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
-                    helperText='Для банерів часто допомагає відрізати праву частину/низ.'>
-                    <MenuItem value='full'>Full image</MenuItem>
-                    <MenuItem value='auto'>Auto (detect text area)</MenuItem>
-                    <MenuItem value='top60'>Top 60% (full width)</MenuItem>
-                    <MenuItem value='top60_left70'>Top 60% + Left 70% (remove right)</MenuItem>
-                    <MenuItem value='custom'>Custom (manual)</MenuItem>
-                  </TextField>
-                </FormControl>
+                    value={imageAnalysis.roiPreset}
+                    onValueChange={(p: string) => {
+                      const preset = p as ImageAnalysisSettings["roiPreset"];
+                      setImageAnalysis((prev) => {
+                        if (preset === "full") return { ...prev, roiEnabled: false, roiPreset: preset, roiX: 0, roiY: 0, roiW: 1, roiH: 1 };
+                        if (preset === "auto") return { ...prev, roiEnabled: true, roiPreset: preset, roiX: 0, roiY: 0, roiW: 1, roiH: 1 };
+                        if (preset === "top60") return { ...prev, roiEnabled: true, roiPreset: preset, roiX: 0, roiY: 0, roiW: 1, roiH: 0.6 };
+                        if (preset === "top60_left70") return { ...prev, roiEnabled: true, roiPreset: preset, roiX: 0, roiY: 0, roiW: 0.7, roiH: 0.6 };
+                        return { ...prev, roiEnabled: true, roiPreset: preset };
+                      });
+                    }}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value='full'>Full image</SelectItem>
+                      <SelectItem value='auto'>Auto (detect text area)</SelectItem>
+                      <SelectItem value='top60'>Top 60% (full width)</SelectItem>
+                      <SelectItem value='top60_left70'>Top 60% + Left 70% (remove right)</SelectItem>
+                      <SelectItem value='custom'>Custom (manual)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className='text-[11px] text-muted-foreground'>Для банерів часто допомагає відрізати праву частину/низ.</p>
+                </div>
 
                 {imageAnalysis.roiPreset === "custom" && imageAnalysis.roiEnabled && (
-                  <Stack spacing={spacingMUI.sm}>
-                    <Typography variant='caption' color='text.secondary'>
-                      ROI fractions (0..1): X/Y (start), W/H (size)
-                    </Typography>
-                    <Stack direction={{ xs: "column", sm: "row" }} spacing={spacingMUI.base}>
-                      <TextField size='small' type='number' label='X' value={imageAnalysis.roiX} onChange={(e) => setImageAnalysis((prev) => ({ ...prev, roiX: Number(e.target.value) }))} inputProps={{ min: 0, max: 1, step: 0.05 }} />
-                      <TextField size='small' type='number' label='Y' value={imageAnalysis.roiY} onChange={(e) => setImageAnalysis((prev) => ({ ...prev, roiY: Number(e.target.value) }))} inputProps={{ min: 0, max: 1, step: 0.05 }} />
-                      <TextField size='small' type='number' label='W' value={imageAnalysis.roiW} onChange={(e) => setImageAnalysis((prev) => ({ ...prev, roiW: Number(e.target.value) }))} inputProps={{ min: 0.1, max: 1, step: 0.05 }} />
-                      <TextField size='small' type='number' label='H' value={imageAnalysis.roiH} onChange={(e) => setImageAnalysis((prev) => ({ ...prev, roiH: Number(e.target.value) }))} inputProps={{ min: 0.1, max: 1, step: 0.05 }} />
-                    </Stack>
-                  </Stack>
+                  <div className='space-y-2 pl-6 border-l-2 border-border/30 ml-2'>
+                    <p className='text-[11px] text-muted-foreground'>ROI fractions (0..1): X/Y (start), W/H (size)</p>
+                    <div className='grid grid-cols-4 gap-2'>
+                      <Input type='number' step='0.05' min='0' max='1' placeholder='X' value={imageAnalysis.roiX} onChange={(e) => setImageAnalysis((prev) => ({ ...prev, roiX: Number(e.target.value) }))} />
+                      <Input type='number' step='0.05' min='0' max='1' placeholder='Y' value={imageAnalysis.roiY} onChange={(e) => setImageAnalysis((prev) => ({ ...prev, roiY: Number(e.target.value) }))} />
+                      <Input type='number' step='0.05' min='0.1' max='1' placeholder='W' value={imageAnalysis.roiW} onChange={(e) => setImageAnalysis((prev) => ({ ...prev, roiW: Number(e.target.value) }))} />
+                      <Input type='number' step='0.05' min='0.1' max='1' placeholder='H' value={imageAnalysis.roiH} onChange={(e) => setImageAnalysis((prev) => ({ ...prev, roiH: Number(e.target.value) }))} />
+                    </div>
+                  </div>
                 )}
 
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={imageAnalysis.spellCorrectionBanner}
-                      onChange={(e) =>
-                        setImageAnalysis((prev) => ({
-                          ...prev,
-                          spellCorrectionBanner: e.target.checked,
-                        }))
-                      }
-                      size='small'
-                      disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
-                    />
-                  }
-                  label={<Typography variant='body2'>Spell correction (banner/CTA)</Typography>}
-                />
-              </>
+                <div className='flex items-center space-x-2'>
+                  <Checkbox id='spellCorrection' disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"} checked={imageAnalysis.spellCorrectionBanner} onCheckedChange={(c) => setImageAnalysis((prev) => ({ ...prev, spellCorrectionBanner: !!c }))} />
+                  <Label htmlFor='spellCorrection' className='text-sm font-medium'>
+                    Spell correction (banner/CTA)
+                  </Label>
+                </div>
+              </div>
             )}
 
-            <TextField
-              size='small'
-              type='number'
-              label='Ліміт авто-аналізу (файлів)'
-              value={imageAnalysis.autoAnalyzeMaxFiles}
-              onChange={(e) => {
-                const n = Number(e.target.value || 0);
-                setImageAnalysis((prev) => ({
-                  ...prev,
-                  autoAnalyzeMaxFiles: Number.isFinite(n) ? Math.max(0, Math.min(50, n)) : 0,
-                }));
-              }}
-              disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off" || imageAnalysis.runMode !== "auto"}
-              inputProps={{ min: 0, max: 50 }}
-              helperText='0 = не запускати автоматично'
-            />
-          </>
+            <div className='space-y-2'>
+              <Label>Ліміт авто-аналізу (файлів)</Label>
+              <Input
+                type='number'
+                min='0'
+                max='50'
+                disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off" || imageAnalysis.runMode !== "auto"}
+                value={imageAnalysis.autoAnalyzeMaxFiles}
+                onChange={(e) => {
+                  const n = Number(e.target.value || 0);
+                  setImageAnalysis((prev) => ({ ...prev, autoAnalyzeMaxFiles: Number.isFinite(n) ? Math.max(0, Math.min(50, n)) : 0 }));
+                }}
+              />
+              <p className='text-[11px] text-muted-foreground'>0 = не запускати автоматично</p>
+            </div>
+          </div>
         )}
-      </Stack>
-    </>
+      </div>
+    </div>
   );
 };
