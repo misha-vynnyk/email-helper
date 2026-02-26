@@ -221,9 +221,11 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
 
       // Auto-close if all files in this batch succeeded AND the fresh setting is enabled
       if (successfulIds.size === response.results.length && isAutoCloseEnabled) {
+        // Use timeout 0 to let React flush the final successful states before closing,
+        // avoiding UI flashes of the success screen.
         setTimeout(() => {
           handleClose();
-        }, 2500); // Wait 2.5s so user can see the "success" state
+        }, 0);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
