@@ -223,7 +223,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
       if (successfulIds.size === response.results.length && isAutoCloseEnabled) {
         setTimeout(() => {
           handleClose();
-        }, 800);
+        }, 2500); // Wait 2.5s so user can see the "success" state
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
