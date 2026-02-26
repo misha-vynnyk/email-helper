@@ -1,22 +1,14 @@
-/**
- * HTML to Table Converter Panel
- * Main UI component for converting HTML to table-based email code
- */
+import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Plus, Copy, Download, Minus, ArrowRightLeft, CheckSquare, Square } from "lucide-react";
 
-import { useRef } from "react";
-import { Box, Button, Checkbox, Divider, FormControlLabel, IconButton, Stack, TextField, Tooltip, Typography, useTheme } from "@mui/material";
-import { Add as AddIcon, ContentCopy as CopyIcon, Download as DownloadIcon, Remove as RemoveIcon, SwapHoriz as ConvertIcon } from "@mui/icons-material";
-
-import { borderRadius, spacingMUI } from "../theme/tokens";
 import ImageProcessor from "./ImageProcessor";
 import UploadHistory from "./UploadHistory";
 import { Header } from "./components/Header";
-import { EditorToolbar } from "./components/EditorToolbar";
-import { StyledPaper } from "./components/StyledPaper";
 import { useHtmlConverterLogic } from "./hooks/useHtmlConverterLogic";
 
 export default function HtmlConverterPanel() {
-  const theme = useTheme();
+  const { t } = useTranslation();
 
   // Refs for contenteditable divs and textareas
   const editorRef = useRef<HTMLDivElement>(null);
@@ -32,301 +24,168 @@ export default function HtmlConverterPanel() {
 
   const { ui, setUi, imageAnalysis, setImageAnalysis, aiBackendStatus } = settings;
 
+  const [leftTab, setLeftTab] = useState<"logs" | "raw">("logs");
+  const [rightTab, setRightTab] = useState<"html" | "mjml">("html");
+
   return (
-    <Box
-      data-app-scroll='true'
-      sx={{
-        width: "100%",
-        display: "flex",
-        flexDirection: "column",
-        p: ui.compactMode ? spacingMUI.base : spacingMUI.xl,
-        gap: ui.compactMode ? spacingMUI.base : spacingMUI.lg,
-      }}>
-      {/* Header */}
-      <Header ui={ui} setUi={setUi} imageAnalysis={imageAnalysis} setImageAnalysis={setImageAnalysis} autoProcess={state.autoProcess} setAutoProcess={actions.setAutoProcess} aiBackendStatus={aiBackendStatus} unseenLogCount={state.unseenLogCount} onClear={actions.handleClear} />
+    <div className='w-full min-h-screen bg-background p-4 md:p-8 text-foreground font-sans transition-colors duration-300'>
+      <div className='max-w-[1600px] mx-auto flex flex-col gap-6'>
+        {/* TOP BAR */}
+        <div className='w-full flex items-center justify-between'>
+          <Header ui={ui} setUi={setUi} imageAnalysis={imageAnalysis} setImageAnalysis={setImageAnalysis} autoProcess={state.autoProcess} setAutoProcess={actions.setAutoProcess} aiBackendStatus={aiBackendStatus} unseenLogCount={state.unseenLogCount} onClear={actions.handleClear} isAutoExporting={state.isAutoExporting} onAutoExportAll={actions.handleAutoExportAll} />
+        </div>
 
-      {ui.stickyActions && (
-        <EditorToolbar
-          onExportHTML={actions.handleExportHTML}
-          onExportMJML={actions.handleExportMJML}
-          onAutoExportAll={actions.handleAutoExportAll}
-          isAutoExporting={state.isAutoExporting}
-          sx={{
-            position: "sticky",
-            top: spacingMUI.sm,
-            zIndex: 10,
-          }}
-        />
-      )}
+        {/* MAIN GRID */}
+        <div className='grid grid-cols-1 xl:grid-cols-12 gap-6 items-start'>
+          {/* LEFT COLUMN (7 cols) */}
+          <div className='col-span-1 xl:col-span-7 flex flex-col gap-6'>
+            {/* EDITOR CARD */}
+            <div className='bg-card rounded-[2rem] p-6 md:p-8 shadow-soft flex flex-col border border-border/50'>
+              <h2 className='text-lg md:text-xl font-extrabold mb-5 flex items-center gap-2 text-foreground'>✏️ {t("Text Editor", "Редактор тексту")}</h2>
+              <div ref={editorRef} contentEditable suppressContentEditableWarning className='w-full min-h-[300px] max-h-[600px] overflow-auto bg-background border border-border/50 rounded-2xl p-6 font-mono text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary transition-all empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground shadow-inner' data-placeholder={t("Paste or type text here...", "Вставте або введіть текст сюди...")} />
+            </div>
 
-      {/* Editor */}
-      <StyledPaper>
-        <Typography variant='subtitle2' fontWeight={600} mb={spacingMUI.base}>
-          Редактор тексту ✏️
-        </Typography>
-        <Box
-          ref={editorRef}
-          contentEditable
-          suppressContentEditableWarning
-          sx={{
-            minHeight: ui.compactMode ? 160 : 200,
-            maxHeight: ui.compactMode ? 320 : 400,
-            overflow: "auto",
-            p: ui.compactMode ? spacingMUI.sm : spacingMUI.base,
-            borderRadius: `${borderRadius.md}px`,
-            backgroundColor: theme.palette.action.hover,
-            fontFamily: "monospace",
-            fontSize: "14px",
-            lineHeight: 1.6,
-            transition: "all 0.2s ease",
-            "&:focus": {
-              outline: `2px solid ${theme.palette.primary.main}`,
-              outlineOffset: -2,
-              backgroundColor: theme.palette.action.hover,
-            },
-            "&:empty:before": {
-              content: '"Вставте або введіть текст сюди..."',
-              color: theme.palette.text.disabled,
-            },
-          }}
-        />
-      </StyledPaper>
+            {/* FILE SETTINGS (Floating Pills) */}
+            <div className='flex flex-wrap items-center gap-3'>
+              <div className='flex items-center bg-card rounded-full shadow-soft p-1.5 pl-5 border border-border/50 flex-1 min-w-[280px]'>
+                <span className='text-sm font-bold text-muted-foreground mr-3 shrink-0'>{t("File Name:", "Ім'я файлу:")}</span>
+                <input type='text' value={state.fileName} onChange={(e) => actions.setFileName(e.target.value)} onFocus={(e) => e.target.select()} className='bg-transparent border-none outline-none text-[15px] font-extrabold text-foreground w-full focus:ring-0 min-w-0 placeholder:text-muted-foreground' />
+                <div className='flex items-center gap-1.5 ml-2 shrink-0'>
+                  <button onClick={() => actions.changeFileNumber(-1)} className='p-2 bg-secondary hover:bg-muted rounded-full text-foreground transition-colors shadow-sm'>
+                    <Minus size={14} strokeWidth={3} />
+                  </button>
+                  <button onClick={() => actions.changeFileNumber(1)} className='p-2 bg-secondary hover:bg-muted rounded-full text-foreground transition-colors shadow-sm'>
+                    <Plus size={14} strokeWidth={3} />
+                  </button>
+                </div>
+              </div>
 
-      {/* File Settings (always visible) */}
-      <StyledPaper>
-        <Typography variant='subtitle2' fontWeight={600} mb={spacingMUI.base}>
-          Налаштування файлу
-        </Typography>
+              {ui.showApproveNeeded && (
+                <button onClick={() => actions.setApproveNeeded(!state.approveNeeded)} className={`flex items-center gap-2 px-5 py-3 rounded-full shadow-soft border transition-all ${state.approveNeeded ? "bg-primary border-primary text-primary-foreground shadow-soft-lg transform -translate-y-0.5" : "bg-card border-border/50 text-muted-foreground hover:bg-muted"}`}>
+                  {state.approveNeeded ? <CheckSquare size={16} /> : <Square size={16} />}
+                  <span className='text-sm font-bold'>Approve needed</span>
+                </button>
+              )}
 
-        <Stack direction='row' spacing={spacingMUI.base} alignItems='center' flexWrap='wrap'>
-          <Stack direction='row' spacing={spacingMUI.sm} alignItems='center' sx={{ flex: 1, minWidth: 250 }}>
-            <TextField
-              label="Ім'я файлу"
-              value={state.fileName}
-              onChange={(e) => actions.setFileName(e.target.value)}
-              onClick={(e) => (e.target as HTMLInputElement).select()}
-              size='small'
-              fullWidth
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: `${borderRadius.md}px`,
-                  transition: "all 0.2s ease",
-                  "&.Mui-focused": {
-                    backgroundColor: "transparent",
-                    "& fieldset": {
-                      borderWidth: "2px",
-                    },
-                  },
-                },
-              }}
-            />
-            <Tooltip title='Зменшити номер'>
-              <IconButton size='small' onClick={() => actions.changeFileNumber(-1)} color='primary'>
-                <RemoveIcon fontSize='small' />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title='Збільшити номер'>
-              <IconButton size='small' onClick={() => actions.changeFileNumber(1)} color='primary'>
-                <AddIcon fontSize='small' />
-              </IconButton>
-            </Tooltip>
-          </Stack>
+              <button onClick={() => actions.setUseAlfaOne(!state.useAlfaOne)} className={`flex items-center gap-2 px-5 py-3 rounded-full shadow-soft border transition-all ${state.useAlfaOne ? "bg-primary border-primary text-primary-foreground shadow-soft-lg transform -translate-y-0.5" : "bg-card border-border/50 text-muted-foreground hover:bg-muted"}`}>
+                {state.useAlfaOne ? <CheckSquare size={16} /> : <Square size={16} />}
+                <span className='text-sm font-bold'>AlfaOne</span>
+              </button>
+            </div>
 
-          {ui.showApproveNeeded && <FormControlLabel control={<Checkbox checked={state.approveNeeded} onChange={(e) => actions.setApproveNeeded(e.target.checked)} size='small' />} label={<Typography variant='body2'>Approve needed</Typography>} />}
+            {/* DIAGNOSTICS TABS */}
+            {((ui.showInputHtml && state.inputHtml) || (ui.showLogsPanel && state.log.length > 0)) && (
+              <div className='bg-card rounded-[2rem] shadow-soft overflow-hidden flex flex-col border border-border/50 mt-2'>
+                <div className='flex items-center px-6 pt-4 gap-6 border-b border-border/50'>
+                  <button onClick={() => setLeftTab("logs")} className={`pb-3 text-sm font-bold border-b-2 transition-colors ${leftTab === "logs" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground/80"}`}>
+                    {t("Operations Log", "Лог операцій")}
+                  </button>
+                  <button onClick={() => setLeftTab("raw")} className={`pb-3 text-sm font-bold border-b-2 transition-colors ${leftTab === "raw" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground/80"}`}>
+                    {t("Raw HTML", "Вхідний HTML")}
+                  </button>
+                </div>
+                <div className='p-5 max-h-[350px] overflow-auto bg-background shadow-inner'>
+                  {leftTab === "logs" && (
+                    <div className='flex flex-col gap-2'>
+                      {state.log.map((entry, idx) => (
+                        <div key={idx} className='font-mono text-xs text-foreground bg-card px-4 py-2.5 rounded-xl border border-border/50 shadow-sm'>
+                          {entry}
+                        </div>
+                      ))}
+                      {state.log.length === 0 && <div className='text-sm text-muted-foreground italic font-medium p-4 text-center'>{t("No logs yet.", "Немає записів.")}</div>}
+                    </div>
+                  )}
+                  {leftTab === "raw" && (
+                    <div className='relative group'>
+                      <button onClick={() => actions.handleCopy(state.inputHtml, "HTML")} className='absolute top-3 right-3 p-2 bg-background shadow-soft rounded-full opacity-0 group-hover:opacity-100 transition-all hover:scale-105 text-muted-foreground hover:text-primary border border-border/50'>
+                        <Copy size={16} strokeWidth={2.5} />
+                      </button>
+                      <pre className='font-mono text-[11px] text-muted-foreground bg-background p-5 rounded-2xl overflow-x-auto border border-border/30 shadow-sm leading-relaxed'>{state.inputHtml || t("No HTML source.", "Немає вхідного коду.")}</pre>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
 
-          <FormControlLabel control={<Checkbox checked={state.useAlfaOne} onChange={(e) => actions.setUseAlfaOne(e.target.checked)} size='small' />} label={<Typography variant='body2'>AlfaOne</Typography>} />
+          {/* RIGHT COLUMN (5 cols) */}
+          <div className='col-span-1 xl:col-span-5 flex flex-col gap-6'>
+            {/* IMAGE PROCESSOR (Legacy wrapper wrapper) */}
+            {state.showImageProcessor && (
+              <div className='bg-card rounded-[2rem] shadow-soft p-1.5 overflow-hidden border-[3px] border-primary/40 relative'>
+                <div className='absolute top-0 right-0 bg-primary text-primary-foreground text-[10px] uppercase font-extrabold px-3 py-1 rounded-bl-xl z-20 shadow-sm leading-none'>Images Detected</div>
+                {/* Legacy component renders here for now */}
+                <ImageProcessor
+                  editorRef={editorRef}
+                  onLog={actions.addLog}
+                  visible={state.showImageProcessor}
+                  onVisibilityChange={actions.setShowImageProcessor}
+                  triggerExtract={state.triggerExtract}
+                  fileName={state.fileName}
+                  onHistoryAdd={actions.handleAddToHistory}
+                  onReplaceUrls={actions.handleReplaceUrls}
+                  onUploadedUrlsChange={actions.setUploadedUrlMap}
+                  onUploadedAltsChange={actions.handleAltsUpdate}
+                  onResetReplacement={actions.handleResetReplacement}
+                  hasOutput={state.hasOutput}
+                  autoProcess={state.autoProcess}
+                  storageProvider={state.useAlfaOne ? "alphaone" : "default"}
+                  imageAnalysisSettings={imageAnalysis}
+                />
+              </div>
+            )}
 
-          <Tooltip title='Експортувати HTML+MJML → підставити storage URLs (якщо є) → скачати два файли'>
-            <span>
-              <Button variant='contained' size='small' onClick={actions.handleAutoExportAll} disabled={state.isAutoExporting} startIcon={<DownloadIcon fontSize='small' />} sx={{ textTransform: "none", whiteSpace: "nowrap", ml: "auto" }}>
-                {state.isAutoExporting ? "Готую..." : "Зробити все"}
-              </Button>
-            </span>
-          </Tooltip>
-        </Stack>
-      </StyledPaper>
+            {/* OUTPUT TABS */}
+            <div className='bg-card rounded-[2rem] shadow-soft overflow-hidden flex flex-col flex-1 min-h-[500px] border border-border/50'>
+              <div className='flex items-center justify-between border-b border-border/50 px-6 pt-5 bg-card'>
+                <div className='flex gap-6'>
+                  <button onClick={() => setRightTab("html")} className={`pb-3 text-sm font-bold border-b-2 transition-colors ${rightTab === "html" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground/80"}`}>
+                    HTML {t("Output", "Результат")}
+                  </button>
+                  <button onClick={() => setRightTab("mjml")} className={`pb-3 text-sm font-bold border-b-2 transition-colors ${rightTab === "mjml" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground/80"}`}>
+                    MJML {t("Output", "Результат")}
+                  </button>
+                </div>
 
-      {/* Image Processor - only visible when images detected */}
-      <ImageProcessor
-        editorRef={editorRef}
-        onLog={actions.addLog}
-        visible={state.showImageProcessor}
-        onVisibilityChange={actions.setShowImageProcessor}
-        triggerExtract={state.triggerExtract}
-        fileName={state.fileName}
-        onHistoryAdd={actions.handleAddToHistory}
-        onReplaceUrls={actions.handleReplaceUrls}
-        onUploadedUrlsChange={actions.setUploadedUrlMap}
-        onUploadedAltsChange={actions.handleAltsUpdate}
-        onResetReplacement={actions.handleResetReplacement}
-        hasOutput={state.hasOutput}
-        autoProcess={state.autoProcess}
-        storageProvider={state.useAlfaOne ? "alphaone" : "default"}
-        imageAnalysisSettings={imageAnalysis}
-      />
+                <div className='flex gap-1.5 pb-3'>
+                  <button onClick={rightTab === "html" ? actions.handleExportHTML : actions.handleExportMJML} disabled={state.isAutoExporting} className='p-2 bg-secondary hover:bg-muted text-foreground rounded-full transition-colors active:scale-95 shadow-sm' title='Export'>
+                    <ArrowRightLeft size={15} strokeWidth={2.5} />
+                  </button>
+                  <button
+                    onClick={() => {
+                      const ref = rightTab === "html" ? outputHtmlRef : outputMjmlRef;
+                      if (ref.current) actions.handleCopy(ref.current.value, rightTab.toUpperCase());
+                    }}
+                    className='p-2 bg-secondary hover:bg-muted text-foreground rounded-full transition-colors active:scale-95 shadow-sm'
+                    title='Copy'>
+                    <Copy size={15} strokeWidth={2.5} />
+                  </button>
+                  <button onClick={rightTab === "html" ? actions.handleDownloadHTML : actions.handleDownloadMJML} className='p-2 bg-secondary hover:bg-muted text-foreground rounded-full transition-colors active:scale-95 shadow-sm' title='Download'>
+                    <Download size={15} strokeWidth={2.5} />
+                  </button>
+                </div>
+              </div>
 
-      {/* Output Blocks */}
-      <Stack direction={{ xs: "column", lg: "row" }} spacing={spacingMUI.lg}>
-        {/* HTML Output */}
-        <StyledPaper
-          sx={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-          }}>
-          <Stack direction='row' spacing={spacingMUI.sm} mb={spacingMUI.base} flexWrap='wrap'>
-            <Button variant='contained' size='small' onClick={actions.handleExportHTML} startIcon={<ConvertIcon />} disabled={state.isAutoExporting}>
-              Експортувати HTML
-            </Button>
-            <Button variant='outlined' size='small' onClick={actions.handleDownloadHTML} startIcon={<DownloadIcon fontSize='small' />}>
-              Завантажити
-            </Button>
-            <Button variant='outlined' size='small' onClick={() => outputHtmlRef.current && actions.handleCopy(outputHtmlRef.current.value, "HTML")} startIcon={<CopyIcon fontSize='small' />}>
-              Copy
-            </Button>
-          </Stack>
+              <div className='p-5 flex-1 flex flex-col bg-background shadow-inner'>
+                {/* Both textareas must be mounted so refs don't break logic */}
+                <textarea ref={outputHtmlRef} readOnly className={`flex-[1_1_300px] w-full bg-card border border-border/50 shadow-sm rounded-2xl p-5 font-mono text-[13px] leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-primary transition-all text-foreground ${rightTab === "html" ? "block" : "hidden"}`} placeholder={t("HTML output will appear here...", "Після експорту тут з'явиться готовий HTML код...")} />
+                <textarea ref={outputMjmlRef} readOnly className={`flex-[1_1_300px] w-full bg-card border border-border/50 shadow-sm rounded-2xl p-5 font-mono text-[13px] leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-primary transition-all text-foreground ${rightTab === "mjml" ? "block" : "hidden"}`} placeholder={t("MJML output will appear here...", "Після експорту тут з'явиться готовий MJML код...")} />
+              </div>
+            </div>
+          </div>
+        </div>
 
-          <Typography variant='subtitle2' fontWeight={600} mb={spacingMUI.sm}>
-            HTML результат:
-          </Typography>
-          <TextField
-            inputRef={outputHtmlRef}
-            multiline
-            fullWidth
-            rows={12}
-            InputProps={{ readOnly: true }}
-            placeholder="Після експорту тут з'явиться готовий HTML код..."
-            sx={{
-              flex: 1,
-              "& .MuiInputBase-root": {
-                fontFamily: "monospace",
-                fontSize: "13px",
-                lineHeight: 1.5,
-                backgroundColor: theme.palette.action.hover,
-                "&.Mui-focused": {
-                  backgroundColor: theme.palette.action.hover,
-                },
-              },
-            }}
-          />
-        </StyledPaper>
-
-        {/* MJML Output */}
-        <StyledPaper
-          sx={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-          }}>
-          <Stack direction='row' spacing={spacingMUI.sm} mb={spacingMUI.base} flexWrap='wrap'>
-            <Button variant='contained' size='small' onClick={actions.handleExportMJML} startIcon={<ConvertIcon />} disabled={state.isAutoExporting}>
-              Експортувати MJML
-            </Button>
-            <Button variant='outlined' size='small' onClick={actions.handleDownloadMJML} startIcon={<DownloadIcon fontSize='small' />}>
-              Завантажити
-            </Button>
-            <Button variant='outlined' size='small' onClick={() => outputMjmlRef.current && actions.handleCopy(outputMjmlRef.current.value, "MJML")} startIcon={<CopyIcon fontSize='small' />}>
-              Copy
-            </Button>
-          </Stack>
-
-          <Typography variant='subtitle2' fontWeight={600} mb={spacingMUI.sm}>
-            MJML результат:
-          </Typography>
-          <TextField
-            inputRef={outputMjmlRef}
-            multiline
-            fullWidth
-            rows={12}
-            InputProps={{ readOnly: true }}
-            placeholder="Після експорту тут з'явиться готовий MJML код..."
-            sx={{
-              flex: 1,
-              "& .MuiInputBase-root": {
-                fontFamily: "monospace",
-                fontSize: "13px",
-                lineHeight: 1.5,
-                backgroundColor: theme.palette.action.hover,
-                "&.Mui-focused": {
-                  backgroundColor: theme.palette.action.hover,
-                },
-              },
-            }}
-          />
-        </StyledPaper>
-      </Stack>
-
-      {/* Input HTML & Log */}
-      {((ui.showInputHtml && state.inputHtml) || (ui.showLogsPanel && state.log.length > 0)) && (
-        <Stack direction={{ xs: "column", lg: "row" }} spacing={spacingMUI.lg}>
-          {/* Input HTML */}
-          {ui.showInputHtml && state.inputHtml && (
-            <StyledPaper
-              sx={{
-                flex: 1,
-                maxHeight: ui.compactMode ? 220 : 300,
-                overflow: "auto",
-              }}>
-              <Stack direction='row' justifyContent='space-between' alignItems='center' mb={spacingMUI.sm}>
-                <Typography variant='subtitle2' fontWeight={600}>
-                  Вхідний HTML
-                </Typography>
-                <Tooltip title='Копіювати'>
-                  <IconButton size='small' onClick={() => actions.handleCopy(state.inputHtml, "Вхідний HTML")}>
-                    <CopyIcon fontSize='small' />
-                  </IconButton>
-                </Tooltip>
-              </Stack>
-              <Divider sx={{ mb: spacingMUI.sm }} />
-              <Box
-                component='pre'
-                sx={{
-                  fontFamily: "monospace",
-                  fontSize: "12px",
-                  color: "text.secondary",
-                  lineHeight: 1.6,
-                  m: 0,
-                  whiteSpace: "pre-wrap",
-                  wordBreak: "break-word",
-                }}>
-                {state.inputHtml}
-              </Box>
-            </StyledPaper>
-          )}
-
-          {/* Log */}
-          {ui.showLogsPanel && state.log.length > 0 && (
-            <StyledPaper
-              sx={{
-                flex: 1,
-                maxHeight: ui.compactMode ? 220 : 300,
-                overflow: "auto",
-              }}>
-              <Typography variant='subtitle2' fontWeight={600} mb={spacingMUI.sm}>
-                Лог операцій
-              </Typography>
-              <Divider sx={{ mb: spacingMUI.sm }} />
-              {state.log.map((entry, idx) => (
-                <Typography
-                  key={idx}
-                  variant='caption'
-                  display='block'
-                  sx={{
-                    fontFamily: "monospace",
-                    color: "text.secondary",
-                    lineHeight: 1.8,
-                    py: 0.25,
-                  }}>
-                  {entry}
-                </Typography>
-              ))}
-            </StyledPaper>
-          )}
-        </Stack>
-      )}
-
-      {/* Upload History - Always visible when there are sessions */}
-      {ui.showUploadHistory && <UploadHistory sessions={state.uploadHistory} onClear={actions.handleClearHistory} />}
-    </Box>
+        {/* UPLOAD HISTORY */}
+        {ui.showUploadHistory && (
+          <div className='mt-4 bg-card rounded-[2rem] shadow-soft p-6 md:p-8 border border-border/50'>
+            <h3 className='text-xl font-extrabold mb-6 text-foreground flex items-center gap-2'>📜 {t("Upload History", "Історія завантажень")}</h3>
+            {/* Legacy UI */}
+            <div className='bg-background rounded-2xl p-4 border border-border/50 shadow-inner'>
+              <UploadHistory sessions={state.uploadHistory} onClear={actions.handleClearHistory} />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
