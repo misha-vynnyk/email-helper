@@ -27,7 +27,7 @@ export const UiSettingsTab: React.FC<UiSettingsTabProps> = ({ ui, setUi }) => {
 
       <Stack direction='row' alignItems='center' spacing={2} mt={spacingMUI.base} mb={spacingMUI.base}>
         <Typography variant='body2' sx={{ minWidth: 200 }}>
-          Попередження про μέγεθος файлу (KB):
+          Попередження про розмір файлу (KB):
         </Typography>
         <TextField
           size='small'
