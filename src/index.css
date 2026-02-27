@@ -38,8 +38,17 @@
     --border: 0 0% 89.8%;
     --input: 0 0% 89.8%;
     --ring: 0 0% 3.9%;
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
 
-    --radius: 0.5rem; /* Highly rounded elements */ --chart-1: 12 76% 61%; --chart-2: 173 58% 39%; --chart-3: 197 37% 24%; --chart-4: 43 74% 66%; --chart-5: 27 87% 67%;
+    --radius: 0.5rem; /* Highly rounded elements */
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
   }
 
   /*
@@ -76,6 +85,11 @@
     --border: 222 47% 18%;
     --input: 222 47% 18%;
     --ring: 90 70% 55%;
+
+    --success: 142 70% 40%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 9%;
   }
   .dark {
     --background: 0 0% 3.9%;
@@ -97,12 +111,50 @@
     --border: 0 0% 14.9%;
     --input: 0 0% 14.9%;
     --ring: 0 0% 83.1%;
+    --success: 142 70% 40%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 9%;
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
   }
+
+  /* Fix visibility of pasted text in dark mode inside the text editor */
+  .dark div[contenteditable="true"].editor-content {
+    /* Set the background explicitly to visually override any inverted background if it happens, or just let children invert */
+    background-color: hsl(var(--background)) !important;
+  }
+
+  .dark div[contenteditable="true"].editor-content span,
+  .dark div[contenteditable="true"].editor-content p,
+  .dark div[contenteditable="true"].editor-content h1,
+  .dark div[contenteditable="true"].editor-content h2,
+  .dark div[contenteditable="true"].editor-content h3,
+  .dark div[contenteditable="true"].editor-content h4,
+  .dark div[contenteditable="true"].editor-content h5,
+  .dark div[contenteditable="true"].editor-content h6,
+  .dark div[contenteditable="true"].editor-content b,
+  .dark div[contenteditable="true"].editor-content i,
+  .dark div[contenteditable="true"].editor-content em,
+  .dark div[contenteditable="true"].editor-content strong,
+  .dark div[contenteditable="true"].editor-content a,
+  .dark div[contenteditable="true"].editor-content u,
+  .dark div[contenteditable="true"].editor-content li,
+  .dark div[contenteditable="true"].editor-content td,
+  .dark div[contenteditable="true"].editor-content th,
+  .dark div[contenteditable="true"].editor-content div {
+    /* Invert colors only for typical text container elements */
+    filter: invert(1) hue-rotate(180deg);
+  }
+
+  /* .dark div[contenteditable="true"].editor-content img,
+  .dark div[contenteditable="true"].editor-content svg,
+  .dark div[contenteditable="true"].editor-content [style*="background-image"] {
+    filter: invert(1) hue-rotate(180deg);
+  } */
 }
 
 @layer base {

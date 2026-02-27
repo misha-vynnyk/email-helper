@@ -11,6 +11,7 @@ import { ImageConverterPanel } from "../../imageConverter";
 import GeometricBackground from "../../imageConverter/components/GeometricBackground";
 import { TemplateLibrary } from "../../templateLibrary";
 import { getComponentStyles, ThemeToggle, ThemeStyleSelector, useThemeMode } from "../../theme";
+import { ComponentThemeSwitcher } from "../../theme/examples/ComponentThemeSwitcher";
 import ToggleSamplesPanelButton from "../SamplesDrawer/ToggleSamplesPanelButton";
 
 import EmailSenderPanel from "./EmailSenderPanel";
@@ -34,7 +35,7 @@ export default function TemplatePanel() {
   React.useEffect(() => {
     // Монтуємо таб при першому відкритті
     if (!mountedTabs.has(selectedMainTab)) {
-      setMountedTabs(prev => new Set([...prev, selectedMainTab]));
+      setMountedTabs((prev) => new Set([...prev, selectedMainTab]));
     }
   }, [selectedMainTab, mountedTabs]);
 
@@ -53,9 +54,7 @@ export default function TemplatePanel() {
           height: 49,
           borderBottom: 1,
           borderColor: "divider",
-          background:
-            componentStyles.card.background ||
-            ((theme) => alpha(theme.palette.background.paper, 0.9)),
+          background: componentStyles.card.background || ((theme) => alpha(theme.palette.background.paper, 0.9)),
           backdropFilter: componentStyles.card.backdropFilter,
           WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
           position: "sticky",
@@ -66,8 +65,7 @@ export default function TemplatePanel() {
         direction='row'
         justifyContent='space-between'
         alignItems='center'
-        onWheel={handleFixedWheel}
-      >
+        onWheel={handleFixedWheel}>
         {/* Animated Background - only for non-default styles */}
         {showAnimatedBackground && (
           <Box
@@ -79,22 +77,14 @@ export default function TemplatePanel() {
               bottom: 0,
               zIndex: 0,
               pointerEvents: "none",
-            }}
-          >
+            }}>
             <GeometricBackground />
           </Box>
         )}
         <Box sx={{ position: "relative", zIndex: 1, minWidth: 40 }}>
           <ToggleSamplesPanelButton />
         </Box>
-        <Stack
-          px={2}
-          direction='row'
-          flex={1}
-          justifyContent='center'
-          alignItems='center'
-          sx={{ position: "relative", zIndex: 1 }}
-        >
+        <Stack px={2} direction='row' flex={1} justifyContent='center' alignItems='center' sx={{ position: "relative", zIndex: 1 }}>
           <MainTabsGroup />
         </Stack>
         <Box
@@ -106,8 +96,7 @@ export default function TemplatePanel() {
             justifyContent: "flex-end",
             alignItems: "center",
             gap: 0.5,
-          }}
-        >
+          }}>
           <ThemeStyleSelector />
           <ThemeToggle />
         </Box>
@@ -125,40 +114,40 @@ export default function TemplatePanel() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              backgroundColor: (theme) =>
-                theme.palette.mode === "dark"
-                  ? "rgba(0, 0, 0, 0.5)"
-                  : "rgba(255, 255, 255, 0.6)",
+              backgroundColor: (theme) => (theme.palette.mode === "dark" ? "rgba(0, 0, 0, 0.5)" : "rgba(255, 255, 255, 0.6)"),
               backdropFilter: "blur(4px)",
               zIndex: 100,
               pointerEvents: isTransitioning ? "auto" : "none",
-            }}
-          >
+            }}>
             <CircularProgress size={40} />
           </Box>
         </Fade>
 
         {/* Lazy mounting: рендеримо таб лише якщо він був відкритий хоча б раз */}
-        <TabPanel value="email" selectedValue={deferredTab} mounted={mountedTabs.has("email")}>
+        <TabPanel value='email' selectedValue={deferredTab} mounted={mountedTabs.has("email")}>
           <EmailSenderPanel />
         </TabPanel>
 
-        <TabPanel value="blocks" selectedValue={deferredTab} mounted={mountedTabs.has("blocks")}>
+        <TabPanel value='blocks' selectedValue={deferredTab} mounted={mountedTabs.has("blocks")}>
           <BlockLibrary />
         </TabPanel>
 
-        <TabPanel value="templates" selectedValue={deferredTab} mounted={mountedTabs.has("templates")}>
+        <TabPanel value='templates' selectedValue={deferredTab} mounted={mountedTabs.has("templates")}>
           <EmailSenderProvider>
             <TemplateLibrary />
           </EmailSenderProvider>
         </TabPanel>
 
-        <TabPanel value="images" selectedValue={deferredTab} mounted={mountedTabs.has("images")}>
+        <TabPanel value='images' selectedValue={deferredTab} mounted={mountedTabs.has("images")}>
           <ImageConverterPanel />
         </TabPanel>
 
-        <TabPanel value="converter" selectedValue={deferredTab} mounted={mountedTabs.has("converter")}>
+        <TabPanel value='converter' selectedValue={deferredTab} mounted={mountedTabs.has("converter")}>
           <HtmlConverterPanel />
+        </TabPanel>
+
+        <TabPanel value='theme' selectedValue={deferredTab} mounted={mountedTabs.has("theme")}>
+          <ComponentThemeSwitcher />
         </TabPanel>
       </Box>
     </>

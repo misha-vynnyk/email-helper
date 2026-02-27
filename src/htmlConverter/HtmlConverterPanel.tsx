@@ -42,7 +42,7 @@ export default function HtmlConverterPanel() {
             {/* EDITOR CARD */}
             <div className='bg-card rounded-[2rem] p-6 md:p-8 shadow-soft flex flex-col border border-border/50'>
               <h2 className='text-lg md:text-xl font-extrabold mb-5 flex items-center gap-2 text-foreground'>✏️ {t("Text Editor", "Редактор тексту")}</h2>
-              <div ref={editorRef} contentEditable suppressContentEditableWarning className='w-full min-h-[300px] max-h-[600px] overflow-auto bg-background border border-border/50 rounded-2xl p-6 font-mono text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary transition-all empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground shadow-inner' data-placeholder={t("Paste or type text here...", "Вставте або введіть текст сюди...")} />
+              <div ref={editorRef} contentEditable suppressContentEditableWarning className='w-full min-h-[300px] max-h-[600px] overflow-auto bg-background border border-border/50 rounded-2xl p-6 font-mono text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary transition-all empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground shadow-inner editor-content' data-placeholder={t("Paste or type text here...", "Вставте або введіть текст сюди...")} />
             </div>
 
             {/* FILE SETTINGS (Floating Pills) */}

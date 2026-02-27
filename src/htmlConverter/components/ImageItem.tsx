@@ -14,7 +14,7 @@ export function ImageItem({ image, globalFormat, onDownload, onRemove, onFormatC
   const imgFormat = getImageFormat(image, globalFormat);
 
   // Distinct colors by output format
-  const badgeBg = imgFormat === "png" ? "bg-success text-white" : "bg-warning text-warning-foreground";
+  const isPng = imgFormat === "png";
 
   return (
     <div className='flex flex-col gap-1 items-center'>
@@ -22,7 +22,7 @@ export function ImageItem({ image, globalFormat, onDownload, onRemove, onFormatC
         <img src={image.previewUrl} alt={image.name} className='w-full h-full object-cover' />
 
         {/* Format Badge */}
-        <span className={`absolute top-1 right-1 h-4 flex items-center px-1 text-[10px] font-bold rounded-sm border border-white/40 leading-none ${badgeBg}`}>{imgFormat.toUpperCase()}</span>
+        <span className={`absolute top-1 right-1 h-4 flex items-center px-1 text-[10px] font-bold rounded-sm border border-white/40 leading-none ${isPng ? "bg-green-600 text-white" : "bg-orange-500 text-white"}`}>{imgFormat.toUpperCase()}</span>
 
         {image.status === "processing" && (
           <div className='absolute inset-0 bg-background/80 flex items-center justify-center'>
@@ -33,12 +33,12 @@ export function ImageItem({ image, globalFormat, onDownload, onRemove, onFormatC
         )}
 
         {image.status === "done" && (
-          <button title='Завантажити' onClick={() => onDownload(image.id)} className='absolute bottom-1 right-1 bg-success/90 hover:bg-success text-white w-5 h-5 rounded flex items-center justify-center transition-colors'>
+          <button title='Завантажити' onClick={() => onDownload(image.id)} className='absolute bottom-1 right-1 bg-green-600 hover:bg-green-500 text-white w-5 h-5 rounded flex items-center justify-center transition-colors'>
             <Download size={12} />
           </button>
         )}
 
-        <button title='Видалити' onClick={() => onRemove(image.id)} className='absolute bottom-1 left-1 bg-destructive/80 hover:bg-destructive text-destructive-foreground w-5 h-5 rounded flex items-center justify-center transition-colors'>
+        <button title='Видалити' onClick={() => onRemove(image.id)} className='absolute bottom-1 left-1 bg-red-600 hover:bg-red-500 text-white w-5 h-5 rounded flex items-center justify-center transition-colors'>
           <X size={12} />
         </button>
       </div>

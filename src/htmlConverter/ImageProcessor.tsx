@@ -223,7 +223,7 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
             title={!hasOutput ? "Спочатку експортуйте HTML або MJML" : isUploading ? "Йде завантаження..." : replacementDone ? "URLs вже замінені" : "Замінити зображення на storage URLs"}
             onClick={handleReplaceInOutput}
             disabled={replacementDone || !hasOutput || isUploading}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all hover:-translate-y-px hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 ${replacementDone ? "bg-success text-white" : "bg-card border border-border/50 text-foreground hover:bg-muted"}`}>
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all hover:-translate-y-px hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 ${replacementDone ? "bg-green-600 text-white" : "bg-card border border-border/50 text-foreground hover:bg-muted"}`}>
             {replacementDone ? <CheckIcon size={16} /> : <ReplaceIcon size={16} />}
             {replacementDone ? `✓ Замінено (${lastUploadedCount})` : `Замінити (${lastUploadedCount})`}
           </button>
