@@ -131,6 +131,7 @@ export default function HtmlConverterPanel() {
                   autoProcess={state.autoProcess}
                   storageProvider={state.useAlfaOne ? "alphaone" : "default"}
                   imageAnalysisSettings={imageAnalysis}
+                  uploadHistory={state.uploadHistory}
                 />
               </div>
             )}

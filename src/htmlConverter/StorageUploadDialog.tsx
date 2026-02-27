@@ -15,7 +15,7 @@ interface StorageUploadDialogProps {
   onClose: () => void;
   storageProvider?: StorageProviderKey;
   files: Array<{ id: string; name: string; path?: string; size?: number }>;
-  onUpload: (category: string, folderName: string, customNames: Record<string, string>, customAlts: Record<string, string>, fileOrder?: string[], onProgress?: (result: UploadResult) => void) => Promise<{ results: UploadResult[]; category: string; folderName: string }>;
+  onUpload: (category: string, folderName: string, customNames: Record<string, string>, customAlts: Record<string, string>, fileOrder?: string[], takeFromHistory?: boolean, onProgress?: (result: UploadResult) => void) => Promise<{ results: UploadResult[]; category: string; folderName: string }>;
   onCancel?: () => void;
   initialFolderName?: string;
   onHistoryAdd?: (category: string, folderName: string, results: UploadResult[], customAlts?: Record<string, string>) => void;
@@ -34,6 +34,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
 
   const [category, setCategory] = useState<string>(defaultCategory);
   const [folderName, setFolderName] = useState<string>("");
+  const [takeFromHistory] = useState(false); // Can be kept for regular flow compatibility if needed, but not exposed in UI anymore
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uploadResults, setUploadResults] = useState<UploadResult[]>([]);
@@ -161,7 +162,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
     // also remove from customNames/Alts if you want, but they're harmless
   };
 
-  const handleUpload = async () => {
+  const handleUpload = async (overrideTakeFromHistory: boolean = false) => {
     setError(null);
 
     // Validation
@@ -180,7 +181,9 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
     try {
       const fileOrder = orderedFiles.map((f) => f.id);
       const effectiveCategory = showCategory ? category : "finance";
-      const response = await onUpload(effectiveCategory, folderName.trim(), customNames, customAlts, fileOrder, (progressResult) => {
+      const finalTakeFromHistory = overrideTakeFromHistory || takeFromHistory;
+
+      const response = await onUpload(effectiveCategory, folderName.trim(), customNames, customAlts, fileOrder, finalTakeFromHistory, (progressResult) => {
         setUploadResults((prev) => {
           // Replace previous attempt if exists (to maintain order), otherwise append
           const idx = prev.findIndex((r) => r.fileId === progressResult.fileId);
@@ -309,7 +312,25 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
         {/* Content */}
         <div className='p-6 overflow-y-auto max-h-[70vh]'>
           <div className='flex flex-col gap-6'>
-            {/* Hide input section via CSS rather than unmounting */}
+            {/* Folder Name Input (Always Visible) */}
+            <div className='mb-4'>
+              <label htmlFor='folderName' className='block text-sm font-semibold text-foreground mb-1.5'>
+                Folder Name
+              </label>
+              <input
+                id='folderName'
+                type='text'
+                placeholder='e.g., ABCD123'
+                value={folderName}
+                onChange={(e) => setFolderName(e.target.value)}
+                disabled={uploading}
+                autoFocus
+                className={`w-full px-3 py-2 text-sm rounded-lg border bg-background transition-colors focus:outline-none focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed ${folderName.trim() && !FOLDER_NAME_REGEX.test(folderName) ? "border-destructive focus:border-destructive focus:ring-destructive/20 text-destructive placeholder:text-destructive/50" : "border-input focus:border-primary focus:ring-primary/20 text-foreground placeholder:text-muted-foreground"}`}
+              />
+              <p className={`mt-1.5 text-xs ${folderName.trim() && !FOLDER_NAME_REGEX.test(folderName) ? "text-destructive" : "text-muted-foreground"}`}>{folderName.trim() && !FOLDER_NAME_REGEX.test(folderName) ? "Invalid format. Use letters and numbers only." : "Format: Letters + Numbers (e.g., ABCD123, Finance456)"}</p>
+            </div>
+
+            {/* Hide file list via CSS rather than unmounting */}
             <div className={orderedFiles.length > 0 ? "block" : "hidden"}>
               {/* Files list with thumbnails, rename, and drag & drop */}
               <div className='mb-6'>
@@ -371,23 +392,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
                 </div>
               )}
 
-              {/* Folder Name Input */}
-              <div className='mb-4'>
-                <label htmlFor='folderName' className='block text-sm font-semibold text-foreground mb-1.5'>
-                  Folder Name
-                </label>
-                <input
-                  id='folderName'
-                  type='text'
-                  placeholder='e.g., ABCD123'
-                  value={folderName}
-                  onChange={(e) => setFolderName(e.target.value)}
-                  disabled={uploading}
-                  autoFocus
-                  className={`w-full px-3 py-2 text-sm rounded-lg border bg-background transition-colors focus:outline-none focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed ${folderName.trim() && !FOLDER_NAME_REGEX.test(folderName) ? "border-destructive focus:border-destructive focus:ring-destructive/20 text-destructive placeholder:text-destructive/50" : "border-input focus:border-primary focus:ring-primary/20 text-foreground placeholder:text-muted-foreground"}`}
-                />
-                <p className={`mt-1.5 text-xs ${folderName.trim() && !FOLDER_NAME_REGEX.test(folderName) ? "text-destructive" : "text-muted-foreground"}`}>{folderName.trim() && !FOLDER_NAME_REGEX.test(folderName) ? "Invalid format. Use letters and numbers only." : "Format: Letters + Numbers (e.g., ABCD123, Finance456)"}</p>
-              </div>
+              {/* Upload Path Preview continues below */}
 
               {/* Upload Path Preview */}
               {folderName && FOLDER_NAME_REGEX.test(folderName) && (
@@ -441,11 +446,11 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
           ) : (
             // Before/during upload or if there are files left to process
             <>
-              <button onClick={handleClose} className={`px-4 py-2 text-sm rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background ${uploading ? "border border-destructive text-destructive hover:bg-destructive/10 focus-visible:ring-destructive font-semibold" : "text-muted-foreground hover:bg-muted font-medium focus-visible:ring-primary/50"}`}>
+              <button onClick={() => handleClose()} className={`px-4 py-2 text-sm rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background ${uploading ? "border border-destructive text-destructive hover:bg-destructive/10 focus-visible:ring-destructive font-semibold" : "text-muted-foreground hover:bg-muted font-medium focus-visible:ring-primary/50"}`}>
                 {uploadResults.some((r: UploadResult) => r.success) ? "Close" : "Cancel"}
               </button>
 
-              <button onClick={handleUpload} disabled={uploading || orderedFiles.length === 0 || !folderName.trim() || !FOLDER_NAME_REGEX.test(folderName)} className='flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed'>
+              <button onClick={() => handleUpload(false)} disabled={uploading || orderedFiles.length === 0 || !folderName.trim() || !FOLDER_NAME_REGEX.test(folderName)} className='flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed'>
                 <UploadIcon size={18} />
                 {uploading ? "Uploading..." : uploadResults.some((r: UploadResult) => !r.success) ? "Retry Failed" : "Upload"}
               </button>
