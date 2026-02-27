@@ -118,6 +118,12 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
         }, IMAGE_DETECT_DEBOUNCE_MS);
       };
 
+      const clearMemory = () => {
+        setUploadedUrlMap({});
+        setUploadedAltMap({});
+        if (resetReplacementRef.current) resetReplacementRef.current();
+      };
+
       const handlePaste = (e: ClipboardEvent) => {
         const html = e.clipboardData?.getData("text/html");
         if (html) {
@@ -128,10 +134,12 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
           });
           setInputHtml(cleanHtml);
         }
+        clearMemory();
         scheduleImageSync();
       };
 
       const handleInput = () => {
+        clearMemory();
         scheduleImageSync();
       };
 
@@ -273,7 +281,17 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
         addLog("⚠️ Редактор порожній, нічого експортувати");
         return;
       }
-      const formattedContent = formatHtml(editorContent);
+      let formattedContent = formatHtml(editorContent);
+
+      // Substitution "during conversion"
+      if (Object.keys(uploadedUrlMap).length > 0) {
+        const storageUrls = Object.values(uploadedUrlMap);
+        const regex = /(<img[^>]+src=["'])([^"']+)(["'][^>]*>)/gi;
+        const mapped = replaceUrlsInContentByMap(formattedContent, regex, uploadedUrlMap);
+        formattedContent = mapped.count > 0 ? mapped.replaced : replaceUrlsInContent(formattedContent, regex, storageUrls).replaced;
+        formattedContent = replaceAltsInContent(formattedContent, uploadedAltMap).replaced;
+      }
+
       if (outputHtmlRef.current) {
         outputHtmlRef.current.value = formattedContent;
       }
@@ -284,7 +302,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
       const message = error instanceof Error ? error.message : "Невідома помилка";
       addLog(`❌ Помилка експорту HTML: ${message}`);
     }
-  }, [addLog, editorRef, outputHtmlRef]);
+  }, [addLog, editorRef, outputHtmlRef, uploadedUrlMap, uploadedAltMap, replaceUrlsInContentByMap, replaceUrlsInContent, replaceAltsInContent]);
 
   const handleExportMJML = useCallback(() => {
     if (!editorRef.current) return;
@@ -294,7 +312,17 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
         addLog("⚠️ Редактор порожній, нічого експортувати");
         return;
       }
-      const formattedContent = formatMjml(editorContent);
+      let formattedContent = formatMjml(editorContent);
+
+      // Substitution "during conversion"
+      if (Object.keys(uploadedUrlMap).length > 0) {
+        const storageUrls = Object.values(uploadedUrlMap);
+        const regex = /(<(?:mj-image|img)[^>]+src=["'])([^"']+)(["'][^>]*>)/gi;
+        const mapped = replaceUrlsInContentByMap(formattedContent, regex, uploadedUrlMap);
+        formattedContent = mapped.count > 0 ? mapped.replaced : replaceUrlsInContent(formattedContent, regex, storageUrls).replaced;
+        formattedContent = replaceAltsInContent(formattedContent, uploadedAltMap).replaced;
+      }
+
       if (outputMjmlRef.current) {
         outputMjmlRef.current.value = formattedContent;
       }
@@ -305,7 +333,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
       const message = error instanceof Error ? error.message : "Невідома помилка";
       addLog(`❌ Помилка експорту MJML: ${message}`);
     }
-  }, [addLog, editorRef, outputMjmlRef]);
+  }, [addLog, editorRef, outputMjmlRef, uploadedUrlMap, uploadedAltMap, replaceUrlsInContentByMap, replaceUrlsInContent, replaceAltsInContent]);
 
   const downloadFile = useCallback(
     (content: string, extension: string) => {

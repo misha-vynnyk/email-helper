@@ -3,7 +3,7 @@ import API_URL, { isApiAvailable } from "../../config/api";
 import { UPLOAD_CONFIG, STORAGE_URL_PREFIX, STORAGE_PROVIDERS_CONFIG } from "../constants";
 import { copyToClipboard } from "../utils/clipboard";
 import { getImageFormat, getFileExtension, isCrossOrigin } from "../imageUtils";
-import { ProcessedImage, ImageFormat, UploadResult } from "../types";
+import { ProcessedImage, ImageFormat, UploadResult, UploadSession } from "../types";
 
 interface UseImageUploaderProps {
   images: ProcessedImage[];
@@ -16,9 +16,10 @@ interface UseImageUploaderProps {
   onReplaceUrls?: (urlMap: Record<string, string>) => void;
   onUploadedAltsChange?: (altMap: Record<string, string>) => void;
   showSnackbar: (message: string, severity?: "success" | "info" | "warning" | "error") => void;
+  uploadHistory?: UploadSession[];
 }
 
-export function useImageUploader({ images, imagesSessionId, editorRef, storageProvider, format, onLog, onUploadedUrlsChange, onReplaceUrls, onUploadedAltsChange, showSnackbar }: UseImageUploaderProps) {
+export function useImageUploader({ images, imagesSessionId, editorRef, storageProvider, format, onLog, onUploadedUrlsChange, onReplaceUrls, onUploadedAltsChange, showSnackbar, uploadHistory }: UseImageUploaderProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [lastUploadedUrls, setLastUploadedUrls] = useState<Record<string, string>>({});
   const [lastUploadedSessionId, setLastUploadedSessionId] = useState<number | null>(null);
@@ -43,13 +44,14 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
       customNames: Record<string, string> = {},
       customAlts: Record<string, string> = {},
       fileOrder?: string[],
+      takeFromHistory: boolean = false,
       onProgress?: (result: { fileId: string; filename: string; url: string; success: boolean; error?: string }) => void
     ): Promise<{
       results: Array<{ filename: string; url: string; success: boolean; error?: string }>;
       category: string;
       folderName: string;
     }> => {
-      let completed = images.filter((img) => (img.status === "done" && img.convertedBlob) || (img.status === "pending" && isCrossOrigin(img.src)));
+      let completed = takeFromHistory ? images : images.filter((img) => (img.status === "done" && img.convertedBlob) || (img.status === "pending" && isCrossOrigin(img.src)));
 
       if (fileOrder && fileOrder.length > 0) {
         // Filter to only include images in the requested order
@@ -143,6 +145,51 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
           const ext = img.convertedBlob ? getFileExtension(fmt) : `.${/\.(png|jpe?g|webp|gif)(?=\?|$)/i.exec(img.src)?.[1] || "png"}`;
           const filename = `${baseName}${ext}`;
 
+          if (takeFromHistory && uploadHistory) {
+            let existingUrl: string | null = null;
+            let existingAlt: string | undefined = undefined;
+
+            for (const session of uploadHistory) {
+              const sessionFolder = session.folderName || session.files?.[0]?.folderName;
+              if (sessionFolder?.trim().toUpperCase() === folderName.trim().toUpperCase()) {
+                // Try precise match first
+                let existingFile = session.files.find((f) => f.filename === filename);
+
+                // Fallback 1: match by baseName (ignore extension like .png vs .jpeg)
+                if (!existingFile) {
+                  existingFile = session.files.find((f) => f.filename.replace(/\.[^/.]+$/, "") === baseName);
+                }
+
+                // Fallback 2: match by order index
+                if (!existingFile && i < session.files.length) {
+                  existingFile = session.files[i];
+                }
+
+                if (existingFile) {
+                  existingUrl = existingFile.url;
+                  existingAlt = existingFile.alt;
+                  break;
+                }
+              }
+            }
+
+            if (existingUrl) {
+              onLog?.(`🔁 [${i + 1}/${completed.length}] ${filename} знайдено в історії (реюз URLs)`);
+              uploadedUrls[img.src] = existingUrl;
+              if (existingAlt) customAlts[img.id] = existingAlt;
+              successCount++;
+              const resObj = { fileId: img.id, filename, url: existingUrl, success: true };
+              results.push(resObj);
+              onProgress?.(resObj);
+            } else {
+              onLog?.(`⚠️ [${i + 1}/${completed.length}] ${baseName} не знайдено в історії. Пропущено.`);
+              const resObj = { fileId: img.id, filename, url: "", success: false, error: "Не знайдено в історії" };
+              results.push(resObj);
+              onProgress?.(resObj);
+            }
+            continue; // CRITICAL: Skip the rest of the loop so it NEVER uploads to storage!
+          }
+
           if (uploadAbortControllerRef.current?.signal.aborted) {
             onLog?.(`⚠️ Завантаження скасовано користувачем`);
             throw new Error("Завантаження скасовано");
@@ -203,24 +250,8 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
           }
         }
 
-        // Replacement in Editor
-        if (editorRef.current && Object.keys(uploadedUrls).length > 0) {
-          const srcToId: Record<string, string> = {};
-          completed.forEach((img) => (srcToId[img.src] = img.id));
-
-          const imgElements = editorRef.current.querySelectorAll("img");
-          imgElements.forEach((imgEl) => {
-            if (uploadedUrls[imgEl.src]) {
-              const imgId = srcToId[imgEl.src];
-              // Only apply ALT if customized?
-              if (imgId && customAlts[imgId]) {
-                imgEl.alt = customAlts[imgId];
-              }
-              imgEl.src = uploadedUrls[imgEl.src];
-            }
-          });
-          onLog?.(`🔄 Замінено ${Object.keys(uploadedUrls).length} зображень в HTML editor`);
-        }
+        // DOM Replace was intentionally removed to avoid modifying the visual editor.
+        // All mapping is deferred to the output fields (`onReplaceUrls`) after HTML Conversion.
 
         // Update state logic
         if (Object.keys(uploadedUrls).length > 0) {
@@ -265,7 +296,7 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
         uploadAbortControllerRef.current = null;
       }
     },
-    [images, imagesSessionId, isUploading, storageProvider, format, onLog, editorRef, onUploadedUrlsChange, onUploadedAltsChange]
+    [images, imagesSessionId, isUploading, storageProvider, format, onLog, editorRef, onUploadedUrlsChange, onUploadedAltsChange, uploadHistory]
   );
 
   const handleReplaceInOutput = useCallback(() => {
@@ -297,6 +328,95 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
     setReplacementDone(false);
   }, []);
 
+  const handleTakeFromHistoryLocally = useCallback(
+    async (folderName: string) => {
+      let completed = images.filter((img) => (img.status === "done" && img.convertedBlob) || (img.status === "pending" && isCrossOrigin(img.src)));
+      if (completed.length === 0 || !uploadHistory) return;
+
+      const sessionIdAtStart = imagesSessionId;
+      setLastUploadedSessionId(null);
+      setLastUploadedUrls({});
+      setReplacementDone(false);
+      onUploadedUrlsChange?.({});
+
+      const uploadedUrls: Record<string, string> = {};
+      const customAlts: Record<string, string> = {};
+      let successCount = 0;
+
+      onLog?.(`⏳ Шукаю ${completed.length} зображень в історії для папки ${folderName}...`);
+
+      for (let i = 0; i < completed.length; i++) {
+        const img = completed[i];
+        const baseName = img.name;
+        const fmt = img.convertedBlob ? getImageFormat(img, format) : "png";
+        const ext = img.convertedBlob ? getFileExtension(fmt) : `.${/\.(png|jpe?g|webp|gif)(?=\?|$)/i.exec(img.src)?.[1] || "png"}`;
+        const filename = `${baseName}${ext}`;
+
+        let existingUrl: string | null = null;
+        let existingAlt: string | undefined = undefined;
+
+        for (const session of uploadHistory) {
+          const sessionFolder = session.folderName || session.files?.[0]?.folderName;
+          if (sessionFolder?.trim().toUpperCase() === folderName.trim().toUpperCase()) {
+            let existingFile = session.files.find((f) => f.filename === filename);
+            if (!existingFile) existingFile = session.files.find((f) => f.filename.replace(/\.[^/.]+$/, "") === baseName);
+            if (!existingFile && i < session.files.length) existingFile = session.files[i];
+
+            if (existingFile) {
+              existingUrl = existingFile.url;
+              existingAlt = existingFile.alt;
+              break;
+            }
+          }
+        }
+
+        if (existingUrl) {
+          onLog?.(`🔁 [${i + 1}/${completed.length}] ${filename} знайдено в історії`);
+          uploadedUrls[img.src] = existingUrl;
+          if (existingAlt) customAlts[img.id] = existingAlt;
+          successCount++;
+        } else {
+          onLog?.(`⚠️ [${i + 1}/${completed.length}] ${baseName} відсутнє в історії.`);
+        }
+      }
+
+      // Update States
+      if (Object.keys(uploadedUrls).length > 0) {
+        setLastUploadedUrls(uploadedUrls);
+        setLastUploadedSessionId(sessionIdAtStart);
+        onUploadedUrlsChange?.(uploadedUrls);
+
+        const altMap: Record<string, string> = {};
+        completed.forEach((img) => {
+          const storageUrl = uploadedUrls[img.src];
+          if (customAlts[img.id] && storageUrl) altMap[storageUrl] = customAlts[img.id];
+        });
+        onUploadedAltsChange?.(altMap);
+
+        // Automatically substitute into the output files (html/mjml)
+        if (onReplaceUrls) {
+          onReplaceUrls(uploadedUrls);
+          setReplacementDone(true);
+        }
+
+        const urlsList = Object.values(uploadedUrls).join("\n");
+        copyToClipboard(urlsList);
+      }
+
+      if (successCount === completed.length) {
+        onLog?.(`🎉 Успішно підставлено всі ${successCount} зображень з історії`);
+        showSnackbar(`🎉 Історію відновлено: ${successCount} ${successCount === 1 ? "файл" : "файлів"}`, "success");
+      } else if (successCount > 0) {
+        onLog?.(`⚠️ Підставлено ${successCount} з ${completed.length} зображень`);
+        showSnackbar(`⚠️ Історію відновлено частково: ${successCount} з ${completed.length}`, "warning");
+      } else {
+        onLog?.(`❌ Історія порожня для цих файлів`);
+        showSnackbar("❌ Дані в історії для цих файлів відсутні", "error");
+      }
+    },
+    [images, imagesSessionId, format, onLog, editorRef, onUploadedUrlsChange, onUploadedAltsChange, uploadHistory]
+  );
+
   return {
     isUploading,
     lastUploadedUrls,
@@ -304,6 +424,7 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
     replacementDone,
     abortUploads,
     handleUploadToStorage,
+    handleTakeFromHistoryLocally,
     handleReplaceInOutput,
     resetUploadState,
     resetReplacementOnly,

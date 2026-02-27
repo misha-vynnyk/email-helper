@@ -30,9 +30,10 @@ interface ImageProcessorProps {
   autoProcess?: boolean;
   storageProvider?: "default" | "alphaone";
   imageAnalysisSettings?: ImageAnalysisSettings;
+  uploadHistory?: any[];
 }
 
-export default function ImageProcessor({ editorRef, onLog, visible, onVisibilityChange, triggerExtract = 0, fileName = "", onHistoryAdd, onReplaceUrls, onUploadedUrlsChange, onUploadedAltsChange, onResetReplacement, hasOutput = false, autoProcess: autoProcessProp, storageProvider = "default", imageAnalysisSettings }: ImageProcessorProps) {
+export default function ImageProcessor({ editorRef, onLog, visible, onVisibilityChange, triggerExtract = 0, fileName = "", onHistoryAdd, onReplaceUrls, onUploadedUrlsChange, onUploadedAltsChange, onResetReplacement, hasOutput = false, autoProcess: autoProcessProp, storageProvider = "default", imageAnalysisSettings, uploadHistory }: ImageProcessorProps) {
   // 1. Conversion Logic
   const {
     images,
@@ -60,6 +61,7 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
     lastUploadedUrls, // used for stats/ui
     replacementDone,
     handleUploadToStorage,
+    handleTakeFromHistoryLocally,
     handleReplaceInOutput,
     abortUploads,
     resetUploadState,
@@ -75,6 +77,7 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
     onReplaceUrls,
     onUploadedAltsChange,
     showSnackbar,
+    uploadHistory,
   });
 
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
@@ -163,6 +166,23 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
   const pendingCount = images.filter((img) => img.status === "pending").length;
   const lastUploadedCount = Object.keys(lastUploadedUrls).length;
 
+  // History Lookup
+  const matchingHistorySession = React.useMemo(() => {
+    if (doneCount === 0) return null; // Avoid unnecessary lookup if no images to process
+    const fName = extractFolderName(fileName).trim().toUpperCase();
+    if (!fName || !uploadHistory) return null;
+    return uploadHistory.find((session) => {
+      const sessionFolder = session.folderName || session.files?.[0]?.folderName;
+      return sessionFolder?.trim().toUpperCase() === fName && session.files && session.files.length > 0;
+    });
+  }, [fileName, uploadHistory, doneCount]);
+
+  const handleTakeFromHistory = async () => {
+    if (!matchingHistorySession) return;
+    const fName = extractFolderName(fileName);
+    await handleTakeFromHistoryLocally(fName);
+  };
+
   return (
     <div className='bg-card rounded-2xl p-5 shadow-soft border border-border/50 flex flex-col gap-4 relative overflow-hidden'>
       {/* Header */}
@@ -201,6 +221,43 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
           <span className='text-xs text-muted-foreground'>
             💾 {formatSize(totalOriginal)} → {formatSize(totalConverted)} ({totalOriginal > 0 ? `-${((1 - totalConverted / totalOriginal) * 100).toFixed(0)}%` : "0%"})
           </span>
+        </div>
+      )}
+
+      {/* Proactive History Match Prompt */}
+      {matchingHistorySession && doneCount > 0 && !isUploading && lastUploadedCount === 0 && (
+        <div className='p-4 rounded-xl bg-primary/10 border border-primary/20 flex flex-col gap-3 animate-in fade-in zoom-in slide-in-from-top-2'>
+          <div className='flex items-start gap-3'>
+            <div className='p-2 bg-primary/20 rounded-full text-primary shrink-0'>
+              <CheckIcon className='w-5 h-5' />
+            </div>
+            <div>
+              <h4 className='text-sm font-semibold text-primary mb-1'>Знайдено історію для "{extractFolderName(fileName)}"</h4>
+              <p className='text-xs text-muted-foreground leading-relaxed'>
+                Ця папка вже завантажувалася {new Date(matchingHistorySession.timestamp).toLocaleDateString()} {new Date(matchingHistorySession.timestamp).toLocaleTimeString()}.
+                <br />
+                Ви можете миттєво перевикористати посилання та ALT-тексти.
+              </p>
+            </div>
+          </div>
+          <button onClick={handleTakeFromHistory} disabled={isUploading} className='self-start flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-semibold rounded-lg shadow-sm transition-all focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50'>
+            <svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
+              <path d='m13 2-2 10h9l-9 10 2-10H4l9-10Z' />
+            </svg>
+            Миттєво взяти з історії
+          </button>
+        </div>
+      )}
+
+      {/* Success Feedback Banner */}
+      {lastUploadedCount > 0 && (
+        <div className='p-3 rounded-xl bg-success/15 border border-success/30 flex items-center gap-3 animate-in fade-in zoom-in slide-in-from-top-2'>
+          <div className='p-1.5 bg-success/20 rounded-full text-success shrink-0'>
+            <CheckIcon className='w-4 h-4' strokeWidth={3} />
+          </div>
+          <p className='text-sm text-foreground font-medium'>
+            <span className='font-bold text-success'>{lastUploadedCount} URL</span> {hasOutput ? "успішно підставлено у вихідний код!" : "готові в пам'яті! Зробіть експорт HTML/MJML."}
+          </p>
         </div>
       )}
 
