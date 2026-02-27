@@ -1,15 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, FormControl, FormLabel, RadioGroup, FormControlLabel, Radio, Typography, Box, Alert, LinearProgress, Stack, useTheme, alpha, Divider } from "@mui/material";
-import { CloudUpload as UploadIcon, CheckCircle as SuccessIcon, Error as ErrorIcon, Close as CloseIcon } from "@mui/icons-material";
-import IconButton from "@mui/material/IconButton";
+import { Upload as UploadIcon, CheckCircle as SuccessIcon, AlertCircle as ErrorIcon, X as CloseIcon } from "lucide-react";
 
-import { useThemeMode } from "../theme";
-import { getComponentStyles } from "../theme/componentStyles";
-import { spacingMUI, borderRadius } from "../theme/tokens";
-import { copyToClipboard } from "./utils/clipboard";
 import { useOcrAnalysis } from "./utils/useOcrAnalysis";
 import { useHtmlConverterSettings } from "./hooks/useHtmlConverterSettings";
 import { UI_TIMINGS, STORAGE_PROVIDERS_CONFIG, FOLDER_NAME_REGEX, STORAGE_KEYS } from "./constants";
+import { copyToClipboard } from "./utils/clipboard";
 import type { ImageAnalysisSettings, UploadResult } from "./types";
 import type { StorageProviderKey } from "./constants";
 import { UploadResults, toShortPath } from "./components/UploadResults";
@@ -29,9 +24,6 @@ interface StorageUploadDialogProps {
 }
 
 export default function StorageUploadDialog({ open, onClose, storageProvider = "default", files, onUpload, onCancel, initialFolderName = "", onHistoryAdd, onAltsUpdate, imageAnalysisSettings }: StorageUploadDialogProps) {
-  const theme = useTheme();
-  const { mode, style } = useThemeMode();
-  const componentStyles = getComponentStyles(mode, style);
   const { ui } = useHtmlConverterSettings();
 
   const providerCfg = STORAGE_PROVIDERS_CONFIG.providers[storageProvider] || STORAGE_PROVIDERS_CONFIG.providers.default;
@@ -293,258 +285,174 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
     }
   };
 
+  // If not open, don't render anything
+  if (!open) return null;
+
   return (
-    <Dialog
-      open={open}
-      onClose={handleClose}
-      maxWidth='sm'
-      fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: `${borderRadius.lg}px`,
-          background: componentStyles.card.background || alpha(theme.palette.background.paper, 0.92),
-          backdropFilter: componentStyles.card.backdropFilter,
-          WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
-          border: componentStyles.card.border,
-          boxShadow: componentStyles.card.boxShadow,
-        },
-      }}>
-      <DialogTitle sx={{ pb: spacingMUI.sm }}>
-        <Box display='flex' alignItems='center' justifyContent='space-between'>
-          <Box display='flex' alignItems='center' gap={spacingMUI.sm}>
-            {orderedFiles.length === 0 && uploadResults.length > 0 ? <SuccessIcon sx={{ color: theme.palette.success.main }} /> : <UploadIcon color='primary' />}
-            <Typography variant='h6' component='span' fontWeight={600}>
-              {orderedFiles.length === 0 && uploadResults.length > 0 ? "Upload Complete" : uploadResults.some((r) => r.success) ? "Partial Upload Complete" : "Upload to Storage"}
-            </Typography>
-          </Box>
-          <IconButton
-            onClick={handleClose}
-            disabled={uploading}
-            size='small'
-            sx={{
-              color: theme.palette.text.secondary,
-              "&:hover": {
-                backgroundColor: alpha(theme.palette.text.primary, 0.05),
-              },
-            }}>
-            <CloseIcon fontSize='small' />
-          </IconButton>
-        </Box>
-      </DialogTitle>
+    <div className='fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6'>
+      {/* Backdrop */}
+      <div className='absolute inset-0 bg-background/80 backdrop-blur-sm transition-opacity' onClick={!uploading ? handleClose : undefined} />
 
-      <Divider />
+      {/* Dialog Container */}
+      <div className='relative w-full max-w-lg bg-card border border-border/50 rounded-2xl shadow-soft flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200'>
+        {/* Header */}
+        <div className='flex items-center justify-between px-6 py-4 border-b border-border/50'>
+          <div className='flex items-center gap-2'>
+            {orderedFiles.length === 0 && uploadResults.length > 0 ? <SuccessIcon className='text-success' size={24} /> : <UploadIcon className='text-primary' size={24} />}
+            <h2 className='text-lg font-semibold text-foreground'>{orderedFiles.length === 0 && uploadResults.length > 0 ? "Upload Complete" : uploadResults.some((r) => r.success) ? "Partial Upload Complete" : "Upload to Storage"}</h2>
+          </div>
+          <button onClick={handleClose} disabled={uploading} className='p-2 text-muted-foreground hover:bg-muted hover:text-foreground rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
+            <CloseIcon size={20} />
+          </button>
+        </div>
 
-      <DialogContent sx={{ pt: spacingMUI.lg }}>
-        <Stack spacing={spacingMUI.lg}>
-          {/* Hide input section via CSS rather than unmounting so UI doesn't visually jump to a new "Upload Complete" screen abruptly */}
-          <Box sx={{ display: orderedFiles.length > 0 ? "block" : "none" }}>
-            {/* Files list with thumbnails, rename, and drag & drop */}
-            <Box>
-              <Stack direction='row' justifyContent='space-between' alignItems='center' mb={spacingMUI.sm}>
-                <Typography variant='body2' color='text.secondary' fontWeight={500}>
-                  Files to upload ({orderedFiles.length}):
-                </Typography>
-                {analysisEnabled && orderedFiles.length > 1 && (
-                  <Button
-                    size='small'
-                    variant='outlined'
-                    onClick={async () => {
-                      for (const f of orderedFiles) await handleAnalyzeFile(f);
-                    }}
-                    disabled={uploading || orderedFiles.some((f) => aiById[f.id]?.status === "running")}
-                    sx={{ textTransform: "none" }}>
-                    {orderedFiles.some((f) => aiById[f.id]?.status === "running") ? "Analyzing…" : `${analysisLabel.replace("Analyze", "Analyze All")} (${orderedFiles.length})`}
-                  </Button>
-                )}
-              </Stack>
-              <Stack
-                spacing={spacingMUI.sm}
-                sx={{
-                  maxHeight: "45vh",
-                  overflowY: "auto",
-                  pr: 1, // small padding to make scrollbar look nice
-                  mr: -1, // offset padding
-                  // styling for webkit scrollbar
-                  "&::-webkit-scrollbar": {
-                    width: "6px",
-                  },
-                  "&::-webkit-scrollbar-track": {
-                    background: "transparent",
-                  },
-                  "&::-webkit-scrollbar-thumb": {
-                    backgroundColor: alpha(theme.palette.text.disabled, 0.4),
-                    borderRadius: "4px",
-                  },
-                  "&::-webkit-scrollbar-thumb:hover": {
-                    backgroundColor: alpha(theme.palette.text.disabled, 0.6),
-                  },
-                }}>
-                {orderedFiles.map((file, index) => (
-                  <FileListItem
-                    key={file.id}
-                    file={file}
-                    index={index}
-                    uploading={uploading}
-                    draggedIndex={draggedIndex}
-                    customName={customNames[file.id] || ""}
-                    customAltString={customAlts[file.id] || ""}
-                    aiState={aiById[file.id]}
-                    analysisEnabled={analysisEnabled}
-                    analysisLabel={analysisLabel}
-                    editingTag={editingTag}
-                    useAiBackend={imageAnalysisSettings?.useAiBackend}
-                    warningFileSizeKB={ui.warningFileSizeKB}
-                    onNameChange={(fileId: string, value: string) => setCustomNames((prev) => ({ ...prev, [fileId]: value }))}
-                    onAltChange={(fileId: string, newAltString: string) => setCustomAlts((prev) => ({ ...prev, [fileId]: newAltString }))}
-                    onEditingTagChange={setEditingTag}
-                    onAnalyze={handleAnalyzeFile}
-                    onDragStart={handleDragStart}
-                    onDragOver={handleDragOver}
-                    onDragEnd={handleDragEnd}
-                    onRemove={() => handleRemoveFile(file.id)}
-                  />
-                ))}
-              </Stack>
-            </Box>
+        {/* Content */}
+        <div className='p-6 overflow-y-auto max-h-[70vh]'>
+          <div className='flex flex-col gap-6'>
+            {/* Hide input section via CSS rather than unmounting */}
+            <div className={orderedFiles.length > 0 ? "block" : "hidden"}>
+              {/* Files list with thumbnails, rename, and drag & drop */}
+              <div className='mb-6'>
+                <div className='flex justify-between items-center mb-2'>
+                  <span className='text-sm font-medium text-muted-foreground'>Files to upload ({orderedFiles.length}):</span>
+                  {analysisEnabled && orderedFiles.length > 1 && (
+                    <button
+                      onClick={async () => {
+                        for (const f of orderedFiles) await handleAnalyzeFile(f);
+                      }}
+                      disabled={uploading || orderedFiles.some((f) => aiById[f.id]?.status === "running")}
+                      className='px-3 py-1.5 text-xs font-semibold border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
+                      {orderedFiles.some((f) => aiById[f.id]?.status === "running") ? "Analyzing…" : `${analysisLabel.replace("Analyze", "Analyze All")} (${orderedFiles.length})`}
+                    </button>
+                  )}
+                </div>
 
-            {/* Category Selection */}
-            {showCategory && (
-              <FormControl component='fieldset'>
-                <FormLabel
-                  component='legend'
-                  sx={{
-                    fontWeight: 500,
-                    mb: spacingMUI.sm,
-                    color: theme.palette.text.primary,
-                  }}>
-                  Category
-                </FormLabel>
-                <RadioGroup row value={category} onChange={(e) => setCategory(e.target.value)}>
-                  {categories.map((c) => (
-                    <FormControlLabel key={c} value={c} control={<Radio />} label={c} />
+                <div className='flex flex-col gap-2 max-h-[45vh] overflow-y-auto pr-2 -mr-2 scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent'>
+                  {orderedFiles.map((file, index) => (
+                    <FileListItem
+                      key={file.id}
+                      file={file}
+                      index={index}
+                      uploading={uploading}
+                      draggedIndex={draggedIndex}
+                      customName={customNames[file.id] || ""}
+                      customAltString={customAlts[file.id] || ""}
+                      aiState={aiById[file.id]}
+                      analysisEnabled={analysisEnabled}
+                      analysisLabel={analysisLabel}
+                      editingTag={editingTag}
+                      useAiBackend={imageAnalysisSettings?.useAiBackend}
+                      warningFileSizeKB={ui.warningFileSizeKB}
+                      onNameChange={(fileId: string, value: string) => setCustomNames((prev) => ({ ...prev, [fileId]: value }))}
+                      onAltChange={(fileId: string, newAltString: string) => setCustomAlts((prev) => ({ ...prev, [fileId]: newAltString }))}
+                      onEditingTagChange={setEditingTag}
+                      onAnalyze={handleAnalyzeFile}
+                      onDragStart={handleDragStart}
+                      onDragOver={handleDragOver}
+                      onDragEnd={handleDragEnd}
+                      onRemove={() => handleRemoveFile(file.id)}
+                    />
                   ))}
-                </RadioGroup>
-              </FormControl>
-            )}
+                </div>
+              </div>
 
-            {/* Folder Name Input */}
-            <TextField
-              label='Folder Name'
-              placeholder='e.g., ABCD123'
-              value={folderName}
-              onChange={(e) => setFolderName(e.target.value)}
-              fullWidth
-              disabled={uploading}
-              error={Boolean(folderName.trim() && !FOLDER_NAME_REGEX.test(folderName))}
-              helperText={folderName.trim() && !FOLDER_NAME_REGEX.test(folderName) ? "Invalid format. Use letters and numbers only." : "Format: Letters + Numbers (e.g., ABCD123, Finance456)"}
-              autoFocus
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: `${borderRadius.md}px`,
-                  "&.Mui-focused": {
-                    backgroundColor: "transparent",
-                  },
-                },
-              }}
-            />
+              {/* Category Selection */}
+              {showCategory && (
+                <div className='mb-6'>
+                  <label className='block text-sm font-semibold text-foreground mb-2'>Category</label>
+                  <div className='flex flex-wrap gap-4'>
+                    {categories.map((c) => (
+                      <label key={c} className='flex items-center gap-2 cursor-pointer'>
+                        <input type='radio' name='category' value={c} checked={category === c} onChange={(e) => setCategory(e.target.value)} className='w-4 h-4 text-primary border-muted focus:ring-primary/20 bg-background accent-primary' />
+                        <span className='text-sm text-foreground'>{c}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-            {/* Upload Path Preview */}
-            {folderName && FOLDER_NAME_REGEX.test(folderName) && (
-              <Alert
-                severity='info'
-                sx={{
-                  borderRadius: `${borderRadius.md}px`,
-                  "& .MuiAlert-message": {
-                    width: "100%",
-                  },
-                }}>
-                <Typography variant='caption' sx={{ fontFamily: "monospace" }}>
-                  <strong>Upload path:</strong>
-                  <br />
-                  {(() => {
-                    const letters = folderName.replace(/[^a-zA-Z]/g, "").toLowerCase();
-                    const digits = folderName.replace(/[^0-9]/g, "");
-                    const parts = [providerCfg.publicRootPrefix];
-                    if (showCategory) parts.push(category);
-                    parts.push(letters, `lift-${digits}`);
-                    return `${parts.filter(Boolean).join("/")}/`;
-                  })()}
-                </Typography>
-              </Alert>
-            )}
+              {/* Folder Name Input */}
+              <div className='mb-4'>
+                <label htmlFor='folderName' className='block text-sm font-semibold text-foreground mb-1.5'>
+                  Folder Name
+                </label>
+                <input
+                  id='folderName'
+                  type='text'
+                  placeholder='e.g., ABCD123'
+                  value={folderName}
+                  onChange={(e) => setFolderName(e.target.value)}
+                  disabled={uploading}
+                  autoFocus
+                  className={`w-full px-3 py-2 text-sm rounded-lg border bg-background transition-colors focus:outline-none focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed ${folderName.trim() && !FOLDER_NAME_REGEX.test(folderName) ? "border-destructive focus:border-destructive focus:ring-destructive/20 text-destructive placeholder:text-destructive/50" : "border-input focus:border-primary focus:ring-primary/20 text-foreground placeholder:text-muted-foreground"}`}
+                />
+                <p className={`mt-1.5 text-xs ${folderName.trim() && !FOLDER_NAME_REGEX.test(folderName) ? "text-destructive" : "text-muted-foreground"}`}>{folderName.trim() && !FOLDER_NAME_REGEX.test(folderName) ? "Invalid format. Use letters and numbers only." : "Format: Letters + Numbers (e.g., ABCD123, Finance456)"}</p>
+              </div>
 
-            {/* Progress */}
-            {uploading && (
-              <Box
-                sx={{
-                  p: spacingMUI.base,
-                  borderRadius: `${borderRadius.md}px`,
-                  backgroundColor: alpha(theme.palette.primary.main, 0.05),
-                  border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-                }}>
-                <LinearProgress sx={{ mb: spacingMUI.sm, borderRadius: `${borderRadius.sm}px` }} />
-                <Typography variant='body2' color='text.secondary' align='center'>
-                  Uploading files...
-                </Typography>
-              </Box>
-            )}
+              {/* Upload Path Preview */}
+              {folderName && FOLDER_NAME_REGEX.test(folderName) && (
+                <div className='p-3 mb-4 rounded-lg bg-info/10 text-info border border-info/20'>
+                  <p className='text-xs font-mono break-all'>
+                    <strong className='font-semibold mr-1'>Upload path:</strong>
+                    <br />
+                    {(() => {
+                      const letters = folderName.replace(/[^a-zA-Z]/g, "").toLowerCase();
+                      const digits = folderName.replace(/[^0-9]/g, "");
+                      const parts = [providerCfg.publicRootPrefix];
+                      if (showCategory) parts.push(category);
+                      parts.push(letters, `lift-${digits}`);
+                      return `${parts.filter(Boolean).join("/")}/`;
+                    })()}
+                  </p>
+                </div>
+              )}
 
-            {/* Error Message */}
-            {error && (
-              <Alert icon={<ErrorIcon />} severity='error' sx={{ borderRadius: `${borderRadius.md}px` }}>
-                {error}
-              </Alert>
-            )}
-          </Box>
+              {/* Progress */}
+              {uploading && (
+                <div className='p-4 rounded-lg bg-primary/5 border border-primary/10 mb-4'>
+                  <div className='h-1.5 w-full bg-primary/20 rounded-full overflow-hidden mb-2'>
+                    <div className='h-full bg-primary rounded-full w-full animate-pulse origin-left'></div>
+                  </div>
+                  <p className='text-xs text-center text-muted-foreground font-medium'>Uploading files...</p>
+                </div>
+              )}
 
-          {/* Upload Results (only show successful ones when retrying) */}
-          {uploadResults.some((r) => r.success) && <UploadResults results={uploadResults.filter((r) => r.success)} copiedUrl={copiedUrl} onCopyUrl={handleCopyUrl} onCopyAllUrls={handleCopyAllUrls} cardBackground={componentStyles.card.background} cardBackdropFilter={componentStyles.card.backdropFilter} cardWebkitBackdropFilter={componentStyles.card.WebkitBackdropFilter} />}
-        </Stack>
-      </DialogContent>
+              {/* Error Message */}
+              {error && (
+                <div className='flex items-start gap-3 p-3 mb-4 rounded-lg bg-destructive/10 text-destructive border border-destructive/20'>
+                  <ErrorIcon className='shrink-0 mt-0.5' size={18} />
+                  <p className='text-sm font-medium'>{error}</p>
+                </div>
+              )}
+            </div>
 
-      <DialogActions sx={{ px: spacingMUI.lg, pb: spacingMUI.base, pt: spacingMUI.sm }}>
-        {orderedFiles.length === 0 && uploadResults.length > 0 ? (
-          // After upload is fully complete (no pending files)
-          <Button
-            fullWidth
-            variant='contained'
-            onClick={handleClose}
-            sx={{
-              textTransform: "none",
-              fontWeight: 600,
-              borderRadius: `${borderRadius.md}px`,
-            }}>
-            Done
-          </Button>
-        ) : (
-          // Before/during upload or if there are files left to process
-          <>
-            <Button
-              onClick={handleClose}
-              color={uploading ? "error" : "inherit"}
-              variant={uploading ? "outlined" : "text"}
-              sx={{
-                textTransform: "none",
-                borderRadius: `${borderRadius.md}px`,
-                fontWeight: uploading ? 600 : 400,
-              }}>
-              {uploadResults.some((r: UploadResult) => r.success) ? "Close" : "Cancel"}
-            </Button>
-            <Button
-              variant='contained'
-              onClick={handleUpload}
-              disabled={uploading || orderedFiles.length === 0 || !folderName.trim() || !FOLDER_NAME_REGEX.test(folderName)}
-              startIcon={<UploadIcon />}
-              sx={{
-                textTransform: "none",
-                fontWeight: 600,
-                borderRadius: `${borderRadius.md}px`,
-              }}>
-              {uploading ? "Uploading..." : uploadResults.some((r: UploadResult) => !r.success) ? "Retry Failed" : "Upload"}
-            </Button>
-          </>
-        )}
-      </DialogActions>
-    </Dialog>
+            {/* Upload Results (only show successful ones when retrying) */}
+            {uploadResults.some((r) => r.success) && <UploadResults results={uploadResults.filter((r) => r.success)} copiedUrl={copiedUrl} onCopyUrl={handleCopyUrl} onCopyAllUrls={handleCopyAllUrls} />}
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className='flex items-center justify-end gap-3 px-6 py-4 border-t border-border/50 bg-muted/20'>
+          {orderedFiles.length === 0 && uploadResults.length > 0 ? (
+            // After upload is fully complete (no pending files)
+            <button onClick={handleClose} className='w-full px-4 py-2 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg transition-colors shadow-sm'>
+              Done
+            </button>
+          ) : (
+            // Before/during upload or if there are files left to process
+            <>
+              <button onClick={handleClose} className={`px-4 py-2 text-sm rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background ${uploading ? "border border-destructive text-destructive hover:bg-destructive/10 focus-visible:ring-destructive font-semibold" : "text-muted-foreground hover:bg-muted font-medium focus-visible:ring-primary/50"}`}>
+                {uploadResults.some((r: UploadResult) => r.success) ? "Close" : "Cancel"}
+              </button>
+
+              <button onClick={handleUpload} disabled={uploading || orderedFiles.length === 0 || !folderName.trim() || !FOLDER_NAME_REGEX.test(folderName)} className='flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed'>
+                <UploadIcon size={18} />
+                {uploading ? "Uploading..." : uploadResults.some((r: UploadResult) => !r.success) ? "Retry Failed" : "Upload"}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

@@ -1,10 +1,5 @@
 import { useState, useEffect } from "react";
-import { Box, Typography, Stack, Button, Chip, Paper, Collapse, IconButton, useTheme, alpha, Tooltip, Pagination } from "@mui/material";
-import { History as HistoryIcon, ContentCopy as CopyIcon, Link as LinkIcon, CheckCircleOutline as CheckIcon, ExpandMore as ExpandMoreIcon, ExpandLess as ExpandLessIcon, Delete as DeleteIcon, Folder as FolderIcon, Schedule as TimeIcon, Image as ImageIcon, Description as AltIcon } from "@mui/icons-material";
-
-import { useThemeMode } from "../theme";
-import { getComponentStyles } from "../theme/componentStyles";
-import { borderRadius, spacingMUI } from "../theme/tokens";
+import { History as HistoryIcon, Copy as CopyIcon, Link as LinkIcon, CheckCircle as CheckIcon, ChevronDown as ExpandMoreIcon, ChevronUp as ExpandLessIcon, Trash2 as DeleteIcon, Folder as FolderIcon, Clock as TimeIcon, Image as ImageIcon, FileText as AltIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { copyToClipboard } from "./utils/clipboard";
 import { UI_TIMINGS, UPLOAD_CONFIG } from "./constants";
 import { formatTimeRelative } from "./utils/formatters";
@@ -16,10 +11,6 @@ interface UploadHistoryProps {
 }
 
 export default function UploadHistory({ sessions, onClear }: UploadHistoryProps) {
-  const theme = useTheme();
-  const { mode, style } = useThemeMode();
-  const componentStyles = getComponentStyles(mode, style);
-
   const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set());
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -30,7 +21,8 @@ export default function UploadHistory({ sessions, onClear }: UploadHistoryProps)
   const endIndex = startIndex + UPLOAD_CONFIG.SESSIONS_PER_PAGE;
   const paginatedSessions = sessions.slice(startIndex, endIndex);
 
-  const handlePageChange = (_event: React.ChangeEvent<unknown>, page: number) => {
+  const handlePageChange = (page: number) => {
+    if (page < 1 || page > totalPages) return;
     setCurrentPage(page);
     // Reset expanded sessions when changing page
     setExpandedSessions(new Set());
@@ -62,245 +54,127 @@ export default function UploadHistory({ sessions, onClear }: UploadHistoryProps)
       setTimeout(() => setCopiedUrl(null), UI_TIMINGS.COPIED_FEEDBACK);
     }
   };
+
   if (sessions.length === 0) {
     return null;
   }
 
   return (
-    <Paper
-      elevation={0}
-      sx={{
-        p: spacingMUI.lg,
-        borderRadius: `${borderRadius.lg}px`,
-        background: componentStyles.card.background || theme.palette.background.paper,
-        backdropFilter: componentStyles.card.backdropFilter,
-        WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
-        border: componentStyles.card.border || `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-        boxShadow: componentStyles.card.boxShadow,
-      }}>
+    <div className='bg-card rounded-2xl p-6 border border-border/50 shadow-soft'>
       {/* Header */}
-      <Box display='flex' alignItems='center' justifyContent='space-between' mb={spacingMUI.base}>
-        <Box display='flex' alignItems='center' gap={spacingMUI.sm}>
-          <HistoryIcon sx={{ color: theme.palette.primary.main }} />
-          <Typography variant='h6' fontWeight={600}>
-            Upload History
-          </Typography>
-          <Chip
-            label={sessions.reduce((sum, s) => sum + s.files.length, 0)}
-            size='small'
-            sx={{
-              backgroundColor: alpha(theme.palette.primary.main, 0.1),
-              color: theme.palette.primary.main,
-              fontWeight: 600,
-              fontSize: "0.75rem",
-            }}
-          />
-        </Box>
-        <Button
-          size='small'
-          onClick={onClear}
-          startIcon={<DeleteIcon />}
-          sx={{
-            textTransform: "none",
-            borderRadius: `${borderRadius.md}px`,
-            color: theme.palette.error.main,
-            "&:hover": {
-              backgroundColor: alpha(theme.palette.error.main, 0.08),
-            },
-          }}>
+      <div className='flex items-center justify-between mb-4'>
+        <div className='flex items-center gap-2'>
+          <HistoryIcon className='text-primary' size={20} />
+          <h2 className='text-lg font-semibold text-foreground'>Upload History</h2>
+          <span className='px-2 py-0.5 bg-primary/10 text-primary font-semibold text-xs rounded-full'>{sessions.reduce((sum, s) => sum + s.files.length, 0)}</span>
+        </div>
+        <button onClick={onClear} className='flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/10 rounded-lg transition-colors'>
+          <DeleteIcon size={16} />
           Clear All
-        </Button>
-      </Box>
+        </button>
+      </div>
 
       {/* Sessions List */}
-      <Stack spacing={spacingMUI.sm}>
+      <div className='flex flex-col gap-3'>
         {paginatedSessions.map((session) => {
           const isExpanded = expandedSessions.has(session.id);
           const successCount = session.files.filter((f) => f.url).length;
 
           return (
-            <Box
-              key={session.id}
-              sx={{
-                borderRadius: `${borderRadius.md}px`,
-                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                overflow: "hidden",
-                transition: "all 0.2s ease",
-                "&:hover": {
-                  borderColor: alpha(theme.palette.primary.main, 0.3),
-                  boxShadow: `0 2px 8px ${alpha(theme.palette.primary.main, 0.08)}`,
-                },
-              }}>
+            <div key={session.id} className='border border-border/50 rounded-xl overflow-hidden transition-all duration-200 hover:border-primary/30 hover:shadow-sm'>
               {/* Session Header */}
-              <Box
-                onClick={() => toggleSession(session.id)}
-                sx={{
-                  p: spacingMUI.base,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  cursor: "pointer",
-                  backgroundColor: alpha(theme.palette.background.default, 0.3),
-                  "&:hover": {
-                    backgroundColor: alpha(theme.palette.primary.main, 0.03),
-                  },
-                }}>
-                <Box display='flex' alignItems='center' gap={spacingMUI.sm} flex={1}>
-                  <FolderIcon sx={{ fontSize: 20, color: theme.palette.primary.main }} />
-                  <Box flex={1}>
-                    <Box display='flex' alignItems='center' gap={spacingMUI.xs} mb={0.25}>
-                      <Typography variant='body2' fontWeight={600}>
-                        {session.folderName}
-                      </Typography>
-                      <Chip
-                        label={session.category}
-                        size='small'
-                        sx={{
-                          height: 18,
-                          fontSize: "0.65rem",
-                          fontWeight: 600,
-                          backgroundColor: session.category === "finance" ? alpha(theme.palette.success.main, 0.1) : alpha(theme.palette.info.main, 0.1),
-                          color: session.category === "finance" ? theme.palette.success.main : theme.palette.info.main,
-                        }}
-                      />
-                    </Box>
-                    <Box display='flex' alignItems='center' gap={spacingMUI.sm}>
-                      <Typography variant='caption' color='text.secondary' display='flex' alignItems='center' gap={0.5}>
-                        <TimeIcon sx={{ fontSize: 12 }} />
+              <div onClick={() => toggleSession(session.id)} className='p-4 flex items-center justify-between cursor-pointer bg-muted/30 hover:bg-primary/5 transition-colors'>
+                <div className='flex items-center gap-3 flex-1'>
+                  <FolderIcon className='text-primary' size={20} />
+                  <div className='flex-1'>
+                    <div className='flex items-center gap-2 mb-1'>
+                      <span className='text-sm font-semibold text-foreground'>{session.folderName}</span>
+                      <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full ${session.category === "finance" ? "bg-success/10 text-success" : "bg-info/10 text-info"}`}>{session.category}</span>
+                    </div>
+                    <div className='flex items-center gap-2 text-xs text-muted-foreground'>
+                      <span className='flex items-center gap-1'>
+                        <TimeIcon size={12} />
                         {formatTimeRelative(session.timestamp)}
-                      </Typography>
-                      <Typography variant='caption' color='text.secondary'>
-                        •
-                      </Typography>
-                      <Typography variant='caption' color='text.secondary'>
+                      </span>
+                      <span>•</span>
+                      <span>
                         {successCount} file{successCount !== 1 ? "s" : ""}
-                      </Typography>
-                    </Box>
-                  </Box>
-                </Box>
-                <IconButton size='small'>{isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}</IconButton>
-              </Box>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <button className='p-1 text-muted-foreground hover:bg-muted rounded-full transition-colors'>{isExpanded ? <ExpandLessIcon size={20} /> : <ExpandMoreIcon size={20} />}</button>
+              </div>
 
               {/* Session Files */}
-              <Collapse in={isExpanded}>
-                <Box sx={{ p: spacingMUI.base, pt: spacingMUI.sm }}>
-                  <Stack spacing={spacingMUI.xs}>
+              {isExpanded && (
+                <div className='p-4 pt-3 bg-background border-t border-border/50'>
+                  <div className='flex flex-col gap-2'>
                     {session.files.map((file) => (
-                      <Box
-                        key={file.id}
-                        sx={{
-                          p: spacingMUI.sm,
-                          borderRadius: `${borderRadius.sm}px`,
-                          backgroundColor: alpha(theme.palette.background.default, 0.5),
-                          display: "flex",
-                          alignItems: "center",
-                          gap: spacingMUI.sm,
-                          transition: "all 0.2s ease",
-                          "&:hover": {
-                            backgroundColor: alpha(theme.palette.primary.main, 0.05),
-                          },
-                        }}>
-                        <ImageIcon sx={{ fontSize: 16, color: theme.palette.text.secondary }} />
-                        <Box flex={1} minWidth={0}>
-                          <Typography variant='body2' fontWeight={500} sx={{ mb: 0.25 }}>
-                            {file.filename}
-                          </Typography>
-                          <Typography
-                            variant='caption'
-                            sx={{
-                              fontFamily: "monospace",
-                              color: theme.palette.text.secondary,
-                              display: "block",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                            }}>
-                            {file.shortPath}
-                          </Typography>
+                      <div key={file.id} className='p-3 rounded-lg bg-muted/50 flex items-center gap-3 transition-colors hover:bg-primary/5 border border-transparent hover:border-primary/10'>
+                        <ImageIcon className='text-muted-foreground w-4 h-4 shrink-0' />
+
+                        <div className='flex-1 min-w-0'>
+                          <div className='text-sm font-medium text-foreground mb-1 truncate'>{file.filename}</div>
+                          <div className='text-xs font-mono text-muted-foreground truncate'>{file.shortPath}</div>
                           {file.alt && (
-                            <Typography
-                              variant='caption'
-                              sx={{
-                                color: theme.palette.info.main,
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 0.5,
-                                mt: 0.5,
-                                fontSize: "0.75rem",
-                                "& span": { fontWeight: 600 },
-                              }}>
-                              <AltIcon sx={{ fontSize: 14 }} />
-                              <span>ALT:</span> {file.alt}
-                            </Typography>
+                            <div className='flex items-center gap-1.5 mt-1.5 text-xs text-info'>
+                              <AltIcon size={14} />
+                              <span className='font-semibold'>ALT:</span>
+                              <span className='truncate'>{file.alt}</span>
+                            </div>
                           )}
-                        </Box>
-                        <Box display='flex' gap={spacingMUI.xs}>
-                          <Tooltip title='Copy full URL' arrow>
-                            <IconButton
-                              size='small'
-                              onClick={() => handleCopy(file.url, `${file.id}-url`)}
-                              sx={{
-                                color: copiedUrl === `${file.id}-url` ? theme.palette.success.main : theme.palette.primary.main,
-                              }}>
-                              {copiedUrl === `${file.id}-url` ? <CheckIcon sx={{ fontSize: 18 }} /> : <LinkIcon sx={{ fontSize: 18 }} />}
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title='Copy short path' arrow>
-                            <IconButton
-                              size='small'
-                              onClick={() => handleCopy(file.shortPath, `${file.id}-path`)}
-                              sx={{
-                                color: copiedUrl === `${file.id}-path` ? theme.palette.success.main : theme.palette.text.secondary,
-                              }}>
-                              {copiedUrl === `${file.id}-path` ? <CheckIcon sx={{ fontSize: 18 }} /> : <CopyIcon sx={{ fontSize: 18 }} />}
-                            </IconButton>
-                          </Tooltip>
+                        </div>
+
+                        <div className='flex items-center gap-1 shrink-0'>
+                          <button title='Copy full URL' onClick={() => handleCopy(file.url, `${file.id}-url`)} className={`p-1.5 rounded-md transition-colors ${copiedUrl === `${file.id}-url` ? "text-success bg-success/10" : "text-primary hover:bg-primary/10"}`}>
+                            {copiedUrl === `${file.id}-url` ? <CheckIcon size={16} /> : <LinkIcon size={16} />}
+                          </button>
+
+                          <button title='Copy short path' onClick={() => handleCopy(file.shortPath, `${file.id}-path`)} className={`p-1.5 rounded-md transition-colors ${copiedUrl === `${file.id}-path` ? "text-success bg-success/10" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
+                            {copiedUrl === `${file.id}-path` ? <CheckIcon size={16} /> : <CopyIcon size={16} />}
+                          </button>
+
                           {file.alt && (
-                            <Tooltip title='Copy ALT text' arrow>
-                              <IconButton
-                                size='small'
-                                onClick={() => handleCopy(file.alt!, `${file.id}-alt`)}
-                                sx={{
-                                  color: copiedUrl === `${file.id}-alt` ? theme.palette.success.main : theme.palette.info.main,
-                                }}>
-                                {copiedUrl === `${file.id}-alt` ? <CheckIcon sx={{ fontSize: 18 }} /> : <AltIcon sx={{ fontSize: 18 }} />}
-                              </IconButton>
-                            </Tooltip>
+                            <button title='Copy ALT text' onClick={() => handleCopy(file.alt!, `${file.id}-alt`)} className={`p-1.5 rounded-md transition-colors ${copiedUrl === `${file.id}-alt` ? "text-success bg-success/10" : "text-info hover:bg-info/10"}`}>
+                              {copiedUrl === `${file.id}-alt` ? <CheckIcon size={16} /> : <AltIcon size={16} />}
+                            </button>
                           )}
-                        </Box>
-                      </Box>
+                        </div>
+                      </div>
                     ))}
-                  </Stack>
-                </Box>
-              </Collapse>
-            </Box>
+                  </div>
+                </div>
+              )}
+            </div>
           );
         })}
-      </Stack>
+      </div>
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <Box display='flex' justifyContent='center' mt={spacingMUI.lg} pt={spacingMUI.base} borderTop={`1px solid ${alpha(theme.palette.divider, 0.1)}`}>
-          <Pagination
-            count={totalPages}
-            page={currentPage}
-            onChange={handlePageChange}
-            color='primary'
-            shape='rounded'
-            showFirstButton
-            showLastButton
-            sx={{
-              "& .MuiPaginationItem-root": {
-                borderRadius: `${borderRadius.sm}px`,
-                fontWeight: 500,
-              },
-              "& .Mui-selected": {
-                fontWeight: 700,
-              },
-            }}
-          />
-        </Box>
+        <div className='flex justify-center items-center mt-6 pt-4 border-t border-border/50 gap-2'>
+          <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className='p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors'>
+            <ChevronLeft size={20} />
+          </button>
+
+          <div className='flex items-center gap-1'>
+            {Array.from({ length: totalPages }).map((_, i) => {
+              const page = i + 1;
+              const isSelected = currentPage === page;
+              return (
+                <button key={page} onClick={() => handlePageChange(page)} className={`min-w-[32px] h-8 flex items-center justify-center rounded-md text-sm font-medium transition-colors ${isSelected ? "bg-primary text-primary-foreground font-bold" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
+                  {page}
+                </button>
+              );
+            })}
+          </div>
+
+          <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className='p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-colors'>
+            <ChevronRight size={20} />
+          </button>
+        </div>
       )}
-    </Paper>
+    </div>
   );
 }

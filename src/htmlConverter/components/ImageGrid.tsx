@@ -1,5 +1,3 @@
-import { Box, Stack } from "@mui/material";
-import { spacingMUI } from "../../theme/tokens";
 import { ProcessedImage, ImageFormat, ImageFormatOverride } from "../types";
 import { ImageItem } from "./ImageItem";
 
@@ -15,12 +13,10 @@ export function ImageGrid({ images, globalFormat, onDownload, onRemove, onFormat
   if (images.length === 0) return null;
 
   return (
-    <Box>
-      <Stack direction='row' spacing={spacingMUI.sm} sx={{ overflowX: "auto", pb: spacingMUI.xs }}>
-        {images.map((img) => (
-          <ImageItem key={img.id} image={img} globalFormat={globalFormat} onDownload={onDownload} onRemove={onRemove} onFormatChange={onFormatChange} />
-        ))}
-      </Stack>
-    </Box>
+    <div className='flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent'>
+      {images.map((img) => (
+        <ImageItem key={img.id} image={img} globalFormat={globalFormat} onDownload={onDownload} onRemove={onRemove} onFormatChange={onFormatChange} />
+      ))}
+    </div>
   );
 }

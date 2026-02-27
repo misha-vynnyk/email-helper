@@ -6,10 +6,7 @@
  */
 
 import React from "react";
-import { Box, Button, Chip, LinearProgress, Stack, TextField, Typography, useTheme, alpha, Tooltip, IconButton } from "@mui/material";
-import { DragIndicator as DragIcon, Close as CloseIcon } from "@mui/icons-material";
-
-import { spacingMUI, borderRadius } from "../../theme/tokens";
+import { GripVertical, X, AlertTriangle } from "lucide-react";
 import { normalizeCustomNameInput } from "../utils/imageAnalysis";
 import type { ImageAiAnalysis } from "../utils/ocrUiTypes";
 
@@ -109,172 +106,67 @@ function addTag(altString: string, newTag: string): string {
 // ---------------------------------------------------------------------------
 
 export default function FileListItem({ file, index, uploading, draggedIndex, customName, customAltString, aiState, analysisEnabled, analysisLabel, editingTag, useAiBackend, warningFileSizeKB = 1024, onNameChange, onAltChange, onEditingTagChange, onAnalyze, onDragStart, onDragOver, onDragEnd, onRemove }: FileListItemProps) {
-  const theme = useTheme();
   const isDragged = draggedIndex === index;
   const altTags = getAltTags(customAltString);
 
   return (
-    <Box
+    <div
       draggable={!uploading}
       onDragStart={() => onDragStart(index)}
       onDragOver={(e) => onDragOver(e, index)}
       onDragEnd={onDragEnd}
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "stretch",
-        gap: spacingMUI.sm,
-        p: spacingMUI.sm,
-        borderRadius: `${borderRadius.sm}px`,
-        backgroundColor: isDragged ? alpha(theme.palette.primary.main, 0.15) : alpha(theme.palette.background.paper, 0.5),
-        border: `1px solid ${isDragged ? theme.palette.primary.main : theme.palette.divider}`,
-        cursor: uploading ? "default" : "grab",
-        transition: "all 0.2s ease",
-        "&:active": { cursor: uploading ? "default" : "grabbing" },
-        "&:hover": uploading
-          ? {}
-          : {
-              backgroundColor: alpha(theme.palette.primary.main, 0.08),
-              borderColor: theme.palette.primary.light,
-            },
-      }}>
+      className={`
+        flex flex-col items-stretch gap-3 p-3 rounded-lg border transition-all duration-200
+        ${isDragged ? "bg-primary/15 border-primary" : "bg-card border-border/50"}
+        ${uploading ? "cursor-default" : "cursor-grab active:cursor-grabbing"}
+        ${!uploading && !isDragged ? "hover:bg-primary/5 hover:border-primary/50" : ""}
+      `}>
       {/* Top row: drag handle + thumbnail + index + name/alt inputs + remove button */}
-      <Box sx={{ display: "flex", alignItems: "flex-start", gap: spacingMUI.sm }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: spacingMUI.sm, pt: 1 }}>
+      <div className='flex items-start gap-3'>
+        <div className='flex items-center gap-3 pt-1 flex-1'>
           {/* Drag Handle */}
-          <DragIcon
-            sx={{
-              color: theme.palette.text.disabled,
-              cursor: uploading ? "default" : "grab",
-              "&:active": { cursor: uploading ? "default" : "grabbing" },
-            }}
-          />
+          <GripVertical className={`text-muted-foreground ${uploading ? "cursor-default" : "cursor-grab active:cursor-grabbing"}`} size={20} />
 
           {/* Warning Icon if file is too large */}
           {warningFileSizeKB && file.size && file.size > warningFileSizeKB * 1024 && (
-            <Tooltip title={`Увага: файл завеликий (${(file.size / 1024).toFixed(0)} KB). Рекомендовано до ${warningFileSizeKB} KB.`} arrow placement='top'>
-              <Box sx={{ display: "flex", color: theme.palette.warning.main, cursor: "help" }}>
-                <Typography sx={{ fontSize: "1.2rem", lineHeight: 1 }}>⚠️</Typography>
-              </Box>
-            </Tooltip>
+            <div title={`Увага: файл завеликий (${(file.size / 1024).toFixed(0)} KB). Рекомендовано до ${warningFileSizeKB} KB.`} className='flex text-warning cursor-help'>
+              <AlertTriangle size={20} />
+            </div>
           )}
 
           {/* Thumbnail */}
           {file.path && (
-            <Tooltip
-              title={
-                <Box sx={{ p: 0.5 }}>
-                  <img
-                    src={file.path}
-                    alt={file.name}
-                    style={{
-                      maxWidth: 350,
-                      maxHeight: 350,
-                      display: "block",
-                      objectFit: "contain",
-                      borderRadius: 4,
-                    }}
-                  />
-                </Box>
-              }
-              placement='left'
-              enterDelay={800}
-              enterNextDelay={800}
-              arrow
-              slotProps={{
-                tooltip: {
-                  sx: {
-                    bgcolor: "background.paper",
-                    boxShadow: theme.shadows[6],
-                    border: `1px solid ${theme.palette.divider}`,
-                    p: 0,
-                    maxWidth: "none",
-                  },
-                },
-                arrow: {
-                  sx: {
-                    color: "background.paper",
-                    "&::before": {
-                      border: `1px solid ${theme.palette.divider}`,
-                    },
-                  },
-                },
-              }}>
-              <Box
-                sx={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: `${borderRadius.sm}px`,
-                  overflow: "hidden",
-                  flexShrink: 0,
-                  border: `1px solid ${theme.palette.divider}`,
-                  backgroundColor: alpha(theme.palette.background.default, 0.5),
-                  cursor: "zoom-in",
-                }}>
-                <img src={file.path} alt={file.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              </Box>
-            </Tooltip>
+            <div title={file.name} className='w-12 h-12 rounded-md overflow-hidden shrink-0 border border-border/50 bg-background/50 cursor-pointer group relative'>
+              <img src={file.path} alt={file.name} className='w-full h-full object-cover group-hover:opacity-50 transition-opacity' />
+            </div>
           )}
 
-          {/* Index Chip */}
-          <Chip
-            label={`#${index + 1}`}
-            size='small'
-            sx={{
-              minWidth: 36,
-              fontWeight: 700,
-              backgroundColor: alpha(theme.palette.primary.main, 0.1),
-              color: theme.palette.primary.main,
-            }}
-          />
+          {/* Index Badge */}
+          <span className='min-w-[36px] h-6 flex items-center justify-center font-bold text-[11px] rounded-full bg-primary/10 text-primary'>#{index + 1}</span>
 
-          <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: spacingMUI.xs }}>
+          <div className='flex-1 flex flex-col gap-2'>
             {/* Name Input */}
-            <TextField
-              size='small'
-              fullWidth
-              placeholder={file.name.replace(/\.[^/.]+$/, "")}
-              value={customName}
-              onChange={(e) => onNameChange(file.id, normalizeCustomNameInput(e.target.value))}
-              disabled={uploading}
-              helperText={customName ? `${customName}.jpg` : file.name}
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: `${borderRadius.sm}px`,
-                  "&.Mui-focused": { backgroundColor: "transparent" },
-                },
-                "& .MuiFormHelperText-root": {
-                  fontFamily: "monospace",
-                  fontSize: "0.7rem",
-                },
-              }}
-            />
+            <div className='flex flex-col'>
+              <input type='text' placeholder={file.name.replace(/\.[^/.]+$/, "")} value={customName} onChange={(e) => onNameChange(file.id, normalizeCustomNameInput(e.target.value))} disabled={uploading} className='w-full bg-background border border-border/50 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary disabled:opacity-50' />
+              <span className='font-mono text-[10px] text-muted-foreground mt-1'>{customName ? `${customName}.jpg` : file.name}</span>
+            </div>
 
             {/* ALT Input with Tags */}
             <AltTagInput fileId={file.id} altTags={altTags} customAltString={customAltString} uploading={uploading} editingTag={editingTag} onAltChange={onAltChange} onEditingTagChange={onEditingTagChange} />
-          </Box>
+          </div>
 
           {/* Remove Button */}
-          <Box sx={{ pt: 0.5 }}>
-            <Tooltip title='Remove file from upload list' arrow>
-              <IconButton
-                size='small'
-                onClick={onRemove}
-                disabled={uploading}
-                sx={{
-                  color: theme.palette.text.secondary,
-                  "&:hover": { color: theme.palette.error.main, backgroundColor: alpha(theme.palette.error.main, 0.1) },
-                }}>
-                <CloseIcon fontSize='small' />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        </Box>
-      </Box>
+          <div className='pt-0.5'>
+            <button title='Remove file from upload list' onClick={onRemove} disabled={uploading} className='p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* AI suggestions section */}
       {analysisEnabled && <AiSuggestionsSection file={file} uploading={uploading} aiState={aiState} analysisLabel={analysisLabel} customAltString={customAltString} customName={customName} useAiBackend={useAiBackend} onAnalyze={onAnalyze} onAltChange={onAltChange} onNameChange={onNameChange} />}
-    </Box>
+    </div>
   );
 }
 
@@ -293,36 +185,19 @@ interface AltTagInputProps {
 }
 
 function AltTagInput({ fileId, altTags, customAltString, uploading, editingTag, onAltChange, onEditingTagChange }: AltTagInputProps) {
-  const theme = useTheme();
-
   return (
-    <Box>
-      <Typography variant='caption' color='text.secondary' sx={{ mb: 0.5, display: "block" }}>
-        ALT text
-      </Typography>
-      <Box
-        sx={{
-          border: `1px solid ${theme.palette.divider}`,
-          borderRadius: `${borderRadius.sm}px`,
-          p: spacingMUI.xs,
-          minHeight: 40,
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 0.5,
-          alignItems: "center",
-          backgroundColor: alpha(theme.palette.background.paper, 0.5),
-          "&:focus-within": { borderColor: theme.palette.primary.main },
-        }}>
+    <div>
+      <span className='text-xs text-muted-foreground mb-1 block'>ALT text</span>
+      <div className='min-h-[40px] border border-border/50 rounded-md p-1.5 flex flex-wrap gap-1.5 items-center bg-card/50 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary'>
         {/* Existing tags as editable/removable chips */}
         {altTags.map((tag, idx) => {
           const isEditing = editingTag?.fileId === fileId && editingTag?.tagIdx === idx;
 
           if (isEditing) {
             return (
-              <TextField
+              <input
                 key={`edit-${idx}`}
-                size='small'
-                variant='standard'
+                type='text'
                 defaultValue={tag}
                 autoFocus
                 onBlur={(e) => {
@@ -330,64 +205,46 @@ function AltTagInput({ fileId, altTags, customAltString, uploading, editingTag, 
                   onEditingTagChange(null);
                 }}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                  if (e.key === "Enter") e.currentTarget.blur();
                   else if (e.key === "Escape") onEditingTagChange(null);
                 }}
-                sx={{
-                  width: "auto",
-                  minWidth: 60,
-                  "& .MuiInputBase-input": { fontSize: "0.8125rem", padding: "2px 4px" },
-                }}
-                InputProps={{ disableUnderline: true }}
+                className='w-auto min-w-[60px] text-[13px] px-1.5 py-0.5 bg-background border border-border/50 rounded outline-none focus:border-primary'
               />
             );
           }
 
           return (
-            <Chip
-              key={`${tag}-${idx}`}
-              size='small'
-              label={tag}
-              onDoubleClick={() => onEditingTagChange({ fileId, tagIdx: idx })}
-              onDelete={() => onAltChange(fileId, removeTag(customAltString, idx))}
-              sx={{
-                cursor: "pointer",
-                backgroundColor: alpha(theme.palette.primary.main, 0.1),
-                "& .MuiChip-deleteIcon": {
-                  color: theme.palette.text.secondary,
-                  "&:hover": { color: theme.palette.error.main },
-                },
-                "&:hover": { backgroundColor: alpha(theme.palette.primary.main, 0.2) },
-              }}
-            />
+            <div key={`${tag}-${idx}`} onDoubleClick={() => onEditingTagChange({ fileId, tagIdx: idx })} className='group flex items-center gap-1 bg-primary/10 hover:bg-primary/20 text-foreground px-2 py-0.5 rounded-full text-xs font-medium cursor-pointer transition-colors'>
+              <span>{tag}</span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAltChange(fileId, removeTag(customAltString, idx));
+                }}
+                className='text-muted-foreground hover:text-destructive p-0.5 rounded-full outline-none'>
+                <X size={12} />
+              </button>
+            </div>
           );
         })}
 
         {/* Inline input for adding new tags */}
-        <TextField
-          size='small'
-          variant='standard'
+        <input
+          type='text'
           placeholder={customAltString ? "Add more..." : "Type or click suggestions below..."}
           disabled={uploading}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.target as HTMLInputElement).value.trim()) {
+            if (e.key === "Enter" && e.currentTarget.value.trim()) {
               e.preventDefault();
-              const newTag = (e.target as HTMLInputElement).value.trim();
+              const newTag = e.currentTarget.value.trim();
               onAltChange(fileId, addTag(customAltString, newTag));
-              (e.target as HTMLInputElement).value = "";
+              e.currentTarget.value = "";
             }
           }}
-          sx={{
-            flex: 1,
-            minWidth: 120,
-            "& .MuiInput-underline:before": { borderBottom: "none" },
-            "& .MuiInput-underline:after": { borderBottom: "none" },
-            "& .MuiInput-underline:hover:before": { borderBottom: "none" },
-          }}
-          InputProps={{ disableUnderline: true, sx: { fontSize: "0.875rem" } }}
+          className='flex-1 min-w-[120px] text-sm bg-transparent border-none outline-none disabled:opacity-50 placeholder:text-muted-foreground'
         />
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 }
 
@@ -409,48 +266,39 @@ interface AiSuggestionsSectionProps {
 }
 
 function AiSuggestionsSection({ file, uploading, aiState, analysisLabel, customAltString, customName, useAiBackend, onAnalyze, onAltChange, onNameChange }: AiSuggestionsSectionProps) {
-  const theme = useTheme();
   const forceLabel = useAiBackend ? "Force Analyze" : "Force OCR";
   const altTags = getAltTags(customAltString);
 
   return (
-    <Box sx={{ pl: 0, pt: spacingMUI.xs }}>
+    <div className='pt-2 pl-0'>
       {/* Analyze button row */}
-      <Stack direction='row' spacing={spacingMUI.xs} alignItems='center' flexWrap='wrap'>
-        <Button size='small' variant='outlined' onClick={() => onAnalyze(file)} disabled={uploading || aiState?.status === "running"} sx={{ textTransform: "none" }}>
+      <div className='flex flex-wrap items-center gap-2'>
+        <button onClick={() => onAnalyze(file)} disabled={uploading || aiState?.status === "running"} className='px-3 py-1 text-xs font-medium border border-border/50 rounded hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
           {aiState?.status === "running" ? "Analyzing…" : analysisLabel}
-        </Button>
+        </button>
 
         {aiState?.skippedReason === "lowTextLikelihood" && (
-          <Button size='small' variant='text' onClick={() => onAnalyze(file, { force: true })} disabled={uploading || aiState?.status === "running"} sx={{ textTransform: "none" }}>
+          <button onClick={() => onAnalyze(file, { force: true })} disabled={uploading || aiState?.status === "running"} className='px-3 py-1 text-xs font-medium text-primary hover:underline disabled:opacity-50 disabled:cursor-not-allowed'>
             {forceLabel}
-          </Button>
+          </button>
         )}
 
-        {typeof aiState?.textLikelihood === "number" && <Chip size='small' variant='outlined' label={`TL ${Number(aiState?.textLikelihood).toFixed(3)}`} />}
-        {aiState?.cacheHit && <Chip size='small' variant='outlined' label='cache' />}
+        {typeof aiState?.textLikelihood === "number" && <span className='px-2 py-0.5 text-[10px] border border-border/50 rounded text-muted-foreground'>TL {Number(aiState?.textLikelihood).toFixed(3)}</span>}
+        {aiState?.cacheHit && <span className='px-2 py-0.5 text-[10px] border border-border/50 rounded text-muted-foreground'>cache</span>}
 
-        {aiState?.status === "error" && (
-          <Typography variant='caption' color='error'>
-            {aiState?.error}
-          </Typography>
-        )}
-      </Stack>
+        {aiState?.status === "error" && <span className='text-[10px] text-destructive'>{aiState?.error}</span>}
+      </div>
 
       {/* Progress bar */}
-      {aiState?.status === "running" && (
-        <Box sx={{ mt: spacingMUI.xs }}>
-          <LinearProgress variant={typeof aiState?.progress === "number" ? "determinate" : "indeterminate"} value={Math.round((aiState?.progress ?? 0) * 100)} />
-        </Box>
-      )}
+      {aiState?.status === "running" && <div className='mt-2 h-1 w-full bg-muted rounded overflow-hidden'>{typeof aiState?.progress === "number" ? <div className='h-full bg-primary transition-all duration-300' style={{ width: `${Math.round(aiState.progress * 100)}%` }} /> : <div className='h-full bg-primary w-1/3 animate-progress' />}</div>}
 
       {/* Results: ALT, CTA, and Name suggestions */}
       {aiState?.status === "done" && (
-        <Box sx={{ mt: spacingMUI.xs }}>
+        <div className='mt-2'>
           {aiState?.skippedReason === "lowTextLikelihood" && (
-            <Typography variant='caption' color='text.secondary' display='block' sx={{ mb: 0.5 }}>
-              Skipped (low text likelihood). Click <b>{forceLabel}</b> if this is a banner/button with text.
-            </Typography>
+            <span className='block mb-2 text-xs text-muted-foreground'>
+              Skipped (low text likelihood). Click <strong className='text-foreground'>{forceLabel}</strong> if this is a banner/button with text.
+            </span>
           )}
 
           {/* ALT suggestions */}
@@ -461,36 +309,24 @@ function AiSuggestionsSection({ file, uploading, aiState, analysisLabel, customA
 
           {/* Filename suggestions */}
           {(aiState?.nameSuggestions?.length ?? 0) > 0 && (
-            <Box sx={{ mt: spacingMUI.sm }}>
-              <Typography variant='caption' color='text.secondary' display='block' sx={{ mb: 0.75 }}>
-                Filename suggestions
-              </Typography>
-              <Stack direction='row' spacing={0.75} flexWrap='wrap' useFlexGap sx={{ gap: 0.75 }}>
+            <div className='mt-3'>
+              <span className='block mb-1.5 text-xs text-muted-foreground'>Filename suggestions</span>
+              <div className='flex flex-wrap gap-1.5'>
                 {aiState?.nameSuggestions?.map((s) => {
                   const normalized = normalizeCustomNameInput(s);
                   const isSelected = customName === normalized;
                   return (
-                    <Chip
-                      key={s}
-                      size='small'
-                      variant='outlined'
-                      label={s}
-                      onClick={() => onNameChange(file.id, normalized)}
-                      sx={{
-                        cursor: "pointer",
-                        borderColor: isSelected ? theme.palette.success.main : theme.palette.divider,
-                        backgroundColor: isSelected ? alpha(theme.palette.success.main, 0.15) : "transparent",
-                        "&:hover": { backgroundColor: alpha(theme.palette.success.main, 0.1) },
-                      }}
-                    />
+                    <button key={s} onClick={() => onNameChange(file.id, normalized)} className={`px-2 py-1 text-xs rounded border transition-colors ${isSelected ? "border-success bg-success/15 text-foreground" : "border-border text-muted-foreground hover:bg-success/10 hover:text-foreground"}`}>
+                      {s}
+                    </button>
                   );
                 })}
-              </Stack>
-            </Box>
+              </div>
+            </div>
           )}
-        </Box>
+        </div>
       )}
-    </Box>
+    </div>
   );
 }
 
@@ -508,38 +344,29 @@ interface SuggestionChipGroupProps {
 }
 
 function SuggestionChipGroup({ label, suggestions, selectedTags, color, variant, onToggle }: SuggestionChipGroupProps) {
-  const theme = useTheme();
-
   if (suggestions.length === 0) return null;
 
-  const paletteColor = theme.palette[color].main;
-
   return (
-    <Box sx={{ mt: spacingMUI.sm }}>
-      <Typography variant='caption' color='text.secondary' display='block' sx={{ mb: 0.75 }}>
-        {label}
-      </Typography>
-      <Stack direction='row' spacing={0.75} flexWrap='wrap' useFlexGap sx={{ gap: 0.75 }}>
+    <div className='mt-2'>
+      <span className='block mb-1.5 text-xs text-muted-foreground'>{label}</span>
+      <div className='flex flex-wrap gap-1.5'>
         {suggestions.map((s) => {
           const isSelected = selectedTags.includes(s);
+
+          let colorClasses = "";
+          if (color === "primary") {
+            colorClasses = isSelected ? "border-primary bg-primary/20 text-foreground" : "border-border text-foreground bg-card hover:bg-primary/10";
+          } else {
+            colorClasses = isSelected ? "border-secondary bg-secondary/20 text-foreground" : "border-border text-foreground hover:bg-secondary/15 " + (variant === "outlined" ? "bg-transparent" : "bg-card");
+          }
+
           return (
-            <Chip
-              key={s}
-              size='small'
-              variant={variant}
-              label={s}
-              onClick={() => onToggle(s)}
-              sx={{
-                cursor: "pointer",
-                borderColor: isSelected ? paletteColor : theme.palette.divider,
-                backgroundColor: isSelected ? alpha(paletteColor, variant === "outlined" ? 0.15 : 0.2) : variant === "outlined" ? "transparent" : alpha(theme.palette.background.paper, 0.8),
-                border: variant === "outlined" ? undefined : isSelected ? `1px solid ${paletteColor}` : `1px solid ${theme.palette.divider}`,
-                "&:hover": { backgroundColor: alpha(paletteColor, variant === "outlined" ? 0.1 : 0.15) },
-              }}
-            />
+            <button key={s} onClick={() => onToggle(s)} className={`px-2 py-1 text-xs rounded-full border transition-colors ${colorClasses}`}>
+              {s}
+            </button>
           );
         })}
-      </Stack>
-    </Box>
+      </div>
+    </div>
   );
 }

@@ -1,30 +1,30 @@
-import { Button, Stack } from "@mui/material";
-import { SwapHoriz as ConvertIcon, Download as DownloadIcon } from "@mui/icons-material";
-import { spacingMUI } from "../../theme/tokens";
-import { StyledPaper } from "./StyledPaper";
+import { ArrowRightLeft, Download } from "lucide-react";
 
 interface EditorToolbarProps {
   onExportHTML: () => void;
   onExportMJML: () => void;
   onAutoExportAll: () => void;
   isAutoExporting: boolean;
-  sx?: any;
+  className?: string;
 }
 
-export function EditorToolbar({ onExportHTML, onExportMJML, onAutoExportAll, isAutoExporting, sx }: EditorToolbarProps) {
+export function EditorToolbar({ onExportHTML, onExportMJML, onAutoExportAll, isAutoExporting, className = "" }: EditorToolbarProps) {
   return (
-    <StyledPaper sx={sx}>
-      <Stack direction='row' spacing={spacingMUI.sm} flexWrap='wrap' alignItems='center'>
-        <Button variant='contained' size='small' onClick={onExportHTML} startIcon={<ConvertIcon />} disabled={isAutoExporting} sx={{ textTransform: "none", whiteSpace: "nowrap" }}>
+    <div className={`bg-card border border-border/50 rounded-xl shadow-soft p-3 ${className}`}>
+      <div className='flex flex-wrap items-center gap-2'>
+        <button onClick={onExportHTML} disabled={isAutoExporting} className='flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-3 py-1.5 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
+          <ArrowRightLeft size={16} />
           Експортувати HTML
-        </Button>
-        <Button variant='contained' size='small' onClick={onExportMJML} startIcon={<ConvertIcon />} disabled={isAutoExporting} sx={{ textTransform: "none", whiteSpace: "nowrap" }}>
+        </button>
+        <button onClick={onExportMJML} disabled={isAutoExporting} className='flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-3 py-1.5 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
+          <ArrowRightLeft size={16} />
           Експортувати MJML
-        </Button>
-        <Button variant='contained' size='small' onClick={onAutoExportAll} startIcon={<DownloadIcon fontSize='small' />} disabled={isAutoExporting} sx={{ textTransform: "none", whiteSpace: "nowrap", ml: "auto" }}>
+        </button>
+        <button onClick={onAutoExportAll} disabled={isAutoExporting} className='flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 px-3 py-1.5 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ml-auto'>
+          <Download size={16} />
           {isAutoExporting ? "Готую..." : "Зробити все"}
-        </Button>
-      </Stack>
-    </StyledPaper>
+        </button>
+      </div>
+    </div>
   );
 }
