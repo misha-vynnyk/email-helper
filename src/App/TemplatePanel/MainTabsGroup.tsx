@@ -1,12 +1,6 @@
 import React from "react";
 
-import {
-  EmailOutlined,
-  FolderOpen,
-  Image as ImageIcon,
-  ViewModule,
-  TableChart as TableIcon
-} from "@mui/icons-material";
+import { EmailOutlined, FolderOpen, Image as ImageIcon, ViewModule, TableChart as TableIcon, Palette as PaletteIcon } from "@mui/icons-material";
 import { Tab, Tabs, Tooltip } from "@mui/material";
 
 import { setSelectedMainTab, useSelectedMainTab } from "../../contexts/AppState";
@@ -14,13 +8,10 @@ import { setSelectedMainTab, useSelectedMainTab } from "../../contexts/AppState"
 export default function MainTabsGroup() {
   const selectedMainTab = useSelectedMainTab();
 
-  const handleChange = (
-    _: React.SyntheticEvent,
-    v: "email" | "blocks" | "templates" | "images" | "converter"
-  ) => {
+  const handleChange = (_: React.SyntheticEvent, v: "email" | "blocks" | "templates" | "images" | "converter" | "theme") => {
     // Використовуємо startTransition для не блокуючої зміни табу
     React.startTransition(() => {
-      if (v === "email" || v === "blocks" || v === "templates" || v === "images" || v === "converter") {
+      if (v === "email" || v === "blocks" || v === "templates" || v === "images" || v === "converter" || v === "theme") {
         setSelectedMainTab(v);
       } else {
         setSelectedMainTab("email");
@@ -29,10 +20,7 @@ export default function MainTabsGroup() {
   };
 
   return (
-    <Tabs
-      value={selectedMainTab}
-      onChange={handleChange}
-    >
+    <Tabs value={selectedMainTab} onChange={handleChange}>
       <Tab
         value='email'
         label={
@@ -70,6 +58,14 @@ export default function MainTabsGroup() {
         label={
           <Tooltip title='HTML to Table Converter'>
             <TableIcon fontSize='small' />
+          </Tooltip>
+        }
+      />
+      <Tab
+        value='theme'
+        label={
+          <Tooltip title='Theme Architecture Examples'>
+            <PaletteIcon fontSize='small' />
           </Tooltip>
         }
       />
