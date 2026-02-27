@@ -16,21 +16,21 @@ Object.defineProperty(window, "matchMedia", {
 });
 
 // Mock ResizeObserver
-global.ResizeObserver = jest.fn().mockImplementation(() => ({
+(globalThis as any).ResizeObserver = jest.fn().mockImplementation(() => ({
   observe: jest.fn(),
   unobserve: jest.fn(),
   disconnect: jest.fn(),
 }));
 
 // Mock IntersectionObserver
-global.IntersectionObserver = jest.fn().mockImplementation(() => ({
+(globalThis as any).IntersectionObserver = jest.fn().mockImplementation(() => ({
   observe: jest.fn(),
   unobserve: jest.fn(),
   disconnect: jest.fn(),
 }));
 
 // Mock fetch for W3C validator tests
-global.fetch = jest.fn();
+(globalThis as any).fetch = jest.fn();
 
 // Mock console methods to reduce noise in tests
 const originalConsoleError = console.error;
@@ -38,21 +38,14 @@ const originalConsoleWarn = console.warn;
 
 beforeAll(() => {
   console.error = (...args: unknown[]) => {
-    if (
-      typeof args[0] === "string" &&
-      args[0].includes("Warning: ReactDOM.render is no longer supported")
-    ) {
+    if (typeof args[0] === "string" && args[0].includes("Warning: ReactDOM.render is no longer supported")) {
       return;
     }
     originalConsoleError.call(console, ...args);
   };
 
   console.warn = (...args: unknown[]) => {
-    if (
-      typeof args[0] === "string" &&
-      (args[0].includes("Warning: ReactDOM.render is no longer supported") ||
-        args[0].includes("Warning: componentWillReceiveProps"))
-    ) {
+    if (typeof args[0] === "string" && (args[0].includes("Warning: ReactDOM.render is no longer supported") || args[0].includes("Warning: componentWillReceiveProps"))) {
       return;
     }
     originalConsoleWarn.call(console, ...args);

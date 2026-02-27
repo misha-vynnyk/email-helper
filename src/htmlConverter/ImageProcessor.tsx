@@ -4,20 +4,15 @@
  */
 
 import React, { useState, useEffect } from "react";
-import { Box, Button, Slider, Stack, Typography, useTheme, Snackbar, Alert, Tooltip } from "@mui/material";
-import { PlayArrow as ProcessIcon, CloudUpload as UploadIcon, FindReplace as ReplaceIcon, Check as CheckIcon } from "@mui/icons-material";
+import { Play as ProcessIcon, Upload as UploadIcon, Replace as ReplaceIcon, Check as CheckIcon, X as CloseIcon } from "lucide-react";
 import { saveAs } from "file-saver";
-
-import { borderRadius, spacingMUI } from "../theme/tokens";
 import StorageUploadDialog from "./StorageUploadDialog";
 import { formatSize, extractFolderName } from "./utils/formatters";
 import { getFileExtension, getImageFormat, isCrossOrigin } from "./imageUtils"; // getImageFormat needed for download
-import { UI_TIMINGS } from "./constants";
 import type { ImageAnalysisSettings, ImageFormatOverride } from "./types";
 import { useImageConversion } from "./hooks/useImageConversion";
 import { useImageUploader } from "./hooks/useImageUploader";
 import { ImageGrid } from "./components/ImageGrid";
-import { StyledPaper } from "./components/StyledPaper";
 
 interface ImageProcessorProps {
   editorRef: React.RefObject<HTMLDivElement>;
@@ -38,8 +33,6 @@ interface ImageProcessorProps {
 }
 
 export default function ImageProcessor({ editorRef, onLog, visible, onVisibilityChange, triggerExtract = 0, fileName = "", onHistoryAdd, onReplaceUrls, onUploadedUrlsChange, onUploadedAltsChange, onResetReplacement, hasOutput = false, autoProcess: autoProcessProp, storageProvider = "default", imageAnalysisSettings }: ImageProcessorProps) {
-  const theme = useTheme();
-
   // 1. Conversion Logic
   const {
     images,
@@ -170,97 +163,76 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
   const pendingCount = images.filter((img) => img.status === "pending").length;
   const lastUploadedCount = Object.keys(lastUploadedUrls).length;
 
-  const actionButtonSx = {
-    textTransform: "none" as const,
-    fontWeight: 600,
-    borderRadius: `${borderRadius.md}px`,
-    transition: "all 0.2s",
-    "&:hover": {
-      transform: "translateY(-1px)",
-      boxShadow: theme.shadows[2],
-    },
-  };
-
-  if (!visible) return null;
-
   return (
-    <StyledPaper>
-      <Stack spacing={spacingMUI.base}>
-        {/* Header */}
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <Typography variant='subtitle2' fontWeight={600}>
-            Обробка зображень
-          </Typography>
-          {images.length > 0 && (
-            <Typography variant='caption' color='text.secondary'>
-              {doneCount}/{images.length} готово
-            </Typography>
-          )}
-        </Box>
+    <div className='bg-card rounded-2xl p-5 shadow-soft border border-border/50 flex flex-col gap-4 relative overflow-hidden'>
+      {/* Header */}
+      <div className='flex items-center justify-between'>
+        <h3 className='text-sm font-semibold text-foreground'>Обробка зображень</h3>
+        {images.length > 0 && (
+          <span className='text-xs text-muted-foreground'>
+            {doneCount}/{images.length} готово
+          </span>
+        )}
+      </div>
 
-        {/* Settings Row */}
-        <Stack direction='row' spacing={spacingMUI.lg} alignItems='flex-start' flexWrap='wrap'>
-          <Box sx={{ flex: 1, minWidth: 150 }}>
-            <Stack direction='row' justifyContent='space-between' alignItems='center' mb={spacingMUI.xs}>
-              <Typography variant='caption' color='text.secondary'>
-                Якість:
-              </Typography>
-              <Typography variant='caption' fontWeight={600} color='primary.main'>
-                {quality}%
-              </Typography>
-            </Stack>
-            <Slider value={quality} onChange={(_, val) => setQuality(Array.isArray(val) ? val[0] : val)} min={60} max={100} size='small' />
-          </Box>
-          <Box sx={{ flex: 1, minWidth: 150 }}>
-            <Stack direction='row' justifyContent='space-between' alignItems='center' mb={spacingMUI.xs}>
-              <Typography variant='caption' color='text.secondary'>
-                Макс. ширина:
-              </Typography>
-              <Typography variant='caption' fontWeight={600} color='primary.main'>
-                {maxWidth}px
-              </Typography>
-            </Stack>
-            <Slider value={maxWidth} onChange={(_, val) => setMaxWidth(Array.isArray(val) ? val[0] : val)} min={300} max={1200} step={100} size='small' />
-          </Box>
-        </Stack>
+      {/* Settings Row */}
+      <div className='flex flex-wrap gap-6 items-start'>
+        <div className='flex-1 min-w-[150px]'>
+          <div className='flex justify-between items-center mb-1.5'>
+            <span className='text-xs text-muted-foreground'>Якість:</span>
+            <span className='text-xs font-semibold text-primary'>{quality}%</span>
+          </div>
+          <input type='range' min='60' max='100' value={quality} onChange={(e) => setQuality(parseInt(e.target.value))} className='w-full accent-primary cursor-pointer' />
+        </div>
+        <div className='flex-1 min-w-[150px]'>
+          <div className='flex justify-between items-center mb-1.5'>
+            <span className='text-xs text-muted-foreground'>Макс. ширина:</span>
+            <span className='text-xs font-semibold text-primary'>{maxWidth}px</span>
+          </div>
+          <input type='range' min='300' max='1200' step='100' value={maxWidth} onChange={(e) => setMaxWidth(parseInt(e.target.value))} className='w-full accent-primary cursor-pointer' />
+        </div>
+      </div>
 
-        <ImageGrid images={images} globalFormat={format} onDownload={handleDownloadSingle} onRemove={handleRemove} onFormatChange={handleFormatChange} />
+      <ImageGrid images={images} globalFormat={format} onDownload={handleDownloadSingle} onRemove={handleRemove} onFormatChange={handleFormatChange} />
 
-        {/* Stats */}
-        {doneCount > 0 && (
-          <Box sx={{ mt: spacingMUI.sm, p: spacingMUI.sm, borderRadius: `${borderRadius.sm}px`, backgroundColor: "action.hover", border: `1px solid ${theme.palette.divider}` }}>
-            <Typography variant='caption' color='text.secondary'>
-              💾 {formatSize(totalOriginal)} → {formatSize(totalConverted)} ({totalOriginal > 0 ? `-${((1 - totalConverted / totalOriginal) * 100).toFixed(0)}%` : "0%"})
-            </Typography>
-          </Box>
+      {/* Stats */}
+      {doneCount > 0 && (
+        <div className='mt-2 p-2 rounded-lg bg-muted/30 border border-border/50'>
+          <span className='text-xs text-muted-foreground'>
+            💾 {formatSize(totalOriginal)} → {formatSize(totalConverted)} ({totalOriginal > 0 ? `-${((1 - totalConverted / totalOriginal) * 100).toFixed(0)}%` : "0%"})
+          </span>
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className='flex flex-row gap-2 mt-2'>
+        {pendingCount > 0 && !autoProcess && (
+          <button onClick={processAllPending} className='flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-secondary hover:bg-muted text-foreground rounded-lg border border-border/50 font-semibold text-sm transition-all hover:-translate-y-px hover:shadow-sm'>
+            <ProcessIcon size={16} />
+            Обробити все ({pendingCount})
+          </button>
         )}
 
-        {/* Actions */}
-        <Stack direction='row' spacing={spacingMUI.sm} mt={spacingMUI.sm}>
-          {pendingCount > 0 && !autoProcess && (
-            <Button variant='outlined' startIcon={<ProcessIcon />} onClick={processAllPending} fullWidth sx={actionButtonSx}>
-              Обробити все ({pendingCount})
-            </Button>
-          )}
-          <Button variant='contained' color='primary' startIcon={<UploadIcon />} onClick={() => setUploadDialogOpen(true)} disabled={doneCount === 0} fullWidth sx={actionButtonSx}>
-            Upload to Storage ({doneCount})
-          </Button>
+        <button onClick={() => setUploadDialogOpen(true)} disabled={doneCount === 0} className='flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg font-semibold text-sm transition-all hover:-translate-y-px hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0'>
+          <UploadIcon size={16} />
+          Upload to Storage ({doneCount})
+        </button>
 
-          {lastUploadedCount > 0 && (
-            <Tooltip title={!hasOutput ? "Спочатку експортуйте HTML або MJML" : isUploading ? "Йде завантаження..." : replacementDone ? "URLs вже замінені" : "Замінити зображення на storage URLs"} arrow>
-              <Box sx={{ width: "100%" }}>
-                <Button variant={replacementDone ? "contained" : "outlined"} color={replacementDone ? "success" : "secondary"} startIcon={replacementDone ? <CheckIcon /> : <ReplaceIcon />} onClick={handleReplaceInOutput} disabled={replacementDone || !hasOutput || isUploading} fullWidth sx={actionButtonSx}>
-                  {replacementDone ? `✓ Замінено (${lastUploadedCount})` : `Замінити (${lastUploadedCount})`}
-                </Button>
-              </Box>
-            </Tooltip>
-          )}
+        {lastUploadedCount > 0 && (
+          <button
+            title={!hasOutput ? "Спочатку експортуйте HTML або MJML" : isUploading ? "Йде завантаження..." : replacementDone ? "URLs вже замінені" : "Замінити зображення на storage URLs"}
+            onClick={handleReplaceInOutput}
+            disabled={replacementDone || !hasOutput || isUploading}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all hover:-translate-y-px hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 ${replacementDone ? "bg-success text-white" : "bg-card border border-border/50 text-foreground hover:bg-muted"}`}>
+            {replacementDone ? <CheckIcon size={16} /> : <ReplaceIcon size={16} />}
+            {replacementDone ? `✓ Замінено (${lastUploadedCount})` : `Замінити (${lastUploadedCount})`}
+          </button>
+        )}
 
-          <Button variant='outlined' onClick={handleClear} sx={actionButtonSx}>
-            Очистити
-          </Button>
-        </Stack>
-      </Stack>
+        <button onClick={handleClear} className='flex items-center justify-center px-4 py-2 bg-card border border-border/50 hover:bg-muted text-foreground rounded-lg font-semibold text-sm transition-all hover:-translate-y-px hover:shadow-sm'>
+          Очистити
+        </button>
+      </div>
 
       <StorageUploadDialog
         open={uploadDialogOpen}
@@ -278,11 +250,17 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
         imageAnalysisSettings={imageAnalysisSettings}
       />
 
-      <Snackbar open={snackbar.open} autoHideDuration={UI_TIMINGS.SNACKBAR_DURATION} onClose={() => setSnackbar((p) => ({ ...p, open: false }))} anchorOrigin={{ vertical: "bottom", horizontal: "right" }}>
-        <Alert onClose={() => setSnackbar((p) => ({ ...p, open: false }))} severity={snackbar.severity} sx={{ width: "100%" }}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </StyledPaper>
+      {/* Tailwind Custom Snackbar/Toast */}
+      {snackbar.open && (
+        <div className='fixed bottom-4 right-4 z-50 animate-in fade-in slide-in-from-bottom-5'>
+          <div className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border ${snackbar.severity === "success" ? "bg-success/10 border-success/20 text-success" : snackbar.severity === "error" ? "bg-destructive/10 border-destructive/20 text-destructive" : snackbar.severity === "warning" ? "bg-warning/10 border-warning/20 text-warning-foreground" : "bg-card border-border text-foreground"}`}>
+            <span className='text-sm font-medium'>{snackbar.message}</span>
+            <button onClick={() => setSnackbar((p) => ({ ...p, open: false }))} className='text-current/60 hover:text-current'>
+              <CloseIcon size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

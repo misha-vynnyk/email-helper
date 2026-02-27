@@ -1,8 +1,6 @@
-import { Box, Chip, IconButton, LinearProgress, Stack, ToggleButton, ToggleButtonGroup, Tooltip, useTheme, alpha } from "@mui/material";
-import { Close as CloseIcon, Download as DownloadIcon } from "@mui/icons-material";
-import { borderRadius } from "../../theme/tokens";
 import { ProcessedImage, ImageFormat, ImageFormatOverride } from "../types";
 import { getImageFormat } from "../imageUtils";
+import { X, Download } from "lucide-react";
 
 interface ImageItemProps {
   image: ProcessedImage;
@@ -13,134 +11,50 @@ interface ImageItemProps {
 }
 
 export function ImageItem({ image, globalFormat, onDownload, onRemove, onFormatChange }: ImageItemProps) {
-  const theme = useTheme();
   const imgFormat = getImageFormat(image, globalFormat);
 
   // Distinct colors by output format
-  const badgeBg = imgFormat === "png" ? theme.palette.success.main : theme.palette.warning.dark;
+  const badgeBg = imgFormat === "png" ? "bg-success text-white" : "bg-warning text-warning-foreground";
 
   return (
-    <Stack spacing={0.5} alignItems='center'>
-      <Box
-        sx={{
-          position: "relative",
-          minWidth: 80,
-          maxWidth: 80,
-          height: 80,
-          borderRadius: `${borderRadius.sm}px`,
-          overflow: "hidden",
-          border: `1px solid ${theme.palette.divider}`,
-        }}>
-        <img
-          src={image.previewUrl}
-          alt={image.name}
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-          }}
-        />
+    <div className='flex flex-col gap-1 items-center'>
+      <div className='relative min-w-[80px] max-w-[80px] h-[80px] rounded-lg overflow-hidden border border-border/50'>
+        <img src={image.previewUrl} alt={image.name} className='w-full h-full object-cover' />
 
         {/* Format Badge */}
-        <Chip
-          label={imgFormat.toUpperCase()}
-          size='small'
-          sx={{
-            position: "absolute",
-            top: 2,
-            right: 2,
-            height: 16,
-            fontSize: "0.65rem",
-            fontWeight: 700,
-            backgroundColor: badgeBg,
-            color: "white",
-            border: "1px solid rgba(255,255,255,0.4)",
-            "& .MuiChip-label": { px: 0.5 },
-          }}
-        />
+        <span className={`absolute top-1 right-1 h-4 flex items-center px-1 text-[10px] font-bold rounded-sm border border-white/40 leading-none ${badgeBg}`}>{imgFormat.toUpperCase()}</span>
+
         {image.status === "processing" && (
-          <Box
-            sx={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: alpha(theme.palette.background.default, 0.8),
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}>
-            <LinearProgress sx={{ width: "80%" }} />
-          </Box>
+          <div className='absolute inset-0 bg-background/80 flex items-center justify-center'>
+            <div className='w-[80%] h-1 bg-muted rounded-full overflow-hidden'>
+              <div className='h-full bg-primary animate-pulse w-full' />
+            </div>
+          </div>
         )}
+
         {image.status === "done" && (
-          <Tooltip title='Завантажити'>
-            <IconButton
-              size='small'
-              onClick={() => onDownload(image.id)}
-              sx={{
-                position: "absolute",
-                bottom: 2,
-                right: 2,
-                backgroundColor: alpha(theme.palette.success.main, 0.9),
-                color: "white",
-                width: 20,
-                height: 20,
-                "&:hover": {
-                  backgroundColor: theme.palette.success.main,
-                },
-              }}>
-              <DownloadIcon sx={{ fontSize: 14 }} />
-            </IconButton>
-          </Tooltip>
+          <button title='Завантажити' onClick={() => onDownload(image.id)} className='absolute bottom-1 right-1 bg-success/90 hover:bg-success text-white w-5 h-5 rounded flex items-center justify-center transition-colors'>
+            <Download size={12} />
+          </button>
         )}
-        <Tooltip title='Видалити'>
-          <IconButton
-            size='small'
-            onClick={() => onRemove(image.id)}
-            sx={{
-              position: "absolute",
-              bottom: 2,
-              left: 2,
-              backgroundColor: alpha(theme.palette.error.main, 0.8),
-              color: "white",
-              width: 20,
-              height: 20,
-              "&:hover": {
-                backgroundColor: theme.palette.error.main,
-              },
-            }}>
-            <CloseIcon sx={{ fontSize: 14 }} />
-          </IconButton>
-        </Tooltip>
-      </Box>
+
+        <button title='Видалити' onClick={() => onRemove(image.id)} className='absolute bottom-1 left-1 bg-destructive/80 hover:bg-destructive text-destructive-foreground w-5 h-5 rounded flex items-center justify-center transition-colors'>
+          <X size={12} />
+        </button>
+      </div>
 
       {/* Format Selector */}
-      <ToggleButtonGroup
-        value={image.formatOverride || "auto"}
-        exclusive
-        onChange={(_, val) => val && onFormatChange(image.id, val as ImageFormatOverride)}
-        size='small'
-        sx={{
-          height: 20,
-          "& .MuiToggleButton-root": {
-            fontSize: "0.65rem",
-            px: 0.5,
-            py: 0.25,
-            minWidth: 28,
-            lineHeight: 1,
-            border: `1px solid ${theme.palette.divider}`,
-          },
-        }}>
-        <ToggleButton value='auto'>
-          <Tooltip title='Авто (прозорість → PNG)'>
-            <span>Auto</span>
-          </Tooltip>
-        </ToggleButton>
-        <ToggleButton value='jpeg'>JPG</ToggleButton>
-        <ToggleButton value='png'>PNG</ToggleButton>
-      </ToggleButtonGroup>
-    </Stack>
+      <div className='flex items-center h-5 border border-border/50 rounded overflow-hidden divide-x divide-border/50'>
+        <button title='Авто (прозорість → PNG)' onClick={() => onFormatChange(image.id, "auto")} className={`flex-1 min-w-[28px] text-[10px] h-full flex items-center justify-center hover:bg-muted transition-colors ${(image.formatOverride || "auto") === "auto" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground"}`}>
+          Auto
+        </button>
+        <button onClick={() => onFormatChange(image.id, "jpeg")} className={`flex-1 min-w-[28px] text-[10px] h-full flex items-center justify-center hover:bg-muted transition-colors ${image.formatOverride === "jpeg" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground"}`}>
+          JPG
+        </button>
+        <button onClick={() => onFormatChange(image.id, "png")} className={`flex-1 min-w-[28px] text-[10px] h-full flex items-center justify-center hover:bg-muted transition-colors ${image.formatOverride === "png" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground"}`}>
+          PNG
+        </button>
+      </div>
+    </div>
   );
 }
