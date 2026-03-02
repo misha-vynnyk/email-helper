@@ -128,26 +128,17 @@
     background-color: hsl(var(--background)) !important;
   }
 
-  .dark div[contenteditable="true"].editor-content span,
-  .dark div[contenteditable="true"].editor-content p,
-  .dark div[contenteditable="true"].editor-content h1,
-  .dark div[contenteditable="true"].editor-content h2,
-  .dark div[contenteditable="true"].editor-content h3,
-  .dark div[contenteditable="true"].editor-content h4,
-  .dark div[contenteditable="true"].editor-content h5,
-  .dark div[contenteditable="true"].editor-content h6,
-  .dark div[contenteditable="true"].editor-content b,
-  .dark div[contenteditable="true"].editor-content i,
-  .dark div[contenteditable="true"].editor-content em,
-  .dark div[contenteditable="true"].editor-content strong,
-  .dark div[contenteditable="true"].editor-content a,
-  .dark div[contenteditable="true"].editor-content u,
-  .dark div[contenteditable="true"].editor-content li,
-  .dark div[contenteditable="true"].editor-content td,
-  .dark div[contenteditable="true"].editor-content th,
-  .dark div[contenteditable="true"].editor-content div {
-    /* Invert colors only for typical text container elements */
+  .dark div[contenteditable="true"].editor-content > * {
+    /* Invert colors only for the top-level pasted blocks to prevent nested filters from overriding each other.
+       This fixes the bug where text inside deeply nested lists remained black because of even-numbered inverts. */
     filter: invert(1) hue-rotate(180deg);
+    /* Ensure unstyled browser wrapper divs start as black so the invert turns them white */
+    color: #000000;
+  }
+
+  /* Strip inline background colors (e.g., from pasted Word/Google Docs) in both themes */
+  div[contenteditable="true"].editor-content * {
+    background-color: transparent !important;
   }
 
   /* .dark div[contenteditable="true"].editor-content img,
