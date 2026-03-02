@@ -43,10 +43,8 @@ export function cleanEmptyHtmlTags(htmlContent: string): string {
   htmlContent = htmlContent.replace(/<span[^>]*>\s*<\/span>/g, "");
   htmlContent = htmlContent.replace(/<div[^>]*>\s*<\/div>/g, "");
   htmlContent = htmlContent.replace(/<td[^>]*>\s*<\/td>/g, "");
-  htmlContent = htmlContent.replace(/<tr[^>]*>\s*<\/tr>/g, "");
-
-  // Convert surrounding <br> tags around <hr> to a single <br> after the <hr>
-  htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*)*(<hr[^>]*>)(?:\s*<br\s*\/?>)*/gi, "$1<br>\n");
+  // Ensure exactly two <br> before <hr> and one <br> after it
+  htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*)*(<hr[^>]*>)(?:\s*<br\s*\/?>)*/gi, "<br><br>\n$1\n<br>\n");
 
   return htmlContent;
 }
