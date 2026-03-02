@@ -141,11 +141,12 @@
     background-color: transparent !important;
   }
 
-  /* .dark div[contenteditable="true"].editor-content img,
+  /* Revert media elements so they display in their original colors */
+  .dark div[contenteditable="true"].editor-content img,
   .dark div[contenteditable="true"].editor-content svg,
   .dark div[contenteditable="true"].editor-content [style*="background-image"] {
     filter: invert(1) hue-rotate(180deg);
-  } */
+  }
 }
 
 @layer base {
