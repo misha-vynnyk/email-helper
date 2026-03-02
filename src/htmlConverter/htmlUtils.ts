@@ -40,9 +40,24 @@ export function cleanEmptyHtmlTags(htmlContent: string): string {
   htmlContent = htmlContent.replace(/(<(div|span)[^>]*>)\s*<br><br>/gi, "$1");
   htmlContent = htmlContent.replace(/<br>\s*<\/(div|span)>/g, "</$1>");
 
-  htmlContent = htmlContent.replace(/<span[^>]*>\s*<\/span>/g, "");
-  htmlContent = htmlContent.replace(/<div[^>]*>\s*<\/div>/g, "");
-  htmlContent = htmlContent.replace(/<td[^>]*>\s*<\/td>/g, "");
+  // Clean up completely empty template-generated structures iteratively
+  // Empty blocks can be nested (e.g., <tr><td><span><br></span></td></tr>)
+  let prevLen = 0;
+  while (htmlContent.length !== prevLen) {
+    prevLen = htmlContent.length;
+
+    // Clear totally empty structural tags
+    htmlContent = htmlContent.replace(/<span[^>]*>\s*<\/span>/gi, "");
+    htmlContent = htmlContent.replace(/<div[^>]*>\s*<\/div>/gi, "");
+    htmlContent = htmlContent.replace(/<td[^>]*>\s*<\/td>/gi, "");
+    htmlContent = htmlContent.replace(/<tr[^>]*>\s*<\/tr>/gi, "");
+
+    // Clear structural tags that contain ONLY line breaks
+    htmlContent = htmlContent.replace(/<span[^>]*>\s*(?:<br\s*\/?>\s*)+\s*<\/span>/gi, "");
+    htmlContent = htmlContent.replace(/<div[^>]*>\s*(?:<br\s*\/?>\s*)+\s*<\/div>/gi, "");
+    htmlContent = htmlContent.replace(/<td[^>]*>\s*(?:<br\s*\/?>\s*)+\s*<\/td>/gi, "");
+    htmlContent = htmlContent.replace(/<tr[^>]*>\s*(?:<br\s*\/?>\s*)+\s*<\/tr>/gi, "");
+  }
   // Ensure exactly two <br> before <hr> and one <br> after it
   htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*)*(<hr[^>]*>)(?:\s*<br\s*\/?>)*/gi, "<br><br>\n$1\n<br>\n");
 
