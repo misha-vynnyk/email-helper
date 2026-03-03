@@ -70,7 +70,15 @@ export function isSignatureImageTag(imgTag: string): boolean {
 }
 
 export function addOneBr(htmlContent: string): string {
-  return htmlContent.replace(ONE_BR_RE, "<br>");
+  // Replace the symbol with a temporary marker to find its exact injection points
+  const TEMP_MARKER = "___ONE_BR_MARKER___";
+  htmlContent = htmlContent.replace(ONE_BR_RE, TEMP_MARKER);
+
+  // If the user placed the ONE_BR symbol immediately before or after an existing <br />
+  // we want exactly ONE break, not two. So we absorb the adjacent native breaks.
+  htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*)*___ONE_BR_MARKER___(?:\s*<br\s*\/?>)*/gi, "<br>");
+
+  return htmlContent;
 }
 
 export function replaceTripleBrWithSingle(htmlContent: string): string {
