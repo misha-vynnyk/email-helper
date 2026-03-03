@@ -99,14 +99,22 @@ function processStyles(htmlContent: string): string {
     return inner; // No formatting — strip the span
   });
 
+  // Convert <div> to <p> so block structure is preserved by the paragraph formatter later
+  htmlContent = htmlContent.replace(/<div[^>]*>/gi, "<p>");
+  htmlContent = htmlContent.replace(/<\/div>/gi, "</p>");
+
+  // Preserve basic spacing for tables before stripping their structure
+  htmlContent = htmlContent.replace(/<\/td>/gi, " ");
+  htmlContent = htmlContent.replace(/<\/th>/gi, " ");
+  htmlContent = htmlContent.replace(/<\/tr>/gi, "<br>\n");
+
+  // Delete table tags
+  htmlContent = htmlContent.replace(/<\/?(table|tbody|thead|tr|td|th|col|colgroup)[^>]*>/gi, "");
+
   // Delete remaining empty/wrapper tags
   htmlContent = htmlContent.replace(/<a[^>]*>\s*<\/a>/g, " ");
-  htmlContent = htmlContent.replace(/<div[^>]*>/gi, "").replace(/<\/div>/gi, "");
   htmlContent = htmlContent.replace(/<span[^>]*>/gi, "").replace(/<\/span>/gi, "");
   htmlContent = htmlContent.replace(/<b>\s*<\/b>/g, "");
-
-  // Delete table tags in one pass
-  htmlContent = htmlContent.replace(/<\/?(table|tbody|tr|td|col|colgroup)[^>]*>/gi, "");
 
   return htmlContent;
 }
