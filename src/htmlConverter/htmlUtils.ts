@@ -17,7 +17,7 @@ export function cleanEmptyHtmlTags(htmlContent: string): string {
   htmlContent = htmlContent.replace(/<\/a>\s*<a[^>]*>/g, " ");
   htmlContent = htmlContent.replace(/<pre>/g, "");
   htmlContent = htmlContent.replace(/<a[^>]*>\s*<\/a>/g, " ");
-  htmlContent = htmlContent.replace(/<b[^>]*>\s*<\/b>/g, " ");
+  htmlContent = htmlContent.replace(/<b\b[^>]*>\s*<\/b>/g, " ");
   htmlContent = htmlContent.replace(/<u>\s*<\/u>/g, " ");
   htmlContent = htmlContent.replace(/<em[^>]*>\s*<\/em>/g, " ");
   htmlContent = htmlContent.replace(/<\/em>\s*<em[^>]*>/g, " ");
@@ -26,11 +26,11 @@ export function cleanEmptyHtmlTags(htmlContent: string): string {
   htmlContent = htmlContent.replace(/(<span[^>]*>)\s*<\/a>/gi, "$1");
   htmlContent = htmlContent.replace(/(<span[^>]*>)\s*<\/b>/gi, "$1");
   htmlContent = htmlContent.replace(/<a[^>]*>\s*<\/span>/g, "</span>");
-  htmlContent = htmlContent.replace(/<b[^>]*>\s*<\/span>/g, "</span>");
+  htmlContent = htmlContent.replace(/<b\b[^>]*>\s*<\/span>/g, "</span>");
   htmlContent = htmlContent.replace(/(<div[^>]*>)\s*<\/a>/gi, "$1");
   htmlContent = htmlContent.replace(/(<div[^>]*>)\s*<\/b>/gi, "$1");
   htmlContent = htmlContent.replace(/<a[^>]*>\s*<\/div>/g, "</div>");
-  htmlContent = htmlContent.replace(/<b[^>]*>\s*<\/div>/g, "</div>");
+  htmlContent = htmlContent.replace(/<b\b[^>]*>\s*<\/div>/g, "</div>");
 
   // Strip heading tags (h1-h6) in one pass
   htmlContent = htmlContent.replace(/<\/?(h[1-6])[^>]*>/gi, "");

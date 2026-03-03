@@ -79,7 +79,7 @@ function linksStyles(htmlContent: string): string {
 }
 
 function processStyles(htmlContent: string): string {
-  htmlContent = htmlContent.replace(/<b[^>]*>/gi, "").replace(/<\/b>/gi, "");
+  htmlContent = htmlContent.replace(/<b\b[^>]*>/gi, "").replace(/<\/b>/gi, "");
 
   // Single-pass style detection: parse style once, emit correct semantic tag
   // This fixes order-sensitivity (e.g. italic before bold) that the old 7-regex approach had
