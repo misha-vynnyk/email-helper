@@ -78,6 +78,11 @@ export function addOneBr(htmlContent: string): string {
   // we want exactly ONE break, not two. So we absorb the adjacent native breaks.
   htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*)*___ONE_BR_MARKER___(?:\s*<br\s*\/?>)*/gi, "<br>");
 
+  // Clean up cases where the forced break sits completely flush against a block boundary
+  // as blocks automatically define padding/line-breaks.
+  htmlContent = htmlContent.replace(/(<(?:div|p|span|td|th)[^>]*>)\s*<br\s*\/?>/gi, "$1");
+  htmlContent = htmlContent.replace(/<br\s*\/?>\s*(<\/(?:div|p|span|td|th)>)/gi, "$1");
+
   return htmlContent;
 }
 
