@@ -5,6 +5,28 @@ import { copyToClipboard } from "../utils/clipboard";
 import { getImageFormat, getFileExtension, isCrossOrigin } from "../imageUtils";
 import { ProcessedImage, ImageFormat, UploadResult, UploadSession } from "../types";
 
+function findImageInHistory(folderName: string, filename: string, baseName: string, index: number, uploadHistory: UploadSession[]) {
+  let existingUrl: string | null = null;
+  let existingAlt: string | undefined = undefined;
+
+  for (const session of uploadHistory) {
+    const sessionFolder = session.folderName || session.files?.[0]?.folderName;
+    if (sessionFolder?.trim().toUpperCase() === folderName.trim().toUpperCase()) {
+      let existingFile = session.files.find((f) => f.filename === filename);
+      if (!existingFile) existingFile = session.files.find((f) => f.filename.replace(/\.[^/.]+$/, "") === baseName);
+      if (!existingFile && index < session.files.length) existingFile = session.files[index];
+
+      if (existingFile) {
+        existingUrl = existingFile.url;
+        existingAlt = existingFile.alt;
+        break;
+      }
+    }
+  }
+
+  return { existingUrl, existingAlt };
+}
+
 interface UseImageUploaderProps {
   images: ProcessedImage[];
   imagesSessionId: number;
@@ -146,32 +168,7 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
           const filename = `${baseName}${ext}`;
 
           if (takeFromHistory && uploadHistory) {
-            let existingUrl: string | null = null;
-            let existingAlt: string | undefined = undefined;
-
-            for (const session of uploadHistory) {
-              const sessionFolder = session.folderName || session.files?.[0]?.folderName;
-              if (sessionFolder?.trim().toUpperCase() === folderName.trim().toUpperCase()) {
-                // Try precise match first
-                let existingFile = session.files.find((f) => f.filename === filename);
-
-                // Fallback 1: match by baseName (ignore extension like .png vs .jpeg)
-                if (!existingFile) {
-                  existingFile = session.files.find((f) => f.filename.replace(/\.[^/.]+$/, "") === baseName);
-                }
-
-                // Fallback 2: match by order index
-                if (!existingFile && i < session.files.length) {
-                  existingFile = session.files[i];
-                }
-
-                if (existingFile) {
-                  existingUrl = existingFile.url;
-                  existingAlt = existingFile.alt;
-                  break;
-                }
-              }
-            }
+            const { existingUrl, existingAlt } = findImageInHistory(folderName, filename, baseName, i, uploadHistory);
 
             if (existingUrl) {
               onLog?.(`🔁 [${i + 1}/${completed.length}] ${filename} знайдено в історії (реюз URLs)`);
@@ -352,23 +349,7 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
         const ext = img.convertedBlob ? getFileExtension(fmt) : `.${/\.(png|jpe?g|webp|gif)(?=\?|$)/i.exec(img.src)?.[1] || "png"}`;
         const filename = `${baseName}${ext}`;
 
-        let existingUrl: string | null = null;
-        let existingAlt: string | undefined = undefined;
-
-        for (const session of uploadHistory) {
-          const sessionFolder = session.folderName || session.files?.[0]?.folderName;
-          if (sessionFolder?.trim().toUpperCase() === folderName.trim().toUpperCase()) {
-            let existingFile = session.files.find((f) => f.filename === filename);
-            if (!existingFile) existingFile = session.files.find((f) => f.filename.replace(/\.[^/.]+$/, "") === baseName);
-            if (!existingFile && i < session.files.length) existingFile = session.files[i];
-
-            if (existingFile) {
-              existingUrl = existingFile.url;
-              existingAlt = existingFile.alt;
-              break;
-            }
-          }
-        }
+        const { existingUrl, existingAlt } = findImageInHistory(folderName, filename, baseName, i, uploadHistory);
 
         if (existingUrl) {
           onLog?.(`🔁 [${i + 1}/${completed.length}] ${filename} знайдено в історії`);
