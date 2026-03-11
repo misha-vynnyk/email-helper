@@ -36,7 +36,6 @@ export function cleanEmptyHtmlTags(htmlContent: string): string {
   htmlContent = htmlContent.replace(/<\/?(h[1-6])[^>]*>/gi, "");
   // Strip leftover <br><br> adjacent to block boundaries
   htmlContent = htmlContent.replace(/<br><br>\s*<br><br>/g, "<br><br>");
-  htmlContent = htmlContent.replace(/<br>?<br>?\s*<\/(div|span)>/gi, "</$1>");
   htmlContent = htmlContent.replace(/(<(div|span)[^>]*>)\s*<br><br>/gi, "$1");
   htmlContent = htmlContent.replace(/<br>\s*<\/(div|span)>/g, "</$1>");
 
@@ -57,9 +56,16 @@ export function cleanEmptyHtmlTags(htmlContent: string): string {
     htmlContent = htmlContent.replace(/<div[^>]*>\s*(?:<br\s*\/?>\s*)+\s*<\/div>/gi, "");
     htmlContent = htmlContent.replace(/<td[^>]*>\s*(?:<br\s*\/?>\s*)+\s*<\/td>/gi, "");
     htmlContent = htmlContent.replace(/<tr[^>]*>\s*(?:<br\s*\/?>\s*)+\s*<\/tr>/gi, "");
+
+    // Unwrap <br> sequences from empty formatting tags (e.g. <a><br></a> -> <br>)
+    htmlContent = htmlContent.replace(/<([abiu]|em|strong)[^>]*>(\s*(?:<br\s*\/?>\s*)+)<\/\1>/gi, "$2");
   }
   // Ensure exactly two <br> before <hr> and one <br> after it
   htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*)*(<hr[^>]*>)(?:\s*<br\s*\/?>)*/gi, "<br><br>\n$1\n<br>\n");
+
+  // Clear line breaks directly adjacent to the boundaries of block elements
+  htmlContent = htmlContent.replace(/(<(?:div|p|span|td|th)[^>]*>)\s*(?:<br\s*\/?>\s*)+/gi, "$1\n");
+  htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*)+(<\/(?:div|p|span|td|th)>)/gi, "\n$1");
 
   return htmlContent;
 }
@@ -88,14 +94,7 @@ export function addOneBr(htmlContent: string): string {
 
 export function replaceTripleBrWithSingle(htmlContent: string): string {
   const BR = `<br>\n`;
-  htmlContent = htmlContent.replace(/<\w+[^>]*>\s*<\w+[^>]*>\s*<br\s*\/?>\s*<\/\w+>\s*<\/\w+>/gi, BR);
-
-  htmlContent = htmlContent.replace(/<\w+[^>]*>\s*<br\s*\/?>\s*<\/\w+>/gi, BR);
-
-  htmlContent = htmlContent.replace(/\s*<br\s*\/?>\s*<\/(\w+)>/gi, "</$1><br>");
-
   htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*){3,}/gi, BR);
-
   return htmlContent;
 }
 
