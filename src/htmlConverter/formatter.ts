@@ -155,6 +155,8 @@ function wrapTextInSpan(htmlContent: string, templateFn: (content: string) => st
 
 export function formatHtml(editorContent: string): string {
   let content = editorContent;
+  content = content.replace(/<meta[^>]*>/gi, "");
+  content = content.replace(/<br\b[^>]*>/gi, "<br>");
   content = utils.mergeSimilarTags(content);
   content = italicLinks(content);
   content = linksStyles(content);
@@ -196,6 +198,8 @@ export function formatHtml(editorContent: string): string {
 
 export function formatMjml(editorContent: string): string {
   let content = editorContent;
+  content = content.replace(/<meta[^>]*>/gi, "");
+  content = content.replace(/<br\b[^>]*>/gi, "<br>");
   content = utils.mergeSimilarTags(content);
   content = italicLinks(content);
   content = linksStyles(content);
