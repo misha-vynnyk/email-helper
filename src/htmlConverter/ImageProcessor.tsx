@@ -9,7 +9,7 @@ import { saveAs } from "file-saver";
 import StorageUploadDialog from "./StorageUploadDialog";
 import { formatSize, extractFolderName } from "./utils/formatters";
 import { getFileExtension, getImageFormat, isCrossOrigin } from "./imageUtils"; // getImageFormat needed for download
-import type { ImageAnalysisSettings, ImageFormatOverride } from "./types";
+import type { ImageAnalysisSettings, ImageFormatOverride, UploadSession } from "./types";
 import { useImageConversion } from "./hooks/useImageConversion";
 import { useImageUploader } from "./hooks/useImageUploader";
 import { ImageGrid } from "./components/ImageGrid";
@@ -30,7 +30,7 @@ interface ImageProcessorProps {
   autoProcess?: boolean;
   storageProvider?: "default" | "alphaone";
   imageAnalysisSettings?: ImageAnalysisSettings;
-  uploadHistory?: any[];
+  uploadHistory?: UploadSession[];
 }
 
 export default function ImageProcessor({ editorRef, onLog, visible, onVisibilityChange, triggerExtract = 0, fileName = "", onHistoryAdd, onReplaceUrls, onUploadedUrlsChange, onUploadedAltsChange, onResetReplacement, hasOutput = false, autoProcess: autoProcessProp, storageProvider = "default", imageAnalysisSettings, uploadHistory }: ImageProcessorProps) {
