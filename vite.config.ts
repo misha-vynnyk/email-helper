@@ -34,5 +34,9 @@ export default defineConfig({
     commonjsOptions: {
       include: [/node_modules/],
     },
+    target: "esnext",
+  },
+  worker: {
+    format: "es",
   },
 });

@@ -1,5 +1,9 @@
 import { ConversionResult, ConversionSettings, ImageFormat } from "../types";
 import { detectImageFormat } from "./imageFormatDetector";
+import { encode as encodeJpeg } from "@jsquash/jpeg";
+import { encode as encodePng } from "@jsquash/png";
+import { encode as encodeWebp } from "@jsquash/webp";
+import { encode as encodeAvif } from "@jsquash/avif";
 
 /**
  * Get format to use for conversion (original or specified)
@@ -14,10 +18,7 @@ function getConversionFormat(file: File, settings: ConversionSettings): ImageFor
 /**
  * Convert image using Canvas API (client-side)
  */
-export async function convertImageClient(
-  file: File,
-  settings: ConversionSettings
-): Promise<ConversionResult> {
+export async function convertImageClient(file: File, settings: ConversionSettings): Promise<ConversionResult> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const reader = new FileReader();
@@ -30,7 +31,7 @@ export async function convertImageClient(
       reject(new Error("Failed to read file"));
     };
 
-    img.onload = () => {
+    img.onload = async () => {
       try {
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
@@ -60,10 +61,7 @@ export async function convertImageClient(
         } else if (settings.resize.mode === "custom") {
           if (settings.resize.width && settings.resize.height) {
             if (settings.resize.preserveAspectRatio) {
-              const ratio = Math.min(
-                settings.resize.width / width,
-                settings.resize.height / height
-              );
+              const ratio = Math.min(settings.resize.width / width, settings.resize.height / height);
               width = width * ratio;
               height = height * ratio;
             } else {
@@ -98,21 +96,54 @@ export async function convertImageClient(
         // Draw image
         ctx.drawImage(img, 0, 0, width, height);
 
-        // Convert to blob
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              resolve({
-                blob,
-                size: blob.size,
-              });
-            } else {
-              reject(new Error("Failed to create blob"));
+        // Get ImageData to pass to WebAssembly encoders
+        const imageData = ctx.getImageData(0, 0, width, height);
+        let buffer: ArrayBuffer;
+
+        switch (outputFormat) {
+          case "jpeg":
+            buffer = await encodeJpeg(imageData, { quality: settings.quality });
+            break;
+          case "webp":
+            // For max compression, increase the "method" (effort) parameter (max 6, default 4)
+            // For lossless, set lossless: 1
+            const webpOptions: any = { quality: settings.quality };
+            if (settings.compressionMode === "lossless") {
+              webpOptions.lossless = 1;
+              webpOptions.quality = 100; // Force 100% quality for lossless
+            } else if (settings.compressionMode === "maximum-compression") {
+              webpOptions.method = 6;
             }
-          },
-          `image/${outputFormat}`,
-          settings.quality / 100
-        );
+            buffer = await encodeWebp(imageData, webpOptions);
+            break;
+          case "avif":
+            // avif lossless requires both quality and qualityAlpha to be 100
+            // and often lossless: true (if supported by the specific encoder version)
+            // For max compression, decrease speed (0 = slowest/best, 10 = fastest, default 6)
+            const avifOptions: any = { quality: settings.quality };
+            if (settings.compressionMode === "lossless") {
+              avifOptions.lossless = true;
+              avifOptions.quality = 100;
+              avifOptions.qualityAlpha = 100;
+            } else if (settings.compressionMode === "maximum-compression") {
+              avifOptions.speed = 4; // Slower but better compression
+            }
+            buffer = await encodeAvif(imageData, avifOptions);
+            break;
+          case "png":
+            buffer = await encodePng(imageData);
+            break;
+          default:
+            buffer = await encodeJpeg(imageData, { quality: settings.quality });
+            break;
+        }
+
+        const blob = new Blob([buffer], { type: `image/${outputFormat}` });
+
+        resolve({
+          blob,
+          size: blob.size,
+        });
       } catch (error) {
         reject(error);
       }
