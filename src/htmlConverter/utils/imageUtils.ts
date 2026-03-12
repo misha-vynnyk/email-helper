@@ -2,8 +2,8 @@
  * Paste handler utilities for HTML converter
  */
 
-import { IMAGE_EXCLUSION_ALT_REGEX } from "./constants";
-import type { ProcessedImage, ImageFormat } from "./types";
+import { IMAGE_EXCLUSION_ALT_REGEX } from "../constants";
+import type { ProcessedImage, ImageFormat } from "../types";
 
 /** Exclude from extraction: img with alt containing "Signature" (e.g. sign-i, sign-i-e) */
 export function isSignatureImageAlt(alt: string | null): boolean {

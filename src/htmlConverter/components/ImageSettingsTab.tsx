@@ -2,7 +2,7 @@ import React, { Dispatch, SetStateAction } from "react";
 import { STORAGE_KEYS } from "../constants";
 import type { ImageAnalysisSettings } from "../types";
 import type { UiSettings } from "../hooks/useHtmlConverterSettings";
-import { OCR_PRESETS } from "../ocrPresets";
+import { OCR_PRESETS } from "../utils/ocrPresets";
 
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";

@@ -1,4 +1,4 @@
-import { cleanEmptyHtmlTags, isSignatureImageTag, addOneBr, replaceTripleBrWithSingle, addBrAfterClosingP, removeStylesFromLists, mergeSimilarTags, replaceAllEmojisAndSymbolsExcludingHTML } from "../htmlUtils";
+import { cleanEmptyHtmlTags, isSignatureImageTag, addOneBr, replaceTripleBrWithSingle, addBrAfterClosingP, removeStylesFromLists, mergeSimilarTags, replaceAllEmojisAndSymbolsExcludingHTML } from "../utils/htmlUtils";
 import { SYMBOLS } from "../constants";
 
 describe("htmlConverter utils", () => {

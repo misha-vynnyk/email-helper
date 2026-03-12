@@ -3,7 +3,7 @@
  * Plain functions (no hook needed — no state, no side effects).
  */
 
-import { isSignatureImageTag } from "../htmlUtils";
+import { isSignatureImageTag } from "./htmlUtils";
 
 export interface ContentReplacerResult {
   replaced: string;

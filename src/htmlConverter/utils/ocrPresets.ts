@@ -3,7 +3,7 @@
  * Extracted from SettingsPopover to reduce duplication
  */
 
-import type { ImageAnalysisSettings } from "./types";
+import type { ImageAnalysisSettings } from "../types";
 
 type OcrPreset = Partial<ImageAnalysisSettings>;
 

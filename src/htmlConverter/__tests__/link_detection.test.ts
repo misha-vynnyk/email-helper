@@ -1,4 +1,4 @@
-import { isBlueish, isLinkColor, parseColor } from "../colorUtils";
+import { isBlueish, isLinkColor, parseColor } from "../utils/colorUtils";
 
 describe("Smart Link Detection", () => {
   describe("parseColor", () => {

@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from "react";
 import API_URL, { isApiAvailable } from "../../config/api";
 import { UPLOAD_CONFIG, STORAGE_URL_PREFIX, STORAGE_PROVIDERS_CONFIG } from "../constants";
 import { copyToClipboard } from "../utils/clipboard";
-import { getImageFormat, getFileExtension, isCrossOrigin } from "../imageUtils";
+import { getImageFormat, getFileExtension, isCrossOrigin } from "../utils/imageUtils";
 import { ProcessedImage, ImageFormat, UploadResult, UploadSession } from "../types";
 
 function findImageInHistory(folderName: string, filename: string, baseName: string, index: number, uploadHistory: UploadSession[]) {

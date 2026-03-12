@@ -2,10 +2,10 @@
  * Main HTML/MJML formatting logic
  */
 
-import { config } from "./config";
+import { config } from "./utils/config";
 import { htmlTemplates, mjmlTemplates } from "./templates";
-import * as utils from "./htmlUtils";
-import * as colorUtils from "./colorUtils";
+import * as utils from "./utils/htmlUtils";
+import * as colorUtils from "./utils/colorUtils";
 import { PLACEHOLDER_URL } from "./constants";
 
 function getInlineStyleValue(style: string, property: string): string | null {
