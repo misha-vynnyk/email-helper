@@ -37,7 +37,7 @@ function getCompressionOptions(format, quality, mode) {
             effort: 9, // Maximum effort (slowest but best)
             chromaSubsampling: "4:4:4",
           };
-        case "png":
+        case "png": {
           // Map quality to compression level: 86-100 = level 3 (faster, less compression)
           // 71-85 = level 6 (balanced), 60-70 = level 9 (maximum compression)
           const pngCompressionLevel = quality >= 86 ? 3 : quality >= 71 ? 6 : 9;
@@ -47,6 +47,7 @@ function getCompressionOptions(format, quality, mode) {
             effort: 10, // Maximum effort
             quality: 100,
           };
+        }
         default:
           return options;
       }
@@ -74,7 +75,7 @@ function getCompressionOptions(format, quality, mode) {
             quality: Math.min(quality, 70),
             effort: 6,
           };
-        case "png":
+        case "png": {
           // Map quality to compression level for maximum compression mode
           const maxCompPngLevel = quality >= 86 ? 6 : quality >= 71 ? 9 : 9;
           return {
@@ -82,6 +83,7 @@ function getCompressionOptions(format, quality, mode) {
             palette: quality <= 75, // Use palette for lower quality
             effort: 10,
           };
+        }
         default:
           return options;
       }
@@ -94,7 +96,7 @@ function getCompressionOptions(format, quality, mode) {
             lossless: true,
             effort: 6,
           };
-        case "png":
+        case "png": {
           // For lossless, still use quality-based compression level
           const losslessPngLevel = quality >= 86 ? 3 : quality >= 71 ? 6 : 9;
           return {
@@ -102,6 +104,7 @@ function getCompressionOptions(format, quality, mode) {
             effort: 10,
             quality: 100,
           };
+        }
         case "avif":
           return {
             lossless: true,
@@ -136,13 +139,14 @@ function getCompressionOptions(format, quality, mode) {
             quality,
             effort: 4,
           };
-        case "png":
+        case "png": {
           // Map quality to compression level: 86-100 = level 3, 71-85 = level 6, 60-70 = level 9
           const balancedPngLevel = quality >= 86 ? 3 : quality >= 71 ? 6 : 9;
           return {
             compressionLevel: balancedPngLevel,
             effort: 7,
           };
+        }
         default:
           return options;
       }
@@ -197,24 +201,26 @@ router.post("/convert", upload.single("image"), async (req, res) => {
       height,
       preserveAspectRatio = "true",
       compressionMode = "balanced",
-      targetFileSize,
-      gifFrameResize,
     } = req.body;
 
-    // Handle GIF optimization with Gifsicle
-    if (req.file.mimetype === "image/gif" || format === "gif") {
-      const { optimizeGifToTargetSize, optimizeGifWithQuality } = require("../utils/gifOptimizer");
+    // Handle GIF optimization with Gifsicle (ONLY if both input and output are GIFs)
+    if (req.file.mimetype === "image/gif" && format === "gif") {
+      const { optimizeGifWithQuality } = require("../utils/gifOptimizer");
 
       try {
-        const targetSize = targetFileSize ? parseInt(targetFileSize) : null;
-        const frameResize = gifFrameResize ? JSON.parse(gifFrameResize) : null;
-
-        let result;
-        if (targetSize) {
-          result = await optimizeGifToTargetSize(req.file.buffer, targetSize, frameResize);
-        } else {
-          result = await optimizeGifWithQuality(req.file.buffer, parseInt(quality), frameResize);
+        let frameResize = null;
+        if (resizeMode === "preset" && preset) {
+            frameResize = { enabled: true, width: parseInt(preset), height: parseInt(preset), preserveAspectRatio: true };
+        } else if (resizeMode === "custom" && (width || height)) {
+            frameResize = { 
+                enabled: true, 
+                width: width ? parseInt(width) : undefined, 
+                height: height ? parseInt(height) : undefined, 
+                preserveAspectRatio: preserveAspectRatio === "true" 
+            };
         }
+
+        const result = await optimizeGifWithQuality(req.file.buffer, parseInt(quality), frameResize);
 
         // Set response headers with metrics
         res.set("Content-Type", "image/gif");
@@ -352,18 +358,18 @@ router.post("/convert-from-url", async (req, res) => {
         error: `Failed to fetch image: ${lastStatus ?? "unknown"} ${lastStatusText}`.trim(),
       });
     }
-    const isGif = contentType.includes("gif") || /\.gif(\?|$)/i.test(url);
+    const isInputGif = contentType.includes("gif") || /\.gif(\?|$)/i.test(url);
 
     const {
       format = "jpeg",
       quality = "85",
       resizeMode = "preset",
       preset,
-      preserveAspectRatio = "true",
       compressionMode = "balanced",
     } = req.body || {};
 
-    if (isGif && (contentType.includes("gif") || format === "gif")) {
+    // Handle GIF optimization ONLY if both input and output are GIFs
+    if (isInputGif && format === "gif") {
       const { optimizeGifWithQuality } = require("../utils/gifOptimizer");
       const result = await optimizeGifWithQuality(inputBuffer, parseInt(quality, 10), null);
       res.set("Content-Type", "image/gif");
@@ -414,31 +420,30 @@ router.post("/convert-batch", upload.array("images", 50), async (req, res) => {
       height,
       preserveAspectRatio = "true",
       compressionMode = "balanced",
-      targetFileSize,
-      gifFrameResize,
     } = req.body;
 
     const results = [];
 
     for (const file of req.files) {
       try {
-        // Handle GIF optimization with Gifsicle
-        if (file.mimetype === "image/gif" || format === "gif") {
-          const {
-            optimizeGifToTargetSize,
-            optimizeGifWithQuality,
-          } = require("../utils/gifOptimizer");
+        // Handle GIF optimization with Gifsicle (ONLY if both input and output are GIFs)
+        if (file.mimetype === "image/gif" && format === "gif") {
+          const { optimizeGifWithQuality } = require("../utils/gifOptimizer");
 
           try {
-            const targetSize = targetFileSize ? parseInt(targetFileSize) : null;
-            const frameResize = gifFrameResize ? JSON.parse(gifFrameResize) : null;
-
-            let result;
-            if (targetSize) {
-              result = await optimizeGifToTargetSize(file.buffer, targetSize, frameResize);
-            } else {
-              result = await optimizeGifWithQuality(file.buffer, parseInt(quality), frameResize);
+            let frameResize = null;
+            if (resizeMode === "preset" && preset) {
+                frameResize = { enabled: true, width: parseInt(preset), height: parseInt(preset), preserveAspectRatio: true };
+            } else if (resizeMode === "custom" && (width || height)) {
+                frameResize = { 
+                    enabled: true, 
+                    width: width ? parseInt(width) : undefined, 
+                    height: height ? parseInt(height) : undefined, 
+                    preserveAspectRatio: preserveAspectRatio === "true" 
+                };
             }
+
+            const result = await optimizeGifWithQuality(file.buffer, parseInt(quality), frameResize);
 
             const base64 = `data:image/gif;base64,${result.buffer.toString("base64")}`;
             results.push(base64);

@@ -55,7 +55,7 @@ async function runGifsicle(inputPath, outputPath, options = {}) {
 
   // Add resize options if specified
   if (options.resize) {
-    const { width, height, preserveAspectRatio } = options.resize;
+    const { width, height } = options.resize;
     if (width && height) {
       args.push(`--resize=${width}x${height}`);
     } else if (width) {
@@ -65,8 +65,19 @@ async function runGifsicle(inputPath, outputPath, options = {}) {
     }
   }
 
-  // Add colors optimization
-  args.push('--colors=256');
+  // Add colors optimization based on quality
+  if (options.quality !== undefined) {
+    // scale colors from 32 to 256 depending on quality
+    const minColors = 32;
+    const colors = Math.max(minColors, Math.min(256, Math.round((options.quality / 100) * 256)));
+    if (colors < 256) {
+      args.push(`--colors=${colors}`);
+    } else {
+      args.push('--colors=256');
+    }
+  } else {
+    args.push('--colors=256');
+  }
 
   // Input and output
   args.push(inputPath);
@@ -125,6 +136,7 @@ async function optimizeGifWithQuality(inputBuffer, quality, frameResize = null) 
     await runGifsicle(inputPath, outputPath, {
       lossy,
       resize: resizeOptions,
+      quality: quality,
     });
 
     // Read optimized file

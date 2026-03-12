@@ -11,12 +11,6 @@ export function estimateOutputSize(
 ): number {
   if (!originalSize || originalSize === 0) return 0;
 
-  // Note: We removed GIF target file size from UI, so ignore it in estimation
-  // If you re-enable GIF optimization UI, uncomment this:
-  // if (settings.format === "gif" && settings.targetFileSize) {
-  //   return settings.targetFileSize;
-  // }
-
   let estimatedRatio = 1.0;
 
   // Detect original format for better estimation
@@ -147,20 +141,6 @@ export function estimateOutputSize(
     if (settings.resize.width || settings.resize.height) {
       // Conservative estimate - assume 50% reduction
       estimatedRatio *= 0.5;
-    }
-  }
-
-  // GIF frame resize impact
-  if (settings.format === "gif" && settings.gifFrameResize?.enabled) {
-    if (settings.gifFrameResize.width || settings.gifFrameResize.height) {
-      // Frame resizing reduces GIF size proportionally to area
-      // But GIF's per-frame overhead means it's not perfectly proportional
-      const resizeWidth = settings.gifFrameResize.width || 800;
-      const assumedOriginalWidth = 800; // Conservative assumption
-      const dimensionRatio = resizeWidth / assumedOriginalWidth;
-      const areaRatio = dimensionRatio * dimensionRatio;
-      // Use area ratio but with some overhead factor
-      estimatedRatio *= Math.max(0.3, areaRatio * 1.2);
     }
   }
 

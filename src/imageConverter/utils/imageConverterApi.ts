@@ -43,15 +43,6 @@ export async function convertImageServer(file: File, settings: ConversionSetting
     formData.append("preserveAspectRatio", settings.resize.preserveAspectRatio.toString());
   }
 
-  // GIF-specific parameters
-  if (settings.targetFileSize) {
-    formData.append("targetFileSize", settings.targetFileSize.toString());
-  }
-
-  if (settings.gifFrameResize) {
-    formData.append("gifFrameResize", JSON.stringify(settings.gifFrameResize));
-  }
-
   if (!isApiAvailable()) {
     throw new Error("Backend server is not available. Please configure VITE_API_URL environment variable.");
   }
