@@ -18,7 +18,7 @@ export function ImageItem({ image, globalFormat, onDownload, onRemove, onFormatC
 
   return (
     <div className='flex flex-col gap-1 items-center'>
-      <div className='relative min-w-[80px] max-w-[80px] h-[80px] rounded-lg overflow-hidden border border-border/50'>
+      <div className='relative min-w-[80px] max-w-[80px] h-[80px] rounded-lg overflow-hidden border border-border/50 group/img shadow-sm hover:shadow-md transition-all duration-300'>
         <img src={image.previewUrl} alt={image.name} className='w-full h-full object-cover' />
 
         {/* Format Badge */}
@@ -33,12 +33,12 @@ export function ImageItem({ image, globalFormat, onDownload, onRemove, onFormatC
         )}
 
         {image.status === "done" && (
-          <button title='Завантажити' onClick={() => onDownload(image.id)} className='absolute bottom-1 right-1 bg-green-600 hover:bg-green-500 text-white w-5 h-5 rounded flex items-center justify-center transition-colors'>
+          <button title='Завантажити' onClick={() => onDownload(image.id)} className='absolute bottom-1 right-1 bg-green-600 hover:bg-green-500 text-white w-5 h-5 rounded flex items-center justify-center transition-all hover:scale-110 active:scale-95 opacity-0 group-hover/img:opacity-100'>
             <Download size={12} />
           </button>
         )}
 
-        <button title='Видалити' onClick={() => onRemove(image.id)} className='absolute bottom-1 left-1 bg-red-600 hover:bg-red-500 text-white w-5 h-5 rounded flex items-center justify-center transition-colors'>
+        <button title='Видалити' onClick={() => onRemove(image.id)} className='absolute bottom-1 left-1 bg-red-600 hover:bg-red-500 text-white w-5 h-5 rounded flex items-center justify-center transition-all hover:scale-110 active:scale-95 opacity-0 group-hover/img:opacity-100'>
           <X size={12} />
         </button>
       </div>

@@ -25,7 +25,7 @@ export function Header({ ui, setUi, imageAnalysis, setImageAnalysis, autoProcess
   const [settingsTab, setSettingsTab] = useState<"ui" | "image">("ui");
 
   return (
-    <header className='flex items-center justify-between w-full h-16 px-6 bg-card border border-border/50 rounded-full shadow-sm mb-6'>
+    <header className='flex items-center justify-between w-full h-16 px-6 bg-card border border-border/50 rounded-full shadow-sm hover:shadow-md transition-all duration-300 mb-6'>
       <div className='flex items-center gap-3'>
         <div className='flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 text-primary'>
           <Code className='w-5 h-5' />
@@ -67,7 +67,7 @@ export function Header({ ui, setUi, imageAnalysis, setImageAnalysis, autoProcess
             aiBackendStatus={aiBackendStatus}
             triggerElement={
               <button
-                className='relative p-2 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-all duration-200'
+                className='relative p-2 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-all duration-200 hover:scale-105 active:scale-95'
                 title='UI налаштування'
                 onClick={() => {
                   setSettingsTab("ui");
@@ -81,11 +81,11 @@ export function Header({ ui, setUi, imageAnalysis, setImageAnalysis, autoProcess
 
           <div className='w-px h-6 bg-border mx-1' />
 
-          <button onClick={onAutoExportAll} disabled={isAutoExporting} className='flex items-center gap-2 bg-primary hover:brightness-110 text-primary-foreground font-bold px-6 py-2.5 rounded-full shadow-soft transition-all hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 disabled:hover:translate-y-0 text-sm'>
+          <button onClick={onAutoExportAll} disabled={isAutoExporting} className='flex items-center gap-2 bg-primary hover:brightness-110 text-primary-foreground font-bold px-6 py-2.5 rounded-full shadow-soft transition-all hover:shadow-md hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 disabled:hover:translate-y-0 text-sm'>
             <Download size={16} strokeWidth={2.5} />
             {isAutoExporting ? t("Preparing...", "Preparing...") : t("Do Everything", "Do Everything")}
           </button>
-          <button onClick={onClear} className='p-2.5 bg-destructive/10 hover:bg-destructive/20 text-destructive rounded-full transition-colors' title={t("Clear All", "Очистити все")}>
+          <button onClick={onClear} className='p-2.5 bg-destructive/10 hover:bg-destructive/20 text-destructive rounded-full transition-all hover:scale-105 active:scale-95' title={t("Clear All", "Очистити все")}>
             <Trash2 size={16} strokeWidth={2.5} />
           </button>
         </div>

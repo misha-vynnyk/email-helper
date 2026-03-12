@@ -342,7 +342,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
                         for (const f of orderedFiles) await handleAnalyzeFile(f);
                       }}
                       disabled={uploading || orderedFiles.some((f) => aiById[f.id]?.status === "running")}
-                      className='px-3 py-1.5 text-xs font-semibold border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
+                      className='px-3 py-1.5 text-xs font-semibold border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-lg transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed'>
                       {orderedFiles.some((f) => aiById[f.id]?.status === "running") ? "Analyzing…" : `${analysisLabel.replace("Analyze", "Analyze All")} (${orderedFiles.length})`}
                     </button>
                   )}
@@ -440,17 +440,17 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
         <div className='flex items-center justify-end gap-3 px-6 py-4 border-t border-border/50 bg-muted/20'>
           {orderedFiles.length === 0 && uploadResults.length > 0 ? (
             // After upload is fully complete (no pending files)
-            <button onClick={handleClose} className='w-full px-4 py-2 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg transition-colors shadow-sm'>
+            <button onClick={handleClose} className='w-full px-4 py-2 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg transition-all hover:scale-[1.02] active:scale-95 shadow-sm'>
               Done
             </button>
           ) : (
             // Before/during upload or if there are files left to process
             <>
-              <button onClick={() => handleClose()} className={`px-4 py-2 text-sm rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background ${uploading ? "border border-destructive text-destructive hover:bg-destructive/10 focus-visible:ring-destructive font-semibold" : "text-muted-foreground hover:bg-muted font-medium focus-visible:ring-primary/50"}`}>
+              <button onClick={() => handleClose()} className={`px-4 py-2 text-sm rounded-lg transition-all hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background ${uploading ? "border border-destructive text-destructive hover:bg-destructive/10 focus-visible:ring-destructive font-semibold" : "text-muted-foreground hover:bg-muted font-medium focus-visible:ring-primary/50"}`}>
                 {uploadResults.some((r: UploadResult) => r.success) ? "Close" : "Cancel"}
               </button>
 
-              <button onClick={() => handleUpload(false)} disabled={uploading || orderedFiles.length === 0 || !folderName.trim() || !FOLDER_NAME_REGEX.test(folderName)} className='flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg transition-all shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed'>
+              <button onClick={() => handleUpload(false)} disabled={uploading || orderedFiles.length === 0 || !folderName.trim() || !FOLDER_NAME_REGEX.test(folderName)} className='flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg transition-all hover:scale-105 active:scale-95 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed'>
                 <UploadIcon size={18} />
                 {uploading ? "Uploading..." : uploadResults.some((r: UploadResult) => !r.success) ? "Retry Failed" : "Upload"}
               </button>
