@@ -6,9 +6,9 @@ import React, { useState, useEffect } from "react";
 import { Check as CheckIcon, X as CloseIcon } from "lucide-react";
 import { saveAs } from "file-saver";
 
-import StorageUploadDialog from "./StorageUploadDialog";
+import StorageUploadDialog from "./components/StorageUploadDialog";
 import { extractFolderName } from "./utils/formatters";
-import { getFileExtension, getImageFormat, isCrossOrigin } from "./imageUtils";
+import { getFileExtension, getImageFormat, isCrossOrigin } from "./utils/imageUtils";
 import type { ImageAnalysisSettings, ImageFormatOverride, UploadSession } from "./types";
 import { useImageConversion } from "./hooks/useImageConversion";
 import { useImageUploader } from "./hooks/useImageUploader";

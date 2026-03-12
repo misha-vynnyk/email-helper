@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Upload as UploadIcon, CheckCircle as SuccessIcon, AlertCircle as ErrorIcon, X as CloseIcon } from "lucide-react";
 
-import { useOcrAnalysis } from "./utils/useOcrAnalysis";
-import { useHtmlConverterSettings } from "./hooks/useHtmlConverterSettings";
-import { UI_TIMINGS, STORAGE_PROVIDERS_CONFIG, FOLDER_NAME_REGEX, STORAGE_KEYS } from "./constants";
-import { copyToClipboard } from "./utils/clipboard";
-import type { ImageAnalysisSettings, UploadResult } from "./types";
-import type { StorageProviderKey } from "./constants";
-import { UploadResults, toShortPath } from "./components/UploadResults";
-import FileListItem from "./components/FileListItem";
+import { useOcrAnalysis } from "../hooks/useOcrAnalysis";
+import { useHtmlConverterSettings } from "../hooks/useHtmlConverterSettings";
+import { UI_TIMINGS, STORAGE_PROVIDERS_CONFIG, FOLDER_NAME_REGEX, STORAGE_KEYS } from "../constants";
+import { copyToClipboard } from "../utils/clipboard";
+import type { ImageAnalysisSettings, UploadResult } from "../types";
+import type { StorageProviderKey } from "../constants";
+import { UploadResults, toShortPath } from "./UploadResults";
+import FileListItem from "./FileListItem";
 
 interface StorageUploadDialogProps {
   open: boolean;

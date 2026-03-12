@@ -2,7 +2,7 @@
  * Utility functions for HTML/MJML conversion
  */
 
-import { SYMBOLS } from "./constants";
+import { SYMBOLS } from "../constants";
 
 // Pre-compiled regexes
 const ONE_BR_RE = new RegExp(SYMBOLS.ONE_BR, "gi");

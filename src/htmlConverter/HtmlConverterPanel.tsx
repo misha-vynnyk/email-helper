@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Download, Trash2 } from "lucide-react";
 
 import ImageProcessor from "./ImageProcessor";
-import UploadHistory from "./UploadHistory";
+import UploadHistory from "./components/UploadHistory";
 import { Header } from "./components/Header";
 import { FileNamingBar } from "./components/FileNamingBar";
 import { DiagnosticsPanel } from "./components/DiagnosticsPanel";

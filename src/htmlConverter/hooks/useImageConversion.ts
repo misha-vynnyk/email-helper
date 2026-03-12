@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { STORAGE_KEYS, IMAGE_DEFAULTS } from "../constants";
 import type { ProcessedImage, ImageFormat, ImageSettings } from "../types";
-import { isCrossOrigin, detectTransparency, getImageFormat, isSignatureImageAlt } from "../imageUtils";
+import { isCrossOrigin, detectTransparency, getImageFormat, isSignatureImageAlt } from "../utils/imageUtils";
 import API_URL, { isApiAvailable } from "../../config/api";
 
 export interface UseImageConversionProps {

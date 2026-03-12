@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ImageAnalysisSettings } from "../types";
-import { createOcrAnalyzer, type OcrAnalyzeResult, type OcrAnalyzer } from "./imageAnalysis";
-import type { ImageAiAnalysis } from "./ocrUiTypes";
+import { createOcrAnalyzer, type OcrAnalyzeResult, type OcrAnalyzer } from "../utils/imageAnalysis";
+import type { ImageAiAnalysis } from "../utils/ocrUiTypes";
 
 export type OcrFile = { id: string; name: string; path?: string };
 
