@@ -7,7 +7,7 @@ import { create } from "zustand";
 
 type AppState = {
   document: any;
-  selectedMainTab: "email" | "blocks" | "templates" | "images" | "converter" | "theme";
+  selectedMainTab: "email" | "blocks" | "templates" | "images" | "converter";
   samplesDrawerOpen: boolean;
 };
 
@@ -15,7 +15,7 @@ type AppState = {
 const loadSelectedTab = (): AppState["selectedMainTab"] => {
   try {
     const saved = localStorage.getItem("app-selected-main-tab");
-    if (saved && ["email", "blocks", "templates", "images", "converter", "theme"].includes(saved)) {
+    if (saved && ["email", "blocks", "templates", "images", "converter"].includes(saved)) {
       return saved as AppState["selectedMainTab"];
     }
   } catch {
