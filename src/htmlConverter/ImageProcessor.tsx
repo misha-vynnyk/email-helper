@@ -184,7 +184,7 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
   };
 
   return (
-    <div className='bg-card rounded-2xl p-5 shadow-soft border border-border/50 flex flex-col gap-4 relative overflow-hidden'>
+    <div className='bg-card rounded-2xl p-5 shadow-soft hover:shadow-md border border-border/50 transition-all duration-300 flex flex-col gap-4 relative overflow-hidden'>
       {/* Header */}
       <div className='flex items-center justify-between'>
         <h3 className='text-sm font-semibold text-foreground'>Обробка зображень</h3>
@@ -217,7 +217,7 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
 
       {/* Stats */}
       {doneCount > 0 && (
-        <div className='mt-2 p-2 rounded-lg bg-muted/30 border border-border/50'>
+        <div className='mt-2 p-2 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors border border-border/50'>
           <span className='text-xs text-muted-foreground'>
             💾 {formatSize(totalOriginal)} → {formatSize(totalConverted)} ({totalOriginal > 0 ? `-${((1 - totalConverted / totalOriginal) * 100).toFixed(0)}%` : "0%"})
           </span>
@@ -240,7 +240,7 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
               </p>
             </div>
           </div>
-          <button onClick={handleTakeFromHistory} disabled={isUploading} className='self-start flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-semibold rounded-lg shadow-sm transition-all focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50'>
+          <button onClick={handleTakeFromHistory} disabled={isUploading} className='self-start flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-semibold rounded-lg shadow-sm transition-all hover:scale-105 active:scale-95 hover:shadow-md focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 disabled:hover:scale-100 disabled:hover:shadow-sm disabled:cursor-not-allowed'>
             <svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
               <path d='m13 2-2 10h9l-9 10 2-10H4l9-10Z' />
             </svg>
@@ -264,13 +264,13 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
       {/* Actions */}
       <div className='flex flex-row gap-2 mt-2'>
         {pendingCount > 0 && !autoProcess && (
-          <button onClick={processAllPending} className='flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-secondary hover:bg-muted text-foreground rounded-lg border border-border/50 font-semibold text-sm transition-all hover:-translate-y-px hover:shadow-sm'>
+          <button onClick={processAllPending} className='flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-secondary hover:bg-muted text-foreground rounded-lg border border-border/50 font-semibold text-sm transition-all hover:-translate-y-px hover:shadow-sm hover:border-border active:scale-95'>
             <ProcessIcon size={16} />
             Обробити все ({pendingCount})
           </button>
         )}
 
-        <button onClick={() => setUploadDialogOpen(true)} disabled={doneCount === 0} className='flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg font-semibold text-sm transition-all hover:-translate-y-px hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0'>
+        <button onClick={() => setUploadDialogOpen(true)} disabled={doneCount === 0} className='flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg font-semibold text-sm transition-all hover:-translate-y-px hover:shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none disabled:active:scale-100'>
           <UploadIcon size={16} />
           Upload to Storage ({doneCount})
         </button>
@@ -280,13 +280,13 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
             title={!hasOutput ? "Спочатку експортуйте HTML або MJML" : isUploading ? "Йде завантаження..." : replacementDone ? "URLs вже замінені" : "Замінити зображення на storage URLs"}
             onClick={handleReplaceInOutput}
             disabled={replacementDone || !hasOutput || isUploading}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all hover:-translate-y-px hover:shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 ${replacementDone ? "bg-green-600 text-white" : "bg-card border border-border/50 text-foreground hover:bg-muted"}`}>
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all hover:-translate-y-px hover:shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:active:scale-100 disabled:hover:shadow-none ${replacementDone ? "bg-green-600 text-white" : "bg-card border border-border/50 text-foreground hover:bg-muted hover:border-border"}`}>
             {replacementDone ? <CheckIcon size={16} /> : <ReplaceIcon size={16} />}
             {replacementDone ? `✓ Замінено (${lastUploadedCount})` : `Замінити (${lastUploadedCount})`}
           </button>
         )}
 
-        <button onClick={handleClear} className='flex items-center justify-center px-4 py-2 bg-card border border-border/50 hover:bg-muted text-foreground rounded-lg font-semibold text-sm transition-all hover:-translate-y-px hover:shadow-sm'>
+        <button onClick={handleClear} className='flex items-center justify-center px-4 py-2 bg-card border border-border/50 hover:bg-muted hover:border-border text-foreground rounded-lg font-semibold text-sm transition-all hover:-translate-y-px hover:shadow-sm active:scale-95'>
           Очистити
         </button>
       </div>

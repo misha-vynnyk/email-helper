@@ -40,47 +40,51 @@ export default function HtmlConverterPanel() {
           {/* LEFT COLUMN (7 cols) */}
           <div className='col-span-1 xl:col-span-7 flex flex-col gap-6'>
             {/* EDITOR CARD */}
-            <div className='bg-card rounded-[2rem] p-6 md:p-8 shadow-soft flex flex-col border border-border/50'>
-              <h2 className='text-lg md:text-xl font-extrabold mb-5 flex items-center gap-2 text-foreground'>✏️ {t("Text Editor", "Редактор тексту")}</h2>
+            <div className='bg-card flex flex-col rounded-[2rem] p-6 md:p-8 shadow-soft hover:shadow-lg border border-border/50 hover:border-border transition-all duration-300 group'>
+              <h2 className='text-lg md:text-xl font-extrabold mb-5 flex items-center gap-2 text-foreground group-hover:text-primary transition-colors'>✏️ {t("Text Editor", "Редактор тексту")}</h2>
               <div ref={editorRef} contentEditable suppressContentEditableWarning className='w-full min-h-[300px] max-h-[600px] overflow-auto bg-background border border-border/50 rounded-2xl p-6 font-mono text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary transition-all empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground shadow-inner editor-content' data-placeholder={t("Paste or type text here...", "Вставте або введіть текст сюди...")} />
             </div>
 
             {/* FILE SETTINGS (Floating Pills) */}
             <div className='flex flex-wrap items-center gap-3'>
-              <div className='flex items-center bg-card rounded-full shadow-soft p-1.5 pl-5 border border-border/50 flex-1 min-w-[280px]'>
+              <div className='flex items-center bg-card rounded-full shadow-soft hover:shadow-md p-1.5 pl-5 border border-border/50 hover:border-border transition-all duration-300 flex-1 min-w-[280px] focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary/50'>
                 <span className='text-sm font-bold text-muted-foreground mr-3 shrink-0'>{t("File Name:", "Ім'я файлу:")}</span>
-                <input type='text' value={state.fileName} onChange={(e) => actions.setFileName(e.target.value)} onFocus={(e) => e.target.select()} className='bg-transparent border-none outline-none text-[15px] font-extrabold text-foreground w-full focus:ring-0 min-w-0 placeholder:text-muted-foreground' />
+                <input type='text' value={state.fileName} onChange={(e) => actions.setFileName(e.target.value)} onFocus={(e) => e.target.select()} className='bg-transparent border-none outline-none text-[15px] font-extrabold text-foreground w-full focus:ring-0 min-w-0 placeholder:text-muted-foreground transition-colors' />
                 <div className='flex items-center gap-1.5 ml-2 shrink-0'>
-                  <button onClick={() => actions.changeFileNumber(-1)} className='p-2 bg-secondary hover:bg-muted rounded-full text-foreground transition-colors shadow-sm'>
+                  <button onClick={() => actions.changeFileNumber(-1)} className='p-2 bg-secondary hover:bg-muted hover:scale-105 active:scale-95 rounded-full text-foreground transition-all shadow-sm'>
                     <Minus size={14} strokeWidth={3} />
                   </button>
-                  <button onClick={() => actions.changeFileNumber(1)} className='p-2 bg-secondary hover:bg-muted rounded-full text-foreground transition-colors shadow-sm'>
+                  <button onClick={() => actions.changeFileNumber(1)} className='p-2 bg-secondary hover:bg-muted hover:scale-105 active:scale-95 rounded-full text-foreground transition-all shadow-sm'>
                     <Plus size={14} strokeWidth={3} />
                   </button>
                 </div>
               </div>
 
               {ui.showApproveNeeded && (
-                <button onClick={() => actions.setApproveNeeded(!state.approveNeeded)} className={`flex items-center gap-2 px-5 py-3 rounded-full shadow-soft border transition-all ${state.approveNeeded ? "bg-primary border-primary text-primary-foreground shadow-soft-lg transform -translate-y-0.5" : "bg-card border-border/50 text-muted-foreground hover:bg-muted"}`}>
-                  {state.approveNeeded ? <CheckSquare size={16} /> : <Square size={16} />}
+                <button onClick={() => actions.setApproveNeeded(!state.approveNeeded)} className={`flex items-center gap-2 px-5 py-3 rounded-full shadow-soft hover:shadow-md border hover:scale-[1.02] active:scale-95 transition-all duration-200 ${state.approveNeeded ? "bg-primary border-primary text-primary-foreground shadow-soft-lg transform -translate-y-0.5" : "bg-card border-border/50 text-muted-foreground hover:bg-muted hover:border-border"}`}>
+                  <div className={`transition-transform duration-300 ${state.approveNeeded ? "scale-110" : "scale-100"}`}>
+                    {state.approveNeeded ? <CheckSquare size={16} /> : <Square size={16} />}
+                  </div>
                   <span className='text-sm font-bold'>Approve needed</span>
                 </button>
               )}
 
-              <button onClick={() => actions.setUseAlfaOne(!state.useAlfaOne)} className={`flex items-center gap-2 px-5 py-3 rounded-full shadow-soft border transition-all ${state.useAlfaOne ? "bg-primary border-primary text-primary-foreground shadow-soft-lg transform -translate-y-0.5" : "bg-card border-border/50 text-muted-foreground hover:bg-muted"}`}>
-                {state.useAlfaOne ? <CheckSquare size={16} /> : <Square size={16} />}
+              <button onClick={() => actions.setUseAlfaOne(!state.useAlfaOne)} className={`flex items-center gap-2 px-5 py-3 rounded-full shadow-soft hover:shadow-md border hover:scale-[1.02] active:scale-95 transition-all duration-200 ${state.useAlfaOne ? "bg-primary border-primary text-primary-foreground shadow-soft-lg transform -translate-y-0.5" : "bg-card border-border/50 text-muted-foreground hover:bg-muted hover:border-border"}`}>
+                <div className={`transition-transform duration-300 ${state.useAlfaOne ? "scale-110" : "scale-100"}`}>
+                  {state.useAlfaOne ? <CheckSquare size={16} /> : <Square size={16} />}
+                </div>
                 <span className='text-sm font-bold'>AlfaOne</span>
               </button>
             </div>
 
             {/* DIAGNOSTICS TABS */}
             {((ui.showInputHtml && state.inputHtml) || (ui.showLogsPanel && state.log.length > 0)) && (
-              <div className='bg-card rounded-[2rem] shadow-soft overflow-hidden flex flex-col border border-border/50 mt-2'>
+              <div className='bg-card rounded-[2rem] shadow-soft hover:shadow-lg overflow-hidden flex flex-col border border-border/50 hover:border-border transition-all duration-300 mt-2 group'>
                 <div className='flex items-center px-6 pt-4 gap-6 border-b border-border/50'>
-                  <button onClick={() => setLeftTab("logs")} className={`pb-3 text-sm font-bold border-b-2 transition-colors ${leftTab === "logs" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground/80"}`}>
+                  <button onClick={() => setLeftTab("logs")} className={`pb-3 text-sm font-bold border-b-2 transition-all ${leftTab === "logs" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground/80 hover:border-border"}`}>
                     {t("Operations Log", "Лог операцій")}
                   </button>
-                  <button onClick={() => setLeftTab("raw")} className={`pb-3 text-sm font-bold border-b-2 transition-colors ${leftTab === "raw" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground/80"}`}>
+                  <button onClick={() => setLeftTab("raw")} className={`pb-3 text-sm font-bold border-b-2 transition-all ${leftTab === "raw" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground/80 hover:border-border"}`}>
                     {t("Raw HTML", "Вхідний HTML")}
                   </button>
                 </div>
@@ -112,8 +116,8 @@ export default function HtmlConverterPanel() {
           <div className='col-span-1 xl:col-span-5 flex flex-col gap-6'>
             {/* IMAGE PROCESSOR (Legacy wrapper wrapper) */}
             {state.showImageProcessor && (
-              <div className='bg-card rounded-[2rem] shadow-soft p-1.5 overflow-hidden border-[3px] border-primary/40 relative'>
-                <div className='absolute top-0 right-0 bg-primary text-primary-foreground text-[10px] uppercase font-extrabold px-3 py-1 rounded-bl-xl z-20 shadow-sm leading-none'>Images Detected</div>
+              <div className='bg-card rounded-[2rem] shadow-soft hover:shadow-lg p-1.5 overflow-hidden border-[3px] border-primary/40 hover:border-primary/60 transition-all duration-300 relative group'>
+                <div className='absolute top-0 right-0 bg-primary text-primary-foreground text-[10px] uppercase font-extrabold px-3 py-1 rounded-bl-xl z-20 shadow-sm leading-none group-hover:bg-primary/90 transition-colors'>Images Detected</div>
                 {/* Legacy component renders here for now */}
                 <ImageProcessor
                   editorRef={editorRef}
@@ -137,32 +141,32 @@ export default function HtmlConverterPanel() {
             )}
 
             {/* OUTPUT TABS */}
-            <div className='bg-card rounded-[2rem] shadow-soft overflow-hidden flex flex-col flex-1 min-h-[500px] border border-border/50'>
-              <div className='flex items-center justify-between border-b border-border/50 px-6 pt-5 bg-card'>
+            <div className='bg-card rounded-[2rem] shadow-soft hover:shadow-lg flex flex-col flex-1 min-h-[500px] border border-border/50 hover:border-border transition-all duration-300 group'>
+              <div className='flex items-center justify-between border-b border-border/50 px-6 pt-5 bg-card rounded-t-[2rem]'>
                 <div className='flex gap-6'>
-                  <button onClick={() => setRightTab("html")} className={`pb-3 text-sm font-bold border-b-2 transition-colors ${rightTab === "html" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground/80"}`}>
+                  <button onClick={() => setRightTab("html")} className={`pb-3 text-sm font-bold border-b-2 transition-all ${rightTab === "html" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground/80 hover:border-border"}`}>
                     HTML {t("Output", "Результат")}
                   </button>
-                  <button onClick={() => setRightTab("mjml")} className={`pb-3 text-sm font-bold border-b-2 transition-colors ${rightTab === "mjml" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground/80"}`}>
+                  <button onClick={() => setRightTab("mjml")} className={`pb-3 text-sm font-bold border-b-2 transition-all ${rightTab === "mjml" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground/80 hover:border-border"}`}>
                     MJML {t("Output", "Результат")}
                   </button>
                 </div>
 
                 <div className='flex gap-1.5 pb-3'>
-                  <button onClick={rightTab === "html" ? actions.handleExportHTML : actions.handleExportMJML} disabled={state.isAutoExporting} className='p-2 bg-secondary hover:bg-muted text-foreground rounded-full transition-colors active:scale-95 shadow-sm' title='Export'>
-                    <ArrowRightLeft size={15} strokeWidth={2.5} />
+                  <button onClick={rightTab === "html" ? actions.handleExportHTML : actions.handleExportMJML} disabled={state.isAutoExporting} className='p-2 bg-secondary hover:bg-muted text-foreground rounded-full transition-all hover:scale-105 active:scale-95 shadow-sm hover:shadow group/btn' title='Export'>
+                    <ArrowRightLeft size={15} strokeWidth={2.5} className='group-hover/btn:text-primary transition-colors' />
                   </button>
                   <button
                     onClick={() => {
                       const ref = rightTab === "html" ? outputHtmlRef : outputMjmlRef;
                       if (ref.current) actions.handleCopy(ref.current.value, rightTab.toUpperCase());
                     }}
-                    className='p-2 bg-secondary hover:bg-muted text-foreground rounded-full transition-colors active:scale-95 shadow-sm'
+                    className='p-2 bg-secondary hover:bg-muted text-foreground rounded-full transition-all hover:scale-105 active:scale-95 shadow-sm hover:shadow group/btn'
                     title='Copy'>
-                    <Copy size={15} strokeWidth={2.5} />
+                    <Copy size={15} strokeWidth={2.5} className='group-hover/btn:text-primary transition-colors' />
                   </button>
-                  <button onClick={rightTab === "html" ? actions.handleDownloadHTML : actions.handleDownloadMJML} className='p-2 bg-secondary hover:bg-muted text-foreground rounded-full transition-colors active:scale-95 shadow-sm' title='Download'>
-                    <Download size={15} strokeWidth={2.5} />
+                  <button onClick={rightTab === "html" ? actions.handleDownloadHTML : actions.handleDownloadMJML} className='p-2 bg-secondary hover:bg-muted text-foreground rounded-full transition-all hover:scale-105 active:scale-95 shadow-sm hover:shadow group/btn' title='Download'>
+                    <Download size={15} strokeWidth={2.5} className='group-hover/btn:text-primary transition-colors' />
                   </button>
                 </div>
               </div>
@@ -178,12 +182,8 @@ export default function HtmlConverterPanel() {
 
         {/* UPLOAD HISTORY */}
         {ui.showUploadHistory && (
-          <div className='mt-4 bg-card rounded-[2rem] shadow-soft p-6 md:p-8 border border-border/50'>
-            <h3 className='text-xl font-extrabold mb-6 text-foreground flex items-center gap-2'>📜 {t("Upload History", "Історія завантажень")}</h3>
-            {/* Legacy UI */}
-            <div className='bg-background rounded-2xl p-4 border border-border/50 shadow-inner'>
-              <UploadHistory sessions={state.uploadHistory} onClear={actions.handleClearHistory} />
-            </div>
+          <div>
+            <UploadHistory sessions={state.uploadHistory} onClear={actions.handleClearHistory} />
           </div>
         )}
       </div>

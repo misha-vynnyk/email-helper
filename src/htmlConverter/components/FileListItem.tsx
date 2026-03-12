@@ -214,14 +214,14 @@ function AltTagInput({ fileId, altTags, customAltString, uploading, editingTag, 
           }
 
           return (
-            <div key={`${tag}-${idx}`} onDoubleClick={() => onEditingTagChange({ fileId, tagIdx: idx })} className='group flex items-center gap-1 bg-primary/10 hover:bg-primary/20 text-foreground px-2 py-0.5 rounded-full text-xs font-medium cursor-pointer transition-colors'>
+            <div key={`${tag}-${idx}`} onDoubleClick={() => onEditingTagChange({ fileId, tagIdx: idx })} className='group flex items-center gap-1 bg-primary/10 hover:bg-primary/20 text-foreground px-2 py-0.5 rounded-full text-xs font-medium cursor-pointer transition-all hover:scale-105 active:scale-95'>
               <span>{tag}</span>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   onAltChange(fileId, removeTag(customAltString, idx));
                 }}
-                className='text-muted-foreground hover:text-destructive p-0.5 rounded-full outline-none'>
+                className='text-muted-foreground hover:text-destructive p-0.5 rounded-full outline-none transition-all hover:scale-110 active:scale-95'>
                 <X size={12} />
               </button>
             </div>
@@ -273,7 +273,7 @@ function AiSuggestionsSection({ file, uploading, aiState, analysisLabel, customA
     <div className='pt-2 pl-0'>
       {/* Analyze button row */}
       <div className='flex flex-wrap items-center gap-2'>
-        <button onClick={() => onAnalyze(file)} disabled={uploading || aiState?.status === "running"} className='px-3 py-1 text-xs font-medium border border-border/50 rounded hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed'>
+        <button onClick={() => onAnalyze(file)} disabled={uploading || aiState?.status === "running"} className='px-3 py-1 text-xs font-medium border border-border/50 rounded hover:bg-muted transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed'>
           {aiState?.status === "running" ? "Analyzing…" : analysisLabel}
         </button>
 
@@ -316,7 +316,7 @@ function AiSuggestionsSection({ file, uploading, aiState, analysisLabel, customA
                   const normalized = normalizeCustomNameInput(s);
                   const isSelected = customName === normalized;
                   return (
-                    <button key={s} onClick={() => onNameChange(file.id, normalized)} className={`px-2 py-1 text-xs rounded border transition-colors ${isSelected ? "border-success bg-success/15 text-foreground" : "border-border text-muted-foreground hover:bg-success/10 hover:text-foreground"}`}>
+                    <button key={s} onClick={() => onNameChange(file.id, normalized)} className={`px-2 py-1 text-xs rounded border transition-all hover:scale-105 active:scale-95 ${isSelected ? "border-success bg-success/15 text-foreground" : "border-border text-muted-foreground hover:bg-success/10 hover:text-foreground"}`}>
                       {s}
                     </button>
                   );
@@ -361,7 +361,7 @@ function SuggestionChipGroup({ label, suggestions, selectedTags, color, variant,
           }
 
           return (
-            <button key={s} onClick={() => onToggle(s)} className={`px-2 py-1 text-xs rounded-full border transition-colors ${colorClasses}`}>
+            <button key={s} onClick={() => onToggle(s)} className={`px-2 py-1 text-xs rounded-full border transition-all hover:scale-105 active:scale-95 ${colorClasses}`}>
               {s}
             </button>
           );
