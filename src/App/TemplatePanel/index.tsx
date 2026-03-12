@@ -11,7 +11,7 @@ import { ImageConverterPanel } from "../../imageConverter";
 import GeometricBackground from "../../imageConverter/components/GeometricBackground";
 import { TemplateLibrary } from "../../templateLibrary";
 import { getComponentStyles, ThemeToggle, ThemeStyleSelector, useThemeMode } from "../../theme";
-import { ComponentThemeSwitcher } from "../../theme/examples/ComponentThemeSwitcher";
+
 import ToggleSamplesPanelButton from "../SamplesDrawer/ToggleSamplesPanelButton";
 
 import EmailSenderPanel from "./EmailSenderPanel";
@@ -144,10 +144,6 @@ export default function TemplatePanel() {
 
         <TabPanel value='converter' selectedValue={deferredTab} mounted={mountedTabs.has("converter")}>
           <HtmlConverterPanel />
-        </TabPanel>
-
-        <TabPanel value='theme' selectedValue={deferredTab} mounted={mountedTabs.has("theme")}>
-          <ComponentThemeSwitcher />
         </TabPanel>
       </Box>
     </>
