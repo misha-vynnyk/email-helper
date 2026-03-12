@@ -1,18 +1,22 @@
 /**
- * Compact Image Processor for HTML Converter
+ * Refactored Compact Image Processor for HTML Converter
  * Extracts and processes images from HTML content
  */
-
 import React, { useState, useEffect } from "react";
-import { Play as ProcessIcon, Upload as UploadIcon, Replace as ReplaceIcon, Check as CheckIcon, X as CloseIcon } from "lucide-react";
+import { Check as CheckIcon, X as CloseIcon } from "lucide-react";
 import { saveAs } from "file-saver";
+
 import StorageUploadDialog from "./StorageUploadDialog";
-import { formatSize, extractFolderName } from "./utils/formatters";
-import { getFileExtension, getImageFormat, isCrossOrigin } from "./imageUtils"; // getImageFormat needed for download
+import { extractFolderName } from "./utils/formatters";
+import { getFileExtension, getImageFormat, isCrossOrigin } from "./imageUtils";
 import type { ImageAnalysisSettings, ImageFormatOverride, UploadSession } from "./types";
 import { useImageConversion } from "./hooks/useImageConversion";
 import { useImageUploader } from "./hooks/useImageUploader";
 import { ImageGrid } from "./components/ImageGrid";
+import { ImageProcessorSettings } from "./components/ImageProcessorSettings";
+import { ImageProcessorStats } from "./components/ImageProcessorStats";
+import { ImageProcessorActions } from "./components/ImageProcessorActions";
+import { HistoryPrompt } from "./components/HistoryPrompt";
 
 interface ImageProcessorProps {
   editorRef: React.RefObject<HTMLDivElement>;
@@ -37,14 +41,14 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
   // 1. Conversion Logic
   const {
     images,
-    setImages, // needed for download/remove/format overrides
+    setImages,
     settings: { format, quality, maxWidth, autoProcess },
     setSettings: { setQuality, setMaxWidth },
     actions: { extractImages, processAllPending, clearImagesAndRevoke, abortConversions },
     sessionId,
   } = useImageConversion({ editorRef, onLog, onVisibilityChange, autoProcessProp });
 
-  // Snackbar local state (shared usage)
+  // Snackbar local state
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -58,7 +62,7 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
   // 2. Upload Logic
   const {
     isUploading,
-    lastUploadedUrls, // used for stats/ui
+    lastUploadedUrls,
     replacementDone,
     handleUploadToStorage,
     handleTakeFromHistoryLocally,
@@ -109,11 +113,6 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
         return {
           ...img,
           formatOverride: fmt,
-          // If format changes, reset status to allow re-processing?
-          // Or user has to click "Process Again"?
-          // Old code didn't reset status. It just updated prop.
-          // But 'getImageFormat' would change result.
-          // ProcessImage uses current state.
           status: img.status === "done" ? "pending" : img.status,
           convertedBlob: undefined,
           convertedSize: undefined,
@@ -131,7 +130,7 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
     onLog && onLog("🗑️ Очищено");
   };
 
-  // Integration Effects
+  // Effects
   useEffect(() => {
     if (triggerExtract > 0 && visible) {
       extractImages();
@@ -151,7 +150,6 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
     }
   }, [visible, images.length, clearImagesAndRevoke, resetUploadState]);
 
-  // Unmount cleanup
   useEffect(() => {
     return () => {
       abortConversions();
@@ -159,16 +157,15 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
     };
   }, [abortConversions, abortUploads]);
 
-  // Derived
+  // Derived Values
   const totalOriginal = images.reduce((sum, img) => sum + img.originalSize, 0);
   const totalConverted = images.reduce((sum, img) => sum + (img.convertedSize || 0), 0);
-  const doneCount = images.filter((img) => (img.status === "done" && img.convertedBlob) || (img.status === "pending" && isCrossOrigin(img.src))).length; // approximation
+  const doneCount = images.filter((img) => (img.status === "done" && img.convertedBlob) || (img.status === "pending" && isCrossOrigin(img.src))).length;
   const pendingCount = images.filter((img) => img.status === "pending").length;
   const lastUploadedCount = Object.keys(lastUploadedUrls).length;
 
-  // History Lookup
   const matchingHistorySession = React.useMemo(() => {
-    if (doneCount === 0) return null; // Avoid unnecessary lookup if no images to process
+    if (doneCount === 0) return null;
     const fName = extractFolderName(fileName).trim().toUpperCase();
     if (!fName || !uploadHistory) return null;
     return uploadHistory.find((session) => {
@@ -195,59 +192,20 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
         )}
       </div>
 
-      {/* Settings Row */}
-      <div className='flex flex-wrap gap-6 items-start'>
-        <div className='flex-1 min-w-[150px]'>
-          <div className='flex justify-between items-center mb-1.5'>
-            <span className='text-xs text-muted-foreground'>Якість:</span>
-            <span className='text-xs font-semibold text-primary'>{quality}%</span>
-          </div>
-          <input type='range' min='60' max='100' value={quality} onChange={(e) => setQuality(parseInt(e.target.value))} className='w-full accent-primary cursor-pointer' />
-        </div>
-        <div className='flex-1 min-w-[150px]'>
-          <div className='flex justify-between items-center mb-1.5'>
-            <span className='text-xs text-muted-foreground'>Макс. ширина:</span>
-            <span className='text-xs font-semibold text-primary'>{maxWidth}px</span>
-          </div>
-          <input type='range' min='300' max='1200' step='100' value={maxWidth} onChange={(e) => setMaxWidth(parseInt(e.target.value))} className='w-full accent-primary cursor-pointer' />
-        </div>
-      </div>
+      <ImageProcessorSettings quality={quality} setQuality={setQuality} maxWidth={maxWidth} setMaxWidth={setMaxWidth} />
 
       <ImageGrid images={images} globalFormat={format} onDownload={handleDownloadSingle} onRemove={handleRemove} onFormatChange={handleFormatChange} />
 
-      {/* Stats */}
-      {doneCount > 0 && (
-        <div className='mt-2 p-2 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors border border-border/50'>
-          <span className='text-xs text-muted-foreground'>
-            💾 {formatSize(totalOriginal)} → {formatSize(totalConverted)} ({totalOriginal > 0 ? `-${((1 - totalConverted / totalOriginal) * 100).toFixed(0)}%` : "0%"})
-          </span>
-        </div>
-      )}
+      <ImageProcessorStats doneCount={doneCount} totalOriginal={totalOriginal} totalConverted={totalConverted} />
 
-      {/* Proactive History Match Prompt */}
-      {matchingHistorySession && doneCount > 0 && !isUploading && lastUploadedCount === 0 && (
-        <div className='p-4 rounded-xl bg-primary/10 border border-primary/20 flex flex-col gap-3 animate-in fade-in zoom-in slide-in-from-top-2'>
-          <div className='flex items-start gap-3'>
-            <div className='p-2 bg-primary/20 rounded-full text-primary shrink-0'>
-              <CheckIcon className='w-5 h-5' />
-            </div>
-            <div>
-              <h4 className='text-sm font-semibold text-primary mb-1'>Знайдено історію для "{extractFolderName(fileName)}"</h4>
-              <p className='text-xs text-muted-foreground leading-relaxed'>
-                Ця папка вже завантажувалася {new Date(matchingHistorySession.timestamp).toLocaleDateString()} {new Date(matchingHistorySession.timestamp).toLocaleTimeString()}.
-                <br />
-                Ви можете миттєво перевикористати посилання та ALT-тексти.
-              </p>
-            </div>
-          </div>
-          <button onClick={handleTakeFromHistory} disabled={isUploading} className='self-start flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-semibold rounded-lg shadow-sm transition-all hover:scale-105 active:scale-95 hover:shadow-md focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 disabled:hover:scale-100 disabled:hover:shadow-sm disabled:cursor-not-allowed'>
-            <svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round' strokeLinejoin='round'>
-              <path d='m13 2-2 10h9l-9 10 2-10H4l9-10Z' />
-            </svg>
-            Миттєво взяти з історії
-          </button>
-        </div>
-      )}
+      <HistoryPrompt
+        matchingHistorySession={matchingHistorySession}
+        doneCount={doneCount}
+        isUploading={isUploading}
+        lastUploadedCount={lastUploadedCount}
+        fileNameFolder={extractFolderName(fileName)}
+        handleTakeFromHistory={handleTakeFromHistory}
+      />
 
       {/* Success Feedback Banner */}
       {lastUploadedCount > 0 && (
@@ -261,35 +219,19 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
         </div>
       )}
 
-      {/* Actions */}
-      <div className='flex flex-row gap-2 mt-2'>
-        {pendingCount > 0 && !autoProcess && (
-          <button onClick={processAllPending} className='flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-secondary hover:bg-muted text-foreground rounded-lg border border-border/50 font-semibold text-sm transition-all hover:-translate-y-px hover:shadow-sm hover:border-border active:scale-95'>
-            <ProcessIcon size={16} />
-            Обробити все ({pendingCount})
-          </button>
-        )}
-
-        <button onClick={() => setUploadDialogOpen(true)} disabled={doneCount === 0} className='flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg font-semibold text-sm transition-all hover:-translate-y-px hover:shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none disabled:active:scale-100'>
-          <UploadIcon size={16} />
-          Upload to Storage ({doneCount})
-        </button>
-
-        {lastUploadedCount > 0 && (
-          <button
-            title={!hasOutput ? "Спочатку експортуйте HTML або MJML" : isUploading ? "Йде завантаження..." : replacementDone ? "URLs вже замінені" : "Замінити зображення на storage URLs"}
-            onClick={handleReplaceInOutput}
-            disabled={replacementDone || !hasOutput || isUploading}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all hover:-translate-y-px hover:shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:active:scale-100 disabled:hover:shadow-none ${replacementDone ? "bg-green-600 text-white" : "bg-card border border-border/50 text-foreground hover:bg-muted hover:border-border"}`}>
-            {replacementDone ? <CheckIcon size={16} /> : <ReplaceIcon size={16} />}
-            {replacementDone ? `✓ Замінено (${lastUploadedCount})` : `Замінити (${lastUploadedCount})`}
-          </button>
-        )}
-
-        <button onClick={handleClear} className='flex items-center justify-center px-4 py-2 bg-card border border-border/50 hover:bg-muted hover:border-border text-foreground rounded-lg font-semibold text-sm transition-all hover:-translate-y-px hover:shadow-sm active:scale-95'>
-          Очистити
-        </button>
-      </div>
+      <ImageProcessorActions
+        pendingCount={pendingCount}
+        autoProcess={autoProcess}
+        processAllPending={processAllPending}
+        doneCount={doneCount}
+        setUploadDialogOpen={setUploadDialogOpen}
+        lastUploadedCount={lastUploadedCount}
+        hasOutput={hasOutput}
+        isUploading={isUploading}
+        replacementDone={replacementDone}
+        handleReplaceInOutput={handleReplaceInOutput}
+        handleClear={handleClear}
+      />
 
       <StorageUploadDialog
         open={uploadDialogOpen}
@@ -307,7 +249,7 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
         imageAnalysisSettings={imageAnalysisSettings}
       />
 
-      {/* Tailwind Custom Snackbar/Toast */}
+      {/* Tailwind Custom Snackbar */}
       {snackbar.open && (
         <div className='fixed bottom-4 right-4 z-50 animate-in fade-in slide-in-from-bottom-5'>
           <div className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border ${snackbar.severity === "success" ? "bg-success/10 border-success/20 text-success" : snackbar.severity === "error" ? "bg-destructive/10 border-destructive/20 text-destructive" : snackbar.severity === "warning" ? "bg-warning/10 border-warning/20 text-warning-foreground" : "bg-card border-border text-foreground"}`}>
