@@ -68,11 +68,6 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
             mode: "original",
             preserveAspectRatio: true,
           },
-          targetFileSize: parsed.targetFileSize,
-          gifFrameResize: parsed.gifFrameResize || {
-            enabled: false,
-            preserveAspectRatio: true,
-          },
         };
       }
     } catch (error) {
@@ -94,11 +89,6 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
       preserveFormat: DEFAULT_PRESERVE_FORMAT,
       autoQuality: DEFAULT_AUTO_QUALITY,
       preserveExif: DEFAULT_PRESERVE_EXIF,
-      targetFileSize: undefined,
-      gifFrameResize: {
-        enabled: false,
-        preserveAspectRatio: true,
-      },
     };
   };
 
@@ -184,6 +174,11 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
 
         // Calculate effective quality based on compressionMode and autoQuality
         let effectiveSettings = settings;
+
+        // Force server processing for GIF format as client fallback doesn't support them
+        if (effectiveSettings.format === "gif") {
+          effectiveSettings = { ...effectiveSettings, processingMode: "server" };
+        }
 
         // Apply compression mode quality overrides
         switch (settings.compressionMode) {

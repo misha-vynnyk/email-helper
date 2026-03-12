@@ -56,9 +56,8 @@ describe("htmlConverter utils", () => {
     it("should handle mixed closing tags and breaks", () => {
       const input = "<div></div><br></div></div>";
       const result = replaceTripleBrWithSingle(input);
-      // Based on implementation: <br></div> -> </div><br>
-      // So <div></div><br></div></div> -> <div></div></div><br></div>
-      expect(result).toBe("<div></div></div><br></div>");
+      // Only one <br> in input, so the {3,} regex doesn't match — output is unchanged
+      expect(result).toBe("<div></div><br></div></div>");
     });
   });
 

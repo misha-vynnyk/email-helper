@@ -12,7 +12,6 @@ import {
   ToggleButton,
   useTheme,
   alpha,
-  Collapse,
   Alert,
 } from "@mui/material";
 import {
@@ -230,7 +229,7 @@ const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = ({
         </>
       )}
 
-      {/* GIF Optimization (for GIF format) */}
+      {/* GIF Optimization Overview */}
       {settings.format === "gif" && (
         <>
           <Divider />
@@ -243,136 +242,10 @@ const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = ({
             </Box>
 
             <Alert severity="info" sx={{ mb: 2, borderRadius: componentStyles.card.borderRadius }}>
-              Server-side GIF optimization with Gifsicle
+              Use the Quality Slider above to adjust GIF compression level. Lower quality = more compression.
+              {"\n\n"}
+              To resize the GIF, use the standard Resize options at the top of this panel.
             </Alert>
-
-            {/* Target File Size */}
-            <TextField
-              fullWidth
-              type="number"
-              label="Target File Size (MB)"
-              value={
-                settings.targetFileSize
-                  ? (settings.targetFileSize / (1024 * 1024)).toFixed(2)
-                  : ""
-              }
-              onChange={(e) => {
-                const value = e.target.value;
-                if (value === "") {
-                  updateSettings({ targetFileSize: undefined });
-                } else {
-                  const mb = parseFloat(value);
-                  if (!isNaN(mb) && mb >= 0.01 && mb <= 50) {
-                    updateSettings({ targetFileSize: Math.round(mb * 1024 * 1024) });
-                  }
-                }
-              }}
-              inputProps={{
-                min: 0.01,
-                max: 50,
-                step: 0.1,
-              }}
-              helperText="Auto-optimize to target size (0.01 - 50 MB)"
-              size="small"
-              sx={{ mb: 2, borderRadius: componentStyles.card.borderRadius }}
-            />
-
-            {/* Frame Resize */}
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={settings.gifFrameResize?.enabled || false}
-                  onChange={(e) =>
-                    updateSettings({
-                      gifFrameResize: {
-                        ...settings.gifFrameResize,
-                        enabled: e.target.checked,
-                        preserveAspectRatio: settings.gifFrameResize?.preserveAspectRatio ?? true,
-                      },
-                    })
-                  }
-                  size="small"
-                />
-              }
-              label={
-                <Typography variant="body2" fontWeight={500} color="text.primary">
-                  Resize GIF Frames
-                </Typography>
-              }
-            />
-
-            <Collapse in={settings.gifFrameResize?.enabled || false}>
-              <Box sx={{ pl: 4, mt: 1.5 }}>
-                <Box display="flex" gap={1} mb={1.5}>
-                  <TextField
-                    type="number"
-                    label="Width (px)"
-                    value={settings.gifFrameResize?.width || ""}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      updateSettings({
-                        gifFrameResize: {
-                          ...settings.gifFrameResize,
-                          enabled: settings.gifFrameResize?.enabled ?? false,
-                          preserveAspectRatio: settings.gifFrameResize?.preserveAspectRatio ?? true,
-                          width: value === "" ? undefined : parseInt(value) || undefined,
-                        },
-                      });
-                    }}
-                    inputProps={{ min: 16 }}
-                    size="small"
-                    sx={{ flex: 1, borderRadius: componentStyles.card.borderRadius }}
-                  />
-                  <TextField
-                    type="number"
-                    label="Height (px)"
-                    value={settings.gifFrameResize?.height || ""}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      updateSettings({
-                        gifFrameResize: {
-                          ...settings.gifFrameResize,
-                          enabled: settings.gifFrameResize?.enabled ?? false,
-                          preserveAspectRatio: settings.gifFrameResize?.preserveAspectRatio ?? true,
-                          height: value === "" ? undefined : parseInt(value) || undefined,
-                        },
-                      });
-                    }}
-                    inputProps={{ min: 16 }}
-                    size="small"
-                    sx={{ flex: 1, borderRadius: componentStyles.card.borderRadius }}
-                  />
-                </Box>
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={settings.gifFrameResize?.preserveAspectRatio ?? true}
-                      onChange={(e) =>
-                        updateSettings({
-                          gifFrameResize: {
-                            ...settings.gifFrameResize,
-                            enabled: settings.gifFrameResize?.enabled ?? false,
-                            preserveAspectRatio: e.target.checked,
-                          },
-                        })
-                      }
-                      size="small"
-                    />
-                  }
-                  label={
-                    <Typography variant="body2" color="text.primary">
-                      Preserve aspect ratio
-                    </Typography>
-                  }
-                />
-              </Box>
-            </Collapse>
-
-            {settings.targetFileSize && (
-              <Alert severity="success" sx={{ mt: 2, borderRadius: componentStyles.card.borderRadius }}>
-                Target: {(settings.targetFileSize / (1024 * 1024)).toFixed(2)} MB
-              </Alert>
-            )}
           </Box>
         </>
       )}
