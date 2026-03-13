@@ -104,8 +104,9 @@ function processStyles(htmlContent: string): string {
   htmlContent = htmlContent.replace(/<\/div>/gi, "</p>");
 
   // Preserve basic spacing for tables before stripping their structure
-  htmlContent = htmlContent.replace(/<\/td>/gi, " ");
-  htmlContent = htmlContent.replace(/<\/th>/gi, " ");
+  // Add space between cells but NOT at the end of a row (before </tr>)
+  htmlContent = htmlContent.replace(/<\/td>(?!\s*<\/tr>)/gi, " ");
+  htmlContent = htmlContent.replace(/<\/th>(?!\s*<\/tr>)/gi, " ");
   htmlContent = htmlContent.replace(/<\/tr>/gi, "<br>\n");
 
   // Delete table tags
