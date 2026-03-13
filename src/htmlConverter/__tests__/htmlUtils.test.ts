@@ -15,7 +15,7 @@ describe("htmlConverter utils", () => {
 
     it("should collapse multiple <br> tags into max two", () => {
       const input = "Line 1<br><br><br><br>Line 2";
-      expect(cleanEmptyHtmlTags(input)).toBe("Line 1<br><br>Line 2");
+      expect(cleanEmptyHtmlTags(input)).toBe("Line 1\n<br><br>\nLine 2");
     });
 
     it("should remove empty list items", () => {

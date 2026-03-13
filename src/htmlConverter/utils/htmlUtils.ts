@@ -12,7 +12,7 @@ export function cleanEmptyHtmlTags(htmlContent: string): string {
   htmlContent = htmlContent.replace(/<b>\s*<\/b>/g, "");
   htmlContent = htmlContent.replace(/<li>\s*<\/li>/g, "");
   // Crush any sequence of 3+ breaks into 2
-  htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*){3,}/gi, "<br><br>");
+  htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*){3,}/gi, "\n<br><br>\n");
   htmlContent = htmlContent.replace(/(<span[^>]*>)\s*<br><br>/gi, "$1");
   htmlContent = htmlContent.replace(/<\/a>\s*<a[^>]*>/g, " ");
   htmlContent = htmlContent.replace(/<pre>/g, "");
@@ -125,7 +125,8 @@ export function addBrAfterClosingP(htmlContent: string): string {
   htmlContent = htmlContent.replace(/<\/p>(?!\s*<\/li>)/gi, "</p>\n<br><br>\n");
 
   // Delete extra <p> tags (but not inside lists - already processed)
-  htmlContent = htmlContent.replace(/<p[^>]*>/gi, "").replace(/<\/p>/gi, "");
+  // Use \n for opening tag to avoid gluing with preceding text
+  htmlContent = htmlContent.replace(/<p[^>]*>/gi, "\n").replace(/<\/p>/gi, "");
 
   // Remove <br> between <li> elements (lists should not have <br> between items)
   htmlContent = htmlContent.replace(/<\/li>\s*<br>\s*<br>\s*<li>/gi, "</li>\n<li>");
