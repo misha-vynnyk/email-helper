@@ -27,7 +27,7 @@ interface ImageCacheDB extends DBSchema {
 }
 
 const DB_NAME = 'image-converter-cache';
-const DB_VERSION = 2; // Bumped - key format changed to use content hash
+const DB_VERSION = 3; // Bumped - key format changed to use content hash
 const STORE_NAME = 'images';
 const MAX_CACHE_SIZE = 100 * 1024 * 1024; // 100MB
 

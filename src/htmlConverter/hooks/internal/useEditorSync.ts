@@ -20,6 +20,10 @@ export function useEditorSync({
   const [inputHtml, setInputHtml] = useState<string>("");
   const imageDetectTimerRef = useRef<number | null>(null);
 
+  // Stabilize clearMemory via ref so it doesn't cause useEffect to re-run
+  const clearMemoryRef = useRef(clearMemory);
+  clearMemoryRef.current = clearMemory;
+
   useEffect(() => {
     if (editorRef.current) {
       const scheduleImageSync = () => {
@@ -50,12 +54,12 @@ export function useEditorSync({
           });
           setInputHtml(cleanHtml);
         }
-        clearMemory();
+        clearMemoryRef.current();
         scheduleImageSync();
       };
 
       const handleInput = () => {
-        clearMemory();
+        clearMemoryRef.current();
         scheduleImageSync();
       };
 
@@ -73,7 +77,7 @@ export function useEditorSync({
         }
       };
     }
-  }, [editorRef, showImageProcessorRef, setShowImageProcessor, setTriggerExtract, clearMemory]);
+  }, [editorRef, showImageProcessorRef, setShowImageProcessor, setTriggerExtract]);
 
   const clearInputHtml = () => setInputHtml("");
 
