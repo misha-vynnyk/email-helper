@@ -82,7 +82,14 @@ export function addOneBr(htmlContent: string): string {
 
   // If the user placed the ONE_BR symbol immediately before or after an existing <br />
   // we want exactly ONE break, not two. So we absorb the adjacent native breaks.
-  htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*)*___ONE_BR_MARKER___(?:\s*<br\s*\/?>)*/gi, "<br>");
+  htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*)*___ONE_BR_MARKER___(?:\s*<br\s*\/?>)*/gi, "<br>\n");
+
+  // Move trailing <br> from INSIDE formatting tags to OUTSIDE them.
+  // e.g. <b>text…<br></b><br> → <b>text…</b><br>  (absorbs the extra <br>)
+  htmlContent = htmlContent.replace(
+    /(<br\s*\/?>)\s*(<\/(?:b|em|i|u|a|strong)>)\s*(?:<br\s*\/?>)*/gi,
+    "$2<br>\n"
+  );
 
   // Clean up cases where the forced break sits completely flush against a block boundary
   // as blocks automatically define padding/line-breaks.
@@ -111,8 +118,7 @@ export function addBrAfterClosingP(htmlContent: string): string {
   // We want to treat even a single empty paragraph as a spacer, but NOT add extra breaks if it's just one.
   // The goal: merge the line break from the empty paragraph with the standard paragraph break.
   htmlContent = htmlContent.replace(/(<p[^>]*>[\s\S]*?<\/p>)(\s*<p[^>]*>\s*<br\s*\/?>\s*<\/p>\s*){1,}(<p[^>]*>[\s\S]*?<\/p>)/gi, (_match, beforeP, _emptyPs, afterP) => {
-    // We just ignore the empty P in the middle, because the </p> replacement below will add <br><br>
-    // effectively doing P -> BR BR -> P.
+    // We just ignore the empty P in the middle, because the </p> replacement below will add <br><br>    // effectively doing P -> BR BR -> P.
     // If we kept the empty P, we'd get P -> BR BR -> BR (from empty P) -> BR BR -> P, which is too much.
     return beforeP + afterP;
   });

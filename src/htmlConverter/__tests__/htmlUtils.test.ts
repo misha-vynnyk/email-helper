@@ -37,12 +37,55 @@ describe("htmlConverter utils", () => {
   });
 
   describe("addOneBr", () => {
-    it("should add a break after the specified symbol", () => {
+    it("should replace § with a single <br>", () => {
       const input = `Line 1${SYMBOLS.ONE_BR}Line 2`;
       const result = addOneBr(input);
-      expect(result).toContain("<br>");
-      // Verify it splits lines or adds indentation as per function logic
-      // Function finds symbol and replaces with newline + indent + <br> + indent
+      expect(result).toBe("Line 1<br>\nLine 2");
+    });
+
+    it("should absorb adjacent native <br> when § is nearby", () => {
+      const input = `Text${SYMBOLS.ONE_BR}<br>More`;
+      const result = addOneBr(input);
+      // § + native <br> should produce only one <br>
+      expect(result).toBe("Text<br>\nMore");
+    });
+
+    it("should move trailing <br> from inside <b> to outside", () => {
+      const input = `<b>bold text<br></b>`;
+      const result = addOneBr(input);
+      expect(result).toBe("<b>bold text</b><br>\n");
+    });
+
+    it("should move trailing <br> from inside <em> to outside", () => {
+      const input = `<em>italic text<br></em>`;
+      const result = addOneBr(input);
+      expect(result).toBe("<em>italic text</em><br>\n");
+    });
+
+    it("should move trailing <br> from inside <a> to outside", () => {
+      const input = `<a href="#">link text<br></a>`;
+      const result = addOneBr(input);
+      expect(result).toBe('<a href="#">link text</a><br>\n');
+    });
+
+    it("should absorb duplicate <br> after closing formatting tag", () => {
+      // <b>text<br></b><br> → <b>text</b><br> (one break, not two)
+      const input = `<b>bold text<br></b><br>`;
+      const result = addOneBr(input);
+      expect(result).toBe("<b>bold text</b><br>\n");
+    });
+
+    it("should handle § inside bold: <b>text…§</b><br> → <b>text…</b><br>", () => {
+      // After § → <br> replacement: <b>text…<br></b><br> → <b>text…</b><br>
+      const input = `<b>bold text${SYMBOLS.ONE_BR}</b><br>`;
+      const result = addOneBr(input);
+      expect(result).toBe("<b>bold text</b><br>\n");
+    });
+
+    it("should strip <br> adjacent to block boundaries", () => {
+      const input = `<div><br>content</div>`;
+      const result = addOneBr(input);
+      expect(result).toBe("<div>content</div>");
     });
   });
 
