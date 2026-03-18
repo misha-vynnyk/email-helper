@@ -106,5 +106,17 @@ describe("htmlConverter formatter", () => {
       expect(result).toContain("Not A Link");
       expect(result).not.toContain('href="urlhere"');
     });
+
+    it("should produce single <br> when § is at the end of bold text followed by native <br>", () => {
+      // Simulates Google Docs paste: <span font-weight:700>text…§</span><span font-weight:700><br></span>
+      const input = '<span style="font-weight:700">bank accounts frozen overnight…§</span><span style="font-weight:700"><br /></span><span style="font-weight:700">foreign reserves seized…§</span><span style="font-weight:700"><br /></span><span>normal text</span>';
+      const result = formatHtml(input);
+
+      // Should NOT have <br> trapped inside <b> with another <br> outside
+      expect(result).not.toMatch(/<br>\s*<\/b>\s*<br>/i);
+      // Should have clean <b>text</b><br> pattern
+      expect(result).toContain("<b>bank accounts frozen overnight…</b>");
+      expect(result).toContain("<b>foreign reserves seized…</b>");
+    });
   });
 });
