@@ -1,16 +1,6 @@
-/**
- * Resizable Preview Component
- * Chrome DevTools-style resizable preview with drag handles
- *
- * ВАЖЛИВО: Zoom застосовується через transform: scale() до дочірніх елементів,
- * а не до ширини контейнера. Це дозволяє media queries працювати коректно.
- */
-
 import { motion } from "framer-motion";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-
-import { DragHandle as DragIcon } from "@mui/icons-material";
-import { alpha, Box, Typography, useTheme } from "@mui/material";
+import { GripVertical as DragIcon } from "lucide-react";
 
 interface ResizablePreviewProps {
   children: React.ReactNode;
@@ -29,7 +19,6 @@ export default function ResizablePreview({
   minWidth = 280,
   maxWidth = 1600,
 }: ResizablePreviewProps) {
-  const theme = useTheme();
   const [isDragging, setIsDragging] = useState(false);
   const [dragSide, setDragSide] = useState<"left" | "right" | null>(null);
   const [currentWidth, setCurrentWidth] = useState<number>(
@@ -64,8 +53,8 @@ export default function ResizablePreview({
       if (!isDragging || width === "responsive") return;
 
       const deltaX = e.clientX - startXRef.current;
-      // Множимо на 2, бо тягнемо з одного краю але розширюємо з обох сторін
-      // Ділимо на zoom, щоб рух миші відповідав візуальній зміні розміру
+      // Multiply by 2 because we drag one side but expand both sides
+      // Divide by zoom so mouse movement matches visual resize
       const widthChange = (dragSide === "right" ? deltaX : -deltaX) * 2 / zoom;
       const newWidth = Math.round(
         Math.max(minWidth, Math.min(maxWidth, startWidthRef.current + widthChange))
@@ -103,250 +92,116 @@ export default function ResizablePreview({
 
   const isResponsive = width === "responsive";
   const displayWidth = isDragging ? currentWidth : typeof width === "number" ? width : 600;
-  // Візуальна ширина = реальна ширина * zoom (для позиціонування хендлів)
+  // Visual width = real width * zoom (for handle positioning)
   const visualWidth = displayWidth * zoom;
 
   return (
-    <Box sx={{ position: "relative", width: "100%", py: 2 }}>
+    <div className="relative w-full py-4">
       {/* Width Indicator */}
       {!isResponsive && (
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "center",
-            mb: 1,
-          }}
-        >
-          <Box
-            sx={{
+        <div className="flex justify-center mb-2">
+          <div
+            className="h-7 bg-primary/10 border-2 border-primary border-b-0 rounded-t-lg flex items-center justify-center gap-2"
+            style={{
               width: Math.min(visualWidth, window.innerWidth - 100),
-              height: 28,
-              backgroundColor: alpha(theme.palette.primary.main, 0.1),
-              border: `2px solid ${theme.palette.primary.main}`,
-              borderBottom: "none",
-              borderRadius: "8px 8px 0 0",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 1,
               transition: isDragging ? "none" : "width 0.2s ease",
             }}
           >
-            <Typography
-              sx={{
-                fontSize: "12px",
-                fontWeight: 700,
-                color: theme.palette.primary.main,
-                fontFamily: "monospace",
-              }}
-            >
+            <span className="text-xs font-bold text-primary font-mono">
               {displayWidth}px
-            </Typography>
+            </span>
             {zoom !== 1 && (
-              <Typography
-                sx={{
-                  fontSize: "10px",
-                  color: theme.palette.text.secondary,
-                  fontFamily: "monospace",
-                }}
-              >
+              <span className="text-[10px] text-muted-foreground font-mono">
                 (zoom {Math.round(zoom * 100)}%)
-              </Typography>
+              </span>
             )}
-          </Box>
-        </Box>
+          </div>
+        </div>
       )}
 
       {/* Content Container with handles */}
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "flex-start",
-          position: "relative",
-          minHeight: 200,
-        }}
-      >
+      <div className="flex justify-center items-start relative min-h-[200px]">
         {/* Left Handle */}
         {!isResponsive && (
-          <Box
+          <div
             onMouseDown={(e) => handleMouseDown(e, "left")}
-            sx={{
-              position: "absolute",
+            className="absolute top-0 bottom-0 w-7 cursor-ew-resize flex items-center justify-center z-10 group"
+            style={{
               left: `calc(50% - ${visualWidth / 2}px - 28px)`,
-              top: 0,
-              bottom: 0,
-              width: 28,
-              cursor: "ew-resize",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 10,
               transition: isDragging ? "none" : "left 0.2s ease",
-              "&:hover .handle-bar, &:active .handle-bar": {
-                backgroundColor: theme.palette.primary.main,
-                height: 80,
-                boxShadow: `0 0 12px ${alpha(theme.palette.primary.main, 0.5)}`,
-              },
             }}
           >
-            <Box
-              className="handle-bar"
-              sx={{
-                width: 6,
-                height: isDragging ? 80 : 56,
-                backgroundColor: isDragging
-                  ? theme.palette.primary.main
-                  : alpha(theme.palette.primary.main, 0.5),
-                borderRadius: 3,
-                transition: isDragging ? "none" : "all 0.2s ease",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
+            <div
+              className={`w-1.5 rounded-full transition-all duration-200 flex items-center justify-center ${
+                isDragging
+                  ? "bg-primary h-20"
+                  : "bg-primary/50 h-14 group-hover:bg-primary group-hover:h-20 group-hover:shadow-[0_0_12px_rgba(var(--primary),0.5)]"
+              }`}
             >
-              <DragIcon
-                sx={{
-                  fontSize: 14,
-                  color: theme.palette.primary.contrastText,
-                  transform: "rotate(90deg)",
-                }}
-              />
-            </Box>
-          </Box>
+              <DragIcon size={14} className="text-primary-foreground rotate-90" />
+            </div>
+          </div>
         )}
 
-        {/* Content - центрований, масштабований через zoom */}
-        <Box
-          sx={{
+        {/* Content */}
+        <div
+          className="max-w-full relative"
+          style={{
             width: displayWidth,
-            maxWidth: "100%",
             transform: `scale(${zoom})`,
             transformOrigin: "top center",
             transition: isDragging ? "none" : "transform 0.2s ease, width 0.2s ease",
-            position: "relative",
-            // Рамка навколо контенту
-            "&::before": !isResponsive ? {
-              content: '""',
-              position: "absolute",
-              top: -2,
-              left: -2,
-              right: -2,
-              bottom: -2,
-              border: `2px solid ${alpha(theme.palette.primary.main, 0.3)}`,
-              borderRadius: 1,
-              pointerEvents: "none",
-              zIndex: 1,
-            } : undefined,
           }}
         >
+          {/* Border overlay when not responsive */}
+          {!isResponsive && (
+            <div className="absolute -top-[2px] -left-[2px] -right-[2px] -bottom-[2px] border-2 border-primary/30 rounded pointer-events-none z-[1]" />
+          )}
           {children}
-        </Box>
+        </div>
 
         {/* Right Handle */}
         {!isResponsive && (
-          <Box
+          <div
             onMouseDown={(e) => handleMouseDown(e, "right")}
-            sx={{
-              position: "absolute",
+            className="absolute top-0 bottom-0 w-7 cursor-ew-resize flex items-center justify-center z-10 group"
+            style={{
               right: `calc(50% - ${visualWidth / 2}px - 28px)`,
-              top: 0,
-              bottom: 0,
-              width: 28,
-              cursor: "ew-resize",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 10,
               transition: isDragging ? "none" : "right 0.2s ease",
-              "&:hover .handle-bar, &:active .handle-bar": {
-                backgroundColor: theme.palette.primary.main,
-                height: 80,
-                boxShadow: `0 0 12px ${alpha(theme.palette.primary.main, 0.5)}`,
-              },
             }}
           >
-            <Box
-              className="handle-bar"
-              sx={{
-                width: 6,
-                height: isDragging ? 80 : 56,
-                backgroundColor: isDragging
-                  ? theme.palette.primary.main
-                  : alpha(theme.palette.primary.main, 0.5),
-                borderRadius: 3,
-                transition: isDragging ? "none" : "all 0.2s ease",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
+            <div
+              className={`w-1.5 rounded-full transition-all duration-200 flex items-center justify-center ${
+                isDragging
+                  ? "bg-primary h-20"
+                  : "bg-primary/50 h-14 group-hover:bg-primary group-hover:h-20 group-hover:shadow-[0_0_12px_rgba(var(--primary),0.5)]"
+              }`}
             >
-              <DragIcon
-                sx={{
-                  fontSize: 14,
-                  color: theme.palette.primary.contrastText,
-                  transform: "rotate(90deg)",
-                }}
-              />
-            </Box>
-          </Box>
+              <DragIcon size={14} className="text-primary-foreground rotate-90" />
+            </div>
+          </div>
         )}
-      </Box>
+      </div>
 
       {/* Drag Feedback Tooltip */}
       {isDragging && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          style={{
-            position: "fixed",
-            top: 20,
-            left: "50%",
-            transform: "translateX(-50%)",
-            backgroundColor: theme.palette.primary.main,
-            color: theme.palette.primary.contrastText,
-            padding: "12px 24px",
-            borderRadius: 8,
-            fontSize: "18px",
-            fontWeight: 700,
-            fontFamily: "monospace",
-            pointerEvents: "none",
-            zIndex: 10000,
-            boxShadow: theme.shadows[8],
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-          }}
+          className="fixed top-5 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground px-6 py-3 rounded-lg text-lg font-bold font-mono pointer-events-none z-[10000] shadow-lg flex items-center gap-3"
         >
           <span>{currentWidth}px</span>
           {zoom !== 1 && (
-            <Typography
-              component="span"
-              sx={{
-                fontSize: 12,
-                opacity: 0.8,
-                fontWeight: 400,
-              }}
-            >
+            <span className="text-xs opacity-80 font-normal">
               (zoom {Math.round(zoom * 100)}%)
-            </Typography>
+            </span>
           )}
         </motion.div>
       )}
 
       {/* Breakpoint Hints */}
       {isDragging && (
-        <Box
-          sx={{
-            position: "fixed",
-            bottom: 20,
-            left: "50%",
-            transform: "translateX(-50%)",
-            display: "flex",
-            gap: 1,
-            zIndex: 10000,
-          }}
-        >
+        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 flex gap-2 z-[10000]">
           {[
             { width: 320, label: "Mobile S" },
             { width: 375, label: "Mobile M" },
@@ -356,31 +211,20 @@ export default function ResizablePreview({
           ].map((bp) => {
             const isActive = Math.abs(currentWidth - bp.width) < 20;
             return (
-              <Box
+              <div
                 key={bp.width}
-                sx={{
-                  px: 1.5,
-                  py: 0.75,
-                  borderRadius: 1,
-                  backgroundColor: isActive
-                    ? theme.palette.primary.main
-                    : alpha(theme.palette.background.paper, 0.95),
-                  color: isActive
-                    ? theme.palette.primary.contrastText
-                    : theme.palette.text.secondary,
-                  fontSize: 12,
-                  fontWeight: isActive ? 600 : 400,
-                  boxShadow: theme.shadows[4],
-                  transition: "all 0.15s ease",
-                  border: isActive ? "none" : `1px solid ${theme.palette.divider}`,
-                }}
+                className={`px-3 py-1.5 rounded-md text-xs shadow-md transition-all duration-150 ${
+                  isActive
+                    ? "bg-primary text-primary-foreground font-semibold border-none"
+                    : "bg-background/95 text-muted-foreground font-normal border border-border"
+                }`}
               >
                 {bp.label} ({bp.width})
-              </Box>
+              </div>
             );
           })}
-        </Box>
+        </div>
       )}
-    </Box>
+    </div>
   );
 }

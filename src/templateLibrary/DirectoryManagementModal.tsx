@@ -3,25 +3,12 @@
  * Allows users to manage allowed directories for template import
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
-import { Delete as DeleteIcon, FolderOpen as FolderOpenIcon } from "@mui/icons-material";
-import {
-  Alert,
-  Box,
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  TextField,
-  Typography,
-} from "@mui/material";
-import { alpha, useTheme } from "@mui/material/styles";
+import { Trash2 as DeleteIcon, FolderOpen as FolderOpenIcon, X as CloseIcon } from "lucide-react";
 
 import { addAllowedRoot, getAllowedRoots, removeAllowedRoot } from "./templateApi";
-import { StyledPaper, useThemeMode } from "../theme";
-import { getComponentStyles } from "../theme/componentStyles";
 
 interface DirectoryManagementModalProps {
   open: boolean;
@@ -29,17 +16,12 @@ interface DirectoryManagementModalProps {
 }
 
 export default function DirectoryManagementModal({ open, onClose }: DirectoryManagementModalProps) {
-  const theme = useTheme();
-  const { mode, style } = useThemeMode();
-  const componentStyles = useMemo(() => getComponentStyles(mode, style), [mode, style]);
-
   const [allowedDirectories, setAllowedDirectories] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [manualPath, setManualPath] = useState("");
   const [showManualInput, setShowManualInput] = useState(false);
 
-  // Load allowed directories when modal opens
   useEffect(() => {
     if (open) {
       loadAllowedDirectories();
@@ -61,24 +43,13 @@ export default function DirectoryManagementModal({ open, onClose }: DirectoryMan
     try {
       setStatus("Adding directory to allowed folders...");
       await addAllowedRoot({ rootPath: directoryPath });
-
-      // Reload allowed directories
       await loadAllowedDirectories();
-
       setStatus(`Directory "${directoryPath}" added successfully!`);
-
-      // Clear status after 3 seconds
-      setTimeout(() => {
-        setStatus(null);
-      }, 3000);
+      setTimeout(() => setStatus(null), 3000);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to add directory";
       setError(errorMessage);
-
-      // Auto-clear error after 5 seconds
-      setTimeout(() => {
-        setError(null);
-      }, 5000);
+      setTimeout(() => setError(null), 5000);
     }
   };
 
@@ -87,7 +58,6 @@ export default function DirectoryManagementModal({ open, onClose }: DirectoryMan
       setError("Please enter a directory path");
       return;
     }
-
     await addDirectoryToAllowed(manualPath.trim());
     setManualPath("");
     setShowManualInput(false);
@@ -103,16 +73,9 @@ export default function DirectoryManagementModal({ open, onClose }: DirectoryMan
     try {
       setStatus("Removing directory from allowed folders...");
       const result = await removeAllowedRoot({ rootPath: directoryPath });
-
-      // Reload allowed directories
       await loadAllowedDirectories();
-
       setStatus(`Directory "${directoryPath}" removed successfully! ${result.message}`);
-
-      // Clear status after 5 seconds
-      setTimeout(() => {
-        setStatus(null);
-      }, 5000);
+      setTimeout(() => setStatus(null), 5000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to remove directory");
     }
@@ -126,173 +89,115 @@ export default function DirectoryManagementModal({ open, onClose }: DirectoryMan
     onClose();
   };
 
-  return (
-    <Dialog
-      open={open}
-      onClose={handleClose}
-      maxWidth='md'
-      fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: `${componentStyles.card.borderRadius}px`,
-          background:
-            componentStyles.card.background || alpha(theme.palette.background.paper, 0.9),
-          backdropFilter: componentStyles.card.backdropFilter,
-          WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
-          border: componentStyles.card.border,
-          boxShadow: componentStyles.card.boxShadow,
-        },
-      }}
-    >
-      <DialogTitle>Manage Allowed Directories</DialogTitle>
-      <DialogContent>
-        {error && (
-          <Alert
-            severity='error'
-            sx={{ mb: 2 }}
-            onClose={() => setError(null)}
-          >
-            <Typography variant='body2'>
-              <strong>Error:</strong> {error}
-            </Typography>
-          </Alert>
-        )}
+  if (!open || typeof document === 'undefined') return null;
 
-        {status && (
-          <Alert
-            severity='info'
-            sx={{ mb: 2 }}
-          >
-            {status}
-          </Alert>
-        )}
+  return createPortal(
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 sm:p-6">
+      <div className="absolute inset-0 bg-background/80 backdrop-blur-sm transition-opacity" onClick={handleClose} />
+      <div className="relative w-full max-w-2xl bg-card border border-border/50 rounded-2xl shadow-soft flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 max-h-[95vh]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border/50">
+          <h2 className="text-lg font-bold text-foreground">Manage Allowed Directories</h2>
+          <button onClick={handleClose} className="p-2 text-muted-foreground hover:bg-muted hover:text-foreground rounded-full transition-colors flex-shrink-0">
+            <CloseIcon size={20} />
+          </button>
+        </div>
+        
+        <div className="p-6 overflow-y-auto">
+          {error && (
+            <div className="mb-4 p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive flex justify-between items-start">
+              <p className="text-sm font-bold"><strong>Error:</strong> {error}</p>
+              <button onClick={() => setError(null)} className="p-1 hover:bg-destructive/20 rounded-lg transition-colors"><CloseIcon size={16}/></button>
+            </div>
+          )}
 
-        <Alert
-          severity='info'
-          sx={{ mb: 2 }}
-        >
-          <Typography variant='body2'>
-            <strong>Allowed Directories:</strong> Only files in these directories can be imported
-            into the template library.
-          </Typography>
-        </Alert>
+          {status && (
+            <div className="mb-4 p-4 rounded-xl bg-primary/10 border border-primary/20 text-primary flex items-start">
+              <p className="text-sm font-bold">{status}</p>
+            </div>
+          )}
 
-        {allowedDirectories.length > 0 ? (
-          <Box>
-            {allowedDirectories.map((dir, index) => (
-              <StyledPaper
-                key={index}
-                backgroundAlpha={0.85}
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  p: 2,
-                  mb: 1,
-                }}
-              >
-                <Typography
-                  variant='body2'
-                  sx={{ fontFamily: "monospace", fontSize: "0.875rem", flex: 1 }}
-                >
-                  {dir}
-                </Typography>
-                <Button
-                  variant='outlined'
-                  color='error'
-                  size='small'
-                  startIcon={<DeleteIcon />}
-                  onClick={() => handleRemoveDirectory(dir)}
-                >
-                  Remove
-                </Button>
-              </StyledPaper>
-            ))}
-          </Box>
-        ) : (
-          <Alert
-            severity='warning'
-            sx={{ mb: 2 }}
-          >
-            <Typography variant='body2'>
-              No directories added yet. Click "Add Directory" to get started.
-            </Typography>
-          </Alert>
-        )}
+          <div className="mb-6 p-4 rounded-xl bg-muted/30 border border-border/50 text-foreground">
+            <p className="text-sm"><strong>Allowed Directories:</strong> Only files in these directories can be imported into the template library.</p>
+          </div>
 
-        <Box mt={2}>
-          <Button
-            variant='contained'
-            startIcon={<FolderOpenIcon />}
+          {allowedDirectories.length > 0 ? (
+            <div className="space-y-2 mb-6">
+              {allowedDirectories.map((dir, index) => (
+                <div key={index} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 gap-3 bg-card border border-border rounded-xl">
+                  <p className="text-sm font-mono break-all text-foreground">{dir}</p>
+                  <button
+                    onClick={() => handleRemoveDirectory(dir)}
+                    className="flex-shrink-0 px-3 py-1.5 flex items-center gap-1.5 text-xs font-bold text-destructive hover:bg-destructive/10 border-2 border-transparent hover:border-destructive/20 rounded-lg transition-all"
+                  >
+                    <DeleteIcon size={14} /> Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mb-6 p-4 rounded-xl bg-warning/10 border border-warning/20 text-warning-foreground">
+              <p className="text-sm font-medium">No directories added yet. Click "Add Directory Path" to get started.</p>
+            </div>
+          )}
+
+          <button
             onClick={() => setShowManualInput(true)}
-            fullWidth
+            className="w-full flex justify-center items-center gap-2 px-4 py-3 text-sm font-bold bg-muted hover:bg-muted/80 text-foreground rounded-xl transition-all active:scale-95"
           >
-            Add Directory Path
-          </Button>
-        </Box>
+            <FolderOpenIcon size={18} /> Add Directory Path
+          </button>
 
-        {/* Manual Path Input */}
-        {showManualInput && (
-          <Box mt={2}>
-            <Alert
-              severity='info'
-              sx={{ mb: 2 }}
-            >
-              <Typography variant='body2'>
-                <strong>Enter Directory Path:</strong> Type the full path to your templates
-                directory.
-              </Typography>
-            </Alert>
+          {showManualInput && (
+            <div className="mt-6 p-5 border border-border/50 bg-background rounded-xl">
+              <p className="text-sm font-bold text-foreground mb-4">Add New Directory Path</p>
+              
+              <div className="mb-4">
+                <input
+                  type="text"
+                  placeholder="e.g., /Users/yourname/Documents/Templates or ~/Documents/Templates"
+                  value={manualPath}
+                  onChange={(e) => setManualPath(e.target.value)}
+                  className="w-full px-4 py-2.5 text-sm rounded-xl border-2 border-input bg-background focus:border-primary focus:ring-4 focus:ring-primary/10 text-foreground transition-all outline-none"
+                  autoFocus
+                />
+                <p className="text-xs text-muted-foreground mt-2">Examples: ~/Documents/Templates, /Users/username/Documents, C:\Users\username\Documents</p>
+              </div>
 
-            <TextField
-              fullWidth
-              label='Directory Path'
-              placeholder='e.g., /Users/yourname/Documents/Templates or ~/Documents/Templates'
-              value={manualPath}
-              onChange={(e) => setManualPath(e.target.value)}
-              helperText='Examples: ~/Documents/Templates, /Users/username/Documents, C:\Users\username\Documents'
-              sx={{ mb: 2 }}
-            />
+              <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg mb-4">
+                <p className="text-xs font-bold text-warning-foreground mb-1">Tips:</p>
+                <ul className="text-xs text-warning-foreground/80 space-y-1 ml-4 list-disc">
+                  <li>Use <code>~/</code> for home directory (e.g., ~/Documents)</li>
+                  <li>On Mac: <code>/Users/YourName/Documents</code></li>
+                  <li>On Windows: <code>C:\Users\YourName\Documents</code></li>
+                </ul>
+              </div>
 
-            <Alert
-              severity='warning'
-              sx={{ mb: 2 }}
-            >
-              <Typography variant='body2'>
-                <strong>Tips:</strong>
-                <br />• Use <code>~/</code> for home directory (e.g., ~/Documents)
-                <br />• On Windows: <code>C:\Users\YourName\Documents</code>
-                <br />• On Mac: <code>/Users/YourName/Documents</code>
-                <br />• On Linux: <code>/home/YourName/Documents</code>
-              </Typography>
-            </Alert>
-
-            <Box
-              display='flex'
-              gap={1}
-            >
-              <Button
-                variant='contained'
-                onClick={handleManualAdd}
-                disabled={!manualPath.trim()}
-                fullWidth
-              >
-                Add Directory
-              </Button>
-              <Button
-                variant='outlined'
-                onClick={handleCancelManual}
-                fullWidth
-              >
-                Cancel
-              </Button>
-            </Box>
-          </Box>
-        )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={handleClose}>Close</Button>
-      </DialogActions>
-    </Dialog>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleManualAdd}
+                  disabled={!manualPath.trim()}
+                  className="flex-1 px-4 py-2.5 text-sm font-bold bg-primary hover:brightness-110 text-primary-foreground rounded-xl transition-all shadow-sm disabled:opacity-50"
+                >
+                  Add Directory
+                </button>
+                <button
+                  onClick={handleCancelManual}
+                  className="flex-1 px-4 py-2.5 text-sm font-bold bg-muted hover:bg-muted/80 text-foreground rounded-xl transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+        
+        <div className="flex items-center justify-end px-6 py-4 border-t border-border/50 bg-muted/10">
+          <button onClick={handleClose} className="px-5 py-2.5 text-sm font-bold bg-muted hover:bg-muted/80 text-foreground rounded-xl transition-all">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 }

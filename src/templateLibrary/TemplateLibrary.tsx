@@ -6,36 +6,20 @@
 import React, { useEffect, useMemo, useState } from "react";
 
 import {
-  Add as AddIcon,
-  Block as BlockIcon,
-  Clear as ClearIcon,
+  Plus as AddIcon,
+  Ban as BlockIcon,
+  X as ClearIcon,
   FolderOpen as FolderOpenIcon,
-  Refresh as RefreshIcon,
+  RefreshCw as RefreshIcon,
   Search as SearchIcon,
-  SearchOff as SearchOffIcon,
+  SearchX as SearchOffIcon,
   Settings as SettingsIcon,
-} from "@mui/icons-material";
-import {
-  Alert,
-  Box,
-  Button,
-  CardContent,
-  Chip,
-  Grid,
-  IconButton,
-  MenuItem,
-  Skeleton,
-  TextField,
-  Tooltip,
-  Typography,
-} from "@mui/material";
+} from "lucide-react";
 
 import { EmailTemplate, TemplateCategory } from "../types/template";
-import { StyledCard } from "../theme";
 
 import PreviewSettings, { loadPreviewConfig, PreviewConfig } from "./PreviewSettings";
 import { listTemplates, syncAllTemplates, getTemplateContent } from "./templateApi";
-import { getCategoryIcon } from "./templateCategoryIcons";
 import TemplateStorageModal from "./TemplateStorageModal";
 import VirtualizedTemplateGrid from "./VirtualizedTemplateGrid";
 import { getTemplateStorageLocations } from "./templateStorageConfig";
@@ -78,10 +62,7 @@ export default function TemplateLibrary() {
       if (cancelled || loadingRef.current) return;
       loadingRef.current = true;
       try {
-        // First load existing templates
         await loadTemplates();
-
-        // Then sync to find new files
         if (!cancelled) {
           await syncTemplates();
         }
@@ -103,30 +84,23 @@ export default function TemplateLibrary() {
     setError(null);
     try {
       const data = await listTemplates();
-      // Ensure data is always an array
       if (Array.isArray(data)) {
-        // Filter templates based on storage locations
-        const locations = getTemplateStorageLocations(false); // Exclude hidden
+        const locations = getTemplateStorageLocations(false);
 
         if (locations.length === 0) {
-          // No storage locations configured - show all templates
           setTemplates(data);
         } else {
-          // Filter templates by configured storage paths
           const allowedPaths = new Set(locations.map((loc) => loc.path));
           const filteredTemplates = data.filter((template) => {
             if (!template.filePath) return false;
-            // Check if template's file path starts with any allowed path
             return Array.from(allowedPaths).some((path) => template.filePath.startsWith(path));
           });
           setTemplates(filteredTemplates);
         }
 
-        // Preload зображень з preview шаблонів (якщо вони є) в кеш (в фоні)
         const templatesWithPreview = data.filter((t) => t.preview);
         if (templatesWithPreview.length > 0) {
           preloadImages(templatesWithPreview.map((t) => t.preview!).join(' ')).catch((error) => {
-            // Ігноруємо помилки preloading - це не критично
             logger.warn("TemplateLibrary", "Failed to preload template preview images", error);
           });
         }
@@ -142,14 +116,13 @@ export default function TemplateLibrary() {
         err.message.includes("Server connection failed")
       );
 
-      // Only log connection errors as warnings to reduce console noise
       if (isConnectionError) {
         logger.warn("TemplateLibrary", "Server unavailable - templates cannot be loaded");
       } else {
         logger.error("TemplateLibrary", "Failed to load templates", err);
       }
 
-      setTemplates([]); // Ensure templates is always an array
+      setTemplates([]);
       setError(err instanceof Error ? err.message : "Failed to load templates");
     } finally {
       setLoading(false);
@@ -162,8 +135,7 @@ export default function TemplateLibrary() {
     setError(null);
 
     try {
-      // Get configured storage locations
-      const locations = getTemplateStorageLocations(false); // Exclude hidden
+      const locations = getTemplateStorageLocations(false);
 
       if (locations.length === 0) {
         setError("No storage locations configured. Please add directories in Storage settings.");
@@ -171,7 +143,6 @@ export default function TemplateLibrary() {
         return;
       }
 
-      // Sync each configured location
       let totalFound = 0;
       const errors: string[] = [];
 
@@ -180,7 +151,7 @@ export default function TemplateLibrary() {
           const result = await syncAllTemplates({
             recursive: true,
             category: "Other",
-            paths: [location.path], // Sync specific path
+            paths: [location.path], 
           });
 
           totalFound += result.templatesFound;
@@ -192,7 +163,6 @@ export default function TemplateLibrary() {
             err.message.includes("Server connection failed")
           );
 
-          // Only log connection errors as warnings to reduce console noise
           if (isConnectionError) {
             logger.warn("TemplateLibrary", `Server unavailable - sync failed for ${location.name}`);
           } else {
@@ -207,9 +177,9 @@ export default function TemplateLibrary() {
         setError(`Sync completed with errors:\n${errors.join("\n")}`);
       } else {
         setSyncMessage(`✅ Sync completed: ${totalFound} templates found`);
+        setTimeout(() => setSyncMessage(null), 5000);
       }
 
-      // Reload templates after sync
       await loadTemplates();
     } catch (err) {
       const isConnectionError = err instanceof Error && (
@@ -218,7 +188,6 @@ export default function TemplateLibrary() {
         err.message.includes("Server connection failed")
       );
 
-      // Only log connection errors as warnings to reduce console noise
       if (isConnectionError) {
         logger.warn("TemplateLibrary", "Server unavailable - sync failed");
       } else {
@@ -230,16 +199,6 @@ export default function TemplateLibrary() {
       setSyncing(false);
     }
   };
-
-  // const handleTemplateAdded = (template: EmailTemplate | EmailTemplate[]) => {
-  //   if (Array.isArray(template)) {
-  //     // Folder import
-  //     setTemplates((prev) => [...prev, ...template]);
-  //   } else {
-  //     // Single template
-  //     setTemplates((prev) => [...prev, template]);
-  //   }
-  // };
 
   const handleTemplateDeleted = (templateId: string) => {
     setTemplates((prev) => prev.filter((t) => t.id !== templateId));
@@ -260,11 +219,9 @@ export default function TemplateLibrary() {
   const handleNavigateTemplate = (direction: "prev" | "next", savedScrollPos?: number) => {
     if (!openTemplateId || filteredTemplates.length === 0) return;
 
-    // Save scroll position if provided and enabled
     if (previewConfig.saveScrollPosition && savedScrollPos !== undefined) {
       savedScrollPositionRef.current = savedScrollPos;
     } else {
-      // Reset scroll position if disabled
       savedScrollPositionRef.current = 0;
     }
 
@@ -280,7 +237,6 @@ export default function TemplateLibrary() {
 
     const newTemplate = filteredTemplates[newIndex];
 
-    // Preload next templates in background for faster navigation
     const preloadIds = [
       filteredTemplates[newIndex - 1]?.id,
       filteredTemplates[newIndex + 1]?.id,
@@ -289,19 +245,16 @@ export default function TemplateLibrary() {
     ].filter(Boolean) as string[];
 
     if (preloadIds.length > 0) {
-      // Preload in background - don't wait
       templateContentCache.preload(preloadIds, getTemplateContent);
     }
 
     setOpenTemplateId(newTemplate.id);
   };
 
-  // Extract unique root folders from templates (memoized)
   const rootFolders = useMemo(() => {
     const folders = new Set<string>();
     (Array.isArray(templates) ? templates : []).forEach((template) => {
       if (template.folderPath) {
-        // Extract first-level folder (e.g., "Finance" from "Finance / DailyMarketClue.com")
         const rootFolder = template.folderPath.split(" / ")[0];
         if (rootFolder) {
           folders.add(rootFolder);
@@ -311,7 +264,6 @@ export default function TemplateLibrary() {
     return Array.from(folders).sort();
   }, [templates]);
 
-  // Folder statistics (memoized)
   const folderStats = useMemo(() => {
     const stats: Record<string, number> = {};
     (Array.isArray(templates) ? templates : []).forEach((template) => {
@@ -325,31 +277,24 @@ export default function TemplateLibrary() {
     return stats;
   }, [templates]);
 
-  // Filter and sort templates - ensure templates is always an array
   const filteredTemplates = React.useMemo(() => {
-    // Filter
     const filtered = (Array.isArray(templates) ? templates : []).filter((template) => {
-      // Category filter
       if (selectedCategory !== "All" && template.category !== selectedCategory) {
         return false;
       }
 
-      // Folder filter (root level)
       const rootFolder = template.folderPath?.split(" / ")[0];
 
-      // Exclude folders that are in excludedFolders set
       if (rootFolder && excludedFolders.has(rootFolder)) {
         return false;
       }
 
-      // If specific folders are selected, show only those folders
       if (selectedFolders.size > 0) {
         if (!rootFolder || !selectedFolders.has(rootFolder)) {
           return false;
         }
       }
 
-      // Search filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         return (
@@ -358,14 +303,13 @@ export default function TemplateLibrary() {
           template.tags.some((tag) => tag.toLowerCase().includes(query)) ||
           template.description?.toLowerCase().includes(query) ||
           template.filePath.toLowerCase().includes(query) ||
-          template.folderPath?.toLowerCase().includes(query) // Search in folder structure
+          template.folderPath?.toLowerCase().includes(query)
         );
       }
 
       return true;
     });
 
-    // Sort
     const sorted = [...filtered].sort((a, b) => {
       switch (sortBy) {
         case "name-asc":
@@ -389,167 +333,66 @@ export default function TemplateLibrary() {
     return sorted;
   }, [templates, selectedCategory, selectedFolders, excludedFolders, searchQuery, sortBy]);
 
-  // Skeleton Loading State
   if (loading) {
     return (
-      <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      <div className="flex flex-col h-full bg-background text-foreground">
         {/* Header skeleton */}
-        <Box
-          p={2}
-          borderBottom='1px solid'
-          borderColor='divider'
-        >
-          <Box
-            display='flex'
-            justifyContent='space-between'
-            alignItems='center'
-            mb={2}
-          >
-            <Box>
-              <Skeleton
-                variant='text'
-                width={250}
-                height={32}
-              />
-              <Skeleton
-                variant='text'
-                width={150}
-                height={20}
-              />
-            </Box>
-            <Skeleton
-              variant='rectangular'
-              width={180}
-              height={36}
-              sx={{ borderRadius: 1 }}
-            />
-          </Box>
-          <Grid
-            container
-            spacing={2}
-          >
-            <Grid
-              item
-              xs={12}
-              md={8}
-            >
-              <Skeleton
-                variant='rectangular'
-                height={40}
-                sx={{ borderRadius: 1 }}
-              />
-            </Grid>
-            <Grid
-              item
-              xs={12}
-              md={4}
-            >
-              <Skeleton
-                variant='rectangular'
-                height={40}
-                sx={{ borderRadius: 1 }}
-              />
-            </Grid>
-          </Grid>
-        </Box>
+        <div className="p-4 md:p-8 border-b border-border/50">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <div className="h-8 w-64 bg-muted animate-pulse rounded-lg mb-3"></div>
+              <div className="h-5 w-40 bg-muted animate-pulse rounded-lg"></div>
+            </div>
+            <div className="h-10 w-48 bg-muted animate-pulse rounded-xl"></div>
+          </div>
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="h-10 w-full md:w-2/3 bg-muted animate-pulse rounded-xl"></div>
+            <div className="h-10 w-full md:w-1/3 bg-muted animate-pulse rounded-xl"></div>
+          </div>
+        </div>
 
         {/* Templates skeleton */}
-        <Box
-          data-app-scroll="true"
-          flex={1}
-          overflow='auto'
-          p={2}
-        >
-          <Grid
-            container
-            spacing={2}
-          >
+        <div className="flex-1 overflow-auto p-4 md:p-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <Grid
-                item
-                xs={12}
-                sm={6}
-                md={4}
-                key={i}
-              >
-                <StyledCard enableHover={false} sx={{ overflow: "hidden" }}>
-                  <Skeleton
-                    variant='rectangular'
-                    height={180}
-                  />
-                  <CardContent>
-                    <Skeleton
-                      variant='text'
-                      width='70%'
-                      height={24}
-                    />
-                    <Skeleton
-                      variant='text'
-                      width='40%'
-                      height={20}
-                      sx={{ mt: 1 }}
-                    />
-                    <Skeleton
-                      variant='text'
-                      width='85%'
-                      height={20}
-                    />
-                  </CardContent>
-                </StyledCard>
-              </Grid>
+              <div key={i} className="bg-card rounded-[2rem] border border-border/50 overflow-hidden shadow-sm h-[320px] flex flex-col">
+                <div className="h-[150px] bg-muted animate-pulse border-b border-border/50"></div>
+                <div className="p-5 flex-grow">
+                  <div className="h-6 w-3/4 bg-muted animate-pulse rounded mb-4"></div>
+                  <div className="h-5 w-1/3 bg-muted animate-pulse rounded mb-5"></div>
+                  <div className="h-4 w-full bg-muted animate-pulse rounded mb-2"></div>
+                  <div className="h-4 w-5/6 bg-muted animate-pulse rounded"></div>
+                </div>
+              </div>
             ))}
-          </Grid>
-        </Box>
-      </Box>
+          </div>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
+    <div className="flex flex-col h-full bg-background text-foreground font-sans w-full transition-colors duration-300">
       {/* Header */}
-      <Box
-        p={2}
-        borderBottom='1px solid'
-        borderColor='divider'
-      >
+      <div className="p-4 md:p-8 border-b border-border/50">
         {/* Title and Stats */}
-        <Box
-          display='flex'
-          justifyContent='space-between'
-          alignItems='center'
-          mb={2}
-        >
-          <Box>
-            <Typography
-              variant='h6'
-              component='h2'
-            >
-              HTML Template Library
-            </Typography>
-            <Typography
-              variant='caption'
-              color='text.secondary'
-            >
-              {filteredTemplates.length} {filteredTemplates.length === 1 ? "template" : "templates"}
-              {searchQuery && ` matching "${searchQuery}"`}
-              {selectedFolders.size > 0 &&
-                ` in ${selectedFolders.size} folder${selectedFolders.size > 1 ? "s" : ""}`}
-              {excludedFolders.size > 0 && ` (${excludedFolders.size} hidden)`}
-              {selectedCategory !== "All" && ` • ${selectedCategory}`}
-            </Typography>
-          </Box>
-          <Box
-            display='flex'
-            gap={1}
-            alignItems='center'
-          >
-            <PreviewSettings
-              config={previewConfig}
-              onChange={setPreviewConfig}
-            />
-            <Button
-              variant='outlined'
-              startIcon={<RefreshIcon />}
+        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 mb-6">
+          <div>
+            <h2 className="text-xl md:text-2xl font-extrabold text-foreground tracking-tight flex items-center gap-2">
+              <span className="text-2xl">📚</span> HTML Template Library
+            </h2>
+            <p className="text-sm font-medium text-muted-foreground mt-1.5 flex flex-wrap gap-x-2">
+              <span>{filteredTemplates.length} {filteredTemplates.length === 1 ? "template" : "templates"}</span>
+              {searchQuery && <span className="bg-muted px-1.5 rounded text-foreground">matching "{searchQuery}"</span>}
+              {selectedFolders.size > 0 && <span>in {selectedFolders.size} folder{selectedFolders.size > 1 ? "s" : ""}</span>}
+              {excludedFolders.size > 0 && <span className="text-destructive">({excludedFolders.size} hidden)</span>}
+              {selectedCategory !== "All" && <span className="flex items-center gap-1 before:content-['•'] before:mr-1">{selectedCategory}</span>}
+            </p>
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-3">
+            <PreviewSettings config={previewConfig} onChange={setPreviewConfig} />
+            <button
               onClick={async () => {
                 setLoading(true);
                 try {
@@ -562,377 +405,257 @@ export default function TemplateLibrary() {
                 }
               }}
               disabled={loading || syncing}
-              size='small'
+              className="flex items-center gap-2 px-4 py-2 text-sm font-bold border-2 border-input bg-background hover:bg-muted text-foreground rounded-xl transition-all active:scale-95 disabled:opacity-50"
             >
-              Refresh
-            </Button>
-            <Button
-              variant='outlined'
-              startIcon={<AddIcon />}
+              <RefreshIcon size={16} strokeWidth={2.5} className={loading || syncing ? "animate-spin" : ""} />
+              <span className="hidden sm:inline">Refresh</span>
+            </button>
+            <button
               onClick={syncTemplates}
               disabled={syncing || loading}
-              size='small'
+              className="flex items-center gap-2 px-4 py-2 text-sm font-bold bg-primary hover:brightness-110 text-primary-foreground rounded-xl shadow-soft transition-all hover:shadow-md hover:-translate-y-0.5 active:scale-95 disabled:hover:translate-y-0 disabled:shadow-none disabled:opacity-50"
             >
-              {syncing ? "Syncing..." : "Sync New"}
-            </Button>
-            <Button
-              variant='outlined'
-              startIcon={<SettingsIcon />}
+              <AddIcon size={16} strokeWidth={3} />
+              <span>{syncing ? "Syncing..." : "Sync New"}</span>
+            </button>
+            <button
               onClick={() => setStorageModalOpen(true)}
-              size='small'
+              className="flex items-center gap-2 px-4 py-2 text-sm font-bold border-2 border-input bg-background hover:bg-muted text-foreground rounded-xl transition-all active:scale-95"
             >
-              Storage
-            </Button>
-          </Box>
-        </Box>
+              <SettingsIcon size={16} strokeWidth={2.5} />
+              <span className="hidden sm:inline">Storage</span>
+            </button>
+          </div>
+        </div>
 
         {/* Search and Filters */}
-        <Grid
-          container
-          spacing={2}
-        >
-          <Grid
-            item
-            xs={12}
-            md={5}
-          >
-            <TextField
-              fullWidth
-              size='small'
-              placeholder='Search templates by name, category, tags, folder, or path...'
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+          <div className="md:col-span-5 relative">
+            <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} strokeWidth={2.5} />
+            <input
+              type="text"
+              placeholder="Search templates by name, category, tags, folder, or path..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              InputProps={{
-                startAdornment: <SearchIcon sx={{ mr: 1, color: "text.secondary" }} />,
-              }}
+              className="w-full pl-11 pr-4 py-2.5 text-sm font-medium rounded-xl border-2 border-input bg-background focus:border-primary focus:ring-4 focus:ring-primary/10 text-foreground transition-all outline-none placeholder:text-muted-foreground"
             />
-          </Grid>
-          <Grid
-            item
-            xs={12}
-            md={2}
-          >
-            <TextField
-              fullWidth
-              size='small'
-              select
-              label='Sort By'
+          </div>
+          
+          <div className="md:col-span-3 relative">
+            <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as SortOption)}
+              className="w-full pl-4 pr-10 py-2.5 text-sm font-bold rounded-xl border-2 border-input bg-background focus:border-primary focus:ring-4 focus:ring-primary/10 text-foreground transition-all outline-none appearance-none cursor-pointer"
             >
-              <MenuItem value='date-newest'>📅 Newest File First</MenuItem>
-              <MenuItem value='date-oldest'>📅 Oldest File First</MenuItem>
-              <MenuItem value='name-asc'>🔤 Name (A-Z)</MenuItem>
-              <MenuItem value='name-desc'>🔤 Name (Z-A)</MenuItem>
-              <MenuItem value='category'>📂 Category</MenuItem>
-            </TextField>
-          </Grid>
-          <Grid
-            item
-            xs={12}
-            md={4.5}
-          >
-            <TextField
-              fullWidth
-              size='small'
-              select
-              label='Category'
+              <option value="date-newest">📅 Newest File First</option>
+              <option value="date-oldest">📅 Oldest File First</option>
+              <option value="name-asc">🔤 Name (A-Z)</option>
+              <option value="name-desc">🔤 Name (Z-A)</option>
+              <option value="category">📂 Category</option>
+            </select>
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+            </div>
+          </div>
+          
+          <div className="md:col-span-4 relative">
+            <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value as TemplateCategory | "All")}
+              className="w-full pl-4 pr-10 py-2.5 text-sm font-bold rounded-xl border-2 border-input bg-background focus:border-primary focus:ring-4 focus:ring-primary/10 text-foreground transition-all outline-none appearance-none cursor-pointer"
             >
               {CATEGORY_OPTIONS.map((cat) => (
-                <MenuItem
-                  key={cat}
-                  value={cat}
-                >
-                  <Box
-                    display='flex'
-                    alignItems='center'
-                    gap={1}
-                  >
-                    {getCategoryIcon(cat)}
-                    <span>{cat}</span>
-                  </Box>
-                </MenuItem>
+                <option key={cat} value={cat}>
+                  {cat === "All" ? "Select Category (All)" : cat}
+                </option>
               ))}
-            </TextField>
-          </Grid>
-        </Grid>
+            </select>
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+            </div>
+          </div>
+        </div>
 
         {/* Quick Folder Filter Chips */}
         {rootFolders.length > 0 && (
-          <Box
-            mt={2}
-            display='flex'
-            gap={1}
-            flexWrap='wrap'
-            alignItems='center'
-          >
-            <Chip
-              label='All'
-              variant={
-                selectedFolders.size === 0 && excludedFolders.size === 0 ? "filled" : "outlined"
-              }
-              color={
-                selectedFolders.size === 0 && excludedFolders.size === 0 ? "primary" : "default"
-              }
+          <div className="mt-5 flex flex-wrap items-center gap-2">
+            <button
               onClick={() => {
                 setSelectedFolders(new Set());
                 setExcludedFolders(new Set());
               }}
-              icon={<FolderOpenIcon />}
-              size='small'
-            />
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all border-2 ${
+                selectedFolders.size === 0 && excludedFolders.size === 0
+                  ? "bg-primary border-primary text-primary-foreground shadow-sm"
+                  : "bg-background border-input text-muted-foreground hover:border-primary/50 hover:text-foreground"
+              }`}
+            >
+              <FolderOpenIcon size={14} strokeWidth={2.5} />
+              All
+            </button>
+            
             {rootFolders.map((folder) => {
               const isIncluded = selectedFolders.has(folder);
               const isExcluded = excludedFolders.has(folder);
 
               return (
-                <Box
-                  key={folder}
-                  display='flex'
-                  gap={0.5}
-                  alignItems='center'
-                >
-                  <Chip
-                    label={`${folder} (${folderStats[folder] || 0})`}
-                    variant={isIncluded ? "filled" : "outlined"}
-                    color={isIncluded ? "primary" : isExcluded ? "error" : "default"}
+                <div key={folder} className="flex items-center relative group">
+                  <button
                     onClick={() => {
-                      if (isExcluded) {
-                        // Can't select excluded folder - need to unexclude first
-                        return;
-                      }
-                      // Toggle inclusion
+                      if (isExcluded) return;
                       setSelectedFolders((prev) => {
                         const next = new Set(prev);
-                        if (next.has(folder)) {
-                          next.delete(folder);
-                        } else {
-                          next.add(folder);
-                        }
+                        if (next.has(folder)) next.delete(folder);
+                        else next.add(folder);
                         return next;
                       });
                     }}
-                    onDelete={
+                    className={`flex items-center gap-1.5 pl-3 pr-2 py-1.5 rounded-l-full text-xs font-bold transition-all border-y-2 border-l-2 ${
                       isIncluded
-                        ? () => {
-                            setSelectedFolders((prev) => {
-                              const next = new Set(prev);
-                              next.delete(folder);
-                              return next;
-                            });
-                          }
-                        : undefined
-                    }
-                    deleteIcon={<ClearIcon />}
-                    size='small'
-                    sx={{
-                      opacity: isExcluded ? 0.5 : 1,
-                      cursor: isExcluded ? "not-allowed" : "pointer",
-                    }}
-                  />
-                  <Tooltip title={isExcluded ? "Show folder" : "Hide folder"}>
-                    <IconButton
-                      size='small'
-                      onClick={(e) => {
+                        ? "bg-primary border-primary text-primary-foreground shadow-sm"
+                        : isExcluded
+                        ? "bg-destructive/10 border-destructive/20 text-destructive/50 opacity-50 cursor-not-allowed"
+                        : "bg-background border-input text-foreground hover:border-primary/50 hover:text-primary border-r-0"
+                    }`}
+                  >
+                    <span>{folder}</span>
+                    <span className={`px-1.5 py-0.5 rounded text-[10px] bg-black/10`}>{folderStats[folder] || 0}</span>
+                    {isIncluded && (
+                      <div onClick={(e) => {
                         e.stopPropagation();
-                        if (isExcluded) {
-                          // Unhide
-                          setExcludedFolders((prev) => {
-                            const next = new Set(prev);
-                            next.delete(folder);
-                            return next;
-                          });
-                        } else {
-                          // Hide
-                          setExcludedFolders((prev) => new Set(prev).add(folder));
-                          setSelectedFolders((prev) => {
-                            const next = new Set(prev);
-                            next.delete(folder);
-                            return next;
-                          });
-                        }
-                      }}
-                      color={isExcluded ? "error" : "default"}
-                      sx={{
-                        minWidth: 32,
-                        height: 32,
-                      }}
-                    >
-                      <BlockIcon fontSize='small' />
-                    </IconButton>
-                  </Tooltip>
-                </Box>
+                        setSelectedFolders((prev) => {
+                          const next = new Set(prev);
+                          next.delete(folder);
+                          return next;
+                        });
+                      }} className="p-0.5 hover:bg-black/20 rounded-full ml-0.5">
+                        <ClearIcon size={12} strokeWidth={3} />
+                      </div>
+                    )}
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (isExcluded) {
+                        setExcludedFolders((prev) => {
+                          const next = new Set(prev);
+                          next.delete(folder);
+                          return next;
+                        });
+                      } else {
+                        setExcludedFolders((prev) => new Set(prev).add(folder));
+                        setSelectedFolders((prev) => {
+                          const next = new Set(prev);
+                          next.delete(folder);
+                          return next;
+                        });
+                      }
+                    }}
+                    className={`flex items-center justify-center p-1.5 rounded-r-full transition-all border-y-2 border-r-2 border-l border-l-border/30 ${
+                      isIncluded ? "bg-primary border-primary text-primary-foreground hover:brightness-90" : 
+                      isExcluded ? "bg-destructive text-destructive-foreground border-destructive opacity-80 hover:opacity-100" : 
+                      "bg-background border-input text-muted-foreground hover:border-destructive hover:text-destructive"
+                    }`}
+                    title={isExcluded ? "Show folder" : "Hide folder"}
+                  >
+                    <BlockIcon size={14} strokeWidth={2.5} />
+                  </button>
+                </div>
               );
             })}
-          </Box>
+          </div>
         )}
 
         {/* Storage Configuration Notice */}
         {getTemplateStorageLocations(false).length === 0 && (
-          <Alert
-            severity='warning'
-            sx={{ mt: 2 }}
-            action={
-              <Button
-                color='inherit'
-                size='small'
-                onClick={() => setStorageModalOpen(true)}
-              >
-                Configure
-              </Button>
-            }
-          >
-            <Typography variant='body2'>
-              <strong>⚠️ No storage locations configured.</strong> Add template directories in
-              Storage settings to enable template synchronization.
-            </Typography>
-          </Alert>
+          <div className="mt-4 p-4 rounded-xl bg-warning/10 border border-warning/20 text-warning-foreground flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-xl">⚠️</span>
+              <p className="text-sm font-medium">
+                <strong className="font-extrabold mr-1">No storage locations configured.</strong> 
+                Add template directories in Storage settings to enable template synchronization.
+              </p>
+            </div>
+            <button onClick={() => setStorageModalOpen(true)} className="px-4 py-2 text-sm font-bold bg-warning text-warning-foreground hover:brightness-110 rounded-lg transition-all shadow-sm">
+              Configure
+            </button>
+          </div>
         )}
-      </Box>
+      </div>
 
-      {/* Error State */}
+      {/* Error & Sync States */}
       {error && (
-        <Box p={2}>
-          <Alert
-            severity='error'
-            onClose={() => setError(null)}
-          >
-            {error}
-          </Alert>
-        </Box>
+        <div className="mx-4 md:mx-8 mt-4 p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive flex justify-between items-start">
+          <p className="text-sm font-bold whitespace-pre-wrap">{error}</p>
+          <button onClick={() => setError(null)} className="p-1 hover:bg-destructive/20 rounded-lg transition-colors"><ClearIcon size={16}/></button>
+        </div>
       )}
-
-      {/* Sync Message */}
       {syncMessage && (
-        <Box p={2}>
-          <Alert
-            severity='success'
-            onClose={() => setSyncMessage(null)}
-          >
-            {syncMessage}
-          </Alert>
-        </Box>
+        <div className="mx-4 md:mx-8 mt-4 p-4 rounded-xl bg-[#10b981]/10 border border-[#10b981]/20 text-[#10b981] flex justify-between items-start">
+          <p className="text-sm font-bold">{syncMessage}</p>
+          <button onClick={() => setSyncMessage(null)} className="p-1 hover:bg-[#10b981]/20 rounded-lg transition-colors"><ClearIcon size={16}/></button>
+        </div>
       )}
 
-      {/* Content Area */}
-      <Box
-        data-app-scroll="true"
-        sx={{
-          flex: 1,
-          overflow: filteredTemplates.length === 0 ? "auto" : "hidden",
-          p: filteredTemplates.length === 0 ? 2 : 0,
-          display: "flex",
-          flexDirection: "column",
-        }}
+      {/* Main Content Area */}
+      <div 
+        data-app-scroll="true" 
+        className={`flex-1 flex flex-col ${filteredTemplates.length === 0 ? 'overflow-auto p-4 md:p-8' : 'overflow-hidden'}`}
       >
         {filteredTemplates.length === 0 ? (
-          /* Empty State */
-          <Box
-            textAlign='center'
-            py={8}
-            px={3}
-            sx={{
-              minHeight: "400px",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Box
-              mb={3}
-              sx={{
-                width: 120,
-                height: 120,
-                borderRadius: "50%",
-                bgcolor: "action.hover",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              {searchQuery ||
-              selectedCategory !== "All" ||
-              selectedFolders.size > 0 ||
-              excludedFolders.size > 0 ? (
-                <SearchOffIcon sx={{ fontSize: 60, color: "text.disabled" }} />
+          <div className="flex-1 flex flex-col items-center justify-center text-center p-8 min-h-[400px]">
+            <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center mb-6 text-muted-foreground/50">
+              {searchQuery || selectedCategory !== "All" || selectedFolders.size > 0 || excludedFolders.size > 0 ? (
+                <SearchOffIcon size={48} strokeWidth={1.5} />
               ) : (
-                <FolderOpenIcon sx={{ fontSize: 60, color: "text.disabled" }} />
+                <FolderOpenIcon size={48} strokeWidth={1.5} />
               )}
-            </Box>
-
-            <Typography
-              variant='h5'
-              gutterBottom
-              fontWeight={600}
-            >
-              {searchQuery ||
-              selectedCategory !== "All" ||
-              selectedFolders.size > 0 ||
-              excludedFolders.size > 0
+            </div>
+            
+            <h3 className="text-xl font-extrabold text-foreground mb-3">
+              {searchQuery || selectedCategory !== "All" || selectedFolders.size > 0 || excludedFolders.size > 0
                 ? "No templates found"
                 : "Your template library is empty"}
-            </Typography>
-
-            <Typography
-              variant='body2'
-              color='text.secondary'
-              mb={3}
-              maxWidth={500}
-            >
-              {searchQuery ||
-              selectedCategory !== "All" ||
-              selectedFolders.size > 0 ||
-              excludedFolders.size > 0
+            </h3>
+            
+            <p className="text-sm text-muted-foreground max-w-md mb-8 font-medium">
+              {searchQuery || selectedCategory !== "All" || selectedFolders.size > 0 || excludedFolders.size > 0
                 ? "Try different keywords or clear filters to see more templates."
                 : "Start building your email collection by adding HTML templates from your file system. Place your templates in ~/Templates for quick access."}
-            </Typography>
+            </p>
 
-            {searchQuery ||
-            selectedCategory !== "All" ||
-            selectedFolders.size > 0 ||
-            excludedFolders.size > 0 ? (
-              <Button
-                variant='outlined'
+            {searchQuery || selectedCategory !== "All" || selectedFolders.size > 0 || excludedFolders.size > 0 ? (
+              <button
                 onClick={() => {
                   setSearchQuery("");
                   setSelectedCategory("All");
                   setSelectedFolders(new Set());
                   setExcludedFolders(new Set());
                 }}
+                className="px-6 py-2.5 text-sm font-bold border-2 border-input bg-background hover:bg-muted text-foreground rounded-xl transition-all shadow-sm active:scale-95"
               >
                 Clear Filters
-              </Button>
+              </button>
             ) : (
-              <Box
-                display='flex'
-                gap={2}
-              >
-                <Button
-                  variant='contained'
-                  startIcon={<SettingsIcon />}
+              <div className="flex gap-4 flex-wrap justify-center">
+                <button
                   onClick={() => setStorageModalOpen(true)}
-                  size='large'
+                  className="px-6 py-2.5 flex items-center gap-2 text-sm font-bold bg-primary hover:brightness-110 text-primary-foreground rounded-xl transition-all shadow-sm active:scale-95"
                 >
-                  Configure Storage
-                </Button>
-                <Button
-                  variant='outlined'
-                  startIcon={<RefreshIcon />}
+                  <SettingsIcon size={16} /> Configure Storage
+                </button>
+                <button
                   onClick={syncTemplates}
-                  size='large'
                   disabled={syncing}
+                  className="px-6 py-2.5 flex items-center gap-2 text-sm font-bold border-2 border-input bg-background hover:bg-muted text-foreground rounded-xl transition-all shadow-sm active:scale-95 disabled:opacity-50"
                 >
-                  {syncing ? "Syncing..." : "Sync Templates"}
-                </Button>
-              </Box>
+                  <RefreshIcon size={16} className={syncing ? "animate-spin" : ""} /> {syncing ? "Syncing..." : "Sync Templates"}
+                </button>
+              </div>
             )}
-          </Box>
+          </div>
         ) : (
-          /* Virtualized Templates Grid - рендерить лише видимі елементи */
-          <Box sx={{ flex: 1, minHeight: 400 }}>
+          <div className="flex-1 w-full min-h-0 relative">
             <VirtualizedTemplateGrid
               templates={filteredTemplates}
               previewConfig={previewConfig}
@@ -944,19 +667,15 @@ export default function TemplateLibrary() {
               onNavigate={handleNavigateTemplate}
               savedScrollPosition={savedScrollPositionRef.current}
             />
-          </Box>
+          </div>
         )}
-      </Box>
+      </div>
 
-      {/* Template Storage Modal */}
       <TemplateStorageModal
         open={storageModalOpen}
         onClose={() => setStorageModalOpen(false)}
-        onSave={() => {
-          // Reload templates after storage config changes
-          loadTemplates();
-        }}
+        onSave={() => loadTemplates()}
       />
-    </Box>
+    </div>
   );
 }

@@ -86,10 +86,7 @@ export function addOneBr(htmlContent: string): string {
 
   // Move trailing <br> from INSIDE formatting tags to OUTSIDE them.
   // e.g. <b>text…<br></b><br> → <b>text…</b><br>  (absorbs the extra <br>)
-  htmlContent = htmlContent.replace(
-    /(<br\s*\/?>)\s*(<\/(?:b|em|i|u|a|strong)>)\s*(?:<br\s*\/?>)*/gi,
-    "$2<br>\n"
-  );
+  htmlContent = htmlContent.replace(/(<br\s*\/?>)\s*(<\/(?:b|em|i|u|a|strong)>)\s*(?:<br\s*\/?>)*/gi, "$2<br>\n");
 
   // Clean up cases where the forced break sits completely flush against a block boundary
   // as blocks automatically define padding/line-breaks.

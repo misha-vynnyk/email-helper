@@ -6,7 +6,6 @@
 
 import { useMemo } from "react";
 import type { CSSProperties, ReactElement } from "react";
-import { Box, useMediaQuery, useTheme } from "@mui/material";
 
 import { VirtualList } from "../components/VirtualList";
 import { useContainerDimensions } from "../hooks";
@@ -70,25 +69,19 @@ function RowComponent({
   // Calculate card height based on preview config
   const cardHeight = previewConfig.containerHeight + CARD_EXTRA_HEIGHT;
 
-  // Adjust style - всі рядки мають однакову висоту
-  // Gap між рядками створюється автоматично через rowHeight > cardHeight
   const adjustedStyle: CSSProperties = {
     ...style,
     height: cardHeight,
     paddingLeft: 16,
     paddingRight: 16,
     boxSizing: "border-box" as const,
+    display: "grid",
+    gridTemplateColumns: `repeat(${columns}, 1fr)`,
+    gap: `${GAP}px`,
   };
 
   return (
-    <Box
-      style={adjustedStyle}
-      sx={{
-        display: "grid",
-        gridTemplateColumns: `repeat(${columns}, 1fr)`,
-        gap: `${GAP}px`,
-      }}
-    >
+    <div style={adjustedStyle}>
       {rowItems.map((template, colIndex) => {
         const globalIndex = startIndex + colIndex;
         return (
@@ -109,7 +102,7 @@ function RowComponent({
           />
         );
       })}
-    </Box>
+    </div>
   );
 }
 
@@ -124,12 +117,16 @@ export default function VirtualizedTemplateGrid({
   onNavigate,
   savedScrollPosition,
 }: VirtualizedTemplateGridProps) {
-  const theme = useTheme();
-  const isXs = useMediaQuery(theme.breakpoints.only("xs"));
-  const isSm = useMediaQuery(theme.breakpoints.only("sm"));
+  // Використовуємо кастомний хук для відстеження розміру контейнера
+  const [containerRef, dimensions] = useContainerDimensions();
 
-  // Calculate columns based on breakpoint
-  const columns = isXs ? 1 : isSm ? 2 : 3;
+  // Calculate columns based conditionally on container width
+  let columns = 1;
+  if (dimensions.width >= 1024) {
+    columns = 3; // lg and above
+  } else if (dimensions.width >= 640) {
+    columns = 2; // sm and md
+  }
 
   // Calculate rows needed
   const rowCount = Math.ceil(templates.length / columns);
@@ -155,15 +152,12 @@ export default function VirtualizedTemplateGrid({
     [templates, columns, previewConfig, openTemplateId, onDelete, onUpdate, onOpen, onClose, onNavigate, savedScrollPosition]
   );
 
-  // Використовуємо кастомний хук для відстеження розміру контейнера
-  const [containerRef, dimensions] = useContainerDimensions();
-
   if (templates.length === 0) {
     return null;
   }
 
   return (
-    <Box ref={containerRef} sx={{ width: "100%", height: "100%", pt: `${GAP}px` }}>
+    <div ref={containerRef} className="w-full h-full" style={{ paddingTop: `${GAP}px` }}>
       {dimensions.width > 0 && dimensions.height > 0 && (
         <VirtualList
           listKey={`${previewConfig.containerHeight}-${columns}`}
@@ -175,6 +169,6 @@ export default function VirtualizedTemplateGrid({
           style={{ height: dimensions.height - GAP, width: dimensions.width }}
         />
       )}
-    </Box>
+    </div>
   );
 }

@@ -9,7 +9,7 @@ interface Dimensions {
   height: number;
 }
 
-export function useContainerDimensions(): [RefObject<HTMLDivElement | null>, Dimensions] {
+export function useContainerDimensions(): [RefObject<HTMLDivElement>, Dimensions] {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState<Dimensions>({ width: 0, height: 0 });
 

@@ -4,48 +4,30 @@
  */
 
 import React, { useContext, useEffect, useLayoutEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { html } from "@codemirror/lang-html";
 import {
-  Add as AddIcon,
-  ArrowBack as ArrowBackIcon,
-  ArrowForward as ArrowForwardIcon,
+  Plus as AddIcon,
+  ArrowLeft as ArrowBackIcon,
+  ArrowRight as ArrowForwardIcon,
   Code as CodeIcon,
-  ContentCopy as CopyIcon,
-  Delete as DeleteIcon,
-  Edit as EditIcon,
-  Remove as RemoveIcon,
-  RestartAlt as RestartAltIcon,
+  Copy as CopyIcon,
+  Trash2 as DeleteIcon,
+  Edit2 as EditIcon,
+  Minus as RemoveIcon,
+  RefreshCcw as RestartAltIcon,
   Send as SendIcon,
-  Sync as SyncIcon,
-  Visibility,
-} from "@mui/icons-material";
-import {
-  alpha,
-  Alert,
-  Box,
-  Button,
-  ButtonGroup,
-  Card,
-  CardActions,
-  CardContent,
-  Chip,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  IconButton,
-  Snackbar,
-  TextField,
-  Tooltip,
-  Typography,
-  useTheme,
-} from "@mui/material";
+  RefreshCw as SyncIcon,
+  Eye as Visibility,
+  X as CloseIcon,
+} from "lucide-react";
 import CodeMirror from "@uiw/react-codemirror";
 
 import { EmailSenderContext } from "../emailSender/EmailSenderContext";
 import { useThemeMode } from "../theme";
 import { EmailTemplate, TEMPLATE_CATEGORIES, TemplateCategory } from "../types/template";
+import { useTheme } from "@mui/material"; // Keep for createCodeMirrorTheme parsing
 import { createCodeMirrorTheme } from "../utils/codemirrorTheme";
 import { preloadImages } from "../utils/imageUrlReplacer";
 
@@ -56,7 +38,6 @@ import { getTemplateContent, removeTemplate, syncTemplate, updateTemplate } from
 import { getCategoryIcon } from "./templateCategoryIcons";
 import { templateContentCache } from "./templateContentCache";
 import { filterMarkedSections } from "./utils/htmlSectionFilter";
-import { getComponentStyles } from "../theme/componentStyles";
 
 interface TemplateItemProps {
   template: EmailTemplate;
@@ -72,6 +53,35 @@ interface TemplateItemProps {
   onNavigate?: (direction: "prev" | "next", savedScrollPos?: number) => void;
   savedScrollPosition?: number;
 }
+
+const TailwindDialog = ({ open, onClose, title, children, maxWidthClass = "max-w-lg", actionsRow, headerExtra }: any) => {
+  if (!open || typeof document === 'undefined') return null;
+  const dialogContent = (
+    <div className='fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6'>
+      <div className='absolute inset-0 bg-background/80 backdrop-blur-sm transition-opacity' onClick={onClose} />
+      <div className={`relative w-full ${maxWidthClass} bg-card border border-border/50 rounded-2xl shadow-soft flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 max-h-[95vh]`}>
+        <div className='flex items-center justify-between px-6 py-4 border-b border-border/50 min-h-[72px]'>
+          <div className='flex items-center gap-4 flex-grow'>
+            <h2 className='text-lg font-bold text-foreground'>{title}</h2>
+            {headerExtra}
+          </div>
+          <button onClick={onClose} className='p-2 text-muted-foreground hover:bg-muted hover:text-foreground rounded-full transition-colors flex-shrink-0'>
+            <CloseIcon size={20} />
+          </button>
+        </div>
+        <div className='p-6 overflow-y-auto'>
+          {children}
+        </div>
+        {actionsRow && (
+          <div className='flex items-center justify-end gap-3 px-6 py-4 border-t border-border/50 bg-muted/20'>
+            {actionsRow}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+  return createPortal(dialogContent, document.body);
+};
 
 function TemplateItem({
   template,
@@ -89,16 +99,8 @@ function TemplateItem({
 }: TemplateItemProps) {
   const theme = useTheme();
   const { mode, style } = useThemeMode();
-  const componentStyles = getComponentStyles(mode, style);
-  const dialogPaperSx = {
-    borderRadius: `${componentStyles.card.borderRadius}px`,
-    background: componentStyles.card.background || alpha(theme.palette.background.paper, 0.92),
-    backdropFilter: componentStyles.card.backdropFilter,
-    WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
-    border: componentStyles.card.border,
-    boxShadow: componentStyles.card.boxShadow,
-  } as const;
   const codeMirrorTheme = createCodeMirrorTheme(theme, mode, style);
+  
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -115,7 +117,6 @@ function TemplateItem({
   const [sending, setSending] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const cardRef = React.useRef<HTMLDivElement>(null);
-  const dialogContentRef = React.useRef<HTMLDivElement>(null);
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const savedScrollPosition = React.useRef<number>(0);
 
@@ -147,26 +148,21 @@ function TemplateItem({
     "portrait"
   );
 
-  // Синхронізувати локальний стан з prop
   useEffect(() => {
     setPreviewDialogOpen(isOpen);
   }, [isOpen]);
 
-  // Helper function to handle navigation
   const handleNavigation = (direction: "prev" | "next") => {
-    // Save scroll position BEFORE navigation (only if enabled)
     const currentScrollPos = previewConfig.saveScrollPosition
       ? scrollContainerRef.current?.scrollTop || 0
       : 0;
     onNavigate?.(direction, currentScrollPos);
   };
 
-  // Keyboard shortcuts for zoom and navigation in preview dialog
   useEffect(() => {
     if (!previewDialogOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Navigation with arrow keys
       if (e.key === "ArrowLeft" && onNavigate) {
         e.preventDefault();
         handleNavigation("prev");
@@ -177,8 +173,6 @@ function TemplateItem({
         handleNavigation("next");
         return;
       }
-
-      // Zoom controls
       if (e.key === "+" || e.key === "=") {
         e.preventDefault();
         setZoom((z) => Math.min(3, z + 0.1));
@@ -211,7 +205,6 @@ function TemplateItem({
     };
   }, [previewDialogOpen, onNavigate]);
 
-  // Intersection Observer for lazy loading
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -229,10 +222,8 @@ function TemplateItem({
     return () => observer.disconnect();
   }, []);
 
-  // Load content only when visible (check cache first)
   useEffect(() => {
     if (isVisible && !previewHtml && !loading) {
-      // Check cache first
       const cachedContent = templateContentCache.get(template.id);
       if (cachedContent) {
         setPreviewHtml(cachedContent);
@@ -240,22 +231,17 @@ function TemplateItem({
         loadContent();
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isVisible]);
 
-  // Preload content when dialog opens (check cache first)
   useEffect(() => {
     if (previewDialogOpen) {
-      // Check cache first
       const cachedContent = templateContentCache.get(template.id);
       if (cachedContent && !previewHtml) {
         setPreviewHtml(cachedContent);
       } else if (!previewHtml && !loading) {
-        // Start loading immediately
         loadContent();
       }
 
-      // Preload adjacent templates when dialog opens
       if (allTemplates.length > 1 && cachedContent) {
         const adjacentIds = [
           allTemplates[currentIndex - 1]?.id,
@@ -269,28 +255,21 @@ function TemplateItem({
         }
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [previewDialogOpen]);
 
-  // Reload content when template changes (navigation)
   useEffect(() => {
     if (previewDialogOpen && isOpen && template.id) {
-      // Check if same template - preserve content
       if (previousTemplateIdRef.current === template.id && previewHtml) {
-        // Same template, keep existing content
         return;
       }
 
       previousTemplateIdRef.current = template.id;
 
-      // Check cache first - load immediately without delay
       const cachedContent = templateContentCache.get(template.id);
       if (cachedContent) {
-        // Use cached content immediately - no loading state
         setPreviewHtml(cachedContent);
         setLoading(false);
 
-        // Preload more adjacent templates for faster navigation
         if (allTemplates.length > 1) {
           const adjacentIds = [
             allTemplates[currentIndex - 2]?.id,
@@ -300,39 +279,29 @@ function TemplateItem({
           ].filter(Boolean) as string[];
 
           if (adjacentIds.length > 0) {
-            // Preload asynchronously - don't block
             setTimeout(() => {
               templateContentCache.preload(adjacentIds, getTemplateContent);
             }, 0);
           }
         }
       } else {
-        // Don't reset previewHtml if it exists - show it while loading new one (optimistic UI)
-        // Only reset zoom
         setZoom(1);
-
-        // Start loading immediately - don't clear existing content
         loadContent();
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [template.id, isOpen]);
 
-  // Update saved scroll position when prop changes
   useEffect(() => {
     if (savedScrollPositionProp > 0) {
       savedScrollPosition.current = savedScrollPositionProp;
     }
   }, [savedScrollPositionProp]);
 
-  // Restore scroll position when previewHtml is updated after navigation
-  // Use useLayoutEffect to restore before browser paint
   useLayoutEffect(() => {
     if (previewConfig.saveScrollPosition && previewHtml && previewDialogOpen && !loading) {
       const scrollPos =
         savedScrollPositionProp > 0 ? savedScrollPositionProp : savedScrollPosition.current;
       if (scrollPos > 0 && scrollContainerRef.current) {
-        // Restore immediately in layout phase
         scrollContainerRef.current.scrollTop = scrollPos;
       }
     } else if (
@@ -342,10 +311,8 @@ function TemplateItem({
       !loading &&
       scrollContainerRef.current
     ) {
-      // Reset to top when scroll position saving is disabled
       scrollContainerRef.current.scrollTop = 0;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     previewHtml,
     previewDialogOpen,
@@ -354,7 +321,6 @@ function TemplateItem({
     previewConfig.saveScrollPosition,
   ]);
 
-  // Also try with useEffect as fallback for async updates
   useEffect(() => {
     if (previewConfig.saveScrollPosition && previewHtml && previewDialogOpen && !loading) {
       const scrollPos =
@@ -366,13 +332,11 @@ function TemplateItem({
           }
         };
 
-        // Try multiple times to ensure DOM is ready
         setTimeout(restoreScroll, 50);
         setTimeout(restoreScroll, 200);
         setTimeout(restoreScroll, 400);
       }
     } else if (!previewConfig.saveScrollPosition && previewHtml && previewDialogOpen && !loading) {
-      // Reset to top when scroll position saving is disabled
       const resetScroll = () => {
         if (scrollContainerRef.current) {
           scrollContainerRef.current.scrollTop = 0;
@@ -381,7 +345,6 @@ function TemplateItem({
       setTimeout(resetScroll, 50);
       setTimeout(resetScroll, 200);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     previewHtml,
     previewDialogOpen,
@@ -390,10 +353,8 @@ function TemplateItem({
     previewConfig.saveScrollPosition,
   ]);
 
-  // Load code content when code dialog opens
   useEffect(() => {
     if (codeDialogOpen) {
-      // Load content if not already loaded
       if (!previewHtml) {
         const cachedContent = templateContentCache.get(template.id);
         if (cachedContent) {
@@ -416,27 +377,20 @@ function TemplateItem({
         setCodeContent(previewHtml);
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [codeDialogOpen, template.id]);
 
-  // Force preview update when hiddenSections config changes
-  // This ensures that preview reflects the new filtering settings
   useEffect(() => {
     if (previewHtml && isVisible) {
-      // Increment renderKey to force iframe re-render with new filtered content
       setRenderKey((prev) => prev + 1);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [previewConfig.hiddenSections]);
 
   const loadContent = async () => {
-    // Check cache first
     const cachedContent = templateContentCache.get(template.id);
     if (cachedContent) {
       setPreviewHtml(cachedContent);
       setLoading(false);
 
-      // Preload more adjacent templates in background (2 in each direction)
       if (allTemplates.length > 1) {
         const adjacentIds = [
           allTemplates[currentIndex - 2]?.id,
@@ -446,17 +400,14 @@ function TemplateItem({
         ].filter(Boolean) as string[];
 
         if (adjacentIds.length > 0) {
-          // Preload asynchronously - don't block
           setTimeout(() => {
             templateContentCache.preload(adjacentIds, getTemplateContent);
           }, 0);
         }
       }
-
       return;
     }
 
-    // Check if already loading (deduplicate requests)
     const existingPromise = templateContentCache.getLoadingPromise(template.id);
     if (existingPromise) {
       try {
@@ -464,34 +415,26 @@ function TemplateItem({
         setPreviewHtml(content);
         setLoading(false);
         return;
-      } catch (error) {
-        // Fall through to load normally
-      }
+      } catch (error) {}
     }
 
-    // Only show loading if we don't have any content yet (optimistic UI)
     if (!previewHtml) {
       setLoading(true);
     }
 
     try {
-      // Create loading promise for deduplication
       const loadPromise = getTemplateContent(template.id);
       templateContentCache.setLoadingPromise(template.id, loadPromise);
 
       const content = await loadPromise;
 
-      // Cache the content
       templateContentCache.set(template.id, content);
       setPreviewHtml(content);
 
-      // Preload зображень з контенту шаблону в кеш (в фоні)
       preloadImages(content).catch((error) => {
-        // Ігноруємо помилки preloading - це не критично
         console.warn('[TemplateItem] Failed to preload images:', error);
       });
 
-      // Preload more adjacent templates in background (2 in each direction)
       if (allTemplates.length > 1) {
         const adjacentIds = [
           allTemplates[currentIndex - 2]?.id,
@@ -501,14 +444,11 @@ function TemplateItem({
         ].filter(Boolean) as string[];
 
         if (adjacentIds.length > 0) {
-          // Preload asynchronously - don't block
           setTimeout(() => {
             templateContentCache.preload(adjacentIds, getTemplateContent);
           }, 0);
         }
       }
-
-      // Note: Scroll restoration is handled in useEffect hook that watches previewHtml
     } catch (error) {
       setSnackbar({
         open: true,
@@ -524,7 +464,6 @@ function TemplateItem({
     try {
       let content = previewHtml;
 
-      // Check cache first
       if (!content) {
         const cachedContent = templateContentCache.get(template.id);
         if (cachedContent) {
@@ -556,7 +495,6 @@ function TemplateItem({
     try {
       let content = previewHtml;
 
-      // Check cache first
       if (!content) {
         const cachedContent = templateContentCache.get(template.id);
         if (cachedContent) {
@@ -588,10 +526,7 @@ function TemplateItem({
     setSyncing(true);
     try {
       const synced = await syncTemplate(template.id);
-
-      // Invalidate cache after sync (file content may have changed)
       templateContentCache.invalidate(template.id);
-
       onUpdate?.(synced);
       setSnackbar({
         open: true,
@@ -621,9 +556,7 @@ function TemplateItem({
         description: editedDescription || undefined,
       });
 
-      // Invalidate cache if template was updated
       templateContentCache.invalidate(template.id);
-
       onUpdate?.(updated);
       setEditDialogOpen(false);
       setSnackbar({
@@ -644,10 +577,7 @@ function TemplateItem({
     setDeleteLoading(true);
     try {
       await removeTemplate(template.id);
-
-      // Remove from cache
       templateContentCache.invalidate(template.id);
-
       onDelete?.(template.id);
       setDeleteDialogOpen(false);
       setSnackbar({
@@ -680,790 +610,394 @@ function TemplateItem({
     });
   };
 
-  // Remove script tags and inline event handlers from HTML for safe preview
-  // This prevents sandbox console errors and security issues
-  // Also filters marked sections if configured (PREVIEW ONLY - code remains unchanged)
   const sanitizePreviewHtml = (html: string): string => {
     if (!html) return html;
     let sanitized = html;
 
-    // First, filter marked sections if configured (PREVIEW ONLY)
     if (previewConfig.hiddenSections && previewConfig.hiddenSections.length > 0) {
       sanitized = filterMarkedSections(sanitized, previewConfig.hiddenSections);
     }
 
-    // Remove all script tags and their content
     sanitized = sanitized.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
-
-    // Remove inline event handlers (onclick, onload, onerror, etc.)
     sanitized = sanitized.replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, "");
     sanitized = sanitized.replace(/\s+on\w+\s*=\s*{[^}]*}/gi, "");
-
-    // Remove javascript: protocol in href/src attributes
     sanitized = sanitized.replace(/javascript:/gi, "");
 
     return sanitized;
   };
 
-  // Calculate scale to fit template in container
   const previewScale = previewConfig.containerHeight / previewConfig.cardHeight;
 
   return (
     <>
-      <Card
-        ref={cardRef}
-        sx={{
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-          borderRadius: `${componentStyles.card.borderRadius}px`,
-          background: componentStyles.card.background || theme.palette.background.paper,
-          backdropFilter: componentStyles.card.backdropFilter,
-          WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
-          border: componentStyles.card.border,
-          boxShadow: componentStyles.card.boxShadow,
-          transition: "transform 0.2s ease, box-shadow 0.2s ease",
-          "&:hover": componentStyles.card.hover
-            ? {
-                transform: componentStyles.card.hover.transform,
-                boxShadow: componentStyles.card.hover.boxShadow,
-                border: componentStyles.card.hover.border || componentStyles.card.border,
-              }
-            : {},
-        }}
+      <div 
+        ref={cardRef} 
+        className='bg-card flex flex-col rounded-[2rem] shadow-soft hover:shadow-lg border border-border/50 hover:border-border transition-all duration-300 group h-full overflow-hidden'
       >
         {/* Preview Area */}
-        <Box
-          sx={{
-            position: "relative",
-            height: previewConfig.containerHeight,
-            minHeight: 150, // Minimum height for usability
-            backgroundColor: theme.palette.action.hover,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            overflow: "hidden",
-            borderBottom: "1px solid",
-            borderColor: "divider",
-            cursor: "pointer",
-            "&:hover .quick-actions": { opacity: 1 },
-          }}
+        <div
+          className='relative flex items-center justify-center overflow-hidden border-b border-border/50 cursor-pointer bg-muted/30 transition-colors hover:bg-muted/50'
+          style={{ height: previewConfig.containerHeight, minHeight: 150 }}
           onClick={() => {
             setPreviewDialogOpen(true);
             onOpen?.();
           }}
         >
           {loading ? (
-            <Box
-              display='flex'
-              alignItems='center'
-              justifyContent='center'
-              height='100%'
-            >
-              <Typography
-                variant='body2'
-                color='text.secondary'
-              >
-                Loading preview...
-              </Typography>
-            </Box>
+            <div className='flex items-center justify-center h-full'>
+              <span className='text-sm text-muted-foreground font-medium'>Loading preview...</span>
+            </div>
           ) : previewHtml ? (
             <iframe
               key={`preview-${template.id}-${renderKey}`}
               srcDoc={sanitizePreviewHtml(previewHtml)}
               title={`Preview of ${template.name}`}
+              className='absolute top-0 left-0 border-none outline-none pointer-events-none origin-top-left'
               style={{
                 width: `${previewConfig.cardWidth}px`,
                 height: `${previewConfig.cardHeight}px`,
-                border: "none",
-                pointerEvents: "none",
                 transform: `scale(${previewScale})`,
-                transformOrigin: "top left",
-                position: "absolute",
-                top: 0,
-                left: 0,
               }}
               sandbox='allow-same-origin'
             />
           ) : (
-            <Typography
-              variant='body2'
-              color='text.secondary'
-            >
-              No Preview Available
-            </Typography>
+            <span className='text-sm text-muted-foreground font-medium'>No Preview Available</span>
           )}
 
           {/* Quick Actions Overlay */}
-          <Box
-            className='quick-actions'
-            sx={{
-              position: "absolute",
-              top: 8,
-              right: 8,
-              opacity: 0,
-              transition: "opacity 0.2s ease",
-              display: "flex",
-              gap: 0.5,
-              bgcolor: "rgba(0, 0, 0, 0.7)",
-              borderRadius: 1,
-              p: 0.5,
-              backdropFilter: "blur(4px)",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Tooltip title='Quick copy'>
-              <IconButton
-                size='small'
-                onClick={handleCopyCode}
-                sx={{ color: "white" }}
-              >
-                <CopyIcon fontSize='small' />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title='Full preview'>
-              <IconButton
-                size='small'
-                onClick={() => setPreviewDialogOpen(true)}
-                sx={{ color: "white" }}
-              >
-                <Visibility fontSize='small' />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        </Box>
+          <div className='absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1 bg-background/80 rounded-xl p-1 shadow-sm backdrop-blur-md z-10' onClick={(e) => e.stopPropagation()}>
+            <button onClick={handleCopyCode} className='p-1.5 text-foreground hover:bg-muted rounded-lg cursor-pointer transition-colors' title='Quick copy'>
+              <CopyIcon size={16} />
+            </button>
+            <button onClick={() => setPreviewDialogOpen(true)} className='p-1.5 text-foreground hover:bg-muted rounded-lg cursor-pointer transition-colors' title='Full preview'>
+              <Visibility size={16} />
+            </button>
+          </div>
+        </div>
 
-        {/* Content */}
-        <CardContent sx={{ flexGrow: 1 }}>
-          <Box
-            display='flex'
-            justifyContent='space-between'
-            alignItems='flex-start'
-            mb={1}
-          >
-            <Box>
-              <Typography
-                variant='h6'
-                component='h3'
-                fontWeight={600}
-                sx={{ fontSize: "1rem" }}
-              >
-                {template.name}
-              </Typography>
+        {/* Content Area */}
+        <div className='flex-grow p-6 md:p-5 flex flex-col'>
+          <div className='flex justify-between items-start mb-3'>
+            <div>
+              <h3 className='text-base font-extrabold text-foreground leading-tight'>{template.name}</h3>
               {template.folderPath && (
-                <Typography
-                  variant='caption'
-                  color='text.secondary'
-                  sx={{ display: "flex", alignItems: "center", mt: 0.5 }}
-                >
-                  📁 {template.folderPath}
-                </Typography>
+                <span className='flex items-center text-xs text-muted-foreground mt-1.5 font-medium'>
+                  <span className='mr-1.5'>📂</span> {template.folderPath}
+                </span>
               )}
-            </Box>
-          </Box>
-
-          <Chip
-            icon={getCategoryIcon(template.category)}
-            label={template.category}
-            size='small'
-            sx={{ mb: 1 }}
-          />
+            </div>
+          </div>
+          
+          <div className='mb-3 w-fit flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-primary/10 text-primary border border-primary/20'>
+            {getCategoryIcon(template.category)}
+            <span>{template.category}</span>
+          </div>
 
           {template.description && (
-            <Typography
-              variant='body2'
-              color='text.secondary'
-              sx={{ mb: 1, fontSize: "0.85rem" }}
-            >
-              {template.description}
-            </Typography>
+            <p className='text-sm text-muted-foreground mb-4 leading-snug'>{template.description}</p>
           )}
 
-          <Box
-            display='flex'
-            flexWrap='wrap'
-            gap={0.5}
-            mb={1}
-          >
-            {template.tags.slice(0, 3).map((tag) => (
-              <Chip
-                key={tag}
-                label={tag}
-                size='small'
-                variant='outlined'
-                sx={{ fontSize: "0.7rem", height: 20 }}
-              />
+          <div className='flex flex-wrap gap-1.5 mb-4'>
+            {template.tags.slice(0, 3).map(tag => (
+              <span key={tag} className='px-2.5 py-1 rounded-full text-[10px] font-bold border border-border/60 bg-muted/40 text-foreground uppercase tracking-wider'>{tag}</span>
             ))}
             {template.tags.length > 3 && (
-              <Chip
-                label={`+${template.tags.length - 3}`}
-                size='small'
-                variant='outlined'
-                sx={{ fontSize: "0.7rem", height: 20 }}
-              />
+              <span className='px-2.5 py-1 rounded-full text-[10px] font-bold border border-border/60 bg-muted/40 text-foreground uppercase tracking-wider'>+{template.tags.length - 3}</span>
             )}
-          </Box>
+          </div>
 
-          <Typography
-            variant='caption'
-            color='text.secondary'
-            display='block'
-          >
+          <span className='text-xs text-muted-foreground font-medium block mt-auto pt-2'>
             {formatFileSize(template.fileSize)} • {formatDate(template.lastModified)}
-          </Typography>
-        </CardContent>
+          </span>
+        </div>
 
-        {/* Actions */}
-        <CardActions sx={{ justifyContent: "space-between", px: 2, pb: 2 }}>
-          <Box
-            display='flex'
-            gap={1}
-          >
-            <Tooltip title='Load into editor'>
-              <Button
-                size='small'
-                variant='contained'
-                startIcon={<AddIcon />}
-                onClick={handleLoadTemplate}
-              >
-                Load
-              </Button>
-            </Tooltip>
-            <Tooltip
-              title={
-                !sendEmailDirect
-                  ? "Email sender not available"
-                  : areCredentialsValid
-                  ? "Send as email"
-                  : "Configure email credentials first"
-              }
-            >
-              <span>
-                <Button
-                  size='small'
-                  variant='outlined'
-                  color='primary'
-                  startIcon={<SendIcon />}
-                  disabled={!sendEmailDirect || !areCredentialsValid || sending}
-                  onClick={async () => {
-                    if (!sendEmailDirect) return;
-
-                    try {
-                      setSending(true);
-
-                      // Завантажуємо HTML якщо ще не завантажено (check cache first)
-                      let html = previewHtml;
-                      if (!html) {
-                        const cachedContent = templateContentCache.get(template.id);
-                        if (cachedContent) {
-                          html = cachedContent;
-                          setPreviewHtml(html);
-                        } else {
-                          const content = await getTemplateContent(template.id);
-                          html = content;
-                          setPreviewHtml(html);
-                          templateContentCache.set(template.id, html);
-                        }
-                      }
-
-                      if (!html || html.trim().length === 0) {
-                        throw new Error("Template HTML is empty");
-                      }
-
-                      // Відправляємо email напряму з HTML і subject
-                      await sendEmailDirect(html, template.name || "Email Template");
-
-                      setSnackbar({
-                        open: true,
-                        message: "Email sent successfully!",
-                        severity: "success",
-                      });
-                    } catch (error) {
-                      setSnackbar({
-                        open: true,
-                        message: error instanceof Error ? error.message : "Failed to send email",
-                        severity: "error",
-                      });
-                    } finally {
-                      setSending(false);
+        {/* Actions Area */}
+        <div className='px-6 pt-0 pb-6 md:px-5 md:pb-5 flex justify-between items-center'>
+          <div className='flex gap-2.5'>
+            <button onClick={handleLoadTemplate} className='flex items-center justify-center gap-1.5 bg-primary hover:brightness-110 text-primary-foreground font-bold px-4 py-2 rounded-xl shadow-soft transition-all hover:-translate-y-0.5 active:scale-95 text-xs' title='Load into editor'>
+              <AddIcon size={16} strokeWidth={3} /> <span className='hidden sm:inline'>Load</span>
+            </button>
+            <button 
+              disabled={!sendEmailDirect || !areCredentialsValid || sending}
+              onClick={async () => {
+                if (!sendEmailDirect) return;
+                try {
+                  setSending(true);
+                  let html = previewHtml;
+                  if (!html) {
+                    const cachedContent = templateContentCache.get(template.id);
+                    if (cachedContent) {
+                      html = cachedContent;
+                      setPreviewHtml(html);
+                    } else {
+                      const content = await getTemplateContent(template.id);
+                      html = content;
+                      setPreviewHtml(html);
+                      templateContentCache.set(template.id, html);
                     }
-                  }}
-                >
-                  {sending ? "Sending..." : "Send"}
-                </Button>
-              </span>
-            </Tooltip>
-            <Tooltip title='Copy HTML code'>
-              <IconButton
-                size='small'
-                onClick={handleCopyCode}
-              >
-                <CopyIcon fontSize='small' />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title='View code'>
-              <IconButton
-                size='small'
-                onClick={() => setCodeDialogOpen(true)}
-              >
-                <CodeIcon fontSize='small' />
-              </IconButton>
-            </Tooltip>
-          </Box>
-          <Box
-            display='flex'
-            gap={0.5}
-          >
-            <Tooltip title='Sync from file'>
-              <span>
-                <IconButton
-                  size='small'
-                  onClick={handleSync}
-                  disabled={syncing}
-                >
-                  <SyncIcon fontSize='small' />
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Tooltip title='Edit metadata'>
-              <IconButton
-                size='small'
-                onClick={() => setEditDialogOpen(true)}
-              >
-                <EditIcon fontSize='small' />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title='Remove from library'>
-              <IconButton
-                size='small'
-                onClick={() => setDeleteDialogOpen(true)}
-                color='error'
-              >
-                <DeleteIcon fontSize='small' />
-              </IconButton>
-            </Tooltip>
-          </Box>
-        </CardActions>
-      </Card>
+                  }
+                  if (!html || html.trim().length === 0) throw new Error("Template HTML is empty");
+                  await sendEmailDirect(html, template.name || "Email Template");
+                  setSnackbar({ open: true, message: "Email sent successfully!", severity: "success" });
+                } catch (error) {
+                  setSnackbar({ open: true, message: error instanceof Error ? error.message : "Failed to send email", severity: "error" });
+                } finally {
+                  setSending(false);
+                }
+              }} 
+              className='flex items-center justify-center gap-1.5 border-2 border-primary text-primary hover:bg-primary/10 font-bold px-4 py-2 rounded-xl transition-all hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 disabled:hover:translate-y-0 text-xs'
+              title={!sendEmailDirect ? "Email sender not available" : areCredentialsValid ? "Send as email" : "Configure email credentials first"}
+            >
+              <SendIcon size={14} strokeWidth={2.5} /> <span className='hidden sm:inline'>{sending ? "Sending" : "Send"}</span>
+            </button>
+            <button onClick={handleCopyCode} className='p-2 bg-muted/50 text-foreground hover:bg-muted hover:text-primary rounded-xl transition-all hover:scale-105 active:scale-95' title='Copy HTML code'>
+              <CopyIcon size={18} />
+            </button>
+            <button onClick={() => setCodeDialogOpen(true)} className='p-2 bg-muted/50 text-foreground hover:bg-muted hover:text-primary rounded-xl transition-all hover:scale-105 active:scale-95' title='View code'>
+              <CodeIcon size={18} />
+            </button>
+          </div>
+          
+          <div className='flex gap-1.5'>
+            <button onClick={handleSync} disabled={syncing} className='p-2 text-muted-foreground hover:bg-muted hover:text-foreground rounded-full transition-all hover:scale-105 active:scale-95 disabled:opacity-50' title='Sync from file'>
+              <SyncIcon size={16} className={syncing ? "animate-spin" : ""} />
+            </button>
+            <button onClick={() => setEditDialogOpen(true)} className='p-2 text-muted-foreground hover:bg-primary/10 hover:text-primary rounded-full transition-all hover:scale-105 active:scale-95' title='Edit metadata'>
+              <EditIcon size={16} />
+            </button>
+            <button onClick={() => setDeleteDialogOpen(true)} className='p-2 text-destructive hover:bg-destructive/10 rounded-full transition-all hover:scale-105 active:scale-95' title='Remove from library'>
+              <DeleteIcon size={16} />
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Preview Dialog */}
-      <Dialog
+      <TailwindDialog
         open={previewDialogOpen}
         onClose={() => {
           setPreviewDialogOpen(false);
           setZoom(1);
           onClose?.();
         }}
-        maxWidth={previewConfig.dialogMaxWidth}
-        fullWidth
-        disableRestoreFocus
-        PaperProps={{ sx: dialogPaperSx }}
-      >
-        <DialogTitle>
-          <Box
-            display='flex'
-            justifyContent='space-between'
-            alignItems='center'
-          >
-            <Box
-              display='flex'
-              alignItems='center'
-              gap={2}
-            >
-              <Typography variant='h6'>{template.name} - Preview</Typography>
-              {allTemplates.length > 1 && (
-                <Typography
-                  variant='caption'
-                  color='text.secondary'
-                >
-                  ({currentIndex + 1} / {allTemplates.length})
-                </Typography>
-              )}
-            </Box>
-            <Box
-              display='flex'
-              gap={1}
-              alignItems='center'
-            >
-              {/* Navigation Buttons */}
-              {allTemplates.length > 1 && onNavigate && (
-                <ButtonGroup
-                  size='small'
-                  variant='outlined'
-                >
-                  <Tooltip title='Previous template (←)'>
-                    <Button onClick={() => handleNavigation("prev")}>
-                      <ArrowBackIcon fontSize='small' />
-                    </Button>
-                  </Tooltip>
-                  <Tooltip title='Next template (→)'>
-                    <Button onClick={() => handleNavigation("next")}>
-                      <ArrowForwardIcon fontSize='small' />
-                    </Button>
-                  </Tooltip>
-                </ButtonGroup>
-              )}
-
-              {/* Zoom Controls */}
-              <ButtonGroup
-                size='small'
-                variant='outlined'
-              >
-                <Tooltip title='Zoom out (-)'>
-                  <span>
-                    <Button
-                      onClick={() => setZoom((z) => Math.max(0.25, z - 0.1))}
-                      disabled={zoom <= 0.25}
-                    >
-                      <RemoveIcon fontSize='small' />
-                    </Button>
-                  </span>
-                </Tooltip>
-                <Tooltip title='Reset zoom (R)'>
-                  <span>
-                    <Button
-                      onClick={() => setZoom(1)}
-                      disabled={zoom === 1}
-                    >
-                      <RestartAltIcon fontSize='small' />
-                    </Button>
-                  </span>
-                </Tooltip>
-                <Button
-                  disabled
-                  sx={{ minWidth: 70 }}
-                >
-                  {Math.round(zoom * 100)}%
-                </Button>
-                <Tooltip title='Zoom in (+)'>
-                  <span>
-                    <Button
-                      onClick={() => setZoom((z) => Math.min(3, z + 0.1))}
-                      disabled={zoom >= 3}
-                    >
-                      <AddIcon fontSize='small' />
-                    </Button>
-                  </span>
-                </Tooltip>
-              </ButtonGroup>
-            </Box>
-          </Box>
-
-          {/* Responsive Toolbar */}
-          <Box
-            display='flex'
-            justifyContent='center'
-            mt={2}
-          >
+        maxWidthClass="max-w-6xl"
+        title={
+          <div className="flex items-center gap-3">
+            <span>{template.name} - Preview</span>
+            {allTemplates.length > 1 && (
+              <span className="text-sm font-medium text-muted-foreground">({currentIndex + 1} / {allTemplates.length})</span>
+            )}
+          </div>
+        }
+        headerExtra={
+          <div className='flex gap-4 items-center ml-auto'>
+            {allTemplates.length > 1 && onNavigate && (
+              <div className='flex bg-muted rounded-lg p-1'>
+                <button onClick={() => handleNavigation("prev")} className='p-1.5 hover:bg-background rounded-md transition-colors text-foreground' title='Previous template (←)'>
+                  <ArrowBackIcon size={18} />
+                </button>
+                <button onClick={() => handleNavigation("next")} className='p-1.5 hover:bg-background rounded-md transition-colors text-foreground' title='Next template (→)'>
+                  <ArrowForwardIcon size={18} />
+                </button>
+              </div>
+            )}
+            <div className='flex bg-muted rounded-lg p-1 items-center'>
+              <button disabled={zoom <= 0.25} onClick={() => setZoom((z) => Math.max(0.25, z - 0.1))} className='p-1.5 hover:bg-background rounded-md transition-colors text-foreground disabled:opacity-50' title='Zoom out (-)'>
+                <RemoveIcon size={18} />
+              </button>
+              <button disabled={zoom === 1} onClick={() => setZoom(1)} className='p-1.5 hover:bg-background rounded-md transition-colors text-foreground disabled:opacity-50' title='Reset zoom (R)'>
+                <RestartAltIcon size={18} />
+              </button>
+              <span className='px-3 text-sm font-semibold text-foreground min-w-[4.5rem] text-center'>
+                {Math.round(zoom * 100)}%
+              </span>
+              <button disabled={zoom >= 3} onClick={() => setZoom((z) => Math.min(3, z + 0.1))} className='p-1.5 hover:bg-background rounded-md transition-colors text-foreground disabled:opacity-50' title='Zoom in (+)'>
+                <AddIcon size={18} />
+              </button>
+            </div>
+            {/* The ResponsiveToolbar needs to be placed or adapted. We'll render it here. */}
             <ResponsiveToolbar
               width={viewportWidth}
               onWidthChange={setViewportWidth}
               orientation={viewportOrientation}
               onOrientationChange={setViewportOrientation}
             />
-          </Box>
-        </DialogTitle>
-        <DialogContent ref={dialogContentRef}>
-          {loading && !previewHtml ? (
-            <Box
-              display='flex'
-              justifyContent='center'
-              p={4}
-            >
-              <Typography>Loading...</Typography>
-            </Box>
-          ) : previewHtml ? (
-            <Box
-              ref={scrollContainerRef}
-              sx={{
-                overflow: "auto",
-                maxHeight: "70vh",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "flex-start",
-                p: 2,
-                bgcolor: "#f5f5f5",
-              }}
-            >
-              <ResizablePreview
-                width={viewportWidth}
-                onWidthChange={setViewportWidth}
-                zoom={zoom}
-              >
-                {/*
-                  iframe ширина = 100% контейнера (який = viewportWidth)
-                  Media queries реагують на ширину iframe
-                  Zoom застосовується через transform: scale() в ResizablePreview
-                */}
-                <iframe
-                  key={`dialog-preview-${template.id}-${renderKey}`}
-                  srcDoc={sanitizePreviewHtml(previewHtml)}
-                  title={`Preview of ${template.name}`}
-                  style={{
-                    width: "100%",
-                    height: "70vh",
-                    minHeight: 500,
-                    border: "none",
-                    borderRadius: 4,
-                    backgroundColor: "#fff",
-                    display: "block",
-                  }}
-                />
-              </ResizablePreview>
-            </Box>
-          ) : null}
-        </DialogContent>
-        <DialogActions>
-          <Typography
-            variant='caption'
-            color='text.secondary'
-            sx={{ mr: "auto" }}
+          </div>
+        }
+        actionsRow={
+          <div className='w-full flex justify-between items-center'>
+            <p className='text-xs text-muted-foreground font-medium'>
+              💡 Tip: Use <strong className='text-foreground'>←/→</strong> to navigate, <strong className='text-foreground'>+/-</strong> to zoom, <strong className='text-foreground'>R</strong> to reset, or <strong className='text-foreground'>Ctrl+Scroll</strong> to zoom
+            </p>
+            <button onClick={() => { setPreviewDialogOpen(false); setZoom(1); onClose?.(); }} className='px-5 py-2.5 text-sm font-bold bg-muted hover:bg-muted/80 text-foreground rounded-xl transition-all'>
+              Close
+            </button>
+          </div>
+        }
+      >
+        {loading && !previewHtml ? (
+          <div className='flex justify-center items-center p-12'>
+            <span className='font-medium text-muted-foreground'>Loading...</span>
+          </div>
+        ) : previewHtml ? (
+          <div 
+            ref={scrollContainerRef}
+            className='overflow-auto max-h-[70vh] flex justify-center items-start p-6 bg-muted/20 rounded-xl'
           >
-            💡 Tip: Use <strong>←/→</strong> to navigate, <strong>+/-</strong> to zoom,{" "}
-            <strong>R</strong> to reset, or <strong>Ctrl+Scroll</strong> to zoom
-          </Typography>
-          <Button
-            onClick={() => {
-              setPreviewDialogOpen(false);
-              setZoom(1);
-              onClose?.();
-            }}
-          >
-            Close
-          </Button>
-        </DialogActions>
-      </Dialog>
+            <ResizablePreview width={viewportWidth} onWidthChange={setViewportWidth} zoom={zoom}>
+              <iframe
+                key={`dialog-preview-${template.id}-${renderKey}`}
+                srcDoc={sanitizePreviewHtml(previewHtml)}
+                title={`Preview of ${template.name}`}
+                className='w-full h-[70vh] min-h-[500px] border-none rounded-lg bg-background'
+              />
+            </ResizablePreview>
+          </div>
+        ) : null}
+      </TailwindDialog>
 
       {/* Code Dialog */}
-      <Dialog
+      <TailwindDialog
         open={codeDialogOpen}
-        onClose={() => {
-          setCodeDialogOpen(false);
-          setCodeContent("");
-        }}
-        maxWidth='lg'
-        fullWidth
-        disableRestoreFocus
-        PaperProps={{ sx: dialogPaperSx }}
-      >
-        <DialogTitle>HTML Code - {template.name}</DialogTitle>
-        <DialogContent>
-          <Box
-            sx={{
-              mt: 2,
-              border: "1px solid",
-              borderColor: "divider",
-              borderRadius: 1,
-              overflow: "hidden",
-              "& .cm-selectionLayer .cm-selectionBackground": {
-                backgroundColor: `${alpha(theme.palette.primary.main, 0.25)} !important`,
-              },
-              "& .cm-selectionBackground": {
-                backgroundColor: `${alpha(theme.palette.primary.main, 0.25)} !important`,
-              },
-              "& .cm-content ::selection": {
-                backgroundColor: `${alpha(theme.palette.primary.main, 0.25)} !important`,
-              },
-            }}
-          >
-            <CodeMirror
-              value={codeLoading ? "Loading..." : codeContent || "No content available"}
-              height='60vh'
-              extensions={[html(), ...codeMirrorTheme]}
-              theme={undefined}
-              editable={false}
-              basicSetup={{
-                lineNumbers: true,
-                foldGutter: true,
-                dropCursor: true,
-                allowMultipleSelections: false,
-                indentOnInput: true,
-                bracketMatching: true,
-                closeBrackets: true,
-                autocompletion: false,
-                highlightSelectionMatches: true,
-                searchKeymap: true,
-              }}
-            />
-          </Box>
-          <Typography
-            variant='caption'
-            color='text.secondary'
-            sx={{ mt: 1, display: "block" }}
-          >
-            💡 Tip: Use <strong>Ctrl+F</strong> / <strong>Cmd+F</strong> to search,{" "}
-            <strong>Ctrl+Shift+[</strong> / <strong>Cmd+Shift+[</strong> to fold code blocks
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={async () => {
+        onClose={() => { setCodeDialogOpen(false); setCodeContent(""); }}
+        maxWidthClass="max-w-5xl"
+        title={`HTML Code - ${template.name}`}
+        actionsRow={
+          <>
+            <button onClick={async () => {
               try {
                 const contentToCopy = codeContent || previewHtml || "";
-                if (
-                  contentToCopy &&
-                  contentToCopy !== "Loading..." &&
-                  contentToCopy !== "Failed to load content"
-                ) {
+                if (contentToCopy && contentToCopy !== "Loading..." && contentToCopy !== "Failed to load content") {
                   await navigator.clipboard.writeText(contentToCopy);
-                  setSnackbar({
-                    open: true,
-                    message: `"${template.name}" HTML copied to clipboard`,
-                    severity: "success",
-                  });
+                  setSnackbar({ open: true, message: `"${template.name}" HTML copied to clipboard`, severity: "success" });
                 }
               } catch (error) {
-                setSnackbar({
-                  open: true,
-                  message: `Copy failed: ${error instanceof Error ? error.message : String(error)}`,
-                  severity: "error",
-                });
+                setSnackbar({ open: true, message: `Copy failed: ${error instanceof Error ? error.message : String(error)}`, severity: "error" });
               }
+            }} className='px-5 py-2.5 flex items-center gap-2 text-sm font-bold bg-primary hover:brightness-110 text-primary-foreground rounded-xl transition-all shadow-sm'>
+              <CopyIcon size={16} /> Copy
+            </button>
+            <button onClick={() => { setCodeDialogOpen(false); setCodeContent(""); }} className='px-5 py-2.5 text-sm font-bold bg-muted hover:bg-muted/80 text-foreground rounded-xl transition-all'>
+              Close
+            </button>
+          </>
+        }
+      >
+        <div className='border border-border/50 rounded-xl overflow-hidden shadow-inner'>
+          <CodeMirror
+            value={codeLoading ? "Loading..." : codeContent || "No content available"}
+            height='60vh'
+            extensions={[html(), ...codeMirrorTheme]}
+            theme={undefined}
+            editable={false}
+            basicSetup={{
+              lineNumbers: true,
+              foldGutter: true,
+              dropCursor: true,
+              allowMultipleSelections: false,
+              indentOnInput: true,
+              bracketMatching: true,
+              closeBrackets: true,
+              autocompletion: false,
+              highlightSelectionMatches: true,
+              searchKeymap: true,
             }}
-            startIcon={<CopyIcon />}
-          >
-            Copy
-          </Button>
-          <Button
-            onClick={() => {
-              setCodeDialogOpen(false);
-              setCodeContent("");
-            }}
-          >
-            Close
-          </Button>
-        </DialogActions>
-      </Dialog>
+          />
+        </div>
+        <p className='text-xs text-muted-foreground font-medium mt-3'>
+          💡 Tip: Use <strong className='text-foreground'>Ctrl+F</strong> / <strong className='text-foreground'>Cmd+F</strong> to search, <strong className='text-foreground'>Ctrl+Shift+[</strong> / <strong className='text-foreground'>Cmd+Shift+[</strong> to fold code blocks
+        </p>
+      </TailwindDialog>
 
       {/* Edit Dialog */}
-      <Dialog
+      <TailwindDialog
         open={editDialogOpen}
         onClose={() => setEditDialogOpen(false)}
-        maxWidth='sm'
-        fullWidth
-        disableRestoreFocus
-        PaperProps={{ sx: dialogPaperSx }}
+        maxWidthClass="max-w-xl"
+        title="Edit Template Metadata"
+        actionsRow={
+          <>
+            <button onClick={() => setEditDialogOpen(false)} className='px-5 py-2.5 text-sm font-bold bg-muted hover:bg-muted/80 text-foreground rounded-xl transition-all'>
+              Cancel
+            </button>
+            <button onClick={handleSaveEdit} className='px-5 py-2.5 text-sm font-bold bg-primary hover:brightness-110 text-primary-foreground rounded-xl transition-all shadow-sm'>
+              Save
+            </button>
+          </>
+        }
       >
-        <DialogTitle>Edit Template Metadata</DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            label='Name'
-            value={editedName}
-            onChange={(e) => setEditedName(e.target.value)}
-            sx={{ mt: 2, mb: 2 }}
-          />
-          <TextField
-            fullWidth
-            select
-            label='Category'
-            value={editedCategory}
-            onChange={(e) => setEditedCategory(e.target.value as TemplateCategory)}
-            SelectProps={{ native: true }}
-            sx={{ mb: 2 }}
-          >
-            {TEMPLATE_CATEGORIES.map((cat) => (
-              <option
-                key={cat}
-                value={cat}
-              >
-                {cat}
-              </option>
-            ))}
-          </TextField>
-          <TextField
-            fullWidth
-            label='Tags (comma-separated)'
-            value={editedTags}
-            onChange={(e) => setEditedTags(e.target.value)}
-            helperText='e.g., promotional, product, sale'
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            fullWidth
-            multiline
-            rows={3}
-            label='Description'
-            value={editedDescription}
-            onChange={(e) => setEditedDescription(e.target.value)}
-          />
-          <Box mt={2}>
-            <Typography
-              variant='caption'
-              color='text.secondary'
-            >
-              <strong>File Path:</strong> {template.filePath}
-            </Typography>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
-          <Button
-            onClick={handleSaveEdit}
-            variant='contained'
-          >
-            Save
-          </Button>
-        </DialogActions>
-      </Dialog>
+        <div className='flex flex-col gap-5'>
+          <div>
+            <label className='block text-sm font-extrabold text-foreground mb-1.5'>Name</label>
+            <input type='text' value={editedName} onChange={(e) => setEditedName(e.target.value)} className='w-full px-4 py-2.5 text-sm rounded-xl border border-input bg-background focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground outline-none transition-all' />
+          </div>
+          <div>
+            <label className='block text-sm font-extrabold text-foreground mb-1.5'>Category</label>
+            <select value={editedCategory} onChange={(e) => setEditedCategory(e.target.value as TemplateCategory)} className='w-full px-4 py-2.5 text-sm rounded-xl border border-input bg-background focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground outline-none transition-all appearance-none cursor-pointer'>
+              {TEMPLATE_CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className='block text-sm font-extrabold text-foreground mb-1.5'>Tags (comma-separated)</label>
+            <input type='text' value={editedTags} onChange={(e) => setEditedTags(e.target.value)} placeholder='e.g., promotional, product, sale' className='w-full px-4 py-2.5 text-sm rounded-xl border border-input bg-background focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground outline-none transition-all' />
+          </div>
+          <div>
+            <label className='block text-sm font-extrabold text-foreground mb-1.5'>Description</label>
+            <textarea rows={3} value={editedDescription} onChange={(e) => setEditedDescription(e.target.value)} className='w-full px-4 py-2.5 text-sm rounded-xl border border-input bg-background focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground outline-none transition-all resize-none' />
+          </div>
+          <div className='mt-2 p-3 bg-muted/50 rounded-xl border border-border/50'>
+            <p className='text-xs text-muted-foreground font-mono break-all'>
+              <strong className='text-foreground font-bold mr-1'>File Path:</strong> {template.filePath}
+            </p>
+          </div>
+        </div>
+      </TailwindDialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog
+      <TailwindDialog
         open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
-        maxWidth='xs'
-        fullWidth
-        disableRestoreFocus
-        PaperProps={{ sx: dialogPaperSx }}
+        maxWidthClass="max-w-md"
+        title="Remove Template?"
+        actionsRow={
+          <>
+            <button onClick={() => setDeleteDialogOpen(false)} className='px-5 py-2.5 text-sm font-bold bg-muted hover:bg-muted/80 text-foreground rounded-xl transition-all'>
+              Cancel
+            </button>
+            <button onClick={handleDeleteConfirm} disabled={deleteLoading} className='px-5 py-2.5 text-sm font-bold bg-destructive hover:brightness-110 text-destructive-foreground rounded-xl transition-all shadow-sm disabled:opacity-50'>
+              {deleteLoading ? 'Removing...' : 'Remove'}
+            </button>
+          </>
+        }
       >
-        <DialogTitle>Remove Template?</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Remove <strong>"{template.name}"</strong> from library?
-          </Typography>
-          <Typography
-            variant='body2'
-            color='text.secondary'
-            sx={{ mt: 1 }}
-          >
-            This will not delete the file from your system. The file will remain at:{" "}
-            <code>{template.filePath}</code>
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-          <Button
-            onClick={handleDeleteConfirm}
-            color='error'
-            variant='contained'
-            disabled={deleteLoading}
-          >
-            Remove
-          </Button>
-        </DialogActions>
-      </Dialog>
+        <p className='text-foreground font-medium'>
+          Remove <strong className='font-extrabold'>"{template.name}"</strong> from library?
+        </p>
+        <p className='text-sm text-muted-foreground mt-3 leading-relaxed'>
+          This will not delete the file from your system. The file will remain at: <br/>
+          <code className='bg-muted px-1.5 py-0.5 rounded text-xs mt-1 block break-all font-mono border border-border/50'>{template.filePath}</code>
+        </p>
+      </TailwindDialog>
 
-      {/* Snackbar Notifications */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
-      >
-        <Alert
-          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
-          severity={snackbar.severity}
-          sx={{ width: "100%" }}
-        >
+      {/* Simple Tailwind Snackbar Replacement */}
+      {snackbar.open && typeof document !== 'undefined' && createPortal(
+        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] px-5 py-3 rounded-xl shadow-lg font-bold text-sm flex items-center gap-3 animate-in fade-in slide-in-from-bottom-5 duration-300 ${
+          snackbar.severity === 'error' ? 'bg-destructive text-destructive-foreground' : 'bg-[#10b981] text-white'
+        }`}>
           {snackbar.message}
-        </Alert>
-      </Snackbar>
+          <button onClick={() => setSnackbar((prev) => ({ ...prev, open: false }))} className='p-1 hover:bg-white/20 rounded-full transition-colors'>
+            <CloseIcon size={14} strokeWidth={3} />
+          </button>
+        </div>,
+        document.body
+      )}
     </>
   );
 }
 
-// Мемоізуємо компонент для запобігання зайвих ре-рендерів
 export default React.memo(TemplateItem, (prevProps, nextProps) => {
-  // Shallow порівняння - ре-рендер тільки якщо змінилися важливі пропси
   return (
     prevProps.template.id === nextProps.template.id &&
     prevProps.template.name === nextProps.template.name &&
