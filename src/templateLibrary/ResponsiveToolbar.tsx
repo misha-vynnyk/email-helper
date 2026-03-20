@@ -1,32 +1,19 @@
-/**
- * Responsive Toolbar Component
- * Chrome DevTools-style responsive viewport selector
- */
-
 import React from "react";
-
-import {
-  Laptop as DesktopIcon,
-  PhoneAndroid as MobileIcon,
-  ScreenRotation as RotateIcon,
-  Tablet as TabletIcon,
-} from "@mui/icons-material";
-import { Box, IconButton, MenuItem, Select, TextField, Tooltip, Typography } from "@mui/material";
+import { RotateCw as RotateIcon } from "lucide-react";
 
 export interface ViewportPreset {
   name: string;
   width: number;
   height: number;
-  icon: React.ReactNode;
 }
 
 export const VIEWPORT_PRESETS: ViewportPreset[] = [
-  { name: "Mobile S", width: 320, height: 568, icon: <MobileIcon /> },
-  { name: "Mobile M", width: 375, height: 667, icon: <MobileIcon /> },
-  { name: "Mobile L", width: 425, height: 812, icon: <MobileIcon /> },
-  { name: "Tablet", width: 768, height: 1024, icon: <TabletIcon /> },
-  { name: "Laptop", width: 1024, height: 768, icon: <DesktopIcon /> },
-  { name: "Desktop", width: 1440, height: 900, icon: <DesktopIcon /> },
+  { name: "Mobile S", width: 320, height: 568 },
+  { name: "Mobile M", width: 375, height: 667 },
+  { name: "Mobile L", width: 425, height: 812 },
+  { name: "Tablet", width: 768, height: 1024 },
+  { name: "Laptop", width: 1024, height: 768 },
+  { name: "Desktop", width: 1440, height: 900 },
 ];
 
 interface ResponsiveToolbarProps {
@@ -43,10 +30,10 @@ export default function ResponsiveToolbar({
   onOrientationChange,
 }: ResponsiveToolbarProps) {
   const [customWidth, setCustomWidth] = React.useState<number>(
-    typeof width === "number" ? width : 375
+    typeof width === "number" ? width : 600
   );
 
-  const handlePresetChange = (event: { target: { value: string } }) => {
+  const handlePresetChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const value = event.target.value;
     if (value === "responsive") {
       onWidthChange("responsive");
@@ -63,7 +50,7 @@ export default function ResponsiveToolbar({
   };
 
   const handleCustomWidthChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const newWidth = parseInt(event.target.value) || 375;
+    const newWidth = parseInt(event.target.value) || 600;
     setCustomWidth(newWidth);
     if (width !== "responsive") {
       onWidthChange(newWidth);
@@ -101,93 +88,64 @@ export default function ResponsiveToolbar({
   };
 
   return (
-    <Box
-      display='flex'
-      alignItems='center'
-      gap={2}
-    >
+    <div className="flex items-center gap-3">
       {/* Preset Selector */}
-      <Select
-        value={getCurrentPreset()}
-        onChange={handlePresetChange}
-        size='small'
-        sx={{ minWidth: 150 }}
-      >
-        <MenuItem value='responsive'>
-          <Box
-            display='flex'
-            alignItems='center'
-            gap={1}
-          >
-            <DesktopIcon fontSize='small' />
-            <Typography>Responsive</Typography>
-          </Box>
-        </MenuItem>
-        {VIEWPORT_PRESETS.map((preset) => (
-          <MenuItem
-            key={preset.name}
-            value={preset.name}
-          >
-            <Box
-              display='flex'
-              alignItems='center'
-              gap={1}
-            >
-              {preset.icon}
-              <Typography>
-                {preset.name} ({orientation === "portrait" ? preset.width : preset.height}px)
-              </Typography>
-            </Box>
-          </MenuItem>
-        ))}
-        <MenuItem value='custom'>Custom</MenuItem>
-      </Select>
+      <div className="relative">
+        <select
+          value={getCurrentPreset()}
+          onChange={handlePresetChange}
+          className="pl-3 pr-8 py-1.5 text-sm font-semibold rounded-lg border-2 border-input bg-background focus:border-primary focus:ring-2 focus:ring-primary/10 text-foreground transition-all outline-none appearance-none cursor-pointer min-w-[140px]"
+        >
+          <option value="responsive">Responsive</option>
+          {VIEWPORT_PRESETS.map((preset) => (
+            <option key={preset.name} value={preset.name}>
+              {preset.name} ({orientation === "portrait" ? preset.width : preset.height}px)
+            </option>
+          ))}
+          <option value="custom">Custom</option>
+        </select>
+        <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </div>
+      </div>
 
       {/* Width Input */}
       {width !== "responsive" && (
         <>
-          <TextField
-            type='number'
-            value={customWidth}
-            onChange={handleCustomWidthChange}
-            size='small'
-            sx={{ width: 100 }}
-            InputProps={{
-              endAdornment: <Typography variant='caption'>px</Typography>,
-            }}
-          />
+          <div className="relative flex items-center">
+            <input
+              type="number"
+              value={customWidth}
+              onChange={handleCustomWidthChange}
+              className="w-20 pl-3 pr-6 py-1.5 text-sm font-semibold rounded-lg border-2 border-input bg-background focus:border-primary focus:ring-2 focus:ring-primary/10 text-foreground transition-all outline-none"
+            />
+            <span className="absolute right-2 text-xs font-bold text-muted-foreground pointer-events-none">
+              px
+            </span>
+          </div>
 
           {/* Orientation Toggle */}
-          <Tooltip title='Rotate viewport'>
-            <IconButton
-              onClick={toggleOrientation}
-              size='small'
-            >
-              <RotateIcon />
-            </IconButton>
-          </Tooltip>
+          <button
+            onClick={toggleOrientation}
+            title={`Rotate viewport to ${orientation === "portrait" ? "landscape" : "portrait"}`}
+            className="p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground rounded-lg transition-colors"
+          >
+            <RotateIcon size={16} strokeWidth={2.5} />
+          </button>
 
           {/* Orientation Label */}
-          <Typography
-            variant='caption'
-            color='text.secondary'
-            sx={{ minWidth: 60 }}
-          >
+          <span className="text-xs font-bold text-muted-foreground min-w-[60px]">
             {orientation === "portrait" ? "Portrait" : "Landscape"}
-          </Typography>
+          </span>
         </>
       )}
 
       {/* Current Dimensions Display */}
       {width !== "responsive" && (
-        <Typography
-          variant='caption'
-          color='primary'
-          fontWeight={600}
-        >
+        <span className="text-xs font-bold text-primary tracking-wide">
           {customWidth} × auto
-        </Typography>
+        </span>
       )}
-    </Box>
+    </div>
   );
 }

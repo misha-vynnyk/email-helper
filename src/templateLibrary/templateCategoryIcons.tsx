@@ -1,18 +1,18 @@
 /**
  * Template Category Icons
  *
- * Maps template categories to Material-UI icons for visual representation
+ * Maps template categories to lucide-react icons for visual representation
  */
 
 import React from "react";
 
 import {
-  Business as BusinessIcon,
-  Campaign as CampaignIcon,
-  Category as CategoryIcon,
-  Email as EmailIcon,
+  Briefcase as BusinessIcon,
+  Megaphone as CampaignIcon,
+  FolderTree as CategoryIcon,
+  Mail as EmailIcon,
   Receipt as ReceiptIcon,
-} from "@mui/icons-material";
+} from "lucide-react";
 
 import { TemplateCategory } from "../types/template";
 
@@ -21,12 +21,12 @@ type CategoryIconMap = {
 };
 
 const CATEGORY_ICONS: CategoryIconMap = {
-  All: <CategoryIcon fontSize='small' />,
-  Newsletter: <EmailIcon fontSize='small' />,
-  Transactional: <ReceiptIcon fontSize='small' />,
-  Marketing: <CampaignIcon fontSize='small' />,
-  Internal: <BusinessIcon fontSize='small' />,
-  Other: <CategoryIcon fontSize='small' />,
+  All: <CategoryIcon size={16} />,
+  Newsletter: <EmailIcon size={16} />,
+  Transactional: <ReceiptIcon size={16} />,
+  Marketing: <CampaignIcon size={16} />,
+  Internal: <BusinessIcon size={16} />,
+  Other: <CategoryIcon size={16} />,
 };
 
 export const getCategoryIcon = (category: TemplateCategory | "All"): React.ReactElement => {
