@@ -4,7 +4,7 @@
  * Frontend client for interacting with the Template Manager backend
  */
 
-import API_URL from "../config/api";
+import API_URL from "../../config/api";
 import {
   AddTemplatePayload,
   AllowedRootPayload,
@@ -12,7 +12,7 @@ import {
   ImportFolderPayload,
   TemplateStats,
   UpdateTemplatePayload,
-} from "../types/template";
+} from "../../types/template";
 
 const API_BASE = `${API_URL}/api/templates`;
 

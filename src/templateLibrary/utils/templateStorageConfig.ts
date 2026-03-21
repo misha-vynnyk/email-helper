@@ -5,8 +5,8 @@
  * Supports custom arbitrary paths for template synchronization
  */
 
-import { StorageConfigManager, StorageLocation } from "../utils/storageConfigManager";
-import { STORAGE_KEYS } from "../utils/storageKeys";
+import { StorageConfigManager, StorageLocation } from "../../utils/storageConfigManager";
+import { STORAGE_KEYS } from "../../utils/storageKeys";
 
 export interface TemplateStorageLocation extends StorageLocation {}
 

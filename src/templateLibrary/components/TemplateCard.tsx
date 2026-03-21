@@ -10,8 +10,8 @@ import {
   Trash2 as DeleteIcon,
 } from "lucide-react";
 import { EmailTemplate } from "../../types/template";
-import { PreviewConfig } from "../PreviewSettings";
-import { getCategoryIcon } from "../templateCategoryIcons";
+import { PreviewConfig } from "./PreviewSettings";
+import { getCategoryIcon } from "../utils/templateCategoryIcons";
 import { filterMarkedSections } from "../utils/htmlSectionFilter";
 
 /**

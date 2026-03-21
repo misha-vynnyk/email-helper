@@ -9,6 +9,6 @@ export { default as TemplateLibrary } from "./TemplateLibrary";
 export type { EmailTemplate, TemplateCategory } from "../types/template";
 
 // Components (for direct import if needed)
-export { default as DirectoryManagementModal } from "./DirectoryManagementModal";
-export { default as PreviewSettings } from "./PreviewSettings";
-export { default as TemplateItem } from "./TemplateItem";
+export { default as DirectoryManagementModal } from "./components/DirectoryManagementModal";
+export { default as PreviewSettings } from "./components/PreviewSettings";
+export { default as TemplateItem } from "./components/TemplateItem";

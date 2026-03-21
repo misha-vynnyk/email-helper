@@ -8,12 +8,12 @@ import {
 } from "lucide-react";
 
 import { EmailTemplate } from "../../types/template";
-import { PreviewConfig } from "../PreviewSettings";
+import { PreviewConfig } from "./PreviewSettings";
 import { filterMarkedSections } from "../utils/htmlSectionFilter";
 
 import Modal from "./Modal";
-import ResizablePreview from "../ResizablePreview";
-import ResponsiveToolbar from "../ResponsiveToolbar";
+import ResizablePreview from "./ResizablePreview";
+import ResponsiveToolbar from "./ResponsiveToolbar";
 
 /**
  * Props for the TemplatePreviewDialog component.

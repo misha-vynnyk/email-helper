@@ -4,10 +4,10 @@
  */
 
 import { useEffect, useState } from "react";
-import Modal from "./components/Modal";
+import Modal from "./Modal";
 import { Trash2 as DeleteIcon, FolderOpen as FolderOpenIcon, X as CloseIcon } from "lucide-react";
 
-import { addAllowedRoot, getAllowedRoots, removeAllowedRoot } from "./templateApi";
+import { addAllowedRoot, getAllowedRoots, removeAllowedRoot } from "../utils/templateApi";
 
 interface DirectoryManagementModalProps {
   open: boolean;
