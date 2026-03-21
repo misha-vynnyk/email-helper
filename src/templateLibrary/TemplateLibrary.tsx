@@ -16,16 +16,13 @@ import {
   Settings as SettingsIcon,
 } from "lucide-react";
 
-import { EmailTemplate, TemplateCategory } from "../types/template";
-
+import { TemplateCategory } from "../types/template";
 import PreviewSettings, { loadPreviewConfig, PreviewConfig } from "./components/PreviewSettings";
-import { listTemplates, syncAllTemplates, getTemplateContent } from "./utils/templateApi";
 import TemplateStorageModal from "./components/TemplateStorageModal";
 import VirtualizedTemplateGrid from "./components/VirtualizedTemplateGrid";
 import { getTemplateStorageLocations } from "./utils/templateStorageConfig";
+import { getTemplateContent } from "./utils/templateApi";
 import { templateContentCache } from "./utils/templateContentCache";
-import { logger } from "../utils/logger";
-import { preloadImages } from "../utils/imageUrlReplacer";
 
 const CATEGORY_OPTIONS: Array<TemplateCategory | "All"> = [
   "All",
@@ -37,13 +34,22 @@ const CATEGORY_OPTIONS: Array<TemplateCategory | "All"> = [
 ];
 
 import { SortOption, useTemplateFilter } from "./hooks/useTemplateFilter";
-
+import { useTemplateData } from "./hooks/useTemplateData";
 export default function TemplateLibrary() {
-  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
-  const [syncMessage, setSyncMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    templates,
+    loading,
+    syncing,
+    syncMessage,
+    error,
+    initializeTemplates,
+    loadTemplates,
+    syncTemplates,
+    deleteTemplate,
+    updateTemplate,
+    clearError,
+    clearSyncMessage,
+  } = useTemplateData();
 
   const {
     searchQuery,
@@ -60,164 +66,18 @@ export default function TemplateLibrary() {
     folderStats,
     filteredTemplates,
   } = useTemplateFilter(templates);
+  
   const [storageModalOpen, setStorageModalOpen] = useState(false);
   const [previewConfig, setPreviewConfig] = useState<PreviewConfig>(loadPreviewConfig());
   const [openTemplateId, setOpenTemplateId] = useState<string | null>(null);
   const savedScrollPositionRef = React.useRef<number>(0);
-  const loadingRef = React.useRef(false);
 
   useEffect(() => {
-    let cancelled = false;
+    initializeTemplates();
+  }, [initializeTemplates]);
 
-    const load = async () => {
-      if (cancelled || loadingRef.current) return;
-      loadingRef.current = true;
-      try {
-        await loadTemplates();
-        if (!cancelled) {
-          await syncTemplates();
-        }
-      } finally {
-        loadingRef.current = false;
-      }
-    };
-
-    load();
-
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const loadTemplates = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await listTemplates();
-      if (Array.isArray(data)) {
-        const locations = getTemplateStorageLocations(false);
-
-        if (locations.length === 0) {
-          setTemplates(data);
-        } else {
-          const allowedPaths = new Set(locations.map((loc) => loc.path));
-          const filteredTemplates = data.filter((template) => {
-            if (!template.filePath) return false;
-            return Array.from(allowedPaths).some((path) => template.filePath.startsWith(path));
-          });
-          setTemplates(filteredTemplates);
-        }
-
-        const templatesWithPreview = data.filter((t) => t.preview);
-        if (templatesWithPreview.length > 0) {
-          preloadImages(templatesWithPreview.map((t) => t.preview!).join(' ')).catch((error) => {
-            logger.warn("TemplateLibrary", "Failed to preload template preview images", error);
-          });
-        }
-      } else {
-        logger.error("TemplateLibrary", "API returned non-array data", data);
-        setTemplates([]);
-        setError("Invalid data format from server");
-      }
-    } catch (err) {
-      const isConnectionError = err instanceof Error && (
-        err.message.includes("Failed to fetch") ||
-        err.message.includes("connection") ||
-        err.message.includes("Server connection failed")
-      );
-
-      if (isConnectionError) {
-        logger.warn("TemplateLibrary", "Server unavailable - templates cannot be loaded");
-      } else {
-        logger.error("TemplateLibrary", "Failed to load templates", err);
-      }
-
-      setTemplates([]);
-      setError(err instanceof Error ? err.message : "Failed to load templates");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const syncTemplates = async () => {
-    setSyncing(true);
-    setSyncMessage(null);
-    setError(null);
-
-    try {
-      const locations = getTemplateStorageLocations(false);
-
-      if (locations.length === 0) {
-        setError("No storage locations configured. Please add directories in Storage settings.");
-        setSyncing(false);
-        return;
-      }
-
-      let totalFound = 0;
-      const errors: string[] = [];
-
-      for (const location of locations) {
-        try {
-          const result = await syncAllTemplates({
-            recursive: true,
-            category: "Other",
-            paths: [location.path], 
-          });
-
-          totalFound += result.templatesFound;
-        } catch (err) {
-          const errorMsg = `Failed to sync ${location.name}: ${err instanceof Error ? err.message : "Unknown error"}`;
-          const isConnectionError = err instanceof Error && (
-            err.message.includes("Failed to fetch") ||
-            err.message.includes("connection") ||
-            err.message.includes("Server connection failed")
-          );
-
-          if (isConnectionError) {
-            logger.warn("TemplateLibrary", `Server unavailable - sync failed for ${location.name}`);
-          } else {
-            logger.error("TemplateLibrary", errorMsg, err);
-          }
-
-          errors.push(errorMsg);
-        }
-      }
-
-      if (errors.length > 0) {
-        setError(`Sync completed with errors:\n${errors.join("\n")}`);
-      } else {
-        setSyncMessage(`✅ Sync completed: ${totalFound} templates found`);
-        setTimeout(() => setSyncMessage(null), 5000);
-      }
-
-      await loadTemplates();
-    } catch (err) {
-      const isConnectionError = err instanceof Error && (
-        err.message.includes("Failed to fetch") ||
-        err.message.includes("connection") ||
-        err.message.includes("Server connection failed")
-      );
-
-      if (isConnectionError) {
-        logger.warn("TemplateLibrary", "Server unavailable - sync failed");
-      } else {
-        logger.error("TemplateLibrary", "Failed to sync templates", err);
-      }
-
-      setError(err instanceof Error ? err.message : "Failed to sync templates");
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  const handleTemplateDeleted = (templateId: string) => {
-    setTemplates((prev) => prev.filter((t) => t.id !== templateId));
-  };
-
-  const handleTemplateUpdated = (updated: EmailTemplate) => {
-    setTemplates((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
-  };
+  const handleTemplateDeleted = deleteTemplate;
+  const handleTemplateUpdated = updateTemplate;
 
   const handleOpenTemplate = (templateId: string) => {
     setOpenTemplateId(templateId);
@@ -324,17 +184,7 @@ export default function TemplateLibrary() {
           <div className="flex flex-wrap items-center gap-3">
             <PreviewSettings config={previewConfig} onChange={setPreviewConfig} />
             <button
-              onClick={async () => {
-                setLoading(true);
-                try {
-                  await loadTemplates();
-                  setError(null);
-                } catch (err) {
-                  setError(err instanceof Error ? err.message : "Failed to reload templates");
-                } finally {
-                  setLoading(false);
-                }
-              }}
+              onClick={loadTemplates}
               disabled={loading || syncing}
               className="flex items-center gap-2 px-4 py-2 text-sm font-bold border-2 border-input bg-background hover:bg-muted text-foreground rounded-xl transition-all active:scale-95 disabled:opacity-50"
             >
@@ -518,13 +368,13 @@ export default function TemplateLibrary() {
       {error && (
         <div className="mx-4 md:mx-8 mt-4 p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive flex justify-between items-start">
           <p className="text-sm font-bold whitespace-pre-wrap">{error}</p>
-          <button onClick={() => setError(null)} className="p-1 hover:bg-destructive/20 rounded-lg transition-colors"><ClearIcon size={16}/></button>
+          <button onClick={clearError} className="p-1 hover:bg-destructive/20 rounded-lg transition-colors"><ClearIcon size={16}/></button>
         </div>
       )}
       {syncMessage && (
         <div className="mx-4 md:mx-8 mt-4 p-4 rounded-xl bg-[#10b981]/10 border border-[#10b981]/20 text-[#10b981] flex justify-between items-start">
           <p className="text-sm font-bold">{syncMessage}</p>
-          <button onClick={() => setSyncMessage(null)} className="p-1 hover:bg-[#10b981]/20 rounded-lg transition-colors"><ClearIcon size={16}/></button>
+          <button onClick={clearSyncMessage} className="p-1 hover:bg-[#10b981]/20 rounded-lg transition-colors"><ClearIcon size={16}/></button>
         </div>
       )}
 
