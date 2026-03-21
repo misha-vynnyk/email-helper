@@ -18,12 +18,12 @@ import {
 
 import { EmailTemplate, TemplateCategory } from "../types/template";
 
-import PreviewSettings, { loadPreviewConfig, PreviewConfig } from "./PreviewSettings";
-import { listTemplates, syncAllTemplates, getTemplateContent } from "./templateApi";
-import TemplateStorageModal from "./TemplateStorageModal";
-import VirtualizedTemplateGrid from "./VirtualizedTemplateGrid";
-import { getTemplateStorageLocations } from "./templateStorageConfig";
-import { templateContentCache } from "./templateContentCache";
+import PreviewSettings, { loadPreviewConfig, PreviewConfig } from "./components/PreviewSettings";
+import { listTemplates, syncAllTemplates, getTemplateContent } from "./utils/templateApi";
+import TemplateStorageModal from "./components/TemplateStorageModal";
+import VirtualizedTemplateGrid from "./components/VirtualizedTemplateGrid";
+import { getTemplateStorageLocations } from "./utils/templateStorageConfig";
+import { templateContentCache } from "./utils/templateContentCache";
 import { logger } from "../utils/logger";
 import { preloadImages } from "../utils/imageUrlReplacer";
 

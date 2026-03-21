@@ -13,20 +13,20 @@ import {
 } from "lucide-react";
 import CodeMirror from "@uiw/react-codemirror";
 
-import { EmailSenderContext } from "../emailSender/EmailSenderContext";
-import { useThemeMode } from "../theme";
-import { EmailTemplate, TEMPLATE_CATEGORIES, TemplateCategory } from "../types/template";
+import { EmailSenderContext } from "../../emailSender/EmailSenderContext";
+import { useThemeMode } from "../../theme";
+import { EmailTemplate, TEMPLATE_CATEGORIES, TemplateCategory } from "../../types/template";
 import { useTheme } from "@mui/material"; 
-import { createCodeMirrorTheme } from "../utils/codemirrorTheme";
-import { preloadImages } from "../utils/imageUrlReplacer";
+import { createCodeMirrorTheme } from "../../utils/codemirrorTheme";
+import { preloadImages } from "../../utils/imageUrlReplacer";
 
 import { PreviewConfig } from "./PreviewSettings";
-import { getTemplateContent, removeTemplate, syncTemplate, updateTemplate } from "./templateApi";
-import { templateContentCache } from "./templateContentCache";
+import { getTemplateContent, removeTemplate, syncTemplate, updateTemplate } from "../utils/templateApi";
+import { templateContentCache } from "../utils/templateContentCache";
 
-import Modal from "./components/Modal";
-import TemplateCard from "./components/TemplateCard";
-import TemplatePreviewDialog from "./components/TemplatePreviewDialog";
+import Modal from "./Modal";
+import TemplateCard from "./TemplateCard";
+import TemplatePreviewDialog from "./TemplatePreviewDialog";
 
 interface TemplateItemProps {
   template: EmailTemplate;

@@ -4,7 +4,7 @@
  */
 
 import { useState } from "react";
-import Modal from "./components/Modal";
+import Modal from "./Modal";
 import {
   FolderOpen,
   Plus as AddIcon,
@@ -22,7 +22,7 @@ import {
   setDefaultTemplateLocation,
   TemplateStorageLocation,
   toggleTemplateLocationVisibility,
-} from "./templateStorageConfig";
+} from "../utils/templateStorageConfig";
 
 interface TemplateStorageModalProps {
   open: boolean;

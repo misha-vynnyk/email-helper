@@ -14,7 +14,7 @@ import {
   Receipt as ReceiptIcon,
 } from "lucide-react";
 
-import { TemplateCategory } from "../types/template";
+import { TemplateCategory } from "../../types/template";
 
 type CategoryIconMap = {
   [key in TemplateCategory | "All"]: React.ReactElement;

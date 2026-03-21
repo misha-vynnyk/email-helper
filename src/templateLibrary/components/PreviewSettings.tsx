@@ -4,11 +4,11 @@
  */
 
 import { useState } from "react";
-import Modal from "./components/Modal";
+import Modal from "./Modal";
 import { Plus as AddIcon, Settings as SettingsIcon, X as CloseIcon } from "lucide-react";
 
-import { logger } from "../utils/logger";
-import { STORAGE_KEYS } from "../utils/storageKeys";
+import { logger } from "../../utils/logger";
+import { STORAGE_KEYS } from "../../utils/storageKeys";
 
 export interface PreviewConfig {
   cardWidth: number;

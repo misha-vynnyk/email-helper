@@ -7,9 +7,9 @@
 import { useMemo } from "react";
 import type { CSSProperties, ReactElement } from "react";
 
-import { VirtualList } from "../components/VirtualList";
-import { useContainerDimensions } from "../hooks";
-import { EmailTemplate } from "../types/template";
+import { VirtualList } from "../../components/VirtualList";
+import { useContainerDimensions } from "../../hooks";
+import { EmailTemplate } from "../../types/template";
 import { PreviewConfig } from "./PreviewSettings";
 import TemplateItem from "./TemplateItem";
 
