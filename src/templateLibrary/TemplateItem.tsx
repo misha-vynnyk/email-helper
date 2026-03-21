@@ -3,23 +3,12 @@
  * Displays a single template card with preview and actions
  */
 
-import React, { useContext, useEffect, useLayoutEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { html } from "@codemirror/lang-html";
 import {
-  Plus as AddIcon,
-  ArrowLeft as ArrowBackIcon,
-  ArrowRight as ArrowForwardIcon,
-  Code as CodeIcon,
   Copy as CopyIcon,
-  Trash2 as DeleteIcon,
-  Edit2 as EditIcon,
-  Minus as RemoveIcon,
-  RefreshCcw as RestartAltIcon,
-  Send as SendIcon,
-  RefreshCw as SyncIcon,
-  Eye as Visibility,
   X as CloseIcon,
 } from "lucide-react";
 import CodeMirror from "@uiw/react-codemirror";
@@ -27,17 +16,17 @@ import CodeMirror from "@uiw/react-codemirror";
 import { EmailSenderContext } from "../emailSender/EmailSenderContext";
 import { useThemeMode } from "../theme";
 import { EmailTemplate, TEMPLATE_CATEGORIES, TemplateCategory } from "../types/template";
-import { useTheme } from "@mui/material"; // Keep for createCodeMirrorTheme parsing
+import { useTheme } from "@mui/material"; 
 import { createCodeMirrorTheme } from "../utils/codemirrorTheme";
 import { preloadImages } from "../utils/imageUrlReplacer";
 
 import { PreviewConfig } from "./PreviewSettings";
-import ResizablePreview from "./ResizablePreview";
-import ResponsiveToolbar from "./ResponsiveToolbar";
 import { getTemplateContent, removeTemplate, syncTemplate, updateTemplate } from "./templateApi";
-import { getCategoryIcon } from "./templateCategoryIcons";
 import { templateContentCache } from "./templateContentCache";
-import { filterMarkedSections } from "./utils/htmlSectionFilter";
+
+import Modal from "./components/Modal";
+import TemplateCard from "./components/TemplateCard";
+import TemplatePreviewDialog from "./components/TemplatePreviewDialog";
 
 interface TemplateItemProps {
   template: EmailTemplate;
@@ -53,35 +42,6 @@ interface TemplateItemProps {
   onNavigate?: (direction: "prev" | "next", savedScrollPos?: number) => void;
   savedScrollPosition?: number;
 }
-
-const TailwindDialog = ({ open, onClose, title, children, maxWidthClass = "max-w-lg", actionsRow, headerExtra }: any) => {
-  if (!open || typeof document === 'undefined') return null;
-  const dialogContent = (
-    <div className='fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6'>
-      <div className='absolute inset-0 bg-background/80 backdrop-blur-sm transition-opacity' onClick={onClose} />
-      <div className={`relative w-full ${maxWidthClass} bg-card border border-border/50 rounded-2xl shadow-soft flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 max-h-[95vh]`}>
-        <div className='flex items-center justify-between px-6 py-4 border-b border-border/50 min-h-[72px]'>
-          <div className='flex items-center gap-4 flex-grow'>
-            <h2 className='text-lg font-bold text-foreground'>{title}</h2>
-            {headerExtra}
-          </div>
-          <button onClick={onClose} className='p-2 text-muted-foreground hover:bg-muted hover:text-foreground rounded-full transition-colors flex-shrink-0'>
-            <CloseIcon size={20} />
-          </button>
-        </div>
-        <div className='p-6 overflow-y-auto'>
-          {children}
-        </div>
-        {actionsRow && (
-          <div className='flex items-center justify-end gap-3 px-6 py-4 border-t border-border/50 bg-muted/20'>
-            {actionsRow}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-  return createPortal(dialogContent, document.body);
-};
 
 function TemplateItem({
   template,
@@ -117,8 +77,7 @@ function TemplateItem({
   const [sending, setSending] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const cardRef = React.useRef<HTMLDivElement>(null);
-  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
-  const savedScrollPosition = React.useRef<number>(0);
+
 
   // Email Sender context (опціонально - може бути недоступний)
   const emailSenderContext = useContext(EmailSenderContext);
@@ -141,69 +100,13 @@ function TemplateItem({
     severity: "success",
   });
 
-  const [zoom, setZoom] = useState(1);
   const [renderKey, setRenderKey] = useState(0);
-  const [viewportWidth, setViewportWidth] = useState<number | "responsive">(600);
-  const [viewportOrientation, setViewportOrientation] = useState<"portrait" | "landscape">(
-    "portrait"
-  );
 
   useEffect(() => {
     setPreviewDialogOpen(isOpen);
   }, [isOpen]);
 
-  const handleNavigation = (direction: "prev" | "next") => {
-    const currentScrollPos = previewConfig.saveScrollPosition
-      ? scrollContainerRef.current?.scrollTop || 0
-      : 0;
-    onNavigate?.(direction, currentScrollPos);
-  };
 
-  useEffect(() => {
-    if (!previewDialogOpen) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "ArrowLeft" && onNavigate) {
-        e.preventDefault();
-        handleNavigation("prev");
-        return;
-      }
-      if (e.key === "ArrowRight" && onNavigate) {
-        e.preventDefault();
-        handleNavigation("next");
-        return;
-      }
-      if (e.key === "+" || e.key === "=") {
-        e.preventDefault();
-        setZoom((z) => Math.min(3, z + 0.1));
-      } else if (e.key === "-" || e.key === "_") {
-        e.preventDefault();
-        setZoom((z) => Math.max(0.25, z - 0.1));
-      } else if (e.key === "r" || e.key === "R" || e.key === "0") {
-        e.preventDefault();
-        setZoom(1);
-      }
-    };
-
-    const handleWheel = (e: WheelEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-        if (e.deltaY < 0) {
-          setZoom((z) => Math.min(3, z + 0.1));
-        } else {
-          setZoom((z) => Math.max(0.25, z - 0.1));
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("wheel", handleWheel, { passive: false });
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("wheel", handleWheel);
-    };
-  }, [previewDialogOpen, onNavigate]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -285,73 +188,12 @@ function TemplateItem({
           }
         }
       } else {
-        setZoom(1);
         loadContent();
       }
     }
   }, [template.id, isOpen]);
 
-  useEffect(() => {
-    if (savedScrollPositionProp > 0) {
-      savedScrollPosition.current = savedScrollPositionProp;
-    }
-  }, [savedScrollPositionProp]);
 
-  useLayoutEffect(() => {
-    if (previewConfig.saveScrollPosition && previewHtml && previewDialogOpen && !loading) {
-      const scrollPos =
-        savedScrollPositionProp > 0 ? savedScrollPositionProp : savedScrollPosition.current;
-      if (scrollPos > 0 && scrollContainerRef.current) {
-        scrollContainerRef.current.scrollTop = scrollPos;
-      }
-    } else if (
-      !previewConfig.saveScrollPosition &&
-      previewHtml &&
-      previewDialogOpen &&
-      !loading &&
-      scrollContainerRef.current
-    ) {
-      scrollContainerRef.current.scrollTop = 0;
-    }
-  }, [
-    previewHtml,
-    previewDialogOpen,
-    loading,
-    savedScrollPositionProp,
-    previewConfig.saveScrollPosition,
-  ]);
-
-  useEffect(() => {
-    if (previewConfig.saveScrollPosition && previewHtml && previewDialogOpen && !loading) {
-      const scrollPos =
-        savedScrollPositionProp > 0 ? savedScrollPositionProp : savedScrollPosition.current;
-      if (scrollPos > 0) {
-        const restoreScroll = () => {
-          if (scrollContainerRef.current) {
-            scrollContainerRef.current.scrollTop = scrollPos;
-          }
-        };
-
-        setTimeout(restoreScroll, 50);
-        setTimeout(restoreScroll, 200);
-        setTimeout(restoreScroll, 400);
-      }
-    } else if (!previewConfig.saveScrollPosition && previewHtml && previewDialogOpen && !loading) {
-      const resetScroll = () => {
-        if (scrollContainerRef.current) {
-          scrollContainerRef.current.scrollTop = 0;
-        }
-      };
-      setTimeout(resetScroll, 50);
-      setTimeout(resetScroll, 200);
-    }
-  }, [
-    previewHtml,
-    previewDialogOpen,
-    loading,
-    savedScrollPositionProp,
-    previewConfig.saveScrollPosition,
-  ]);
 
   useEffect(() => {
     if (codeDialogOpen) {
@@ -596,268 +438,78 @@ function TemplateItem({
     }
   };
 
-  const formatFileSize = (bytes: number): string => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
 
-  const formatDate = (timestamp: number): string => {
-    return new Date(timestamp).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-
-  const sanitizePreviewHtml = (html: string): string => {
-    if (!html) return html;
-    let sanitized = html;
-
-    if (previewConfig.hiddenSections && previewConfig.hiddenSections.length > 0) {
-      sanitized = filterMarkedSections(sanitized, previewConfig.hiddenSections);
-    }
-
-    sanitized = sanitized.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
-    sanitized = sanitized.replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, "");
-    sanitized = sanitized.replace(/\s+on\w+\s*=\s*{[^}]*}/gi, "");
-    sanitized = sanitized.replace(/javascript:/gi, "");
-
-    return sanitized;
-  };
-
-  const previewScale = previewConfig.containerHeight / previewConfig.cardHeight;
 
   return (
     <>
-      <div 
-        ref={cardRef} 
-        className='bg-card flex flex-col rounded-[2rem] shadow-soft hover:shadow-lg border border-border/50 hover:border-border transition-all duration-300 group h-full overflow-hidden'
-      >
-        {/* Preview Area */}
-        <div
-          className='relative flex items-center justify-center overflow-hidden border-b border-border/50 cursor-pointer bg-muted/30 transition-colors hover:bg-muted/50'
-          style={{ height: previewConfig.containerHeight, minHeight: 150 }}
-          onClick={() => {
-            setPreviewDialogOpen(true);
-            onOpen?.();
-          }}
-        >
-          {loading ? (
-            <div className='flex items-center justify-center h-full'>
-              <span className='text-sm text-muted-foreground font-medium'>Loading preview...</span>
-            </div>
-          ) : previewHtml ? (
-            <iframe
-              key={`preview-${template.id}-${renderKey}`}
-              srcDoc={sanitizePreviewHtml(previewHtml)}
-              title={`Preview of ${template.name}`}
-              className='absolute top-0 left-0 border-none outline-none pointer-events-none origin-top-left'
-              style={{
-                width: `${previewConfig.cardWidth}px`,
-                height: `${previewConfig.cardHeight}px`,
-                transform: `scale(${previewScale})`,
-              }}
-              sandbox='allow-same-origin'
-            />
-          ) : (
-            <span className='text-sm text-muted-foreground font-medium'>No Preview Available</span>
-          )}
+      <TemplateCard
+        template={template}
+        previewHtml={previewHtml}
+        loading={loading}
+        previewConfig={previewConfig}
+        onOpenPreview={() => {
+          setPreviewDialogOpen(true);
+          onOpen?.();
+        }}
+        onLoadTemplate={handleLoadTemplate}
+        onSendEmail={async () => {
+          if (!sendEmailDirect) return;
+          try {
+            setSending(true);
+            let html = previewHtml;
+            if (!html) {
+              const cachedContent = templateContentCache.get(template.id);
+              if (cachedContent) {
+                html = cachedContent;
+                setPreviewHtml(html);
+              } else {
+                const content = await getTemplateContent(template.id);
+                html = content;
+                setPreviewHtml(html);
+                templateContentCache.set(template.id, html);
+              }
+            }
+            if (!html || html.trim().length === 0) throw new Error("Template HTML is empty");
+            await sendEmailDirect(html, template.name || "Email Template");
+            setSnackbar({ open: true, message: "Email sent successfully!", severity: "success" });
+          } catch (error) {
+            setSnackbar({ open: true, message: error instanceof Error ? error.message : "Failed to send email", severity: "error" });
+          } finally {
+            setSending(false);
+          }
+        }}
+        onCopyCode={handleCopyCode}
+        onViewCode={() => setCodeDialogOpen(true)}
+        onSync={handleSync}
+        onEdit={() => setEditDialogOpen(true)}
+        onDelete={() => setDeleteDialogOpen(true)}
+        syncing={syncing}
+        sending={sending}
+        areCredentialsValid={areCredentialsValid}
+        sendEmailDirect={sendEmailDirect}
+        cardRef={cardRef}
+        renderKey={renderKey}
+      />
 
-          {/* Quick Actions Overlay */}
-          <div className='absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1 bg-background/80 rounded-xl p-1 shadow-sm backdrop-blur-md z-10' onClick={(e) => e.stopPropagation()}>
-            <button onClick={handleCopyCode} className='p-1.5 text-foreground hover:bg-muted rounded-lg cursor-pointer transition-colors' title='Quick copy'>
-              <CopyIcon size={16} />
-            </button>
-            <button onClick={() => setPreviewDialogOpen(true)} className='p-1.5 text-foreground hover:bg-muted rounded-lg cursor-pointer transition-colors' title='Full preview'>
-              <Visibility size={16} />
-            </button>
-          </div>
-        </div>
-
-        {/* Content Area */}
-        <div className='flex-grow p-6 md:p-5 flex flex-col'>
-          <div className='flex justify-between items-start mb-3'>
-            <div>
-              <h3 className='text-base font-extrabold text-foreground leading-tight'>{template.name}</h3>
-              {template.folderPath && (
-                <span className='flex items-center text-xs text-muted-foreground mt-1.5 font-medium'>
-                  <span className='mr-1.5'>📂</span> {template.folderPath}
-                </span>
-              )}
-            </div>
-          </div>
-          
-          <div className='mb-3 w-fit flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-primary/10 text-primary border border-primary/20'>
-            {getCategoryIcon(template.category)}
-            <span>{template.category}</span>
-          </div>
-
-          {template.description && (
-            <p className='text-sm text-muted-foreground mb-4 leading-snug'>{template.description}</p>
-          )}
-
-          <div className='flex flex-wrap gap-1.5 mb-4'>
-            {template.tags.slice(0, 3).map(tag => (
-              <span key={tag} className='px-2.5 py-1 rounded-full text-[10px] font-bold border border-border/60 bg-muted/40 text-foreground uppercase tracking-wider'>{tag}</span>
-            ))}
-            {template.tags.length > 3 && (
-              <span className='px-2.5 py-1 rounded-full text-[10px] font-bold border border-border/60 bg-muted/40 text-foreground uppercase tracking-wider'>+{template.tags.length - 3}</span>
-            )}
-          </div>
-
-          <span className='text-xs text-muted-foreground font-medium block mt-auto pt-2'>
-            {formatFileSize(template.fileSize)} • {formatDate(template.lastModified)}
-          </span>
-        </div>
-
-        {/* Actions Area */}
-        <div className='px-6 pt-0 pb-6 md:px-5 md:pb-5 flex justify-between items-center'>
-          <div className='flex gap-2.5'>
-            <button onClick={handleLoadTemplate} className='flex items-center justify-center gap-1.5 bg-primary hover:brightness-110 text-primary-foreground font-bold px-4 py-2 rounded-xl shadow-soft transition-all hover:-translate-y-0.5 active:scale-95 text-xs' title='Load into editor'>
-              <AddIcon size={16} strokeWidth={3} /> <span className='hidden sm:inline'>Load</span>
-            </button>
-            <button 
-              disabled={!sendEmailDirect || !areCredentialsValid || sending}
-              onClick={async () => {
-                if (!sendEmailDirect) return;
-                try {
-                  setSending(true);
-                  let html = previewHtml;
-                  if (!html) {
-                    const cachedContent = templateContentCache.get(template.id);
-                    if (cachedContent) {
-                      html = cachedContent;
-                      setPreviewHtml(html);
-                    } else {
-                      const content = await getTemplateContent(template.id);
-                      html = content;
-                      setPreviewHtml(html);
-                      templateContentCache.set(template.id, html);
-                    }
-                  }
-                  if (!html || html.trim().length === 0) throw new Error("Template HTML is empty");
-                  await sendEmailDirect(html, template.name || "Email Template");
-                  setSnackbar({ open: true, message: "Email sent successfully!", severity: "success" });
-                } catch (error) {
-                  setSnackbar({ open: true, message: error instanceof Error ? error.message : "Failed to send email", severity: "error" });
-                } finally {
-                  setSending(false);
-                }
-              }} 
-              className='flex items-center justify-center gap-1.5 border-2 border-primary text-primary hover:bg-primary/10 font-bold px-4 py-2 rounded-xl transition-all hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 disabled:hover:translate-y-0 text-xs'
-              title={!sendEmailDirect ? "Email sender not available" : areCredentialsValid ? "Send as email" : "Configure email credentials first"}
-            >
-              <SendIcon size={14} strokeWidth={2.5} /> <span className='hidden sm:inline'>{sending ? "Sending" : "Send"}</span>
-            </button>
-            <button onClick={handleCopyCode} className='p-2 bg-muted/50 text-foreground hover:bg-muted hover:text-primary rounded-xl transition-all hover:scale-105 active:scale-95' title='Copy HTML code'>
-              <CopyIcon size={18} />
-            </button>
-            <button onClick={() => setCodeDialogOpen(true)} className='p-2 bg-muted/50 text-foreground hover:bg-muted hover:text-primary rounded-xl transition-all hover:scale-105 active:scale-95' title='View code'>
-              <CodeIcon size={18} />
-            </button>
-          </div>
-          
-          <div className='flex gap-1.5'>
-            <button onClick={handleSync} disabled={syncing} className='p-2 text-muted-foreground hover:bg-muted hover:text-foreground rounded-full transition-all hover:scale-105 active:scale-95 disabled:opacity-50' title='Sync from file'>
-              <SyncIcon size={16} className={syncing ? "animate-spin" : ""} />
-            </button>
-            <button onClick={() => setEditDialogOpen(true)} className='p-2 text-muted-foreground hover:bg-primary/10 hover:text-primary rounded-full transition-all hover:scale-105 active:scale-95' title='Edit metadata'>
-              <EditIcon size={16} />
-            </button>
-            <button onClick={() => setDeleteDialogOpen(true)} className='p-2 text-destructive hover:bg-destructive/10 rounded-full transition-all hover:scale-105 active:scale-95' title='Remove from library'>
-              <DeleteIcon size={16} />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Preview Dialog */}
-      <TailwindDialog
+      <TemplatePreviewDialog
         open={previewDialogOpen}
         onClose={() => {
           setPreviewDialogOpen(false);
-          setZoom(1);
           onClose?.();
         }}
-        maxWidthClass="max-w-6xl"
-        title={
-          <div className="flex items-center gap-3">
-            <span>{template.name} - Preview</span>
-            {allTemplates.length > 1 && (
-              <span className="text-sm font-medium text-muted-foreground">({currentIndex + 1} / {allTemplates.length})</span>
-            )}
-          </div>
-        }
-        headerExtra={
-          <div className='flex gap-4 items-center ml-auto'>
-            {allTemplates.length > 1 && onNavigate && (
-              <div className='flex bg-muted rounded-lg p-1'>
-                <button onClick={() => handleNavigation("prev")} className='p-1.5 hover:bg-background rounded-md transition-colors text-foreground' title='Previous template (←)'>
-                  <ArrowBackIcon size={18} />
-                </button>
-                <button onClick={() => handleNavigation("next")} className='p-1.5 hover:bg-background rounded-md transition-colors text-foreground' title='Next template (→)'>
-                  <ArrowForwardIcon size={18} />
-                </button>
-              </div>
-            )}
-            <div className='flex bg-muted rounded-lg p-1 items-center'>
-              <button disabled={zoom <= 0.25} onClick={() => setZoom((z) => Math.max(0.25, z - 0.1))} className='p-1.5 hover:bg-background rounded-md transition-colors text-foreground disabled:opacity-50' title='Zoom out (-)'>
-                <RemoveIcon size={18} />
-              </button>
-              <button disabled={zoom === 1} onClick={() => setZoom(1)} className='p-1.5 hover:bg-background rounded-md transition-colors text-foreground disabled:opacity-50' title='Reset zoom (R)'>
-                <RestartAltIcon size={18} />
-              </button>
-              <span className='px-3 text-sm font-semibold text-foreground min-w-[4.5rem] text-center'>
-                {Math.round(zoom * 100)}%
-              </span>
-              <button disabled={zoom >= 3} onClick={() => setZoom((z) => Math.min(3, z + 0.1))} className='p-1.5 hover:bg-background rounded-md transition-colors text-foreground disabled:opacity-50' title='Zoom in (+)'>
-                <AddIcon size={18} />
-              </button>
-            </div>
-            {/* The ResponsiveToolbar needs to be placed or adapted. We'll render it here. */}
-            <ResponsiveToolbar
-              width={viewportWidth}
-              onWidthChange={setViewportWidth}
-              orientation={viewportOrientation}
-              onOrientationChange={setViewportOrientation}
-            />
-          </div>
-        }
-        actionsRow={
-          <div className='w-full flex justify-between items-center'>
-            <p className='text-xs text-muted-foreground font-medium'>
-              💡 Tip: Use <strong className='text-foreground'>←/→</strong> to navigate, <strong className='text-foreground'>+/-</strong> to zoom, <strong className='text-foreground'>R</strong> to reset, or <strong className='text-foreground'>Ctrl+Scroll</strong> to zoom
-            </p>
-            <button onClick={() => { setPreviewDialogOpen(false); setZoom(1); onClose?.(); }} className='px-5 py-2.5 text-sm font-bold bg-muted hover:bg-muted/80 text-foreground rounded-xl transition-all'>
-              Close
-            </button>
-          </div>
-        }
-      >
-        {loading && !previewHtml ? (
-          <div className='flex justify-center items-center p-12'>
-            <span className='font-medium text-muted-foreground'>Loading...</span>
-          </div>
-        ) : previewHtml ? (
-          <div 
-            ref={scrollContainerRef}
-            className='overflow-auto max-h-[70vh] flex justify-center items-start p-6 bg-muted/20 rounded-xl'
-          >
-            <ResizablePreview width={viewportWidth} onWidthChange={setViewportWidth} zoom={zoom}>
-              <iframe
-                key={`dialog-preview-${template.id}-${renderKey}`}
-                srcDoc={sanitizePreviewHtml(previewHtml)}
-                title={`Preview of ${template.name}`}
-                className='w-full h-[70vh] min-h-[500px] border-none rounded-lg bg-background'
-              />
-            </ResizablePreview>
-          </div>
-        ) : null}
-      </TailwindDialog>
+        template={template}
+        previewHtml={previewHtml}
+        loading={loading}
+        previewConfig={previewConfig}
+        allTemplates={allTemplates}
+        currentIndex={currentIndex}
+        onNavigate={onNavigate}
+        renderKey={renderKey}
+        savedScrollPositionProp={savedScrollPositionProp}
+      />
 
       {/* Code Dialog */}
-      <TailwindDialog
+      <Modal
         open={codeDialogOpen}
         onClose={() => { setCodeDialogOpen(false); setCodeContent(""); }}
         maxWidthClass="max-w-5xl"
@@ -907,10 +559,10 @@ function TemplateItem({
         <p className='text-xs text-muted-foreground font-medium mt-3'>
           💡 Tip: Use <strong className='text-foreground'>Ctrl+F</strong> / <strong className='text-foreground'>Cmd+F</strong> to search, <strong className='text-foreground'>Ctrl+Shift+[</strong> / <strong className='text-foreground'>Cmd+Shift+[</strong> to fold code blocks
         </p>
-      </TailwindDialog>
+      </Modal>
 
       {/* Edit Dialog */}
-      <TailwindDialog
+      <Modal
         open={editDialogOpen}
         onClose={() => setEditDialogOpen(false)}
         maxWidthClass="max-w-xl"
@@ -953,10 +605,10 @@ function TemplateItem({
             </p>
           </div>
         </div>
-      </TailwindDialog>
+      </Modal>
 
-      {/* Delete Confirmation Dialog */}
-      <TailwindDialog
+      {/* Delete Dialog */}
+      <Modal
         open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
         maxWidthClass="max-w-md"
@@ -979,7 +631,7 @@ function TemplateItem({
           This will not delete the file from your system. The file will remain at: <br/>
           <code className='bg-muted px-1.5 py-0.5 rounded text-xs mt-1 block break-all font-mono border border-border/50'>{template.filePath}</code>
         </p>
-      </TailwindDialog>
+      </Modal>
 
       {/* Simple Tailwind Snackbar Replacement */}
       {snackbar.open && typeof document !== 'undefined' && createPortal(
