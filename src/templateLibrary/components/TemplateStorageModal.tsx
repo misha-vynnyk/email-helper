@@ -3,26 +3,11 @@
  * Manage storage locations for template synchronization with add/remove capabilities
  */
 
+import { Plus as AddIcon, X as CloseIcon, Trash2 as DeleteIcon, FolderOpen, Star as StarIcon, Eye as VisibilityIcon, EyeOff as VisibilityOffIcon } from "lucide-react";
 import { useState } from "react";
 import Modal from "./Modal";
-import {
-  FolderOpen,
-  Plus as AddIcon,
-  X as CloseIcon,
-  Trash2 as DeleteIcon,
-  Star as StarIcon,
-  Eye as VisibilityIcon,
-  EyeOff as VisibilityOffIcon,
-} from "lucide-react";
 
-import {
-  addTemplateStorageLocation,
-  getTemplateStorageLocations,
-  removeTemplateStorageLocation,
-  setDefaultTemplateLocation,
-  TemplateStorageLocation,
-  toggleTemplateLocationVisibility,
-} from "../utils/templateStorageConfig";
+import { addTemplateStorageLocation, getTemplateStorageLocations, removeTemplateStorageLocation, setDefaultTemplateLocation, TemplateStorageLocation, toggleTemplateLocationVisibility } from "../utils/templateStorageConfig";
 
 interface TemplateStorageModalProps {
   open: boolean;
@@ -31,9 +16,7 @@ interface TemplateStorageModalProps {
 }
 
 export default function TemplateStorageModal({ open, onClose, onSave }: TemplateStorageModalProps) {
-  const [locations, setLocations] = useState<TemplateStorageLocation[]>(
-    getTemplateStorageLocations(true)
-  );
+  const [locations, setLocations] = useState<TemplateStorageLocation[]>(getTemplateStorageLocations(true));
   const [newLocationName, setNewLocationName] = useState("");
   const [newLocationPath, setNewLocationPath] = useState("");
   const [newLocationDescription, setNewLocationDescription] = useState("");
@@ -122,101 +105,70 @@ export default function TemplateStorageModal({ open, onClose, onSave }: Template
     <Modal
       open={open}
       onClose={handleClose}
-      maxWidthClass="max-w-3xl"
+      maxWidthClass='max-w-3xl'
       title={
-        <div className="flex flex-col">
+        <div className='flex flex-col'>
           <span>Template Storage Locations</span>
-          <span className="text-xs text-muted-foreground mt-0.5 font-medium">Manage directories for template synchronization</span>
+          <span className='text-xs text-muted-foreground mt-0.5 font-medium'>Manage directories for template synchronization</span>
         </div>
       }
       actionsRow={
         <>
-          <button onClick={handleClose} className="px-5 py-2.5 text-sm font-bold bg-muted hover:bg-muted/80 text-foreground rounded-xl transition-all">
+          <button onClick={handleClose} className='px-5 py-2.5 text-sm font-bold bg-muted hover:bg-muted/80 text-foreground rounded-xl transition-all'>
             Cancel
           </button>
-          <button 
-            onClick={handleSave} 
-            disabled={visibleLocations.length === 0}
-            className="px-5 py-2.5 text-sm font-bold bg-primary hover:brightness-110 text-primary-foreground rounded-xl transition-all shadow-sm disabled:opacity-50"
-          >
+          <button onClick={handleSave} disabled={visibleLocations.length === 0} className='px-5 py-2.5 text-sm font-bold bg-primary hover:brightness-110 text-primary-foreground rounded-xl transition-all shadow-sm disabled:opacity-50'>
             Save Configuration
           </button>
         </>
-      }
-    >
+      }>
       {error && (
-        <div className="mb-4 p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive flex justify-between items-start">
-          <p className="text-sm font-bold">{error}</p>
-          <button onClick={() => setError(null)} className="p-1 hover:bg-destructive/20 rounded-lg transition-colors"><CloseIcon size={16}/></button>
+        <div className='mb-4 p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive flex justify-between items-start'>
+          <p className='text-sm font-bold'>{error}</p>
+          <button onClick={() => setError(null)} className='p-1 hover:bg-destructive/20 rounded-lg transition-colors'>
+            <CloseIcon size={16} />
+          </button>
         </div>
       )}
 
       {saved && (
-        <div className="mb-4 p-4 rounded-xl bg-[#10b981]/10 border border-[#10b981]/20 text-[#10b981] flex items-start">
-          <p className="text-sm font-bold">Configuration saved successfully!</p>
+        <div className='mb-4 p-4 rounded-xl bg-[#10b981]/10 border border-[#10b981]/20 text-[#10b981] flex items-start'>
+          <p className='text-sm font-bold'>Configuration saved successfully!</p>
         </div>
       )}
 
-      <div className="mb-6">
-        <h3 className="text-sm font-extrabold text-foreground mb-3">Configured Locations ({locations.length})</h3>
+      <div className='mb-6'>
+        <h3 className='text-sm font-extrabold text-foreground mb-3'>Configured Locations ({locations.length})</h3>
 
         {locations.length === 0 ? (
-          <div className="p-4 rounded-xl bg-muted/30 border border-border/50 text-foreground">
-            <p className="text-sm">No storage locations configured. Add a location to enable template synchronization.</p>
+          <div className='p-4 rounded-xl bg-muted/30 border border-border/50 text-foreground'>
+            <p className='text-sm'>No storage locations configured. Add a location to enable template synchronization.</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className='space-y-3'>
             {locations.map((location) => (
-              <div 
-                key={location.id} 
-                className={`flex flex-col sm:flex-row gap-4 justify-between p-4 border rounded-xl transition-all ${
-                  location.isHidden ? 'bg-muted/10 border-border opacity-70' : 'bg-card border-border/50 hover:border-border hover:shadow-sm'
-                }`}
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+              <div key={location.id} className={`flex flex-col sm:flex-row gap-4 justify-between p-4 border rounded-xl transition-all ${location.isHidden ? "bg-muted/10 border-border opacity-70" : "bg-card border-border/50 hover:border-border hover:shadow-sm"}`}>
+                <div className='flex-1 min-w-0'>
+                  <div className='flex items-center gap-2 mb-1.5 flex-wrap'>
                     <FolderOpen size={16} className={location.isHidden ? "text-muted-foreground" : "text-primary"} />
-                    <span className={`text-sm font-bold text-foreground ${location.isHidden ? 'line-through' : ''}`}>{location.name}</span>
-                    {location.isDefault && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary text-primary-foreground tracking-wider uppercase">Default</span>
-                    )}
-                    {location.isHidden && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border border-input text-muted-foreground tracking-wider uppercase">Hidden</span>
-                    )}
+                    <span className={`text-sm font-bold text-foreground ${location.isHidden ? "line-through" : ""}`}>{location.name}</span>
+                    {location.isDefault && <span className='px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary text-primary-foreground tracking-wider uppercase'>Default</span>}
+                    {location.isHidden && <span className='px-2 py-0.5 rounded-full text-[10px] font-bold border border-input text-muted-foreground tracking-wider uppercase'>Hidden</span>}
                   </div>
-                  <p className="text-xs text-muted-foreground font-mono break-all">{location.path}</p>
-                  {location.description && (
-                    <p className="text-xs text-muted-foreground mt-1 font-medium">{location.description}</p>
-                  )}
+                  <p className='text-xs text-muted-foreground font-mono break-all'>{location.path}</p>
+                  {location.description && <p className='text-xs text-muted-foreground mt-1 font-medium'>{location.description}</p>}
                 </div>
-                
-                <div className="flex items-center gap-1">
-                  <button 
-                    onClick={() => handleToggleVisibility(location.id)} 
-                    title={location.isHidden ? "Show" : "Hide"}
-                    className="p-2 text-muted-foreground hover:bg-muted hover:text-foreground rounded-lg transition-colors"
-                  >
+
+                <div className='flex items-center gap-1'>
+                  <button onClick={() => handleToggleVisibility(location.id)} title={location.isHidden ? "Show" : "Hide"} className='p-2 text-muted-foreground hover:bg-muted hover:text-foreground rounded-lg transition-colors'>
                     {location.isHidden ? <VisibilityOffIcon size={18} /> : <VisibilityIcon size={18} />}
                   </button>
-                  
-                  <button 
-                    onClick={() => handleSetDefault(location.id)} 
-                    disabled={location.isDefault || location.isHidden}
-                    title={location.isDefault ? "Default location" : "Set as default"}
-                    className={`p-2 rounded-lg transition-colors ${
-                      location.isDefault 
-                        ? 'text-primary' 
-                        : 'text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50'
-                    }`}
-                  >
+
+                  <button onClick={() => handleSetDefault(location.id)} disabled={location.isDefault || location.isHidden} title={location.isDefault ? "Default location" : "Set as default"} className={`p-2 rounded-lg transition-colors ${location.isDefault ? "text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"}`}>
                     <StarIcon size={18} fill={location.isDefault ? "currentColor" : "none"} />
                   </button>
-                  
-                  <button 
-                    onClick={() => handleRemoveLocation(location.id)}
-                    title="Remove location"
-                    className="p-2 text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-                  >
+
+                  <button onClick={() => handleRemoveLocation(location.id)} title='Remove location' className='p-2 text-destructive hover:bg-destructive/10 rounded-lg transition-colors'>
                     <DeleteIcon size={18} />
                   </button>
                 </div>
@@ -227,56 +179,31 @@ export default function TemplateStorageModal({ open, onClose, onSave }: Template
       </div>
 
       {!showAddForm ? (
-        <button
-          onClick={() => setShowAddForm(true)}
-          className="w-full flex justify-center items-center gap-2 px-4 py-3 text-sm font-bold border-2 border-input bg-background hover:bg-muted text-foreground rounded-xl transition-all active:scale-95"
-        >
+        <button onClick={() => setShowAddForm(true)} className='w-full flex justify-center items-center gap-2 px-4 py-3 text-sm font-bold border-2 border-input bg-background hover:bg-muted text-foreground rounded-xl transition-all active:scale-95'>
           <AddIcon size={18} strokeWidth={2.5} /> Add New Location
         </button>
       ) : (
-        <div className="p-5 border border-border/50 bg-muted/10 rounded-xl space-y-4">
-          <h3 className="text-sm font-extrabold text-foreground">Add New Location</h3>
-          
+        <div className='p-5 border border-border/50 bg-muted/10 rounded-xl space-y-4'>
+          <h3 className='text-sm font-extrabold text-foreground'>Add New Location</h3>
+
           <div>
-            <label className="block text-xs font-semibold text-muted-foreground mb-1">Location Name</label>
-            <input
-              type="text"
-              value={newLocationName}
-              onChange={(e) => setNewLocationName(e.target.value)}
-              placeholder="e.g., Project Templates"
-              className="w-full px-4 py-2.5 text-sm rounded-xl border-2 border-input bg-background focus:border-primary focus:ring-4 focus:ring-primary/10 text-foreground transition-all outline-none"
-              autoFocus
-            />
+            <label className='block text-xs font-semibold text-muted-foreground mb-1'>Location Name</label>
+            <input type='text' value={newLocationName} onChange={(e) => setNewLocationName(e.target.value)} placeholder='e.g., Project Templates' className='w-full px-4 py-2.5 text-sm rounded-xl border-2 border-input bg-background focus:border-primary focus:ring-4 focus:ring-primary/10 text-foreground transition-all outline-none' autoFocus />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-muted-foreground mb-1">Directory Path</label>
-            <input
-              type="text"
-              value={newLocationPath}
-              onChange={(e) => setNewLocationPath(e.target.value)}
-              placeholder="/Users/your-name/Documents/templates"
-              className="w-full px-4 py-2.5 text-sm rounded-xl border-2 border-input bg-background focus:border-primary focus:ring-4 focus:ring-primary/10 text-foreground transition-all outline-none"
-            />
-            <p className="text-[11px] text-muted-foreground mt-1.5 font-medium ml-1">Must be an absolute path (starting with /)</p>
+            <label className='block text-xs font-semibold text-muted-foreground mb-1'>Directory Path</label>
+            <input type='text' value={newLocationPath} onChange={(e) => setNewLocationPath(e.target.value)} placeholder='/Users/your-name/Documents/templates' className='w-full px-4 py-2.5 text-sm rounded-xl border-2 border-input bg-background focus:border-primary focus:ring-4 focus:ring-primary/10 text-foreground transition-all outline-none' />
+            <p className='text-[11px] text-muted-foreground mt-1.5 font-medium ml-1'>Must be an absolute path (starting with /)</p>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-muted-foreground mb-1">Description (Optional)</label>
-            <input
-              type="text"
-              value={newLocationDescription}
-              onChange={(e) => setNewLocationDescription(e.target.value)}
-              placeholder="Additional notes about this location"
-              className="w-full px-4 py-2.5 text-sm rounded-xl border-2 border-input bg-background focus:border-primary focus:ring-4 focus:ring-primary/10 text-foreground transition-all outline-none"
-            />
+            <label className='block text-xs font-semibold text-muted-foreground mb-1'>Description (Optional)</label>
+            <input type='text' value={newLocationDescription} onChange={(e) => setNewLocationDescription(e.target.value)} placeholder='Additional notes about this location' className='w-full px-4 py-2.5 text-sm rounded-xl border-2 border-input bg-background focus:border-primary focus:ring-4 focus:ring-primary/10 text-foreground transition-all outline-none' />
           </div>
 
-          <div className="flex gap-2 pt-2">
-            <button
-              onClick={handleAddLocation}
-              className="flex-1 px-4 py-2.5 text-sm font-bold bg-primary hover:brightness-110 text-primary-foreground rounded-xl transition-all shadow-sm"
-            >
+          <div className='flex gap-2 pt-2'>
+            <button onClick={handleAddLocation} className='flex-1 px-4 py-2.5 text-sm font-bold bg-primary hover:brightness-110 text-primary-foreground rounded-xl transition-all shadow-sm'>
               Add Location
             </button>
             <button
@@ -287,8 +214,7 @@ export default function TemplateStorageModal({ open, onClose, onSave }: Template
                 setNewLocationDescription("");
                 setError(null);
               }}
-              className="flex-1 px-4 py-2.5 text-sm font-bold bg-muted hover:bg-muted/80 text-foreground rounded-xl transition-all"
-            >
+              className='flex-1 px-4 py-2.5 text-sm font-bold bg-muted hover:bg-muted/80 text-foreground rounded-xl transition-all'>
               Cancel
             </button>
           </div>

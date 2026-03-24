@@ -1,15 +1,9 @@
+import { Plus as AddIcon, ArrowLeft as ArrowBackIcon, ArrowRight as ArrowForwardIcon, Minus as RemoveIcon, RefreshCcw as RestartAltIcon } from "lucide-react";
 import React, { useEffect, useState } from "react";
-import {
-  ArrowLeft as ArrowBackIcon,
-  ArrowRight as ArrowForwardIcon,
-  Minus as RemoveIcon,
-  RefreshCcw as RestartAltIcon,
-  Plus as AddIcon,
-} from "lucide-react";
 
 import { EmailTemplate } from "../../types/template";
+import { filterMarkedSections, keepOnlyMarkedSections } from "../utils/htmlSectionFilter";
 import { PreviewConfig } from "./PreviewSettings";
-import { filterMarkedSections } from "../utils/htmlSectionFilter";
 
 import Modal from "./Modal";
 import ResizablePreview from "./ResizablePreview";
@@ -42,25 +36,15 @@ interface TemplatePreviewDialogProps {
   renderKey: number;
   /** Optionally pass a scroll position to restore to upon reopening the dialog */
   savedScrollPositionProp?: number;
+  /** Optionally pass a block name to preview specifically */
+  focusedBlock?: string;
 }
 
 /**
  * Component responsible for managing the full-screen expanded preview dialog of a template.
  * Manages its own zooming, container resize, scroll restoration, and navigation states.
  */
-export default function TemplatePreviewDialog({
-  open,
-  onClose,
-  template,
-  previewHtml,
-  loading,
-  previewConfig,
-  allTemplates,
-  currentIndex,
-  onNavigate,
-  renderKey,
-  savedScrollPositionProp = 0,
-}: TemplatePreviewDialogProps) {
+export default function TemplatePreviewDialog({ open, onClose, template, previewHtml, loading, previewConfig, allTemplates, currentIndex, onNavigate, renderKey, savedScrollPositionProp = 0, focusedBlock }: TemplatePreviewDialogProps) {
   const [zoom, setZoom] = useState(1);
   const [viewportWidth, setViewportWidth] = useState<number | "responsive">(600);
   const [viewportOrientation, setViewportOrientation] = useState<"portrait" | "landscape">("portrait");
@@ -101,20 +85,18 @@ export default function TemplatePreviewDialog({
   }, [previewHtml, open, loading, savedScrollPositionProp, previewConfig.saveScrollPosition]);
 
   const handleNavigation = (direction: "prev" | "next") => {
-    const currentScrollPos = previewConfig.saveScrollPosition
-      ? scrollContainerRef.current?.scrollTop || 0
-      : 0;
+    const currentScrollPos = previewConfig.saveScrollPosition ? scrollContainerRef.current?.scrollTop || 0 : 0;
     onNavigate?.(direction, currentScrollPos);
   };
 
-  // Keyboard shortcut listeners 
+  // Keyboard shortcut listeners
   useEffect(() => {
     if (!open) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       // Avoid firing combinations inside input boxes generally handled automatically
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      
+
       if (e.key === "ArrowLeft" && onNavigate) {
         e.preventDefault();
         handleNavigation("prev");
@@ -165,6 +147,11 @@ export default function TemplatePreviewDialog({
     if (previewConfig.hiddenSections && previewConfig.hiddenSections.length > 0) {
       sanitized = filterMarkedSections(sanitized, previewConfig.hiddenSections);
     }
+    
+    // IF focused block is active, apply the filter
+    if (focusedBlock && focusedBlock !== "All") {
+      sanitized = keepOnlyMarkedSections(sanitized, [focusedBlock]);
+    }
 
     sanitized = sanitized.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "");
     sanitized = sanitized.replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, "");
@@ -183,12 +170,14 @@ export default function TemplatePreviewDialog({
     <Modal
       open={open}
       onClose={handleClose}
-      maxWidthClass="max-w-6xl"
+      maxWidthClass='max-w-6xl'
       title={
-        <div className="flex items-center gap-3">
+        <div className='flex items-center gap-3'>
           <span>{template.name} - Preview</span>
           {allTemplates.length > 1 && (
-            <span className="text-sm font-medium text-muted-foreground">({currentIndex + 1} / {allTemplates.length})</span>
+            <span className='text-sm font-medium text-muted-foreground'>
+              ({currentIndex + 1} / {allTemplates.length})
+            </span>
           )}
         </div>
       }
@@ -211,19 +200,12 @@ export default function TemplatePreviewDialog({
             <button disabled={zoom === 1} onClick={() => setZoom(1)} className='p-1.5 hover:bg-background rounded-md transition-colors text-foreground disabled:opacity-50' title='Reset zoom (R)'>
               <RestartAltIcon size={18} />
             </button>
-            <span className='px-3 text-sm font-semibold text-foreground min-w-[4.5rem] text-center'>
-              {Math.round(zoom * 100)}%
-            </span>
+            <span className='px-3 text-sm font-semibold text-foreground min-w-[4.5rem] text-center'>{Math.round(zoom * 100)}%</span>
             <button disabled={zoom >= 3} onClick={() => setZoom((z) => Math.min(3, z + 0.1))} className='p-1.5 hover:bg-background rounded-md transition-colors text-foreground disabled:opacity-50' title='Zoom in (+)'>
               <AddIcon size={18} />
             </button>
           </div>
-          <ResponsiveToolbar
-            width={viewportWidth}
-            onWidthChange={setViewportWidth}
-            orientation={viewportOrientation}
-            onOrientationChange={setViewportOrientation}
-          />
+          <ResponsiveToolbar width={viewportWidth} onWidthChange={setViewportWidth} orientation={viewportOrientation} onOrientationChange={setViewportOrientation} />
         </div>
       }
       actionsRow={
@@ -235,24 +217,15 @@ export default function TemplatePreviewDialog({
             Close
           </button>
         </div>
-      }
-    >
+      }>
       {loading && !previewHtml ? (
         <div className='flex justify-center items-center p-12'>
           <span className='font-medium text-muted-foreground'>Loading...</span>
         </div>
       ) : previewHtml ? (
-        <div 
-          ref={scrollContainerRef}
-          className='overflow-auto max-h-[70vh] flex justify-center items-start p-6 bg-muted/20 rounded-xl'
-        >
+        <div ref={scrollContainerRef} className='overflow-auto max-h-[70vh] flex justify-center items-start p-6 bg-muted/20 rounded-xl'>
           <ResizablePreview width={viewportWidth} onWidthChange={setViewportWidth} zoom={zoom}>
-            <iframe
-              key={`dialog-preview-${template.id}-${renderKey}`}
-              srcDoc={sanitizePreviewHtml(previewHtml)}
-              title={`Preview of ${template.name}`}
-              className='w-full h-[70vh] min-h-[500px] border-none rounded-lg bg-background'
-            />
+            <iframe key={`dialog-preview-${template.id}-${renderKey}`} srcDoc={sanitizePreviewHtml(previewHtml)} title={`Preview of ${template.name}`} className='w-full h-[70vh] min-h-[500px] border-none rounded-lg bg-background' />
           </ResizablePreview>
         </div>
       ) : null}

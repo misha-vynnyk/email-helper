@@ -4,8 +4,8 @@
  * Uses react-window v2 API
  */
 
-import { useMemo } from "react";
 import type { CSSProperties, ReactElement } from "react";
+import { useMemo } from "react";
 
 import { VirtualList } from "../../components/VirtualList";
 import { useContainerDimensions } from "../../hooks";
@@ -17,6 +17,7 @@ interface VirtualizedTemplateGridProps {
   templates: EmailTemplate[];
   previewConfig: PreviewConfig;
   openTemplateId: string | null;
+  focusedBlock?: string;
   onDelete: (templateId: string) => void;
   onUpdate: (template: EmailTemplate) => void;
   onOpen: (templateId: string) => void;
@@ -36,6 +37,7 @@ interface RowProps {
   columns: number;
   previewConfig: PreviewConfig;
   openTemplateId: string | null;
+  focusedBlock?: string;
   onDelete: (templateId: string) => void;
   onUpdate: (template: EmailTemplate) => void;
   onOpen: (templateId: string) => void;
@@ -52,6 +54,7 @@ function RowComponent({
   columns,
   previewConfig,
   openTemplateId,
+  focusedBlock,
   onDelete,
   onUpdate,
   onOpen,
@@ -84,39 +87,13 @@ function RowComponent({
     <div style={adjustedStyle}>
       {rowItems.map((template, colIndex) => {
         const globalIndex = startIndex + colIndex;
-        return (
-          <TemplateItem
-            key={template.id}
-            template={template}
-            previewConfig={previewConfig}
-            onDelete={onDelete}
-            onUpdate={onUpdate}
-            onLoadTemplate={() => {}}
-            isOpen={openTemplateId === template.id}
-            onOpen={() => onOpen(template.id)}
-            onClose={onClose}
-            allTemplates={templates}
-            currentIndex={globalIndex}
-            onNavigate={onNavigate}
-            savedScrollPosition={savedScrollPosition}
-          />
-        );
+        return <TemplateItem key={template.id} template={template} previewConfig={previewConfig} focusedBlock={focusedBlock} onDelete={onDelete} onUpdate={onUpdate} onLoadTemplate={() => {}} isOpen={openTemplateId === template.id} onOpen={() => onOpen(template.id)} onClose={onClose} allTemplates={templates} currentIndex={globalIndex} onNavigate={onNavigate} savedScrollPosition={savedScrollPosition} />;
       })}
     </div>
   );
 }
 
-export default function VirtualizedTemplateGrid({
-  templates,
-  previewConfig,
-  openTemplateId,
-  onDelete,
-  onUpdate,
-  onOpen,
-  onClose,
-  onNavigate,
-  savedScrollPosition,
-}: VirtualizedTemplateGridProps) {
+export default function VirtualizedTemplateGrid({ templates, previewConfig, openTemplateId, focusedBlock, onDelete, onUpdate, onOpen, onClose, onNavigate, savedScrollPosition }: VirtualizedTemplateGridProps) {
   // Використовуємо кастомний хук для відстеження розміру контейнера
   const [containerRef, dimensions] = useContainerDimensions();
 
@@ -142,6 +119,7 @@ export default function VirtualizedTemplateGrid({
       columns,
       previewConfig,
       openTemplateId,
+      focusedBlock,
       onDelete,
       onUpdate,
       onOpen,
@@ -149,7 +127,7 @@ export default function VirtualizedTemplateGrid({
       onNavigate,
       savedScrollPosition,
     }),
-    [templates, columns, previewConfig, openTemplateId, onDelete, onUpdate, onOpen, onClose, onNavigate, savedScrollPosition]
+    [templates, columns, previewConfig, openTemplateId, focusedBlock, onDelete, onUpdate, onOpen, onClose, onNavigate, savedScrollPosition]
   );
 
   if (templates.length === 0) {
@@ -157,18 +135,8 @@ export default function VirtualizedTemplateGrid({
   }
 
   return (
-    <div ref={containerRef} className="w-full h-full" style={{ paddingTop: `${GAP}px` }}>
-      {dimensions.width > 0 && dimensions.height > 0 && (
-        <VirtualList
-          listKey={`${previewConfig.containerHeight}-${columns}`}
-          rowComponent={RowComponent}
-          rowCount={rowCount}
-          rowHeight={rowHeight}
-          rowProps={rowProps}
-          overscanCount={2}
-          style={{ height: dimensions.height - GAP, width: dimensions.width }}
-        />
-      )}
+    <div ref={containerRef} className='w-full h-full' style={{ paddingTop: `${GAP}px` }}>
+      {dimensions.width > 0 && dimensions.height > 0 && <VirtualList listKey={`${previewConfig.containerHeight}-${columns}`} rowComponent={RowComponent} rowCount={rowCount} rowHeight={rowHeight} rowProps={rowProps} overscanCount={2} style={{ height: dimensions.height - GAP, width: dimensions.width }} />}
     </div>
   );
 }

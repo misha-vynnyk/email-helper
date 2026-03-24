@@ -11,29 +11,20 @@ import { STORAGE_KEYS } from "../../utils/storageKeys";
 export interface TemplateStorageLocation extends StorageLocation {}
 
 // Create singleton instance for template storage
-const templateStorageManager = new StorageConfigManager<TemplateStorageLocation>(
-  STORAGE_KEYS.TEMPLATE_STORAGE_LOCATIONS,
-  "TemplateStorage"
-);
+const templateStorageManager = new StorageConfigManager<TemplateStorageLocation>(STORAGE_KEYS.TEMPLATE_STORAGE_LOCATIONS, "TemplateStorage");
 
 /**
  * Get all storage locations from localStorage
  * @param includeHidden - If true, return all locations including hidden ones
  */
-export function getTemplateStorageLocations(
-  includeHidden: boolean = false
-): TemplateStorageLocation[] {
+export function getTemplateStorageLocations(includeHidden: boolean = false): TemplateStorageLocation[] {
   return templateStorageManager.getLocations(includeHidden);
 }
 
 /**
  * Add a new storage location
  */
-export function addTemplateStorageLocation(
-  name: string,
-  path: string,
-  description?: string
-): TemplateStorageLocation[] {
+export function addTemplateStorageLocation(name: string, path: string, description?: string): TemplateStorageLocation[] {
   return templateStorageManager.addLocation(name, path, description);
 }
 

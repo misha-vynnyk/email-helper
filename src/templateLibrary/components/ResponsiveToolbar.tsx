@@ -1,5 +1,5 @@
-import React from "react";
 import { RotateCw as RotateIcon } from "lucide-react";
+import React from "react";
 
 export interface ViewportPreset {
   name: string;
@@ -23,15 +23,8 @@ interface ResponsiveToolbarProps {
   onOrientationChange: (orientation: "portrait" | "landscape") => void;
 }
 
-export default function ResponsiveToolbar({
-  width,
-  onWidthChange,
-  orientation,
-  onOrientationChange,
-}: ResponsiveToolbarProps) {
-  const [customWidth, setCustomWidth] = React.useState<number>(
-    typeof width === "number" ? width : 600
-  );
+export default function ResponsiveToolbar({ width, onWidthChange, orientation, onOrientationChange }: ResponsiveToolbarProps) {
+  const [customWidth, setCustomWidth] = React.useState<number>(typeof width === "number" ? width : 600);
 
   const handlePresetChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const value = event.target.value;
@@ -88,64 +81,45 @@ export default function ResponsiveToolbar({
   };
 
   return (
-    <div className="flex items-center gap-3">
+    <div className='flex items-center gap-3'>
       {/* Preset Selector */}
-      <div className="relative">
-        <select
-          value={getCurrentPreset()}
-          onChange={handlePresetChange}
-          className="pl-3 pr-8 py-1.5 text-sm font-semibold rounded-lg border-2 border-input bg-background focus:border-primary focus:ring-2 focus:ring-primary/10 text-foreground transition-all outline-none appearance-none cursor-pointer min-w-[140px]"
-        >
-          <option value="responsive">Responsive</option>
+      <div className='relative'>
+        <select value={getCurrentPreset()} onChange={handlePresetChange} className='pl-3 pr-8 py-1.5 text-sm font-semibold rounded-lg border-2 border-input bg-background focus:border-primary focus:ring-2 focus:ring-primary/10 text-foreground transition-all outline-none appearance-none cursor-pointer min-w-[140px]'>
+          <option value='responsive'>Responsive</option>
           {VIEWPORT_PRESETS.map((preset) => (
             <option key={preset.name} value={preset.name}>
               {preset.name} ({orientation === "portrait" ? preset.width : preset.height}px)
             </option>
           ))}
-          <option value="custom">Custom</option>
+          <option value='custom'>Custom</option>
         </select>
-        <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        <div className='absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground'>
+          <svg width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='3' strokeLinecap='round' strokeLinejoin='round'>
+            <path d='m6 9 6 6 6-6' />
+          </svg>
         </div>
       </div>
 
       {/* Width Input */}
       {width !== "responsive" && (
         <>
-          <div className="relative flex items-center">
-            <input
-              type="number"
-              value={customWidth}
-              onChange={handleCustomWidthChange}
-              className="w-20 pl-3 pr-6 py-1.5 text-sm font-semibold rounded-lg border-2 border-input bg-background focus:border-primary focus:ring-2 focus:ring-primary/10 text-foreground transition-all outline-none"
-            />
-            <span className="absolute right-2 text-xs font-bold text-muted-foreground pointer-events-none">
-              px
-            </span>
+          <div className='relative flex items-center'>
+            <input type='number' value={customWidth} onChange={handleCustomWidthChange} className='w-20 pl-3 pr-6 py-1.5 text-sm font-semibold rounded-lg border-2 border-input bg-background focus:border-primary focus:ring-2 focus:ring-primary/10 text-foreground transition-all outline-none' />
+            <span className='absolute right-2 text-xs font-bold text-muted-foreground pointer-events-none'>px</span>
           </div>
 
           {/* Orientation Toggle */}
-          <button
-            onClick={toggleOrientation}
-            title={`Rotate viewport to ${orientation === "portrait" ? "landscape" : "portrait"}`}
-            className="p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground rounded-lg transition-colors"
-          >
+          <button onClick={toggleOrientation} title={`Rotate viewport to ${orientation === "portrait" ? "landscape" : "portrait"}`} className='p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground rounded-lg transition-colors'>
             <RotateIcon size={16} strokeWidth={2.5} />
           </button>
 
           {/* Orientation Label */}
-          <span className="text-xs font-bold text-muted-foreground min-w-[60px]">
-            {orientation === "portrait" ? "Portrait" : "Landscape"}
-          </span>
+          <span className='text-xs font-bold text-muted-foreground min-w-[60px]'>{orientation === "portrait" ? "Portrait" : "Landscape"}</span>
         </>
       )}
 
       {/* Current Dimensions Display */}
-      {width !== "responsive" && (
-        <span className="text-xs font-bold text-primary tracking-wide">
-          {customWidth} × auto
-        </span>
-      )}
+      {width !== "responsive" && <span className='text-xs font-bold text-primary tracking-wide'>{customWidth} × auto</span>}
     </div>
   );
 }

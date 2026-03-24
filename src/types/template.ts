@@ -15,6 +15,7 @@ export interface EmailTemplate {
   folderPath?: string; // Parent folder name(s) for organization
   category: TemplateCategory;
   tags: string[]; // For search functionality
+  blocks?: string[]; // Detected block names (sections) inside the template
   description?: string; // Optional description
   thumbnail?: string; // Base64 or URL to preview image
   preview?: string; // Optional cached preview HTML/text (used for preloading images)

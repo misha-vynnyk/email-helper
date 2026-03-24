@@ -23,6 +23,7 @@ export interface EmailTemplate {
   folderPath?: string; // Parent folder name(s) for organization
   category: TemplateCategory;
   tags: string[];
+  blocks?: string[]; // Detected block names
   description?: string;
   thumbnail?: string; // Base64 or URL
   fileSize: number; // In bytes
@@ -163,6 +164,10 @@ export class TemplateManager {
 
       // Get file stats
       const stats = statSync(normalizedPath);
+      
+      // Read content to extract blocks
+      const content = await fs.readFile(normalizedPath, "utf-8");
+      const blocks = this.extractBlocks(content);
 
       // Check if already exists
       const existing = this.metadata.templates.find((t) => t.filePath === normalizedPath);
@@ -179,6 +184,7 @@ export class TemplateManager {
         folderPath: metadata.folderPath, // Parent folder(s)
         category: metadata.category || "Other",
         tags: metadata.tags || [],
+        blocks,
         description: metadata.description,
         thumbnail: metadata.thumbnail,
         fileSize: stats.size,
@@ -394,10 +400,13 @@ export class TemplateManager {
       }
 
       const stats = statSync(template.filePath);
+      const content = await fs.readFile(template.filePath, "utf-8");
+      const blocks = this.extractBlocks(content);
 
       return await this.updateTemplate(id, {
         fileSize: stats.size,
         lastModified: stats.mtimeMs,
+        blocks,
       });
     } catch (error) {
       console.error(`❌ Failed to sync template ${id}:`, error);
@@ -579,6 +588,54 @@ export class TemplateManager {
 
     await scan(folderPath);
     return htmlFiles;
+  }
+
+  /**
+   * Private: Extract block names from HTML comments
+   */
+  private extractBlocks(html: string): string[] {
+    if (!html) return [];
+    const sections = new Set<string>();
+
+    const pattern = /<!--[-=*\\s]*([^>]*?)[-=*\\s]*(?:-->|--!>)/gi;
+    let match;
+
+    while ((match = pattern.exec(html)) !== null) {
+      let name = match[1].trim();
+
+      name = name.replace(/^[-=*~!\\s]+|[-=*~!\\s]+$/g, '');
+
+      // Strip generic numeric block suffixes (e.g. Note-1 -> Note, Content-2-mob -> Content)
+      name = name.replace(/-\d+(?:-[a-zA-Z]+)?$/, '');
+
+      const lowerName = name.toLowerCase();
+      if (
+        !name ||
+        lowerName.startsWith("/") ||
+        lowerName.endsWith("-end") ||
+        lowerName.endsWith(" end") ||
+        lowerName.startsWith("end ") ||
+        lowerName.startsWith("start ") ||
+        lowerName.includes("ends here") ||
+        lowerName.includes("starts here") ||
+        lowerName.startsWith("[if") ||
+        lowerName.startsWith("<![endif]") ||
+        lowerName.includes("<") || 
+        lowerName.includes(">") ||
+        lowerName.includes("=") ||
+        lowerName.includes('"')
+      ) {
+        continue;
+      }
+      
+      name = lowerName.charAt(0).toUpperCase() + lowerName.slice(1);
+      
+      console.log(`[Backend-extractBlocks] Added block: "${name}"`);
+      sections.add(name);
+    }
+
+    console.log(`[Backend-extractBlocks] Final found blocks count: ${sections.size}`);
+    return Array.from(sections).sort();
   }
 
   /**

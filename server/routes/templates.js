@@ -374,7 +374,7 @@ router.post("/sync-all", async (req, res) => {
           continue;
         }
 
-        // Import all HTML files from this root
+        // Import NEW HTML files from this root (add new ones)
         const templates = await manager.importFolder(rootPath, {
           recursive,
           category,
@@ -382,7 +382,7 @@ router.post("/sync-all", async (req, res) => {
         });
 
         allTemplates.push(...templates);
-        console.log(`✅ Found ${templates.length} templates in ${rootPath}`);
+        console.log(`✅ Found ${templates.length} new templates in ${rootPath}`);
       } catch (error) {
         console.error(`❌ Error scanning ${rootPath}:`, error.message);
         errors.push({
@@ -392,7 +392,21 @@ router.post("/sync-all", async (req, res) => {
       }
     }
 
-    console.log(`🎉 Sync complete: ${allTemplates.length} templates found`);
+    // CRUCIAL: Resync ALL existing templates to extract new blocks and update sizes
+    console.log("🔄 Re-syncing existing templates to extract updated blocks...");
+    let resyncedCount = 0;
+    const existingTemplates = await manager.listTemplates();
+    for (const t of existingTemplates) {
+      try {
+        await manager.syncTemplate(t.id);
+        resyncedCount++;
+      } catch (err) {
+        console.warn(`⚠️ Failed to resync template ${t.id}:`, err.message);
+      }
+    }
+    console.log(`✅ Resynced ${resyncedCount} existing templates.`);
+
+    console.log(`🎉 Sync complete: ${allTemplates.length} new templates added`);
 
     res.json({
       success: true,
