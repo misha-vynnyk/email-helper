@@ -7,22 +7,19 @@ import React, { useContext, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { html } from "@codemirror/lang-html";
-import {
-  Copy as CopyIcon,
-  X as CloseIcon,
-} from "lucide-react";
 import CodeMirror from "@uiw/react-codemirror";
+import { X as CloseIcon, Copy as CopyIcon } from "lucide-react";
 
+import { useTheme } from "@mui/material";
 import { EmailSenderContext } from "../../emailSender/EmailSenderContext";
 import { useThemeMode } from "../../theme";
 import { EmailTemplate, TEMPLATE_CATEGORIES, TemplateCategory } from "../../types/template";
-import { useTheme } from "@mui/material"; 
 import { createCodeMirrorTheme } from "../../utils/codemirrorTheme";
 import { preloadImages } from "../../utils/imageUrlReplacer";
 
-import { PreviewConfig } from "./PreviewSettings";
 import { getTemplateContent, removeTemplate, syncTemplate, updateTemplate } from "../utils/templateApi";
 import { templateContentCache } from "../utils/templateContentCache";
+import { PreviewConfig } from "./PreviewSettings";
 
 import Modal from "./Modal";
 import TemplateCard from "./TemplateCard";
@@ -41,26 +38,14 @@ interface TemplateItemProps {
   currentIndex?: number;
   onNavigate?: (direction: "prev" | "next", savedScrollPos?: number) => void;
   savedScrollPosition?: number;
+  focusedBlock?: string;
 }
 
-function TemplateItem({
-  template,
-  previewConfig,
-  onDelete,
-  onUpdate,
-  onLoadTemplate,
-  isOpen = false,
-  onOpen,
-  onClose,
-  allTemplates = [],
-  currentIndex = 0,
-  onNavigate,
-  savedScrollPosition: savedScrollPositionProp = 0,
-}: TemplateItemProps) {
+function TemplateItem({ template, previewConfig, onDelete, onUpdate, onLoadTemplate, isOpen = false, onOpen, onClose, allTemplates = [], currentIndex = 0, onNavigate, savedScrollPosition: savedScrollPositionProp = 0, focusedBlock }: TemplateItemProps) {
   const theme = useTheme();
   const { mode, style } = useThemeMode();
   const codeMirrorTheme = createCodeMirrorTheme(theme, mode, style);
-  
+
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -77,7 +62,6 @@ function TemplateItem({
   const [sending, setSending] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const cardRef = React.useRef<HTMLDivElement>(null);
-
 
   // Email Sender context (опціонально - може бути недоступний)
   const emailSenderContext = useContext(EmailSenderContext);
@@ -105,8 +89,6 @@ function TemplateItem({
   useEffect(() => {
     setPreviewDialogOpen(isOpen);
   }, [isOpen]);
-
-
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -146,10 +128,7 @@ function TemplateItem({
       }
 
       if (allTemplates.length > 1 && cachedContent) {
-        const adjacentIds = [
-          allTemplates[currentIndex - 1]?.id,
-          allTemplates[currentIndex + 1]?.id,
-        ].filter(Boolean) as string[];
+        const adjacentIds = [allTemplates[currentIndex - 1]?.id, allTemplates[currentIndex + 1]?.id].filter(Boolean) as string[];
 
         if (adjacentIds.length > 0) {
           setTimeout(() => {
@@ -174,12 +153,7 @@ function TemplateItem({
         setLoading(false);
 
         if (allTemplates.length > 1) {
-          const adjacentIds = [
-            allTemplates[currentIndex - 2]?.id,
-            allTemplates[currentIndex - 1]?.id,
-            allTemplates[currentIndex + 1]?.id,
-            allTemplates[currentIndex + 2]?.id,
-          ].filter(Boolean) as string[];
+          const adjacentIds = [allTemplates[currentIndex - 2]?.id, allTemplates[currentIndex - 1]?.id, allTemplates[currentIndex + 1]?.id, allTemplates[currentIndex + 2]?.id].filter(Boolean) as string[];
 
           if (adjacentIds.length > 0) {
             setTimeout(() => {
@@ -192,8 +166,6 @@ function TemplateItem({
       }
     }
   }, [template.id, isOpen]);
-
-
 
   useEffect(() => {
     if (codeDialogOpen) {
@@ -234,12 +206,7 @@ function TemplateItem({
       setLoading(false);
 
       if (allTemplates.length > 1) {
-        const adjacentIds = [
-          allTemplates[currentIndex - 2]?.id,
-          allTemplates[currentIndex - 1]?.id,
-          allTemplates[currentIndex + 1]?.id,
-          allTemplates[currentIndex + 2]?.id,
-        ].filter(Boolean) as string[];
+        const adjacentIds = [allTemplates[currentIndex - 2]?.id, allTemplates[currentIndex - 1]?.id, allTemplates[currentIndex + 1]?.id, allTemplates[currentIndex + 2]?.id].filter(Boolean) as string[];
 
         if (adjacentIds.length > 0) {
           setTimeout(() => {
@@ -274,16 +241,11 @@ function TemplateItem({
       setPreviewHtml(content);
 
       preloadImages(content).catch((error) => {
-        console.warn('[TemplateItem] Failed to preload images:', error);
+        console.warn("[TemplateItem] Failed to preload images:", error);
       });
 
       if (allTemplates.length > 1) {
-        const adjacentIds = [
-          allTemplates[currentIndex - 2]?.id,
-          allTemplates[currentIndex - 1]?.id,
-          allTemplates[currentIndex + 1]?.id,
-          allTemplates[currentIndex + 2]?.id,
-        ].filter(Boolean) as string[];
+        const adjacentIds = [allTemplates[currentIndex - 2]?.id, allTemplates[currentIndex - 1]?.id, allTemplates[currentIndex + 1]?.id, allTemplates[currentIndex + 2]?.id].filter(Boolean) as string[];
 
         if (adjacentIds.length > 0) {
           setTimeout(() => {
@@ -438,8 +400,6 @@ function TemplateItem({
     }
   };
 
-
-
   return (
     <>
       <TemplateCard
@@ -451,6 +411,7 @@ function TemplateItem({
           setPreviewDialogOpen(true);
           onOpen?.();
         }}
+        focusedBlock={focusedBlock}
         onLoadTemplate={handleLoadTemplate}
         onSendEmail={async () => {
           if (!sendEmailDirect) return;
@@ -506,35 +467,45 @@ function TemplateItem({
         onNavigate={onNavigate}
         renderKey={renderKey}
         savedScrollPositionProp={savedScrollPositionProp}
+        focusedBlock={focusedBlock}
       />
 
       {/* Code Dialog */}
       <Modal
         open={codeDialogOpen}
-        onClose={() => { setCodeDialogOpen(false); setCodeContent(""); }}
-        maxWidthClass="max-w-5xl"
+        onClose={() => {
+          setCodeDialogOpen(false);
+          setCodeContent("");
+        }}
+        maxWidthClass='max-w-5xl'
         title={`HTML Code - ${template.name}`}
         actionsRow={
           <>
-            <button onClick={async () => {
-              try {
-                const contentToCopy = codeContent || previewHtml || "";
-                if (contentToCopy && contentToCopy !== "Loading..." && contentToCopy !== "Failed to load content") {
-                  await navigator.clipboard.writeText(contentToCopy);
-                  setSnackbar({ open: true, message: `"${template.name}" HTML copied to clipboard`, severity: "success" });
+            <button
+              onClick={async () => {
+                try {
+                  const contentToCopy = codeContent || previewHtml || "";
+                  if (contentToCopy && contentToCopy !== "Loading..." && contentToCopy !== "Failed to load content") {
+                    await navigator.clipboard.writeText(contentToCopy);
+                    setSnackbar({ open: true, message: `"${template.name}" HTML copied to clipboard`, severity: "success" });
+                  }
+                } catch (error) {
+                  setSnackbar({ open: true, message: `Copy failed: ${error instanceof Error ? error.message : String(error)}`, severity: "error" });
                 }
-              } catch (error) {
-                setSnackbar({ open: true, message: `Copy failed: ${error instanceof Error ? error.message : String(error)}`, severity: "error" });
-              }
-            }} className='px-5 py-2.5 flex items-center gap-2 text-sm font-bold bg-primary hover:brightness-110 text-primary-foreground rounded-xl transition-all shadow-sm'>
+              }}
+              className='px-5 py-2.5 flex items-center gap-2 text-sm font-bold bg-primary hover:brightness-110 text-primary-foreground rounded-xl transition-all shadow-sm'>
               <CopyIcon size={16} /> Copy
             </button>
-            <button onClick={() => { setCodeDialogOpen(false); setCodeContent(""); }} className='px-5 py-2.5 text-sm font-bold bg-muted hover:bg-muted/80 text-foreground rounded-xl transition-all'>
+            <button
+              onClick={() => {
+                setCodeDialogOpen(false);
+                setCodeContent("");
+              }}
+              className='px-5 py-2.5 text-sm font-bold bg-muted hover:bg-muted/80 text-foreground rounded-xl transition-all'>
               Close
             </button>
           </>
-        }
-      >
+        }>
         <div className='border border-border/50 rounded-xl overflow-hidden shadow-inner'>
           <CodeMirror
             value={codeLoading ? "Loading..." : codeContent || "No content available"}
@@ -565,8 +536,8 @@ function TemplateItem({
       <Modal
         open={editDialogOpen}
         onClose={() => setEditDialogOpen(false)}
-        maxWidthClass="max-w-xl"
-        title="Edit Template Metadata"
+        maxWidthClass='max-w-xl'
+        title='Edit Template Metadata'
         actionsRow={
           <>
             <button onClick={() => setEditDialogOpen(false)} className='px-5 py-2.5 text-sm font-bold bg-muted hover:bg-muted/80 text-foreground rounded-xl transition-all'>
@@ -576,8 +547,7 @@ function TemplateItem({
               Save
             </button>
           </>
-        }
-      >
+        }>
         <div className='flex flex-col gap-5'>
           <div>
             <label className='block text-sm font-extrabold text-foreground mb-1.5'>Name</label>
@@ -587,7 +557,9 @@ function TemplateItem({
             <label className='block text-sm font-extrabold text-foreground mb-1.5'>Category</label>
             <select value={editedCategory} onChange={(e) => setEditedCategory(e.target.value as TemplateCategory)} className='w-full px-4 py-2.5 text-sm rounded-xl border border-input bg-background focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground outline-none transition-all appearance-none cursor-pointer'>
               {TEMPLATE_CATEGORIES.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
               ))}
             </select>
           </div>
@@ -611,51 +583,43 @@ function TemplateItem({
       <Modal
         open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
-        maxWidthClass="max-w-md"
-        title="Remove Template?"
+        maxWidthClass='max-w-md'
+        title='Remove Template?'
         actionsRow={
           <>
             <button onClick={() => setDeleteDialogOpen(false)} className='px-5 py-2.5 text-sm font-bold bg-muted hover:bg-muted/80 text-foreground rounded-xl transition-all'>
               Cancel
             </button>
             <button onClick={handleDeleteConfirm} disabled={deleteLoading} className='px-5 py-2.5 text-sm font-bold bg-destructive hover:brightness-110 text-destructive-foreground rounded-xl transition-all shadow-sm disabled:opacity-50'>
-              {deleteLoading ? 'Removing...' : 'Remove'}
+              {deleteLoading ? "Removing..." : "Remove"}
             </button>
           </>
-        }
-      >
+        }>
         <p className='text-foreground font-medium'>
           Remove <strong className='font-extrabold'>"{template.name}"</strong> from library?
         </p>
         <p className='text-sm text-muted-foreground mt-3 leading-relaxed'>
-          This will not delete the file from your system. The file will remain at: <br/>
+          This will not delete the file from your system. The file will remain at: <br />
           <code className='bg-muted px-1.5 py-0.5 rounded text-xs mt-1 block break-all font-mono border border-border/50'>{template.filePath}</code>
         </p>
       </Modal>
 
       {/* Simple Tailwind Snackbar Replacement */}
-      {snackbar.open && typeof document !== 'undefined' && createPortal(
-        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] px-5 py-3 rounded-xl shadow-lg font-bold text-sm flex items-center gap-3 animate-in fade-in slide-in-from-bottom-5 duration-300 ${
-          snackbar.severity === 'error' ? 'bg-destructive text-destructive-foreground' : 'bg-[#10b981] text-white'
-        }`}>
-          {snackbar.message}
-          <button onClick={() => setSnackbar((prev) => ({ ...prev, open: false }))} className='p-1 hover:bg-white/20 rounded-full transition-colors'>
-            <CloseIcon size={14} strokeWidth={3} />
-          </button>
-        </div>,
-        document.body
-      )}
+      {snackbar.open &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] px-5 py-3 rounded-xl shadow-lg font-bold text-sm flex items-center gap-3 animate-in fade-in slide-in-from-bottom-5 duration-300 ${snackbar.severity === "error" ? "bg-destructive text-destructive-foreground" : "bg-[#10b981] text-white"}`}>
+            {snackbar.message}
+            <button onClick={() => setSnackbar((prev) => ({ ...prev, open: false }))} className='p-1 hover:bg-white/20 rounded-full transition-colors'>
+              <CloseIcon size={14} strokeWidth={3} />
+            </button>
+          </div>,
+          document.body
+        )}
     </>
   );
 }
 
 export default React.memo(TemplateItem, (prevProps, nextProps) => {
-  return (
-    prevProps.template.id === nextProps.template.id &&
-    prevProps.template.name === nextProps.template.name &&
-    prevProps.template.lastModified === nextProps.template.lastModified &&
-    prevProps.isOpen === nextProps.isOpen &&
-    prevProps.currentIndex === nextProps.currentIndex &&
-    prevProps.previewConfig === nextProps.previewConfig
-  );
+  return prevProps.template.id === nextProps.template.id && prevProps.template.name === nextProps.template.name && prevProps.template.lastModified === nextProps.template.lastModified && prevProps.isOpen === nextProps.isOpen && prevProps.currentIndex === nextProps.currentIndex && prevProps.previewConfig === nextProps.previewConfig;
 });

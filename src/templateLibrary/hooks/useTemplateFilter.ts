@@ -6,17 +6,28 @@ export type SortOption = "name-asc" | "name-desc" | "date-newest" | "date-oldest
 /**
  * Custom hook to encapsulate the filtering, searching, and sorting logic for email templates.
  * This simplifies the main TemplateLibrary component and improves testability and readability.
- * 
+ *
  * @param {EmailTemplate[]} templates - The complete list of templates to filter and sort.
- * @returns An object containing the derived state (filteredTemplates, filteredCategories) and 
+ * @returns An object containing the derived state (filteredTemplates, filteredCategories) and
  *          the state setters (searchQuery, selectedCategory, sortBy) needed for the UI.
  */
 export function useTemplateFilter(templates: EmailTemplate[]) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<TemplateCategory | "All">("All");
+  const [selectedBlock, setSelectedBlock] = useState<string>("All"); // Added for block filtering
   const [selectedFolders, setSelectedFolders] = useState<Set<string>>(new Set());
   const [excludedFolders, setExcludedFolders] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<SortOption>("date-newest");
+
+  const availableBlocks = useMemo(() => {
+    const blocks = new Set<string>();
+    (Array.isArray(templates) ? templates : []).forEach((template) => {
+      if (template.blocks && Array.isArray(template.blocks)) {
+        template.blocks.forEach((block) => blocks.add(block));
+      }
+    });
+    return Array.from(blocks).sort();
+  }, [templates]);
 
   const rootFolders = useMemo(() => {
     const folders = new Set<string>();
@@ -44,10 +55,49 @@ export function useTemplateFilter(templates: EmailTemplate[]) {
     return stats;
   }, [templates]);
 
+  const { cleanQuery, searchBlock } = useMemo(() => {
+    const blockMatch = searchQuery.match(/<!(?:--)?\s*([^\s]+)/i);
+    const searchBlockRaw = blockMatch ? blockMatch[1] : null;
+
+    console.log("[useTemplateFilter] Input query:", searchQuery);
+    console.log("[useTemplateFilter] Regex match raw:", searchBlockRaw);
+    console.log("[useTemplateFilter] Available blocks in all templates:", availableBlocks);
+
+    let searchBlock = null;
+    if (searchBlockRaw) {
+      const lowerRaw = searchBlockRaw.toLowerCase();
+      searchBlock = 
+        availableBlocks.find((b) => b.toLowerCase() === lowerRaw) ||
+        availableBlocks.find((b) => b.toLowerCase().startsWith(lowerRaw)) ||
+        availableBlocks.find((b) => b.toLowerCase().includes(lowerRaw)) || 
+        searchBlockRaw;
+      console.log("[useTemplateFilter] Resolved searchBlock:", searchBlock);
+    }
+
+    const cleanQuery = searchQuery.replace(/<!(?:--)?\s*[^\s]+/gi, "").trim();
+    return { cleanQuery, searchBlock };
+  }, [searchQuery, availableBlocks]);
+
+  const activeBlockFilter = searchBlock || (selectedBlock !== "All" ? selectedBlock : undefined);
+
   const filteredTemplates = useMemo(() => {
     const filtered = (Array.isArray(templates) ? templates : []).filter((template) => {
       if (selectedCategory !== "All" && template.category !== selectedCategory) {
         return false;
+      }
+
+      if (selectedBlock !== "All" && (!template.blocks || !template.blocks.includes(selectedBlock))) {
+        return false;
+      }
+
+      if (searchBlock) {
+        if (!template.blocks) return false;
+        const lowerSearchBlock = searchBlock.toLowerCase();
+        // Since searchBlock is heavily normalized and resolved against availableBlocks, 
+        // we should enforce exact case-insensitive matching to prevent substring bleeding
+        // (e.g. 'Note' search returning templates that only have 'Editor note').
+        const hasMatchingBlock = template.blocks.some((b) => b.toLowerCase() === lowerSearchBlock);
+        if (!hasMatchingBlock) return false;
       }
 
       const rootFolder = template.folderPath?.split(" / ")[0];
@@ -62,16 +112,9 @@ export function useTemplateFilter(templates: EmailTemplate[]) {
         }
       }
 
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        return (
-          template.name.toLowerCase().includes(query) ||
-          template.category.toLowerCase().includes(query) ||
-          template.tags.some((tag) => tag.toLowerCase().includes(query)) ||
-          template.description?.toLowerCase().includes(query) ||
-          template.filePath.toLowerCase().includes(query) ||
-          template.folderPath?.toLowerCase().includes(query)
-        );
+      if (cleanQuery) {
+        const query = cleanQuery.toLowerCase();
+        return template.name.toLowerCase().includes(query) || template.category.toLowerCase().includes(query) || template.tags.some((tag) => tag.toLowerCase().includes(query)) || template.description?.toLowerCase().includes(query) || template.filePath.toLowerCase().includes(query) || template.folderPath?.toLowerCase().includes(query);
       }
 
       return true;
@@ -96,7 +139,7 @@ export function useTemplateFilter(templates: EmailTemplate[]) {
           return 0;
       }
     });
-  }, [templates, selectedCategory, selectedFolders, excludedFolders, searchQuery, sortBy]);
+  }, [templates, selectedCategory, selectedBlock, selectedFolders, excludedFolders, cleanQuery, searchBlock, sortBy]);
 
   return {
     searchQuery,
@@ -111,6 +154,10 @@ export function useTemplateFilter(templates: EmailTemplate[]) {
     setSortBy,
     rootFolders,
     folderStats,
+    availableBlocks, // Export availableBlocks
+    selectedBlock, // Export selectedBlock
+    setSelectedBlock, // Export setter
+    activeBlockFilter, // Export combined block filter
     filteredTemplates,
   };
 }

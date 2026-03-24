@@ -5,14 +5,7 @@
  */
 
 import API_URL from "../../config/api";
-import {
-  AddTemplatePayload,
-  AllowedRootPayload,
-  EmailTemplate,
-  ImportFolderPayload,
-  TemplateStats,
-  UpdateTemplatePayload,
-} from "../../types/template";
+import { AddTemplatePayload, AllowedRootPayload, EmailTemplate, ImportFolderPayload, TemplateStats, UpdateTemplatePayload } from "../../types/template";
 
 const API_BASE = `${API_URL}/api/templates`;
 
@@ -71,10 +64,7 @@ export async function getTemplateContent(id: string): Promise<string> {
 /**
  * Update template metadata
  */
-export async function updateTemplate(
-  id: string,
-  payload: UpdateTemplatePayload
-): Promise<EmailTemplate> {
+export async function updateTemplate(id: string, payload: UpdateTemplatePayload): Promise<EmailTemplate> {
   const response = await fetch(`${API_BASE}/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -174,9 +164,7 @@ export async function addAllowedRoot(payload: AllowedRootPayload): Promise<strin
 /**
  * Remove an allowed root directory
  */
-export async function removeAllowedRoot(
-  payload: AllowedRootPayload
-): Promise<{ allowedRoots: string[]; removedTemplates: number; message: string }> {
+export async function removeAllowedRoot(payload: AllowedRootPayload): Promise<{ allowedRoots: string[]; removedTemplates: number; message: string }> {
   const response = await fetch(`${API_BASE}/settings/allowed-roots`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },

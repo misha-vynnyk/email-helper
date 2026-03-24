@@ -15,6 +15,29 @@
  */
 
 /**
+ * Keeps ONLY the specified HTML sections, hiding all others that are marked
+ * Useful for "Focus Mode" on a single block while preserving global CSS and wrappers
+ * 
+ * @param html - HTML content to filter
+ * @param shownSections - Array of section names to KEEP visible
+ * @returns Filtered HTML with other sections removed
+ */
+export function keepOnlyMarkedSections(html: string, shownSections: string[]): string {
+  if (!html || !shownSections || shownSections.length === 0) {
+    return html;
+  }
+  
+  // 1. Get all sections available in the HTML
+  const allSections = extractSectionNames(html);
+  
+  // 2. Determine which sections need to be hidden (all EXCEPT the shown ones)
+  const sectionsToHide = allSections.filter(section => !shownSections.includes(section));
+  
+  // 3. Delegate to filterMarkedSections to do the actual removal
+  return filterMarkedSections(html, sectionsToHide);
+}
+
+/**
  * Filters out HTML sections marked with comment markers
  * Start marker can be with or without ===, end marker always uses -end suffix
  *
@@ -23,10 +46,7 @@
  * @returns Filtered HTML with specified sections removed (for preview only)
  */
 // Cache for compiled regex patterns to avoid recompilation
-const patternCache = new Map<
-  string,
-  { pattern1: RegExp; pattern2: RegExp; pattern3: RegExp; pattern4: RegExp }
->();
+const patternCache = new Map<string, { exact: RegExp }>();
 
 export function filterMarkedSections(html: string, hiddenSections: string[]): string {
   if (!html || !hiddenSections || hiddenSections.length === 0) {
@@ -37,56 +57,31 @@ export function filterMarkedSections(html: string, hiddenSections: string[]): st
 
   // For each section to hide
   for (const sectionName of hiddenSections) {
-    // Clean up section name (remove comment markers if user accidentally included them)
     let cleanName = sectionName.trim();
-    // Remove comment markers: <!-- and --> (with or without ===)
-    cleanName = cleanName.replace(/<!--=*\s*/g, "").replace(/\s*=*\s*-->/g, "");
-    // Remove -end suffix if present
+    // Clean up if user accidentally included comment markers
+    cleanName = cleanName.replace(/<!--=*\s*/g, "").replace(/\s*=*(?:-->|--!>)/g, "");
     cleanName = cleanName.replace(/-end\s*$/, "");
 
     if (!cleanName) continue; // Skip empty names
 
-    // Check cache first
     let patterns = patternCache.get(cleanName);
 
     if (!patterns) {
-      // Escape special regex characters in section name
       const escapedName = cleanName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-      // Compile patterns once and cache them
-      // Start marker: supports both <!-- SectionName --> and <!--=== SectionName ===-->
-      // End marker: always <!-- SectionName-end --> (with -end suffix)
       patterns = {
-        // Pattern 1: <!-- SectionName --> ... <!-- SectionName-end -->
-        pattern1: new RegExp(
-          `<!--\\s*${escapedName}\\s*-->[\\s\\S]*?<!--\\s*${escapedName}-end\\s*-->`,
+        // Matches <!--=== ExactName ===--> ... <!--=== ExactName-end ===-->
+        // Allowing hyphens, equals, asterisks, and spaces as decorators, plus optional trailing digits for numbered blocks
+        exact: new RegExp(
+          `<!--[-=*\\s]*${escapedName}(?:-\\d+(?:-[a-zA-Z]+)?)?[-=*\\s]*(?:-->|--!>)[\\s\\S]*?<!--[-=*\\s]*${escapedName}(?:-\\d+(?:-[a-zA-Z]+)?)?-end[-=*\\s]*(?:-->|--!>)`,
           "gi"
-        ),
-        // Pattern 2: <!--=== SectionName ===--> ... <!-- SectionName-end -->
-        pattern2: new RegExp(
-          `<!--={3,}\\s*${escapedName}\\s*={3,}-->[\\s\\S]*?<!--\\s*${escapedName}-end\\s*-->`,
-          "gi"
-        ),
-        // Pattern 3: <!-- SectionName --> ... <!--=== SectionName-end ===-->
-        pattern3: new RegExp(
-          `<!--\\s*${escapedName}\\s*-->[\\s\\S]*?<!--={3,}\\s*${escapedName}-end\\s*={3,}-->`,
-          "gi"
-        ),
-        // Pattern 4: <!--=== SectionName ===--> ... <!--=== SectionName-end ===-->
-        pattern4: new RegExp(
-          `<!--={3,}\\s*${escapedName}\\s*={3,}-->[\\s\\S]*?<!--={3,}\\s*${escapedName}-end\\s*={3,}-->`,
-          "gi"
-        ),
+        )
       };
 
       patternCache.set(cleanName, patterns);
     }
 
-    // Apply all patterns
-    filtered = filtered.replace(patterns.pattern1, "");
-    filtered = filtered.replace(patterns.pattern2, "");
-    filtered = filtered.replace(patterns.pattern3, "");
-    filtered = filtered.replace(patterns.pattern4, "");
+    filtered = filtered.replace(patterns.exact, "");
   }
 
   // Clean up multiple consecutive newlines/whitespace left after removal
@@ -107,30 +102,124 @@ export function extractSectionNames(html: string): string[] {
 
   const sections = new Set<string>();
 
-  // Pattern 1: <!-- SectionName --> (without ===)
-  const pattern1 = /<!--\s*([^\s=-]+)\s*-->/gi;
-  // Pattern 2: <!--=== SectionName ===--> (with ===)
-  const pattern2 = /<!--={3,}\s*([^\s=]+)\s*={3,}-->/gi;
+  // Use a more generic pattern that greedily eats decorations (spaces, equals, asterisks, hyphens)
+  // before and after the actual meat of the name.
+  const pattern = /<!--[-=*\\s]*([^>]*?)[-=*\\s]*(?:-->|--!>)/gi;
 
   let match;
+  while ((match = pattern.exec(html)) !== null) {
+    let sectionName = match[1].trim();
 
-  // Find sections without ===
-  while ((match = pattern1.exec(html)) !== null) {
-    const sectionName = match[1].trim();
-    // Exclude end markers (those starting with / or ending with -end)
-    if (!sectionName.startsWith("/") && !sectionName.endsWith("-end")) {
-      sections.add(sectionName);
-    }
-  }
+    // Clean up decorators using literal character classes
+    // Note: \\s is used safely in a literal Regex instead of string building
+    sectionName = sectionName.replace(/^[-=*~!\s]+|[-=*~!\s]+$/g, '');
 
-  // Find sections with ===
-  while ((match = pattern2.exec(html)) !== null) {
-    const sectionName = match[1].trim();
-    // Exclude end markers (those starting with / or ending with -end)
-    if (!sectionName.startsWith("/") && !sectionName.endsWith("-end")) {
-      sections.add(sectionName);
+    // Strip generic numeric block suffixes (e.g. Note-1 -> Note, Content-2-mob -> Content)
+    sectionName = sectionName.replace(/-\d+(?:-[a-zA-Z]+)?$/, '');
+
+    // Ignore common standard HTML comments, conditional comments, or generic endings
+    const lowerName = sectionName.toLowerCase();
+    if (
+      !sectionName ||
+      lowerName.startsWith("/") ||
+      lowerName.endsWith("-end") ||
+      lowerName.endsWith(" end") ||
+      lowerName.startsWith("end ") ||
+      lowerName.startsWith("start ") ||
+      lowerName.includes("ends here") ||
+      lowerName.includes("starts here") ||
+      lowerName.startsWith("[if") ||
+      lowerName.startsWith("<![endif]") ||
+      lowerName.includes("<") || 
+      lowerName.includes(">") ||
+      lowerName.includes("=") ||
+      lowerName.includes('"')
+    ) {
+      continue;
     }
+    
+    // Normalize case: "HEADER" -> "Header", "hero-section" -> "Hero-section"
+    sectionName = lowerName.charAt(0).toUpperCase() + lowerName.slice(1);
+
+    sections.add(sectionName);
   }
 
   return Array.from(sections).sort();
+}
+
+/**
+ * Extracts ONLY the specified HTML section (start to end comment), 
+ * and wraps it with the document's original <style> and <head> elements 
+ * to preserve the formatting.
+ * 
+ * @param html - Original HTML document
+ * @param sectionPrefix - The block name or prefix to search for (case-insensitive)
+ * @returns String containing only the styles + extracted block, or original HTML if not found.
+ */
+export function extractMarkedSectionWithStyles(html: string, sectionPrefix: string): string {
+  if (!html || !sectionPrefix) return html;
+
+  const escapedPrefix = sectionPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  
+  // Find start comment matching: <!-- (maybe spaces) (prefix) (maybe anything else) -->
+  const startRegex = new RegExp(`<!--=*\\s*(${escapedPrefix}[^>]*?)\\s*=*(?:-->|--!>)`, 'i');
+  const startMatch = startRegex.exec(html);
+  
+  if (!startMatch) return html; // Block not found
+  
+  const exactBlockName = startMatch[1].trim();
+  const escapedExactName = exactBlockName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  
+  // Find everything between start and end comment
+  // Example end: <!-- exactBlockName-end --> or <!-- exactBlockName-end --!>
+  const extRegex = new RegExp(
+    `<!--=*\\s*${escapedExactName}\\s*=*(?:-->|--!>)([\\s\\S]*?)<!--=*\\s*${escapedExactName}-end\\s*=*(?:-->|--!>)`,
+    'i'
+  );
+  
+  let blockMatch = extRegex.exec(html);
+  let extractedContent = '';
+  
+  if (blockMatch) {
+    extractedContent = blockMatch[1];
+  } else {
+    // Try a looser fallback: any -end tag after the start
+    const fallbackRegex = new RegExp(
+      `<!--=*\\s*${escapedExactName}\\s*=*(?:-->|--!>)([\\s\\S]*?)<!--[^-]*?-end\\s*=*(?:-->|--!>)`,
+      'i'
+    );
+    const fallbackMatch = fallbackRegex.exec(html);
+    if (fallbackMatch) {
+      extractedContent = fallbackMatch[1];
+    } else {
+      return html; // Block end not found
+    }
+  }
+
+  // Extract <style> and <link> from <head> (or anywhere)
+  const styleRegex = /<style\b[^>]*>[\s\S]*?<\/style>/gi;
+  const linkRegex = /<link\b[^>]*rel=["']stylesheet["'][^>]*>/gi;
+  
+  let styles = '';
+  let match;
+  
+  while ((match = styleRegex.exec(html)) !== null) {
+    styles += match[0] + '\\n';
+  }
+  
+  while ((match = linkRegex.exec(html)) !== null) {
+    styles += match[0] + '\\n';
+  }
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+${styles}
+</head>
+<body style="margin: 0; padding: 0;">
+  ${extractedContent}
+</body>
+</html>`;
 }

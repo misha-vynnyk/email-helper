@@ -14,6 +14,7 @@ export interface EmailTemplate {
     folderPath?: string;
     category: TemplateCategory;
     tags: string[];
+    blocks?: string[];
     description?: string;
     thumbnail?: string;
     fileSize: number;
@@ -124,6 +125,10 @@ export declare class TemplateManager {
      * Private: Scan folder for .html files
      */
     private scanFolder;
+    /**
+     * Private: Extract block names from HTML comments
+     */
+    private extractBlocks;
     /**
      * Get statistics
      */

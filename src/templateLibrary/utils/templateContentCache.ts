@@ -38,9 +38,7 @@ class TemplateContentCache {
   set(templateId: string, content: string): void {
     // Remove oldest entries if cache is full
     if (this.cache.size >= MAX_CACHE_SIZE) {
-      const oldestKey = Array.from(this.cache.entries()).sort(
-        (a, b) => a[1].timestamp - b[1].timestamp
-      )[0]?.[0];
+      const oldestKey = Array.from(this.cache.entries()).sort((a, b) => a[1].timestamp - b[1].timestamp)[0]?.[0];
       if (oldestKey) {
         this.cache.delete(oldestKey);
       }

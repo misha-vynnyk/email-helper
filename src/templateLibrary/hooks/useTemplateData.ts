@@ -1,14 +1,14 @@
-import { useState, useRef, useCallback } from "react";
+import { useCallback, useRef, useState } from "react";
 import { EmailTemplate } from "../../types/template";
+import { preloadImages } from "../../utils/imageUrlReplacer";
+import { logger } from "../../utils/logger";
 import { listTemplates, syncAllTemplates } from "../utils/templateApi";
 import { getTemplateStorageLocations } from "../utils/templateStorageConfig";
-import { logger } from "../../utils/logger";
-import { preloadImages } from "../../utils/imageUrlReplacer";
 
 /**
  * Custom hook to abstract the data layer (fetching, syncing, caching, state management)
  * away from the TemplateLibrary presentation component.
- * 
+ *
  * Enforces the Single Responsibility Principle by decoupling API communication
  * from the React UI lifecycle.
  */
@@ -45,7 +45,7 @@ export function useTemplateData() {
 
         const templatesWithPreview = data.filter((t) => t.preview);
         if (templatesWithPreview.length > 0) {
-          preloadImages(templatesWithPreview.map((t) => t.preview!).join(' ')).catch((error) => {
+          preloadImages(templatesWithPreview.map((t) => t.preview!).join(" ")).catch((error) => {
             logger.warn("TemplateLibrary", "Failed to preload template preview images", error);
           });
         }
@@ -55,11 +55,7 @@ export function useTemplateData() {
         setError("Invalid data format from server");
       }
     } catch (err) {
-      const isConnectionError = err instanceof Error && (
-        err.message.includes("Failed to fetch") ||
-        err.message.includes("connection") ||
-        err.message.includes("Server connection failed")
-      );
+      const isConnectionError = err instanceof Error && (err.message.includes("Failed to fetch") || err.message.includes("connection") || err.message.includes("Server connection failed"));
 
       if (isConnectionError) {
         logger.warn("TemplateLibrary", "Server unavailable - templates cannot be loaded");
@@ -99,17 +95,13 @@ export function useTemplateData() {
           const result = await syncAllTemplates({
             recursive: true,
             category: "Other",
-            paths: [location.path], 
+            paths: [location.path],
           });
 
           totalFound += result.templatesFound;
         } catch (err) {
           const errorMsg = `Failed to sync ${location.name}: ${err instanceof Error ? err.message : "Unknown error"}`;
-          const isConnectionError = err instanceof Error && (
-            err.message.includes("Failed to fetch") ||
-            err.message.includes("connection") ||
-            err.message.includes("Server connection failed")
-          );
+          const isConnectionError = err instanceof Error && (err.message.includes("Failed to fetch") || err.message.includes("connection") || err.message.includes("Server connection failed"));
 
           if (isConnectionError) {
             logger.warn("TemplateLibrary", `Server unavailable - sync failed for ${location.name}`);
@@ -130,11 +122,7 @@ export function useTemplateData() {
 
       await loadTemplates();
     } catch (err) {
-      const isConnectionError = err instanceof Error && (
-        err.message.includes("Failed to fetch") ||
-        err.message.includes("connection") ||
-        err.message.includes("Server connection failed")
-      );
+      const isConnectionError = err instanceof Error && (err.message.includes("Failed to fetch") || err.message.includes("connection") || err.message.includes("Server connection failed"));
 
       if (isConnectionError) {
         logger.warn("TemplateLibrary", "Server unavailable - sync failed");

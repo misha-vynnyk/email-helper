@@ -6,13 +6,7 @@
 
 import React from "react";
 
-import {
-  Briefcase as BusinessIcon,
-  Megaphone as CampaignIcon,
-  FolderTree as CategoryIcon,
-  Mail as EmailIcon,
-  Receipt as ReceiptIcon,
-} from "lucide-react";
+import { Briefcase as BusinessIcon, Megaphone as CampaignIcon, FolderTree as CategoryIcon, Mail as EmailIcon, Receipt as ReceiptIcon } from "lucide-react";
 
 import { TemplateCategory } from "../../types/template";
 
