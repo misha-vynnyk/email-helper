@@ -47,33 +47,48 @@ export async function convertImageClient(file: File, settings: ConversionSetting
 
         if (settings.resize.mode === "preset" && settings.resize.preset) {
           const maxDimension = settings.resize.preset;
-          if (width > height) {
-            if (width > maxDimension) {
+          const isLargerThanPreset = width > maxDimension || height > maxDimension;
+
+          if (isLargerThanPreset || settings.resize.allowUpscale) {
+            if (width > height) {
               height = (height * maxDimension) / width;
               width = maxDimension;
-            }
-          } else {
-            if (height > maxDimension) {
+            } else {
               width = (width * maxDimension) / height;
               height = maxDimension;
             }
           }
         } else if (settings.resize.mode === "custom") {
-          if (settings.resize.width && settings.resize.height) {
+          const targetWidth = settings.resize.width;
+          const targetHeight = settings.resize.height;
+
+          if (targetWidth && targetHeight) {
             if (settings.resize.preserveAspectRatio) {
-              const ratio = Math.min(settings.resize.width / width, settings.resize.height / height);
-              width = width * ratio;
-              height = height * ratio;
+              const ratio = Math.min(targetWidth / width, targetHeight / height);
+              const shouldScale = ratio < 1 || settings.resize.allowUpscale;
+              if (shouldScale) {
+                width = width * ratio;
+                height = height * ratio;
+              }
             } else {
-              width = settings.resize.width;
-              height = settings.resize.height;
+              const shouldScale = (targetWidth < width || targetHeight < height) || settings.resize.allowUpscale;
+              if (shouldScale) {
+                width = targetWidth;
+                height = targetHeight;
+              }
             }
-          } else if (settings.resize.width) {
-            height = (height * settings.resize.width) / width;
-            width = settings.resize.width;
-          } else if (settings.resize.height) {
-            width = (width * settings.resize.height) / height;
-            height = settings.resize.height;
+          } else if (targetWidth) {
+            const ratio = targetWidth / width;
+            if (ratio < 1 || settings.resize.allowUpscale) {
+              height = height * ratio;
+              width = targetWidth;
+            }
+          } else if (targetHeight) {
+            const ratio = targetHeight / height;
+            if (ratio < 1 || settings.resize.allowUpscale) {
+              width = width * ratio;
+              height = targetHeight;
+            }
           }
         }
 

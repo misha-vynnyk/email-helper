@@ -1,27 +1,9 @@
-import React from "react";
-import {
-  Box,
-  Typography,
-  Divider,
-  FormControlLabel,
-  Checkbox,
-  TextField,
-  Select,
-  MenuItem,
-  ToggleButtonGroup,
-  ToggleButton,
-  useTheme,
-  alpha,
-  Alert,
-} from "@mui/material";
-import {
-  PhotoSizeSelectLarge as ResizeIcon,
-  CameraAlt as ExifIcon,
-  Palette as ColorIcon,
-  Gif as GifIcon,
-} from "@mui/icons-material";
-import { useThemeMode } from "../../theme";
-import { getComponentStyles } from "../../theme/componentStyles";
+/**
+ * Advanced Settings Section — Resize, EXIF, Background, GIF options.
+ * Props-based. Tailwind styling.
+ */
+
+import { Maximize2, Camera, Palette, Film } from "lucide-react";
 import { ConversionSettings, ResizeMode } from "../types";
 
 interface AdvancedSettingsSectionProps {
@@ -29,228 +11,151 @@ interface AdvancedSettingsSectionProps {
   updateSettings: (settings: Partial<ConversionSettings>) => void;
 }
 
-const AdvancedSettingsSection: React.FC<AdvancedSettingsSectionProps> = ({
-  settings,
-  updateSettings,
-}) => {
-  const theme = useTheme();
-  const { mode, style } = useThemeMode();
-  const componentStyles = getComponentStyles(mode, style);
-
+export default function AdvancedSettingsSection({ settings, updateSettings }: AdvancedSettingsSectionProps) {
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-      {/* Resize Options */}
-      <Box>
-        <Box display="flex" alignItems="center" gap={1} mb={1.5}>
-          <ResizeIcon fontSize="small" color="action" />
-          <Typography variant="subtitle2" fontWeight={600} color="text.primary">
-            Resize
-          </Typography>
-        </Box>
-        <Select
+    <div className='flex flex-col gap-5'>
+      {/* Resize */}
+      <div>
+        <div className='flex items-center gap-2 mb-3'>
+          <Maximize2 size={14} className='text-muted-foreground' />
+          <h4 className='text-sm font-semibold text-foreground'>Resize</h4>
+        </div>
+        <select
           value={settings.resize.mode}
-          onChange={(e) =>
-            updateSettings({
-              resize: { ...settings.resize, mode: e.target.value as ResizeMode },
-            })
-          }
-          sx={{ borderRadius: componentStyles.card.borderRadius }}
-          fullWidth
-          size="small"
+          onChange={(e) => updateSettings({ resize: { ...settings.resize, mode: e.target.value as ResizeMode } })}
+          className='w-full bg-card border border-border/50 rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all'
         >
-          <MenuItem value="original">Original Size</MenuItem>
-          <MenuItem value="preset">Preset Size</MenuItem>
-          <MenuItem value="custom">Custom Size</MenuItem>
-        </Select>
+          <option value='original'>Original Size</option>
+          <option value='preset'>Preset Size</option>
+          <option value='custom'>Custom Size</option>
+        </select>
 
         {settings.resize.mode === "preset" && (
-          <Box mt={1.5}>
-            <ToggleButtonGroup
-              value={settings.resize.preset}
-              exclusive
-              onChange={(_, value) =>
-                value &&
-                updateSettings({
-                  resize: { ...settings.resize, preset: value as number },
-                })
-              }
-              fullWidth
-              size="small"
-              sx={{
-                "& .MuiToggleButton-root": {
-                  borderRadius: componentStyles.card.borderRadius,
-                  textTransform: "none",
-                },
-              }}
-            >
-              <ToggleButton value={1920}>1920px</ToggleButton>
-              <ToggleButton value={1200}>1200px</ToggleButton>
-              <ToggleButton value={800}>800px</ToggleButton>
-            </ToggleButtonGroup>
-          </Box>
+          <div className='flex gap-1.5 mt-3'>
+            {[1920, 1200, 800].map((size) => (
+              <button
+                key={size}
+                onClick={() => updateSettings({ resize: { ...settings.resize, preset: size } })}
+                className={`flex-1 py-1.5 text-xs font-medium rounded-lg border transition-all ${
+                  settings.resize.preset === size
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-card text-foreground border-border/50 hover:border-primary/50"
+                }`}
+              >
+                {size}px
+              </button>
+            ))}
+          </div>
         )}
 
         {settings.resize.mode === "custom" && (
-          <Box mt={1.5} display="flex" flexDirection="column" gap={1.5}>
-            <Box display="flex" gap={1}>
-              <TextField
-                label="Width (px)"
-                type="number"
+          <div className='mt-3 flex flex-col gap-2'>
+            <div className='flex gap-2'>
+              <input
+                type='number'
+                placeholder='Width (px)'
                 value={settings.resize.width || ""}
-                onChange={(e) =>
-                  updateSettings({
-                    resize: {
-                      ...settings.resize,
-                      width: Number(e.target.value) || undefined,
-                    },
-                  })
-                }
-                size="small"
-                fullWidth
-                sx={{ borderRadius: componentStyles.card.borderRadius }}
+                onChange={(e) => updateSettings({ resize: { ...settings.resize, width: Number(e.target.value) || undefined } })}
+                className='flex-1 bg-card border border-border/50 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary'
               />
-              <TextField
-                label="Height (px)"
-                type="number"
+              <input
+                type='number'
+                placeholder='Height (px)'
                 value={settings.resize.height || ""}
-                onChange={(e) =>
-                  updateSettings({
-                    resize: {
-                      ...settings.resize,
-                      height: Number(e.target.value) || undefined,
-                    },
-                  })
-                }
-                size="small"
-                fullWidth
-                sx={{ borderRadius: componentStyles.card.borderRadius }}
+                onChange={(e) => updateSettings({ resize: { ...settings.resize, height: Number(e.target.value) || undefined } })}
+                className='flex-1 bg-card border border-border/50 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary'
               />
-            </Box>
-            <FormControlLabel
-              control={
-                <Checkbox
+            </div>
+            <div className='flex flex-wrap gap-x-4 gap-y-2'>
+              <label className='flex items-center gap-2 cursor-pointer group'>
+                <input
+                  type='checkbox'
                   checked={settings.resize.preserveAspectRatio}
-                  onChange={(e) =>
-                    updateSettings({
-                      resize: { ...settings.resize, preserveAspectRatio: e.target.checked },
-                    })
-                  }
-                  size="small"
+                  onChange={(e) => updateSettings({ resize: { ...settings.resize, preserveAspectRatio: e.target.checked } })}
+                  className='accent-primary'
                 />
-              }
-              label={
-                <Typography variant="body2" color="text.primary">
-                  Preserve aspect ratio
-                </Typography>
-              }
-            />
-          </Box>
+                <span className='text-xs text-muted-foreground group-hover:text-foreground transition-colors'>Preserve aspect ratio</span>
+              </label>
+              <label className='flex items-center gap-2 cursor-pointer group'>
+                <input
+                  type='checkbox'
+                  checked={settings.resize.allowUpscale}
+                  onChange={(e) => updateSettings({ resize: { ...settings.resize, allowUpscale: e.target.checked } })}
+                  className='accent-primary'
+                />
+                <span className='text-xs text-muted-foreground group-hover:text-foreground transition-colors'>Allow upscale</span>
+              </label>
+            </div>
+          </div>
         )}
-      </Box>
+      </div>
 
-      <Divider />
+      <hr className='border-border/30' />
 
-      {/* EXIF Metadata */}
-      <Box>
-        <Box display="flex" alignItems="center" gap={1} mb={1.5}>
-          <ExifIcon fontSize="small" color="action" />
-          <Typography variant="subtitle2" fontWeight={600} color="text.primary">
-            EXIF Metadata
-          </Typography>
-        </Box>
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={settings.preserveExif}
-              onChange={(e) => updateSettings({ preserveExif: e.target.checked })}
-              size="small"
-            />
-          }
-          label={
-            <Box>
-              <Typography variant="body2" fontWeight={500} color="text.primary">
-                Preserve EXIF Data
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Keep camera info, location, and other metadata
-              </Typography>
-            </Box>
-          }
-        />
-      </Box>
+      {/* EXIF */}
+      <div>
+        <div className='flex items-center gap-2 mb-3'>
+          <Camera size={14} className='text-muted-foreground' />
+          <h4 className='text-sm font-semibold text-foreground'>EXIF Metadata</h4>
+        </div>
+        <label className='flex items-start gap-3 cursor-pointer hover:bg-muted p-2 rounded-lg transition-colors group'>
+          <input
+            type='checkbox'
+            checked={settings.preserveExif}
+            onChange={(e) => updateSettings({ preserveExif: e.target.checked })}
+            className='accent-primary mt-0.5'
+          />
+          <div>
+            <span className='text-sm font-medium text-foreground block group-hover:text-primary transition-colors'>Preserve EXIF Data</span>
+            <span className='text-xs text-muted-foreground'>Keep camera info, location, and metadata</span>
+          </div>
+        </label>
+      </div>
 
-      {/* Background Color (for JPEG) */}
+      {/* Background Color (JPEG only) */}
       {settings.format === "jpeg" && (
         <>
-          <Divider />
-          <Box>
-            <Box display="flex" alignItems="center" gap={1} mb={1.5}>
-              <ColorIcon fontSize="small" color="action" />
-              <Typography variant="subtitle2" fontWeight={600} color="text.primary">
-                Background Color
-              </Typography>
-            </Box>
-            <Box
-              display="flex"
-              alignItems="center"
-              gap={1.5}
-              sx={{
-                borderRadius: componentStyles.card.borderRadius,
-                border: componentStyles.card.border,
-                padding: 1.5,
-                backgroundColor: componentStyles.card.background || alpha(theme.palette.background.paper, 0.5),
-                backdropFilter: componentStyles.card.backdropFilter,
-                WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
-              }}
-            >
+          <hr className='border-border/30' />
+          <div>
+            <div className='flex items-center gap-2 mb-3'>
+              <Palette size={14} className='text-muted-foreground' />
+              <h4 className='text-sm font-semibold text-foreground'>Background Color</h4>
+            </div>
+            <div className='flex items-center gap-3 p-3 bg-card border border-border/50 rounded-xl'>
               <input
-                type="color"
+                type='color'
                 value={settings.backgroundColor}
                 onChange={(e) => updateSettings({ backgroundColor: e.target.value })}
-                style={{
-                  width: 50,
-                  height: 40,
-                  border: `1px solid ${theme.palette.divider}`,
-                  cursor: "pointer",
-                  borderRadius: componentStyles.card.borderRadius,
-                  backgroundColor: "transparent",
-                }}
+                className='w-12 h-10 rounded-lg border border-border/50 cursor-pointer bg-transparent'
               />
-              <TextField
+              <input
+                type='text'
                 value={settings.backgroundColor}
                 onChange={(e) => updateSettings({ backgroundColor: e.target.value })}
-                size="small"
-                placeholder="#FFFFFF"
-                sx={{ borderRadius: componentStyles.card.borderRadius }}
-                fullWidth
+                placeholder='#FFFFFF'
+                className='flex-1 bg-background border border-border/50 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary'
               />
-            </Box>
-          </Box>
+            </div>
+          </div>
         </>
       )}
 
-      {/* GIF Optimization Overview */}
-      {settings.format === "gif" && (
+      {/* GIF Info */}
+      {(settings.format === "gif" || settings.preserveFormat) && (
         <>
-          <Divider />
-          <Box>
-            <Box display="flex" alignItems="center" gap={1} mb={1.5}>
-              <GifIcon fontSize="small" color="action" />
-              <Typography variant="subtitle2" fontWeight={600} color="text.primary">
-                GIF Optimization
-              </Typography>
-            </Box>
-
-            <Alert severity="info" sx={{ mb: 2, borderRadius: componentStyles.card.borderRadius }}>
-              Use the Quality Slider above to adjust GIF compression level. Lower quality = more compression.
-              {"\n\n"}
-              To resize the GIF, use the standard Resize options at the top of this panel.
-            </Alert>
-          </Box>
+          <hr className='border-border/30' />
+          <div>
+            <div className='flex items-center gap-2 mb-3'>
+              <Film size={14} className='text-muted-foreground' />
+              <h4 className='text-sm font-semibold text-foreground'>GIF Animation Support</h4>
+            </div>
+            <div className='p-3 bg-primary/5 border border-primary/20 rounded-xl text-[11px] leading-relaxed text-muted-foreground'>
+              <p className='mb-2'>✨ <strong className='text-primary'>Every frame compressed:</strong> We use server-side processing for GIFs to ensure all animation frames are preserved and optimized.</p>
+              <p>To resize, use the "Resize" panel above. Settings will be applied to all frames.</p>
+            </div>
+          </div>
         </>
       )}
-    </Box>
+    </div>
   );
-};
-
-export default AdvancedSettingsSection;
+}

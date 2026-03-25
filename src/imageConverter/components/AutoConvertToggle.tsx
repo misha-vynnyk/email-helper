@@ -1,68 +1,47 @@
-import { AutoMode as AutoIcon, PanTool as ManualIcon } from "@mui/icons-material";
-import { Box, FormControlLabel, Switch, Typography, alpha, useTheme } from "@mui/material";
+/**
+ * Auto Convert Toggle — Switch between auto and manual conversion.
+ * Props-based. Tailwind styling.
+ */
 
-import { useThemeMode } from "../../theme";
-import { getComponentStyles } from "../../theme/componentStyles";
-import { useImageConverter } from "../context/ImageConverterContext";
+import { Zap, Hand } from "lucide-react";
+import { ConversionSettings } from "../types";
 
-export default function AutoConvertToggle() {
-  const theme = useTheme();
-  const { mode, style } = useThemeMode();
-  const componentStyles = getComponentStyles(mode, style);
-  const { settings, updateSettings } = useImageConverter();
+interface AutoConvertToggleProps {
+  settings: ConversionSettings;
+  updateSettings: (s: Partial<ConversionSettings>) => void;
+}
 
+export default function AutoConvertToggle({ settings, updateSettings }: AutoConvertToggleProps) {
   return (
-    <Box
-      sx={{
-        p: 1.5,
-        mb: 1,
-        borderRadius: componentStyles.card.borderRadius,
-        backgroundColor: settings.autoConvert
-          ? alpha(theme.palette.primary.main, 0.08)
-          : componentStyles.card.background || alpha(theme.palette.grey[500], 0.08),
-        backdropFilter: componentStyles.card.backdropFilter,
-        WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
-        border: componentStyles.card.border,
-        boxShadow: componentStyles.card.boxShadow,
-        transition: "all 0.2s ease",
-      }}
-    >
-      <FormControlLabel
-        control={
-          <Switch
-            checked={settings.autoConvert}
-            onChange={(e) => updateSettings({ autoConvert: e.target.checked })}
-            color='primary'
-            size='small'
+    <div className={`p-3 rounded-xl border transition-all duration-200 ${
+      settings.autoConvert
+        ? "bg-primary/5 border-primary/20"
+        : "bg-card border-border/50"
+    }`}>
+      <label className='flex items-center gap-3 cursor-pointer'>
+        <button
+          onClick={() => updateSettings({ autoConvert: !settings.autoConvert })}
+          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+            settings.autoConvert ? "bg-primary" : "bg-muted-foreground/30"
+          }`}
+        >
+          <span
+            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform shadow-sm ${
+              settings.autoConvert ? "translate-x-[18px]" : "translate-x-1"
+            }`}
           />
-        }
-        label={
-          <Box
-            display='flex'
-            alignItems='center'
-            gap={1}
-          >
-            {settings.autoConvert ? (
-              <AutoIcon
-                fontSize='small'
-                color='primary'
-              />
-            ) : (
-              <ManualIcon
-                fontSize='small'
-                color='action'
-              />
-            )}
-            <Typography
-              variant='body2'
-              fontWeight={500}
-            >
-              {settings.autoConvert ? "Auto-Convert" : "Manual Mode"}
-            </Typography>
-          </Box>
-        }
-        sx={{ m: 0 }}
-      />
-    </Box>
+        </button>
+        <div className='flex items-center gap-2'>
+          {settings.autoConvert ? (
+            <Zap size={14} className='text-primary' />
+          ) : (
+            <Hand size={14} className='text-muted-foreground' />
+          )}
+          <span className='text-sm font-medium text-foreground'>
+            {settings.autoConvert ? "Auto-Convert" : "Manual Mode"}
+          </span>
+        </div>
+      </label>
+    </div>
   );
 }

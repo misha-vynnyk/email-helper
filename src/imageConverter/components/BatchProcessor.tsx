@@ -1,107 +1,87 @@
-import { motion } from "framer-motion";
+/**
+ * Batch Processor — Header bar with conversion stats and bulk actions.
+ * Props-based (no context). Tailwind styling.
+ */
 
-import {
-  Download as DownloadIcon,
-  DeleteSweep as ClearIcon,
-  PlayArrow as ConvertIcon,
-} from "@mui/icons-material";
-import { Box, Button, Chip, Typography } from "@mui/material";
-
-import { useImageConverter } from "../context/ImageConverterContext";
+import { Download, Trash2, Play } from "lucide-react";
+import { ConversionSettings, ImageFile } from "../types";
 import { useImageStats } from "../hooks/useImageStats";
 import { formatFileSize } from "../utils/clientConverter";
 
-export default function BatchProcessor() {
-  const { files, settings, clearFiles, downloadAll, convertAll } = useImageConverter();
+interface BatchProcessorProps {
+  files: ImageFile[];
+  settings: ConversionSettings;
+  convertAll: () => void;
+  downloadAll: () => void;
+  clearFiles: () => void;
+}
+
+export default function BatchProcessor({
+  files,
+  settings,
+  convertAll,
+  downloadAll,
+  clearFiles,
+}: BatchProcessorProps) {
   const stats = useImageStats(files);
 
-  if (files.length === 0) {
-    return null;
-  }
+  if (files.length === 0) return null;
 
   return (
-    <Box
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        p: 2,
-        gap: 2,
-      }}
-    >
-      {/* Stats Section */}
-      <Box display="flex" alignItems="center" gap={2}>
+    <div className='flex items-center justify-between p-4 bg-card rounded-2xl border border-border/50 shadow-soft hover:shadow-md transition-all duration-300'>
+      {/* Stats */}
+      <div className='flex items-center gap-3'>
         {stats.completed > 0 ? (
           <>
-            <Typography variant="body2" color="text.secondary">
-              <strong>{stats.completed}</strong> / {stats.total} converted
-            </Typography>
-            <Chip
-              size="small"
-              color="success"
-              label={`${formatFileSize(stats.savedSize)} saved (${stats.savedPercent}%)`}
-              sx={{ fontWeight: 600 }}
-            />
+            <span className='text-sm text-muted-foreground'>
+              <strong className='text-foreground'>{stats.completed}</strong> / {stats.total} converted
+            </span>
+            <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-success/15 text-success'>
+              {formatFileSize(stats.savedSize)} saved ({stats.savedPercent}%)
+            </span>
           </>
         ) : (
-          <Typography variant="body2" color="text.secondary">
-            {stats.processing > 0 ? (
-              <>Processing {stats.processing} {stats.processing === 1 ? "image" : "images"}...</>
-            ) : (
-              <>Ready to convert {stats.total} {stats.total === 1 ? "image" : "images"}</>
-            )}
-          </Typography>
+          <span className='text-sm text-muted-foreground'>
+            {stats.processing > 0
+              ? `Processing ${stats.processing} ${stats.processing === 1 ? "image" : "images"}...`
+              : `Ready to convert ${stats.total} ${stats.total === 1 ? "image" : "images"}`}
+          </span>
         )}
-      </Box>
+      </div>
 
-      {/* Actions Section */}
-      <Box display="flex" gap={1}>
-        {/* Convert All Button */}
+      {/* Actions */}
+      <div className='flex gap-2'>
         {!settings.autoConvert && stats.total > stats.completed && (
-          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<ConvertIcon />}
-              onClick={convertAll}
-              disabled={stats.processing > 0}
-              sx={{ textTransform: "none", fontWeight: 600 }}
-            >
-              Convert All
-            </Button>
-          </motion.div>
+          <button
+            onClick={convertAll}
+            disabled={stats.processing > 0}
+            className='flex items-center gap-2 bg-primary hover:brightness-110 text-primary-foreground font-bold px-5 py-2 rounded-full shadow-soft transition-all hover:shadow-md hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 disabled:hover:translate-y-0 text-sm'
+          >
+            <Play size={14} strokeWidth={2.5} />
+            Convert All
+          </button>
         )}
 
-        {/* Download All Button */}
         {stats.completed > 0 && (
-          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <Button
-              variant="contained"
-              color="success"
-              startIcon={<DownloadIcon />}
-              onClick={downloadAll}
-              sx={{ textTransform: "none", fontWeight: 600 }}
-            >
-              Download All
-            </Button>
-          </motion.div>
+          <button
+            onClick={downloadAll}
+            className='flex items-center gap-2 bg-success hover:brightness-110 text-white font-bold px-5 py-2 rounded-full shadow-soft transition-all hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-sm'
+          >
+            <Download size={14} strokeWidth={2.5} />
+            Download All
+          </button>
         )}
 
-        {/* Clear All Button */}
         {stats.total > 0 && (
-          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <Button
-              variant="outlined"
-              color="error"
-              startIcon={<ClearIcon />}
-              onClick={clearFiles}
-              sx={{ textTransform: "none" }}
-            >
-              Clear All
-            </Button>
-          </motion.div>
+          <button
+            onClick={clearFiles}
+            className='p-2.5 bg-destructive/10 hover:bg-destructive/20 text-destructive rounded-full transition-all hover:scale-105 active:scale-95'
+            title='Clear All'
+          >
+            <Trash2 size={16} strokeWidth={2.5} />
+          </button>
         )}
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
 }

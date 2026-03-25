@@ -1,18 +1,9 @@
-import React from "react";
-import {
-  Box,
-  Typography,
-  Radio,
-  RadioGroup,
-  FormControlLabel,
-  Slider,
-  Chip,
-  alpha,
-  useTheme,
-} from "@mui/material";
-import { AutoAwesome as AutoIcon, Tune as ManualIcon, Lock as LockIcon } from "@mui/icons-material";
-import { useThemeMode } from "../../theme";
-import { getComponentStyles } from "../../theme/componentStyles";
+/**
+ * Quality Control — Auto/Manual quality with slider.
+ * Props-based. Tailwind styling.
+ */
+
+import { Sparkles, SlidersHorizontal, Lock } from "lucide-react";
 import { CompressionMode } from "../types";
 
 interface QualityControlProps {
@@ -24,282 +15,126 @@ interface QualityControlProps {
   disabled?: boolean;
 }
 
-const getQualityLevel = (
-  quality: number
-): { label: string; color: "success" | "warning" | "error" } => {
-  if (quality >= 90) return { label: "Excellent", color: "success" };
-  if (quality >= 75) return { label: "High", color: "success" };
-  if (quality >= 60) return { label: "Good", color: "warning" };
-  if (quality >= 40) return { label: "Medium", color: "warning" };
-  return { label: "Low", color: "error" };
+const getQualityLevel = (quality: number): { label: string; color: string } => {
+  if (quality >= 90) return { label: "Excellent", color: "text-success" };
+  if (quality >= 75) return { label: "High", color: "text-success" };
+  if (quality >= 60) return { label: "Good", color: "text-warning" };
+  if (quality >= 40) return { label: "Medium", color: "text-warning" };
+  return { label: "Low", color: "text-destructive" };
 };
 
-// Get auto quality value based on compression mode
 const getCompressionModeQuality = (mode: CompressionMode): number => {
   switch (mode) {
-    case "maximum-quality":
-      return 92;
-    case "maximum-compression":
-      return 75;
-    case "lossless":
-      return 100;
-    default:
-      return 85;
+    case "maximum-quality": return 92;
+    case "maximum-compression": return 75;
+    case "lossless": return 100;
+    default: return 85;
   }
 };
 
 const getCompressionModeLabel = (mode: CompressionMode): string => {
   switch (mode) {
-    case "maximum-quality":
-      return "Maximum Quality mode (92%)";
-    case "maximum-compression":
-      return "Maximum Compression mode (75%)";
-    case "lossless":
-      return "Lossless mode (100%)";
-    default:
-      return "";
+    case "maximum-quality": return "Maximum Quality mode (92%)";
+    case "maximum-compression": return "Maximum Compression mode (75%)";
+    case "lossless": return "Lossless mode (100%)";
+    default: return "";
   }
 };
 
-const QualityControl: React.FC<QualityControlProps> = ({
+export default function QualityControl({
   autoQuality,
   quality,
   onAutoQualityChange,
   onQualityChange,
   compressionMode = "balanced",
   disabled = false,
-}) => {
-  const theme = useTheme();
-  const { mode, style } = useThemeMode();
-  const componentStyles = getComponentStyles(mode, style);
+}: QualityControlProps) {
   const isControlledByCompressionMode = compressionMode !== "balanced";
-  const effectiveQuality = isControlledByCompressionMode
-    ? getCompressionModeQuality(compressionMode)
-    : quality;
+  const effectiveQuality = isControlledByCompressionMode ? getCompressionModeQuality(compressionMode) : quality;
   const qualityLevel = getQualityLevel(effectiveQuality);
 
   return (
-    <Box>
-      <Box
-        display='flex'
-        alignItems='center'
-        justifyContent='space-between'
-        mb={1.5}
-      >
-        <Typography
-          variant='subtitle2'
-          fontWeight={600}
-          color='text.primary'
-        >
-          Quality Control
-        </Typography>
-        <Chip
-          size='small'
-          label={qualityLevel.label}
-          color={qualityLevel.color}
-          sx={{ fontWeight: 600, fontSize: "0.75rem", height: 24 }}
-        />
-      </Box>
+    <div>
+      <div className='flex items-center justify-between mb-3'>
+        <h4 className='text-sm font-semibold text-foreground'>Quality Control</h4>
+        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${qualityLevel.color} bg-current/10`}>
+          {qualityLevel.label}
+        </span>
+      </div>
 
-      {/* Show locked state for non-balanced modes */}
       {isControlledByCompressionMode ? (
-        <Box
-          sx={{
-            p: 2,
-            borderRadius: componentStyles.card.borderRadius,
-            backgroundColor: alpha(theme.palette.info.main, 0.08),
-            border: `1px solid ${alpha(theme.palette.info.main, 0.2)}`,
-          }}
-        >
-          <Box
-            display='flex'
-            alignItems='center'
-            gap={1}
-            mb={1}
-          >
-            <LockIcon
-              fontSize='small'
-              color='info'
-            />
-            <Typography
-              variant='body2'
-              fontWeight={500}
-              color='text.primary'
-            >
-              Quality set automatically
-            </Typography>
-          </Box>
-          <Typography
-            variant='caption'
-            color='text.secondary'
-            sx={{ display: "block", mb: 1.5 }}
-          >
+        /* Locked state for non-balanced modes */
+        <div className='p-4 rounded-xl bg-info/5 border border-info/20'>
+          <div className='flex items-center gap-2 mb-2'>
+            <Lock size={14} className='text-info' />
+            <span className='text-sm font-medium text-foreground'>Quality set automatically</span>
+          </div>
+          <p className='text-xs text-muted-foreground mb-3'>
             {getCompressionModeLabel(compressionMode)}
-          </Typography>
-          <Box
-            display='flex'
-            alignItems='center'
-            justifyContent='center'
-          >
-            <Typography
-              variant='h4'
-              color='primary'
-              fontWeight={700}
-            >
-              {effectiveQuality}%
-            </Typography>
-          </Box>
-        </Box>
+          </p>
+          <div className='text-center'>
+            <span className='text-3xl font-bold text-primary'>{effectiveQuality}%</span>
+          </div>
+        </div>
       ) : (
         <>
-          <RadioGroup
-            value={autoQuality ? "auto" : "manual"}
-            onChange={(e) => onAutoQualityChange(e.target.value === "auto")}
-          >
-            <FormControlLabel
-              value='auto'
-              control={
-                <Radio
-                  size='small'
-                  disabled={disabled}
-                />
-              }
-              label={
-                <Box
-                  display='flex'
-                  alignItems='center'
-                  gap={1}
-                >
-                  <AutoIcon
-                    fontSize='small'
-                    color='action'
-                  />
-                  <Box>
-                    <Typography
-                      variant='body2'
-                      fontWeight={500}
-                      color='text.primary'
-                    >
-                      Auto Quality
-                    </Typography>
-                    <Typography
-                      variant='caption'
-                      color='text.secondary'
-                    >
-                      Automatically calculate optimal quality
-                    </Typography>
-                  </Box>
-                </Box>
-              }
-            />
-            <FormControlLabel
-              value='manual'
-              control={
-                <Radio
-                  size='small'
-                  disabled={disabled}
-                />
-              }
-              label={
-                <Box
-                  display='flex'
-                  alignItems='center'
-                  gap={1}
-                >
-                  <ManualIcon
-                    fontSize='small'
-                    color='action'
-                  />
-                  <Box>
-                    <Typography
-                      variant='body2'
-                      fontWeight={500}
-                      color='text.primary'
-                    >
-                      Manual Quality
-                    </Typography>
-                    <Typography
-                      variant='caption'
-                      color='text.secondary'
-                    >
-                      Set quality level manually
-                    </Typography>
-                  </Box>
-                </Box>
-              }
-            />
-          </RadioGroup>
+          {/* Auto / Manual radio */}
+          <div className='flex flex-col gap-2 mb-3'>
+            <label className='flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted cursor-pointer transition-colors'>
+              <input
+                type='radio'
+                checked={autoQuality}
+                onChange={() => onAutoQualityChange(true)}
+                disabled={disabled}
+                className='accent-primary'
+              />
+              <Sparkles size={14} className='text-muted-foreground' />
+              <div>
+                <span className='text-sm font-medium text-foreground block'>Auto Quality</span>
+                <span className='text-xs text-muted-foreground'>Automatically calculate optimal quality</span>
+              </div>
+            </label>
 
+            <label className='flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted cursor-pointer transition-colors'>
+              <input
+                type='radio'
+                checked={!autoQuality}
+                onChange={() => onAutoQualityChange(false)}
+                disabled={disabled}
+                className='accent-primary'
+              />
+              <SlidersHorizontal size={14} className='text-muted-foreground' />
+              <div>
+                <span className='text-sm font-medium text-foreground block'>Manual Quality</span>
+                <span className='text-xs text-muted-foreground'>Set quality level manually</span>
+              </div>
+            </label>
+          </div>
+
+          {/* Slider */}
           {!autoQuality && (
-            <Box sx={{ mt: 2, px: 1 }}>
-              <Box
-                display='flex'
-                alignItems='center'
-                justifyContent='space-between'
-                mb={1}
-              >
-                <Typography
-                  variant='body2'
-                  color='text.secondary'
-                >
-                  Quality
-                </Typography>
-                <Typography
-                  variant='h6'
-                  color='primary'
-                  fontWeight={700}
-                >
-                  {quality}%
-                </Typography>
-              </Box>
-              <Slider
-                value={quality}
-                onChange={(_, value) => {
-                  const numValue = Array.isArray(value) ? value[0] : value;
-                  const clampedValue = Math.max(1, Math.min(100, numValue));
-                  onQualityChange(clampedValue);
-                }}
+            <div className='px-1'>
+              <div className='flex items-center justify-between mb-2'>
+                <span className='text-sm text-muted-foreground'>Quality</span>
+                <span className='text-xl font-bold text-primary'>{quality}%</span>
+              </div>
+              <input
+                type='range'
                 min={1}
                 max={100}
+                value={quality}
+                onChange={(e) => onQualityChange(Math.max(1, Math.min(100, Number(e.target.value))))}
                 disabled={disabled}
-                valueLabelDisplay='auto'
-                marks={[
-                  { value: 1, label: "1%" },
-                  { value: 25, label: "25%" },
-                  { value: 50, label: "50%" },
-                  { value: 75, label: "75%" },
-                  { value: 100, label: "100%" },
-                ]}
-                sx={{
-                  "& .MuiSlider-markLabel": {
-                    fontSize: "0.65rem",
-                  },
-                }}
+                className='w-full accent-primary h-2 rounded-full cursor-pointer disabled:opacity-50'
               />
-              <Box
-                display='flex'
-                justifyContent='space-between'
-                mt={0.5}
-              >
-                <Typography
-                  variant='caption'
-                  color='text.secondary'
-                >
-                  Smaller file
-                </Typography>
-                <Typography
-                  variant='caption'
-                  color='text.secondary'
-                >
-                  Better quality
-                </Typography>
-              </Box>
-            </Box>
+              <div className='flex justify-between mt-1'>
+                <span className='text-[10px] text-muted-foreground'>Smaller file</span>
+                <span className='text-[10px] text-muted-foreground'>Better quality</span>
+              </div>
+            </div>
           )}
         </>
       )}
-    </Box>
+    </div>
   );
-};
-
-export default QualityControl;
+}

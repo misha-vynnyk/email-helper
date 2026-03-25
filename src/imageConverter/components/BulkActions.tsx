@@ -1,179 +1,122 @@
 /**
- * Bulk Actions Toolbar
- * Provides bulk selection and operations UI
+ * Bulk Actions Toolbar — Selection and bulk operations.
+ * Props-based (no context). Tailwind styling.
  */
 
-import {
-  CheckBox as CheckedIcon,
-  CheckBoxOutlineBlank as UncheckedIcon,
-  Close as CloseIcon,
-  Delete as DeleteIcon,
-  Download as DownloadIcon,
-  PlayArrow as ConvertIcon,
-} from "@mui/icons-material";
-import {
-  Box,
-  Button,
-  Checkbox,
-  Chip,
-  IconButton,
-  Paper,
-  Stack,
-  Typography,
-} from "@mui/material";
+import { Check, Square, Trash2, Download, Play, X } from "lucide-react";
+import { ImageFile } from "../types";
 
-import { useThemeMode } from "../../theme";
-import { getComponentStyles } from "../../theme/componentStyles";
-import { useImageConverter } from "../context/ImageConverterContext";
+interface BulkActionsProps {
+  files: ImageFile[];
+  selectedCount: number;
+  selectAll: () => void;
+  deselectAll: () => void;
+  removeSelected: () => void;
+  downloadSelected: () => void;
+  convertSelected: () => void;
+}
 
-export default function BulkActions() {
-  const {
-    files,
-    selectedCount,
-    selectAll,
-    deselectAll,
-    removeSelected,
-    downloadSelected,
-    convertSelected,
-  } = useImageConverter();
-  const { mode, style } = useThemeMode();
-  const componentStyles = getComponentStyles(mode, style);
+export default function BulkActions({
+  files,
+  selectedCount,
+  selectAll,
+  deselectAll,
+  removeSelected,
+  downloadSelected,
+  convertSelected,
+}: BulkActionsProps) {
+  if (files.length === 0) return null;
 
   const allSelected = files.length > 0 && selectedCount === files.length;
   const someSelected = selectedCount > 0 && !allSelected;
 
-  if (files.length === 0) return null;
+  const doneCount = files.filter((f) => f.selected && f.status === "done").length;
+  const pendingCount = files.filter((f) => f.selected && f.status === "pending").length;
+  const processingCount = files.filter((f) => f.selected && f.status === "processing").length;
+  const errorCount = files.filter((f) => f.selected && f.status === "error").length;
 
   return (
-    <Paper
-      elevation={0}
-      sx={{
-        p: 2,
-        borderRadius: componentStyles.card.borderRadius,
-        mb: 2,
-        backgroundColor: componentStyles.card.background,
-        backdropFilter: componentStyles.card.backdropFilter,
-        WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
-        border: componentStyles.card.border,
-        boxShadow: componentStyles.card.boxShadow,
-        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-      }}
-    >
-      <Stack
-        direction="row"
-        alignItems="center"
-        justifyContent="space-between"
-        gap={2}
-        flexWrap="wrap"
-      >
-        {/* Selection Controls */}
-        <Box display="flex" alignItems="center" gap={1}>
-          <Checkbox
-            checked={allSelected}
-            indeterminate={someSelected}
-            onChange={(e) => (e.target.checked ? selectAll() : deselectAll())}
-            icon={<UncheckedIcon />}
-            checkedIcon={<CheckedIcon />}
-            indeterminateIcon={<CheckedIcon />}
-          />
-          <Typography variant="body2" fontWeight={500}>
-            {selectedCount > 0 ? (
-              <>
-                {selectedCount} of {files.length} selected
-              </>
+    <div className='bg-card/80 backdrop-blur-sm rounded-xl p-3 border border-border/50 shadow-soft transition-all duration-300'>
+      <div className='flex items-center justify-between gap-3 flex-wrap'>
+        {/* Checkbox + Label */}
+        <div className='flex items-center gap-2'>
+          <button
+            onClick={() => (allSelected ? deselectAll() : selectAll())}
+            className='p-1 rounded hover:bg-muted transition-colors'
+          >
+            {allSelected ? (
+              <Check size={18} className='text-primary' />
+            ) : someSelected ? (
+              <div className='w-[18px] h-[18px] rounded-sm border-2 border-primary bg-primary/20' />
             ) : (
-              <>Select All ({files.length})</>
+              <Square size={18} className='text-muted-foreground' />
             )}
-          </Typography>
-        </Box>
+          </button>
+          <span className='text-sm font-medium text-foreground'>
+            {selectedCount > 0
+              ? `${selectedCount} of ${files.length} selected`
+              : `Select All (${files.length})`}
+          </span>
+        </div>
 
-        {/* Bulk Actions */}
+        {/* Actions */}
         {selectedCount > 0 && (
-          <Stack direction="row" spacing={1} alignItems="center">
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<ConvertIcon />}
+          <div className='flex items-center gap-1.5'>
+            <button
               onClick={convertSelected}
-              sx={{ textTransform: "none" }}
+              className='flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-border/50 rounded-lg hover:bg-muted transition-all hover:scale-105 active:scale-95'
             >
-              Convert Selected
-            </Button>
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<DownloadIcon />}
+              <Play size={14} />
+              Convert
+            </button>
+            <button
               onClick={downloadSelected}
-              sx={{ textTransform: "none" }}
+              className='flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-border/50 rounded-lg hover:bg-muted transition-all hover:scale-105 active:scale-95'
             >
-              Download Selected
-            </Button>
-            <IconButton
-              size="small"
+              <Download size={14} />
+              Download
+            </button>
+            <button
               onClick={removeSelected}
-              color="error"
-              sx={{
-                "&:hover": {
-                  bgcolor: "error.light",
-                  color: "white",
-                },
-              }}
+              className='p-1.5 text-destructive hover:bg-destructive/10 rounded-lg transition-all hover:scale-105 active:scale-95'
             >
-              <DeleteIcon fontSize="small" />
-            </IconButton>
-            <IconButton size="small" onClick={deselectAll}>
-              <CloseIcon fontSize="small" />
-            </IconButton>
-          </Stack>
+              <Trash2 size={14} />
+            </button>
+            <button
+              onClick={deselectAll}
+              className='p-1.5 text-muted-foreground hover:bg-muted rounded-lg transition-colors'
+            >
+              <X size={14} />
+            </button>
+          </div>
         )}
-      </Stack>
+      </div>
 
       {/* Status Chips */}
       {selectedCount > 0 && (
-        <Box mt={1} display="flex" gap={0.5}>
-          {files.filter((f) => f.selected && f.status === "done").length > 0 && (
-            <Chip
-              label={`${
-                files.filter((f) => f.selected && f.status === "done").length
-              } Done`}
-              size="small"
-              color="success"
-              variant="outlined"
-            />
+        <div className='mt-2 flex gap-1.5'>
+          {doneCount > 0 && (
+            <span className='px-2 py-0.5 text-xs rounded-full border border-success/30 text-success bg-success/10'>
+              {doneCount} Done
+            </span>
           )}
-          {files.filter((f) => f.selected && f.status === "pending").length > 0 && (
-            <Chip
-              label={`${
-                files.filter((f) => f.selected && f.status === "pending").length
-              } Pending`}
-              size="small"
-              color="default"
-              variant="outlined"
-            />
+          {pendingCount > 0 && (
+            <span className='px-2 py-0.5 text-xs rounded-full border border-border text-muted-foreground'>
+              {pendingCount} Pending
+            </span>
           )}
-          {files.filter((f) => f.selected && f.status === "processing").length > 0 && (
-            <Chip
-              label={`${
-                files.filter((f) => f.selected && f.status === "processing").length
-              } Processing`}
-              size="small"
-              color="primary"
-              variant="outlined"
-            />
+          {processingCount > 0 && (
+            <span className='px-2 py-0.5 text-xs rounded-full border border-primary/30 text-primary bg-primary/10'>
+              {processingCount} Processing
+            </span>
           )}
-          {files.filter((f) => f.selected && f.status === "error").length > 0 && (
-            <Chip
-              label={`${
-                files.filter((f) => f.selected && f.status === "error").length
-              } Error`}
-              size="small"
-              color="error"
-              variant="outlined"
-            />
+          {errorCount > 0 && (
+            <span className='px-2 py-0.5 text-xs rounded-full border border-destructive/30 text-destructive bg-destructive/10'>
+              {errorCount} Error
+            </span>
           )}
-        </Box>
+        </div>
       )}
-    </Paper>
+    </div>
   );
 }
-

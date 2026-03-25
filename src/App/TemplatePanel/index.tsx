@@ -8,7 +8,6 @@ import { useSelectedMainTab } from "../../contexts/AppState";
 import { EmailSenderProvider } from "../../emailSender/EmailSenderContext";
 import { HtmlConverterPanel } from "../../htmlConverter";
 import { ImageConverterPanel } from "../../imageConverter";
-import GeometricBackground from "../../imageConverter/components/GeometricBackground";
 import { TemplateLibrary } from "../../templateLibrary";
 import { getComponentStyles, ThemeToggle, ThemeStyleSelector, useThemeMode } from "../../theme";
 
@@ -24,7 +23,7 @@ export default function TemplatePanel() {
   const componentStyles = React.useMemo(() => getComponentStyles(mode, style), [mode, style]);
   // useDeferredValue - рендер контенту відкладається, таб-індикатор оновлюється миттєво
   const deferredTab = React.useDeferredValue(selectedMainTab);
-  const showAnimatedBackground = style !== "default";
+
 
   // Індикатор переходу між табами
   const isTransitioning = selectedMainTab !== deferredTab;
@@ -66,21 +65,6 @@ export default function TemplatePanel() {
         justifyContent='space-between'
         alignItems='center'
         onWheel={handleFixedWheel}>
-        {/* Animated Background - only for non-default styles */}
-        {showAnimatedBackground && (
-          <Box
-            sx={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              zIndex: 0,
-              pointerEvents: "none",
-            }}>
-            <GeometricBackground />
-          </Box>
-        )}
         <Box sx={{ position: "relative", zIndex: 1, minWidth: 40 }}>
           <ToggleSamplesPanelButton />
         </Box>

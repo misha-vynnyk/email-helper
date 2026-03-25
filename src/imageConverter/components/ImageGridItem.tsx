@@ -1,38 +1,22 @@
+/**
+ * Image Grid Item — Individual image card showing status, progress, and actions.
+ * Props-based (no context). Tailwind styling.
+ */
+
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { ReactCompareSlider, ReactCompareSliderImage } from "react-compare-slider";
-
 import {
-  CheckBox as CheckedIcon,
-  CheckBoxOutlineBlank as UncheckedIcon,
-  CheckCircle as DoneIcon,
-  CompareArrows as CompareIcon,
-  Delete as DeleteIcon,
-  Download as DownloadIcon,
-  Error as ErrorIcon,
-  HourglassEmpty as PendingIcon,
-  Image as ImageIcon,
-} from "@mui/icons-material";
-import {
-  alpha,
-  Box,
-  Card,
-  CardMedia,
-  Checkbox,
-  Chip,
-  CircularProgress,
-  Dialog,
-  IconButton,
-  LinearProgress,
-  Tooltip,
-  Typography,
-  useTheme,
-} from "@mui/material";
+  Download,
+  Trash2,
+  GripVertical,
+  Check,
+  AlertTriangle,
+  Loader2,
+  Eye,
+} from "lucide-react";
+import { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
 
-import { useThemeMode } from "../../theme";
-import { getComponentStyles } from "../../theme/componentStyles";
 import { ImageFile } from "../types";
-import { calculateCompressionRatio, formatFileSize } from "../utils/clientConverter";
+import { formatFileSize } from "../utils/clientConverter";
 
 interface ImageGridItemProps {
   file: ImageFile;
@@ -40,7 +24,7 @@ interface ImageGridItemProps {
   onRemove: () => void;
   onToggleSelection: () => void;
   index: number;
-  dragListeners?: any;
+  dragListeners?: SyntheticListenerMap;
 }
 
 export default function ImageGridItem({
@@ -48,469 +32,200 @@ export default function ImageGridItem({
   onDownload,
   onRemove,
   onToggleSelection,
-  index,
   dragListeners,
 }: ImageGridItemProps) {
-  const theme = useTheme();
-  const { mode, style } = useThemeMode();
-  const componentStyles = getComponentStyles(mode, style);
-  const dialogPaperSx = {
-    borderRadius: `${componentStyles.card.borderRadius}px`,
-    background: componentStyles.card.background || alpha(theme.palette.background.paper, 0.92),
-    backdropFilter: componentStyles.card.backdropFilter,
-    WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
-    border: componentStyles.card.border,
-    boxShadow: componentStyles.card.boxShadow,
-  } as const;
-  const [compareOpen, setCompareOpen] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
+  const [showComparison, setShowComparison] = useState(false);
+  const [hovered, setHovered] = useState(false);
 
-  const compression =
-    file.convertedSize && file.status === "done"
-      ? calculateCompressionRatio(file.originalSize, file.convertedSize)
+  const isDone = file.status === "done";
+  const isProcessing = file.status === "processing";
+  const isError = file.status === "error";
+
+  const savedPercent =
+    isDone && file.convertedSize
+      ? Math.round(((file.originalSize - file.convertedSize) / file.originalSize) * 100)
       : 0;
 
-  const getStatusColor = () => {
-    switch (file.status) {
-      case "done":
-        return "success";
-      case "processing":
-        return "primary";
-      case "error":
-        return "error";
-      default:
-        return "default";
-    }
-  };
-
-  const getStatusIcon = () => {
-    switch (file.status) {
-      case "done":
-        return <DoneIcon fontSize='small' />;
-      case "processing":
-        return (
-          <CircularProgress
-            size={14}
-            color='inherit'
-          />
-        );
-      case "error":
-        return <ErrorIcon fontSize='small' />;
-      default:
-        return <PendingIcon fontSize='small' />;
-    }
-  };
-
-  const getStatusLabel = () => {
-    switch (file.status) {
-      case "done":
-        return "Done";
-      case "processing":
-        return "Converting...";
-      case "error":
-        return "Error";
-      default:
-        return "Pending";
-    }
-  };
-
   return (
-    <Card
-      component={motion.div}
-      initial={{ opacity: 0, scale: 0.9, y: 20 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.9, y: -20 }}
-      transition={{ duration: 0.3, delay: index * 0.03 }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      sx={{
-        position: "relative",
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-        cursor: "pointer",
-        borderRadius: componentStyles.card.borderRadius,
-        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-        backgroundColor: componentStyles.card.background || theme.palette.background.paper,
-        backdropFilter: componentStyles.card.backdropFilter,
-        WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
-        border: file.selected
-          ? `1px solid ${alpha(theme.palette.primary.main, 0.4)}`
-          : componentStyles.card.border,
-        boxShadow: componentStyles.card.boxShadow,
-        "&:hover": {
-          transform: componentStyles.card.hover?.transform || "translateY(-2px)",
-          boxShadow: componentStyles.card.hover?.boxShadow || theme.shadows[4],
-          border: file.selected
-            ? `1px solid ${alpha(theme.palette.primary.main, 0.6)}`
-            : componentStyles.card.hover?.border || componentStyles.card.border,
-        },
-      }}
-    >
-      {/* Selection Checkbox - Always visible */}
-      <Box
-        sx={{
-          position: "absolute",
-          top: 8,
-          left: 8,
-          zIndex: 3,
-        }}
+    <>
+      <div
+        className={`
+          relative bg-card rounded-xl border overflow-hidden transition-all duration-300 group
+          ${file.selected ? "border-primary ring-2 ring-primary/20" : "border-border/50 hover:border-border"}
+          ${isError ? "border-destructive/50" : ""}
+          hover:shadow-lg
+        `}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
       >
-        <Checkbox
-          checked={file.selected || false}
-          onChange={(e) => {
-            e.stopPropagation();
-            onToggleSelection();
-          }}
-          icon={<UncheckedIcon />}
-          checkedIcon={<CheckedIcon />}
-          size='small'
-          sx={{
-            color: theme.palette.common.white,
-            backgroundColor: alpha(theme.palette.common.black, 0.4),
-            borderRadius: 1,
-            p: 0.25,
-            "&:hover": {
-              backgroundColor: alpha(theme.palette.common.black, 0.6),
-            },
-            "&.Mui-checked": {
-              color: theme.palette.primary.main,
-              backgroundColor: alpha(theme.palette.common.white, 0.9),
-            },
-          }}
-        />
-      </Box>
-
-      {/* Status Badge */}
-      <Box
-        sx={{
-          position: "absolute",
-          top: 8,
-          left: 44,
-          zIndex: 2,
-        }}
-      >
-        <Chip
-          size='small'
-          icon={getStatusIcon()}
-          label={getStatusLabel()}
-          color={getStatusColor()}
-          sx={{
-            fontWeight: 500,
-            height: 24,
-            fontSize: "0.7rem",
-            "& .MuiChip-icon": {
-              fontSize: "0.9rem",
-            },
-          }}
-        />
-      </Box>
-
-      {/* Action Buttons - Show on hover */}
-      <Box
-        sx={{
-          position: "absolute",
-          top: 8,
-          right: 8,
-          zIndex: 2,
-          display: "flex",
-          gap: 0.5,
-          opacity: isHovered ? 1 : 0,
-          transform: isHovered ? "translateX(0)" : "translateX(10px)",
-          transition: "all 0.2s ease",
-        }}
-      >
-        {file.status === "done" && (
-          <>
-            <Tooltip title='Download'>
-              <IconButton
-                size='small'
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDownload();
-                }}
-                sx={{
-                  width: 32,
-                  height: 32,
-                  backgroundColor: alpha(theme.palette.background.paper, 0.95),
-                  backdropFilter: "blur(8px)",
-                  borderRadius: "50%",
-                  boxShadow: theme.shadows[2],
-                  border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
-                  "&:hover": {
-                    backgroundColor: theme.palette.background.paper,
-                    color: theme.palette.success.main,
-                    boxShadow: theme.shadows[4],
-                    transform: "scale(1.1)",
-                  },
-                  transition: "all 0.2s ease",
-                }}
-              >
-                <DownloadIcon fontSize='small' />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title='Compare Before/After'>
-              <IconButton
-                size='small'
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCompareOpen(true);
-                }}
-                sx={{
-                  width: 32,
-                  height: 32,
-                  backgroundColor: alpha(theme.palette.background.paper, 0.95),
-                  backdropFilter: "blur(8px)",
-                  borderRadius: "50%",
-                  boxShadow: theme.shadows[2],
-                  border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
-                  "&:hover": {
-                    backgroundColor: theme.palette.background.paper,
-                    color: theme.palette.info.main,
-                    boxShadow: theme.shadows[4],
-                    transform: "scale(1.1)",
-                  },
-                  transition: "all 0.2s ease",
-                }}
-              >
-                <CompareIcon fontSize='small' />
-              </IconButton>
-            </Tooltip>
-          </>
-        )}
-        <Tooltip title='Remove'>
-          <IconButton
-            size='small'
-            onClick={(e) => {
-              e.stopPropagation();
-              onRemove();
-            }}
-            sx={{
-              width: 32,
-              height: 32,
-              backgroundColor: alpha(theme.palette.background.paper, 0.95),
-              backdropFilter: "blur(8px)",
-              borderRadius: "50%",
-              boxShadow: theme.shadows[2],
-              border: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
-              "&:hover": {
-                backgroundColor: theme.palette.background.paper,
-                color: theme.palette.error.main,
-                boxShadow: theme.shadows[4],
-                transform: "scale(1.1)",
-              },
-              transition: "all 0.2s ease",
-            }}
-          >
-            <DeleteIcon fontSize='small' />
-          </IconButton>
-        </Tooltip>
-      </Box>
-
-      {/* Image Preview */}
-      <Box
-        {...dragListeners}
-        sx={{
-          position: "relative",
-          paddingTop: "100%",
-          backgroundColor: theme.palette.grey[200],
-          overflow: "hidden",
-          cursor: dragListeners ? "grab" : "default",
-          "&:active": {
-            cursor: dragListeners ? "grabbing" : "default",
-          },
-        }}
-      >
-        {file.previewUrl ? (
-          <CardMedia
-            component='img'
-            image={file.previewUrl}
+        {/* Image Preview */}
+        <div className='relative aspect-square overflow-hidden bg-background'>
+          <img
+            src={file.previewUrl}
             alt={file.file.name}
-            sx={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-            }}
+            className='w-full h-full object-cover transition-transform duration-300 group-hover:scale-105'
           />
-        ) : (
-          <Box
-            sx={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: "100%",
-              height: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <ImageIcon sx={{ fontSize: 48, color: theme.palette.grey[400] }} />
-          </Box>
-        )}
 
-        {/* Processing Overlay */}
-        {file.status === "processing" && (
-          <Box
-            sx={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              width: "100%",
-              height: "100%",
-              backgroundColor: alpha(theme.palette.common.black, 0.5),
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <CircularProgress sx={{ color: theme.palette.common.white }} />
-          </Box>
-        )}
-      </Box>
+          {/* Progress Overlay */}
+          {isProcessing && (
+            <div className='absolute inset-0 bg-black/40 backdrop-blur-sm flex flex-col items-center justify-center gap-2'>
+              <Loader2 size={24} className='text-white animate-spin' />
+              <span className='text-white text-xs font-semibold'>{Math.round(file.progress)}%</span>
+              {file.eta !== undefined && file.eta > 0 && (
+                <span className='text-white/70 text-[10px]'>~{file.eta}s left</span>
+              )}
+            </div>
+          )}
 
-      {/* Progress Bar */}
-      {file.status === "processing" && (
-        <LinearProgress
-          variant='determinate'
-          value={file.progress || 0}
-          sx={{
-            height: 3,
-            backgroundColor: alpha(theme.palette.primary.main, 0.1),
-            "& .MuiLinearProgress-bar": {
-              backgroundColor: theme.palette.primary.main,
-            },
-          }}
-        />
-      )}
+          {/* Error Overlay */}
+          {isError && (
+            <div className='absolute inset-0 bg-destructive/20 flex items-center justify-center'>
+              <div className='text-center px-3'>
+                <AlertTriangle size={24} className='text-destructive mx-auto mb-1' />
+                <span className='text-destructive text-xs block'>{file.error || "Failed"}</span>
+              </div>
+            </div>
+          )}
 
-      {/* File Info */}
-      <Box sx={{ p: 1.5, flexGrow: 1 }}>
-        <Typography
-          variant='body2'
-          fontWeight={500}
-          noWrap
-          sx={{ mb: 0.5 }}
-          title={file.file.name}
-        >
-          {file.file.name}
-        </Typography>
+          {/* Done Badge */}
+          {isDone && (
+            <div className='absolute top-2 right-2 w-6 h-6 rounded-full bg-success flex items-center justify-center shadow-sm'>
+              <Check size={14} className='text-white' strokeWidth={3} />
+            </div>
+          )}
 
-        <Box
-          display='flex'
-          flexDirection='column'
-          gap={0.5}
-        >
-          <Typography
-            variant='caption'
-            color='text.secondary'
-          >
-            {formatFileSize(file.originalSize)}
-            {file.convertedSize && (
-              <>
-                {" → "}
-                <Box
-                  component='span'
-                  sx={{ color: theme.palette.success.main, fontWeight: 600 }}
-                >
-                  {formatFileSize(file.convertedSize)}
-                </Box>
-              </>
-            )}
-          </Typography>
+          {/* Hover Actions */}
+          {hovered && (
+            <div className='absolute top-2 left-2 flex gap-1'>
+              {/* Selection */}
+              <button
+                onClick={(e) => { e.stopPropagation(); onToggleSelection(); }}
+                className={`w-6 h-6 rounded-md flex items-center justify-center transition-all ${
+                  file.selected
+                    ? "bg-primary text-white"
+                    : "bg-black/50 text-white hover:bg-primary"
+                }`}
+              >
+                {file.selected ? <Check size={14} strokeWidth={3} /> : <div className='w-3 h-3 rounded-sm border-2 border-white' />}
+              </button>
 
-          {compression > 0 && (
-            <motion.div
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
+              {/* Drag handle */}
+              <div
+                {...dragListeners}
+                className='w-6 h-6 rounded-md bg-black/50 text-white flex items-center justify-center cursor-grab active:cursor-grabbing hover:bg-black/70'
+              >
+                <GripVertical size={14} />
+              </div>
+            </div>
+          )}
+
+          {/* Comparison button */}
+          {isDone && hovered && (
+            <button
+              onClick={() => setShowComparison(true)}
+              className='absolute bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 bg-black/60 hover:bg-black/80 text-white text-xs rounded-full backdrop-blur-sm transition-all flex items-center gap-1'
             >
-              <Chip
-                size='small'
-                label={`-${compression}% saved`}
-                color='success'
-                sx={{ height: 20, fontSize: "0.65rem", fontWeight: 600 }}
+              <Eye size={12} />
+              Compare
+            </button>
+          )}
+
+          {/* Progress Bar */}
+          {isProcessing && (
+            <div className='absolute bottom-0 left-0 right-0 h-1 bg-black/20'>
+              <div
+                className='h-full bg-primary transition-all duration-300 ease-out'
+                style={{ width: `${file.progress}%` }}
               />
-            </motion.div>
+            </div>
           )}
+        </div>
 
-          {file.error && (
-            <Typography
-              variant='caption'
-              color='error'
-              sx={{ mt: 0.5 }}
+        {/* Info Bar */}
+        <div className='p-2.5'>
+          <p className='text-xs font-medium text-foreground truncate' title={file.file.name}>
+            {file.file.name}
+          </p>
+          <div className='flex items-center justify-between mt-1.5'>
+            <span className='text-[10px] text-muted-foreground'>
+              {formatFileSize(file.originalSize)}
+              {isDone && file.convertedSize && (
+                <> → <strong className={savedPercent > 0 ? "text-success" : "text-destructive"}>
+                  {formatFileSize(file.convertedSize)}
+                </strong></>
+              )}
+            </span>
+
+            {isDone && savedPercent !== 0 && (
+              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                savedPercent > 0 ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"
+              }`}>
+                {savedPercent > 0 ? `-${savedPercent}%` : `+${Math.abs(savedPercent)}%`}
+              </span>
+            )}
+          </div>
+
+          {/* Action buttons */}
+          <div className='flex gap-1 mt-2'>
+            {isDone && (
+              <button
+                onClick={onDownload}
+                className='flex-1 flex items-center justify-center gap-1 py-1 text-xs font-medium bg-primary/10 hover:bg-primary/20 text-primary rounded-md transition-all hover:scale-[1.02] active:scale-95'
+              >
+                <Download size={12} />
+                Download
+              </button>
+            )}
+            <button
+              onClick={onRemove}
+              className='p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors'
+              title='Remove'
             >
-              {file.error}
-            </Typography>
-          )}
-        </Box>
-      </Box>
+              <Trash2 size={12} />
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Comparison Dialog */}
-      <Dialog
-        open={compareOpen}
-        onClose={() => setCompareOpen(false)}
-        maxWidth='lg'
-        fullWidth
-        PaperProps={{ sx: dialogPaperSx }}
-      >
-        <Box sx={{ p: 2 }}>
-          <Typography
-            variant='h6'
-            gutterBottom
+      {showComparison && isDone && file.convertedUrl && (
+        <div
+          className='fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4'
+          onClick={() => setShowComparison(false)}
+        >
+          <div
+            className='bg-card rounded-2xl border border-border/50 shadow-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden'
+            onClick={(e) => e.stopPropagation()}
           >
-            Before / After Comparison
-          </Typography>
-          <Box sx={{ height: 500, position: "relative" }}>
-            {file.previewUrl && file.convertedUrl && (
-              <ReactCompareSlider
-                itemOne={
-                  <ReactCompareSliderImage
-                    src={file.previewUrl}
-                    alt='Original'
-                    style={{ objectFit: "contain" }}
-                  />
-                }
-                itemTwo={
-                  <ReactCompareSliderImage
-                    src={file.convertedUrl}
-                    alt='Converted'
-                    style={{ objectFit: "contain" }}
-                  />
-                }
-                style={{
-                  height: "100%",
-                  width: "100%",
-                }}
-              />
-            )}
-          </Box>
-          <Box sx={{ mt: 2, display: "flex", justifyContent: "space-between" }}>
-            <Typography
-              variant='body2'
-              color='text.secondary'
-            >
-              Original: {formatFileSize(file.originalSize)}
-            </Typography>
-            <Typography
-              variant='body2'
-              color='text.secondary'
-            >
-              Converted: {file.convertedSize ? formatFileSize(file.convertedSize) : "N/A"}
-            </Typography>
-            <Typography
-              variant='body2'
-              color='success.main'
-              fontWeight={600}
-            >
-              Saved: {compression}%
-            </Typography>
-          </Box>
-        </Box>
-      </Dialog>
-    </Card>
+            <div className='flex items-center justify-between p-4 border-b border-border/50'>
+              <h3 className='text-sm font-bold text-foreground'>Before / After Comparison</h3>
+              <button
+                onClick={() => setShowComparison(false)}
+                className='p-1.5 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-foreground'
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <div className='grid grid-cols-2 gap-0.5 p-4'>
+              <div className='flex flex-col items-center gap-2'>
+                <span className='text-xs font-semibold text-muted-foreground uppercase tracking-wider'>Original</span>
+                <img src={file.previewUrl} alt='Original' className='max-h-[60vh] object-contain rounded-lg' />
+                <span className='text-xs text-muted-foreground'>{formatFileSize(file.originalSize)}</span>
+              </div>
+              <div className='flex flex-col items-center gap-2'>
+                <span className='text-xs font-semibold text-primary uppercase tracking-wider'>Converted</span>
+                <img src={file.convertedUrl} alt='Converted' className='max-h-[60vh] object-contain rounded-lg' />
+                <span className='text-xs text-muted-foreground'>
+                  {file.convertedSize && formatFileSize(file.convertedSize)}
+                  {savedPercent > 0 && (
+                    <span className='ml-1.5 text-success font-semibold'>-{savedPercent}%</span>
+                  )}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

@@ -10,6 +10,7 @@ export interface ResizeOptions {
   height?: number;
   preset?: number; // 1920, 1200, 800
   preserveAspectRatio: boolean;
+  allowUpscale: boolean;
 }
 
 export type CompressionMode = "balanced" | "maximum-quality" | "maximum-compression" | "lossless";

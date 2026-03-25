@@ -1,15 +1,13 @@
 /**
- * Sortable wrapper for ImageGridItem with drag-and-drop
+ * Sortable Image Item — wrapper for drag-and-drop with @dnd-kit.
+ * Props-based. Tailwind styling.
  */
 
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
-import { Grid } from '@mui/material';
-
-import { ImageFile } from '../types';
-
-import ImageGridItem from './ImageGridItem';
+import { ImageFile } from "../types";
+import ImageGridItem from "./ImageGridItem";
 
 interface SortableImageItemProps {
   file: ImageFile;
@@ -42,14 +40,11 @@ export default function SortableImageItem({
   };
 
   return (
-    <Grid
-      item
-      xs={6}
-      sm={4}
-      md={3}
+    <div
       ref={setNodeRef}
       style={style}
       {...attributes}
+      className='col-span-1'
     >
       <ImageGridItem
         file={file}
@@ -59,6 +54,6 @@ export default function SortableImageItem({
         index={index}
         dragListeners={listeners}
       />
-    </Grid>
+    </div>
   );
 }

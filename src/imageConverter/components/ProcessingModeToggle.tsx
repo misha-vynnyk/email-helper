@@ -1,78 +1,54 @@
-import { Cloud as CloudIcon, Computer as ComputerIcon } from "@mui/icons-material";
-import { Box, ToggleButton, ToggleButtonGroup, Tooltip } from "@mui/material";
+/**
+ * Processing Mode Toggle — Client vs Server processing.
+ * Props-based. Tailwind styling.
+ */
+
 import { useEffect } from "react";
+import { Monitor, Cloud } from "lucide-react";
 
 import { isApiAvailable } from "../../config/api";
-import { useThemeMode } from "../../theme";
-import { getComponentStyles } from "../../theme/componentStyles";
-import { useImageConverter } from "../context/ImageConverterContext";
-import { ProcessingMode } from "../types";
+import { ConversionSettings, ProcessingMode } from "../types";
 
-export default function ProcessingModeToggle() {
-  const { mode, style } = useThemeMode();
-  const componentStyles = getComponentStyles(mode, style);
-  const { settings, updateSettings } = useImageConverter();
+interface ProcessingModeToggleProps {
+  settings: ConversionSettings;
+  updateSettings: (s: Partial<ConversionSettings>) => void;
+}
+
+export default function ProcessingModeToggle({ settings, updateSettings }: ProcessingModeToggleProps) {
   const apiAvailable = isApiAvailable();
 
-  // Auto-switch to client mode if server mode is selected but API is unavailable
   useEffect(() => {
     if (settings.processingMode === "server" && !apiAvailable) {
       updateSettings({ processingMode: "client" });
     }
   }, [apiAvailable, settings.processingMode, updateSettings]);
 
+  const options: { value: ProcessingMode; icon: React.ReactNode; label: string; tooltip: string; disabled?: boolean }[] = [
+    { value: "client", icon: <Monitor size={14} />, label: "Client", tooltip: "Process in browser (faster, no upload)" },
+    { value: "server", icon: <Cloud size={14} />, label: "Server", tooltip: apiAvailable ? "Process on server (better quality)" : "Server unavailable", disabled: !apiAvailable },
+  ];
+
   return (
-    <Box>
-      <ToggleButtonGroup
-        value={settings.processingMode}
-        exclusive
-        onChange={(_, value) =>
-          value && updateSettings({ processingMode: value as ProcessingMode })
-        }
-        fullWidth
-        sx={{
-          "& .MuiToggleButton-root": {
-            borderRadius: componentStyles.card.borderRadius,
-            textTransform: "none",
-          },
-          display: "flex",
-          gap: 1,
-        }}
-      >
-        <ToggleButton value='client'>
-          <Tooltip title='Process in browser (faster, no upload)'>
-            <Box
-              display='flex'
-              alignItems='center'
-              gap={1}
-            >
-              <ComputerIcon fontSize='small' />
-              <span>Client</span>
-            </Box>
-          </Tooltip>
-        </ToggleButton>
-        <ToggleButton 
-          value='server' 
-          disabled={!apiAvailable}
-        >
-          <Tooltip 
-            title={
-              apiAvailable 
-                ? 'Process on server (better quality, larger files)'
-                : 'Server processing unavailable - backend server is not configured'
+    <div className='flex gap-1.5'>
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          onClick={() => !opt.disabled && updateSettings({ processingMode: opt.value })}
+          disabled={opt.disabled}
+          title={opt.tooltip}
+          className={`
+            flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-medium rounded-lg border transition-all
+            disabled:opacity-40 disabled:cursor-not-allowed
+            ${settings.processingMode === opt.value
+              ? "bg-primary text-primary-foreground border-primary shadow-sm"
+              : "bg-card text-foreground border-border/50 hover:border-primary/50 hover:bg-primary/5"
             }
-          >
-            <Box
-              display='flex'
-              alignItems='center'
-              gap={1}
-            >
-              <CloudIcon fontSize='small' />
-              <span>Server</span>
-            </Box>
-          </Tooltip>
-        </ToggleButton>
-      </ToggleButtonGroup>
-    </Box>
+          `}
+        >
+          {opt.icon}
+          {opt.label}
+        </button>
+      ))}
+    </div>
   );
 }

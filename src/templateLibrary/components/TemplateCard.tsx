@@ -83,18 +83,20 @@ export default function TemplateCard({ template, previewHtml, loading, previewCo
             <span className='text-sm text-muted-foreground font-medium'>Loading preview...</span>
           </div>
         ) : previewHtml ? (
-          <iframe
-            key={`preview-${template.id}-${renderKey}`}
-            srcDoc={sanitizePreviewHtml(previewHtml)}
-            title={`Preview of ${template.name}`}
-            className='absolute top-0 left-0 border-none outline-none pointer-events-none origin-top-left'
-            style={{
-              width: `${previewConfig.cardWidth}px`,
-              height: `${previewConfig.cardHeight}px`,
-              transform: `scale(${previewScale})`,
-            }}
-            sandbox='allow-same-origin'
-          />
+          <div className='inset-0 flex items-center justify-center'>
+            <iframe
+              key={`preview-${template.id}-${renderKey}`}
+              srcDoc={sanitizePreviewHtml(previewHtml)}
+              title={`Preview of ${template.name}`}
+              className='absolute top-0 left-0 border-none outline-none pointer-events-none origin-top-left'
+              style={{
+                width: `${previewConfig.cardWidth}px`,
+                height: `${previewConfig.cardHeight}px`,
+                transform: `scale(${previewScale})`,
+              }}
+              sandbox='allow-same-origin'
+            />
+          </div>
         ) : (
           <span className='text-sm text-muted-foreground font-medium'>No Preview Available</span>
         )}
