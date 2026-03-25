@@ -5,7 +5,6 @@ import { Settings, Email } from "@mui/icons-material";
 
 import { useSamplesDrawerOpen } from "../../contexts/AppState";
 import { useRegistrationStatus } from "../../hooks/useRegistrationStatus";
-import GeometricBackground from "../../imageConverter/components/GeometricBackground";
 import { getComponentStyles, useThemeMode } from "../../theme";
 import { getGradients } from "../../theme/tokens";
 
@@ -26,7 +25,6 @@ export default function SamplesDrawer({
   const gradients = getGradients(mode);
   const samplesDrawerOpen = useSamplesDrawerOpen();
   const { isRegistered, hasValidCredentials } = useRegistrationStatus();
-  const showAnimatedBackground = style !== "default";
   const handleFixedWheel = React.useCallback((event: React.WheelEvent) => {
     const scrollTarget = document.querySelector("[data-app-scroll='true']") as HTMLElement | null;
     if (!scrollTarget) {
@@ -67,12 +65,6 @@ export default function SamplesDrawer({
         },
       }}
     >
-      {/* Animated Background - only for non-default styles */}
-      {showAnimatedBackground && (
-        <Box sx={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 }}>
-          <GeometricBackground />
-        </Box>
-      )}
       <Stack
         height="100%"
         justifyContent="space-between"

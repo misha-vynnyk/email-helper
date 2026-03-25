@@ -138,9 +138,19 @@ export function estimateOutputSize(
     const areaRatio = dimensionRatio * dimensionRatio;
     estimatedRatio *= Math.max(0.1, areaRatio); // At least 10% of original
   } else if (settings.resize.mode === "custom") {
-    if (settings.resize.width || settings.resize.height) {
-      // Conservative estimate - assume 50% reduction
-      estimatedRatio *= 0.5;
+    if (settings.resize.width && settings.resize.height) {
+      // Calculate area ratio if both dimensions are known
+      // Assume typical source is 2000x1500
+      const assumedSourceArea = 2000 * 1500;
+      const targetArea = settings.resize.width * settings.resize.height;
+      const areaRatio = targetArea / assumedSourceArea;
+      estimatedRatio *= Math.max(0.05, areaRatio);
+    } else if (settings.resize.width || settings.resize.height) {
+      // If only one dimension is known, assume it's the primary one and secondary is proportional
+      const dim = settings.resize.width || settings.resize.height || 1000;
+      const dimensionRatio = dim / 2000;
+      const areaRatio = dimensionRatio * dimensionRatio;
+      estimatedRatio *= Math.max(0.1, areaRatio);
     }
   }
 

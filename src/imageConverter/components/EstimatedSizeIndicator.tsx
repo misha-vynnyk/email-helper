@@ -1,8 +1,9 @@
-import React from "react";
-import { Box, Typography, Chip, useTheme } from "@mui/material";
-import { TrendingDown as TrendingDownIcon, TrendingUp as TrendingUpIcon } from "@mui/icons-material";
-import { useThemeMode } from "../../theme";
-import { getComponentStyles } from "../../theme/componentStyles";
+/**
+ * Estimated Size Indicator — Shows estimated output size with gradient.
+ * Props-based. Tailwind styling.
+ */
+
+import { TrendingDown, TrendingUp } from "lucide-react";
 import { ConversionSettings } from "../types";
 import {
   estimateOutputSize,
@@ -14,202 +15,85 @@ interface EstimatedSizeIndicatorProps {
   originalSize: number;
   originalFormat: string;
   settings: ConversionSettings;
-  disabled?: boolean; // True if multiple files selected
+  disabled?: boolean;
 }
 
-const EstimatedSizeIndicator: React.FC<EstimatedSizeIndicatorProps> = ({
+export default function EstimatedSizeIndicator({
   originalSize,
   originalFormat,
   settings,
   disabled = false,
-}) => {
-  const theme = useTheme();
-  const { mode, style } = useThemeMode();
-  const componentStyles = getComponentStyles(mode, style);
-
-  // If disabled (multiple files selected), show disabled state
+}: EstimatedSizeIndicatorProps) {
   if (disabled) {
     return (
-      <Box
-        sx={{
-          p: 2,
-          borderRadius: componentStyles.card.borderRadius,
-          backgroundColor: theme.palette.action.disabledBackground,
-          border: componentStyles.card.border,
-          opacity: 0.6,
-        }}
-      >
-        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
-          Estimated Output Size
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Select only ONE file to see size estimation
-        </Typography>
-      </Box>
+      <div className='p-4 rounded-xl bg-muted/50 border border-border/50 opacity-60'>
+        <span className='text-xs text-muted-foreground block mb-1'>Estimated Output Size</span>
+        <span className='text-sm text-muted-foreground'>Select only ONE file to see estimation</span>
+      </div>
     );
   }
 
-  // Validate inputs
   if (!originalSize || originalSize === 0) {
     return (
-      <Box
-        sx={{
-          p: 2,
-          borderRadius: componentStyles.card.borderRadius,
-          backgroundColor: theme.palette.action.disabledBackground,
-          border: componentStyles.card.border,
-          opacity: 0.6,
-        }}
-      >
-        <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 1 }}>
-          Estimated Output Size
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Select a file to see size estimation
-        </Typography>
-      </Box>
+      <div className='p-4 rounded-xl bg-muted/50 border border-border/50 opacity-60'>
+        <span className='text-xs text-muted-foreground block mb-1'>Estimated Output Size</span>
+        <span className='text-sm text-muted-foreground'>Select a file to see estimation</span>
+      </div>
     );
   }
 
-  // Handle missing originalFormat with fallback
   const effectiveFormat = originalFormat || `image/${settings.format}`;
-
   const estimatedSize = estimateOutputSize(originalSize, effectiveFormat, settings);
 
-  // Validate estimation result
-  if (!estimatedSize || estimatedSize === 0 || isNaN(estimatedSize)) {
-    return null;
-  }
+  if (!estimatedSize || estimatedSize === 0 || isNaN(estimatedSize)) return null;
 
   const compressionRatio = calculateCompressionRatio(originalSize, estimatedSize);
   const isSmaller = estimatedSize < originalSize;
   const sizeDiff = Math.abs(originalSize - estimatedSize);
 
-  // Detect if likely animated GIF
   const isGif = settings.format === "gif";
   const isLikelyAnimated = originalFormat.includes("gif") && originalSize > 1024 * 1024;
 
-  // Determine background gradient based on compression quality using theme colors
-  const getBackgroundColor = () => {
-    if (compressionRatio > 50) {
-      // Excellent compression - success gradient
-      return `linear-gradient(135deg, ${theme.palette.success.main} 0%, ${theme.palette.success.dark} 100%)`;
-    }
-    if (compressionRatio > 30) {
-      // Good compression - primary gradient
-      return `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`;
-    }
-    if (compressionRatio > 0) {
-      // Moderate compression - warning gradient
-      return `linear-gradient(135deg, ${theme.palette.warning.main} 0%, ${theme.palette.warning.dark} 100%)`;
-    }
-    // Larger file - error gradient
-    return `linear-gradient(135deg, ${theme.palette.error.main} 0%, ${theme.palette.error.dark} 100%)`;
+  // Gradient based on compression quality
+  const getGradientClass = () => {
+    if (compressionRatio > 50) return "from-success to-success/80";
+    if (compressionRatio > 30) return "from-primary to-primary/80";
+    if (compressionRatio > 0) return "from-warning to-warning/80";
+    return "from-destructive to-destructive/80";
   };
 
   return (
-    <Box
-      sx={{
-        p: 2,
-        borderRadius: componentStyles.card.borderRadius,
-        background: getBackgroundColor(),
-        color: theme.palette.common.white,
-        transition: "all 0.3s ease",
-        boxShadow: componentStyles.card.boxShadow,
-        border: componentStyles.card.border,
-      }}
-    >
-      <Typography variant="caption" sx={{ opacity: 0.95, display: "block", mb: 1.5, fontWeight: 500 }}>
-        Estimated Output Size
-      </Typography>
+    <div className={`p-4 rounded-xl bg-gradient-to-br ${getGradientClass()} text-white transition-all duration-300 shadow-md`}>
+      <span className='text-xs font-medium opacity-90 block mb-3'>Estimated Output Size</span>
 
-      <Box display="flex" alignItems="center" justifyContent="space-between" mb={1.5}>
-        <Box>
-          <Typography variant="h5" fontWeight={700} sx={{ lineHeight: 1.2 }}>
-            {formatFileSize(estimatedSize)}
-          </Typography>
-          <Typography variant="caption" sx={{ opacity: 0.9, display: "block", mt: 0.5 }}>
-            from {formatFileSize(originalSize)}
-          </Typography>
-        </Box>
+      <div className='flex items-center justify-between mb-3'>
+        <div>
+          <span className='text-2xl font-bold'>{formatFileSize(estimatedSize)}</span>
+          <span className='text-xs opacity-80 block mt-0.5'>from {formatFileSize(originalSize)}</span>
+        </div>
+        <span className='flex items-center gap-1 px-2 py-1 bg-white/20 backdrop-blur-sm rounded-full text-sm font-bold'>
+          {isSmaller ? <TrendingDown size={14} /> : <TrendingUp size={14} />}
+          {isSmaller ? `-${compressionRatio}%` : `+${Math.abs(compressionRatio)}%`}
+        </span>
+      </div>
 
-        {isSmaller ? (
-          <Chip
-            icon={<TrendingDownIcon fontSize="small" />}
-            label={`-${compressionRatio}%`}
-            size="small"
-            sx={{
-              backgroundColor: "rgba(255, 255, 255, 0.25)",
-              backdropFilter: "blur(4px)",
-              color: theme.palette.common.white,
-              fontWeight: 700,
-              fontSize: "0.875rem",
-              height: 28,
-            }}
-          />
-        ) : (
-          <Chip
-            icon={<TrendingUpIcon fontSize="small" />}
-            label={`+${Math.abs(compressionRatio)}%`}
-            size="small"
-            sx={{
-              backgroundColor: "rgba(255, 255, 255, 0.25)",
-              backdropFilter: "blur(4px)",
-              color: theme.palette.common.white,
-              fontWeight: 700,
-              fontSize: "0.875rem",
-              height: 28,
-            }}
-          />
-        )}
-      </Box>
-
-      {/* Visual size comparison bar */}
-      <Box
-        sx={{
-          position: "relative",
-          height: 8,
-          backgroundColor: "rgba(255, 255, 255, 0.25)",
-          borderRadius: 1,
-          overflow: "hidden",
-          mb: 1.5,
-        }}
-      >
-        <Box
-          sx={{
-            position: "absolute",
-            left: 0,
-            top: 0,
-            height: "100%",
-            width: `${Math.min(100, (estimatedSize / originalSize) * 100)}%`,
-            backgroundColor: theme.palette.common.white,
-            borderRadius: 1,
-            transition: "width 0.5s ease",
-          }}
+      {/* Size bar */}
+      <div className='h-2 bg-white/20 rounded-full overflow-hidden mb-3'>
+        <div
+          className='h-full bg-white rounded-full transition-all duration-500'
+          style={{ width: `${Math.min(100, (estimatedSize / originalSize) * 100)}%` }}
         />
-      </Box>
+      </div>
 
-      <Box display="flex" justifyContent="space-between" mb={1}>
-        <Typography variant="caption" sx={{ opacity: 0.9 }}>
-          {isSmaller ? `You'll save ${formatFileSize(sizeDiff)}` : `Size increases by ${formatFileSize(sizeDiff)}`}
-        </Typography>
-      </Box>
+      <span className='text-xs opacity-80'>
+        {isSmaller ? `You'll save ${formatFileSize(sizeDiff)}` : `Size increases by ${formatFileSize(sizeDiff)}`}
+      </span>
 
-      {isGif && isLikelyAnimated ? (
-        <Typography
-          variant="caption"
-          sx={{ opacity: 0.9, display: "block", fontStyle: "italic", fontSize: "0.7rem" }}
-        >
-          ⚠️ <strong>Animated GIF:</strong> Compression varies greatly (±20-40% variance). Use the Quality Slider
-          to control compression level.
-        </Typography>
-      ) : (
-        <Typography variant="caption" sx={{ opacity: 0.85, display: "block", fontStyle: "italic", fontSize: "0.7rem" }}>
-          ⚠️ Estimate based on format, quality & settings. Actual may vary ±10-20%.
-        </Typography>
-      )}
-    </Box>
+      <p className='text-[10px] opacity-70 mt-2 italic'>
+        {isGif && isLikelyAnimated
+          ? "⚠️ Animated GIF: Compression varies greatly (±20-40%). Use Quality Slider."
+          : "⚠️ Estimate based on format, quality & settings. Actual may vary ±10-20%."}
+      </p>
+    </div>
   );
-};
-
-export default EstimatedSizeIndicator;
+}
