@@ -3,7 +3,7 @@
  * Props-based. Tailwind styling.
  */
 
-import { Zap, Hand } from "lucide-react";
+import { Zap } from "lucide-react";
 import { ConversionSettings } from "../types";
 
 interface AutoConvertToggleProps {
@@ -13,35 +13,22 @@ interface AutoConvertToggleProps {
 
 export default function AutoConvertToggle({ settings, updateSettings }: AutoConvertToggleProps) {
   return (
-    <div className={`p-3 rounded-xl border transition-all duration-200 ${
-      settings.autoConvert
-        ? "bg-primary/5 border-primary/20"
-        : "bg-card border-border/50"
-    }`}>
-      <label className='flex items-center gap-3 cursor-pointer'>
-        <button
-          onClick={() => updateSettings({ autoConvert: !settings.autoConvert })}
-          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-            settings.autoConvert ? "bg-primary" : "bg-muted-foreground/30"
-          }`}
-        >
-          <span
-            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform shadow-sm ${
-              settings.autoConvert ? "translate-x-[18px]" : "translate-x-1"
-            }`}
-          />
-        </button>
-        <div className='flex items-center gap-2'>
-          {settings.autoConvert ? (
-            <Zap size={14} className='text-primary' />
-          ) : (
-            <Hand size={14} className='text-muted-foreground' />
-          )}
-          <span className='text-sm font-medium text-foreground'>
-            {settings.autoConvert ? "Auto-Convert" : "Manual Mode"}
-          </span>
+    <div className='flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-primary/30 transition-all'>
+      <div className='flex items-center gap-3'>
+        <div className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${settings.autoConvert ? 'bg-primary/10 text-primary' : 'bg-slate-200/50 text-muted-foreground'}`}>
+           <Zap size={14} fill={settings.autoConvert ? "currentColor" : "none"} />
         </div>
-      </label>
+        <div>
+          <h4 className='text-xs font-semibold text-foreground'>Auto-Convert</h4>
+          <p className='text-[10px] text-muted-foreground leading-none mt-0.5'>On upload</p>
+        </div>
+      </div>
+      
+      <button 
+        onClick={() => updateSettings({ autoConvert: !settings.autoConvert })}
+        className={`w-10 h-5 rounded-full p-0.5 transition-all duration-300 ${settings.autoConvert ? 'bg-primary' : 'bg-slate-200 dark:bg-slate-800'}`}>
+        <div className={`w-4 h-4 bg-white rounded-full transition-transform duration-300 shadow-sm ${settings.autoConvert ? 'translate-x-5' : 'translate-x-0'}`} />
+      </button>
     </div>
   );
 }
