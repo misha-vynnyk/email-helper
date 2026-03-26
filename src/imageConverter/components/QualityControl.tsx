@@ -32,16 +32,8 @@ const getCompressionModeQuality = (mode: CompressionMode): number => {
   }
 };
 
-const getCompressionModeLabel = (mode: CompressionMode): string => {
-  switch (mode) {
-    case "maximum-quality": return "Maximum Quality mode (92%)";
-    case "maximum-compression": return "Maximum Compression mode (75%)";
-    case "lossless": return "Lossless mode (100%)";
-    default: return "";
-  }
-};
-
 export default function QualityControl({
+
   autoQuality,
   quality,
   onAutoQualityChange,
@@ -54,87 +46,86 @@ export default function QualityControl({
   const qualityLevel = getQualityLevel(effectiveQuality);
 
   return (
-    <div>
-      <div className='flex items-center justify-between mb-3'>
-        <h4 className='text-sm font-semibold text-foreground'>Quality Control</h4>
-        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${qualityLevel.color} bg-current/10`}>
-          {qualityLevel.label}
-        </span>
+    <div className='flex flex-col gap-4'>
+      <div className='flex items-center justify-between'>
+        <h4 className='text-xs font-black uppercase tracking-widest text-muted-foreground/80'>Quality Engine</h4>
+        <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full ${qualityLevel.color} bg-current/10 overflow-hidden`}>
+           <div className='w-1.5 h-1.5 rounded-full bg-current' />
+           <span className='text-[10px] font-black uppercase tracking-tight'>{qualityLevel.label}</span>
+        </div>
       </div>
 
       {isControlledByCompressionMode ? (
         /* Locked state for non-balanced modes */
-        <div className='p-4 rounded-xl bg-info/5 border border-info/20'>
-          <div className='flex items-center gap-2 mb-2'>
-            <Lock size={14} className='text-info' />
-            <span className='text-sm font-medium text-foreground'>Quality set automatically</span>
+        <div className='relative overflow-hidden p-5 rounded-3xl bg-slate-50 dark:bg-slate-900/50 border border-border/50 group'>
+          <div className='relative z-10 flex items-center justify-between'>
+            <div className='flex flex-col'>
+              <div className='flex items-center gap-2 mb-1'>
+                <Lock size={12} className='text-primary' />
+                <span className='text-xs font-bold text-foreground'>Active Profile</span>
+              </div>
+              <p className='text-[10px] text-muted-foreground uppercase font-medium tracking-tight'>
+                {compressionMode.replace("-", " ")}
+              </p>
+            </div>
+            <div className='text-right'>
+              <span className='text-3xl font-black text-primary tabular-nums tracking-tighter'>{effectiveQuality}%</span>
+            </div>
           </div>
-          <p className='text-xs text-muted-foreground mb-3'>
-            {getCompressionModeLabel(compressionMode)}
-          </p>
-          <div className='text-center'>
-            <span className='text-3xl font-bold text-primary'>{effectiveQuality}%</span>
-          </div>
+          {/* Subtle decoration */}
+          <Sparkles size={40} className='absolute -bottom-4 -right-4 text-primary/10 -rotate-12 transition-transform group-hover:rotate-0 duration-700' />
         </div>
       ) : (
-        <>
-          {/* Auto / Manual radio */}
-          <div className='flex flex-col gap-2 mb-3'>
-            <label className='flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted cursor-pointer transition-colors'>
-              <input
-                type='radio'
-                checked={autoQuality}
-                onChange={() => onAutoQualityChange(true)}
-                disabled={disabled}
-                className='accent-primary'
-              />
-              <Sparkles size={14} className='text-muted-foreground' />
-              <div>
-                <span className='text-sm font-medium text-foreground block'>Auto Quality</span>
-                <span className='text-xs text-muted-foreground'>Automatically calculate optimal quality</span>
-              </div>
-            </label>
-
-            <label className='flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted cursor-pointer transition-colors'>
-              <input
-                type='radio'
-                checked={!autoQuality}
-                onChange={() => onAutoQualityChange(false)}
-                disabled={disabled}
-                className='accent-primary'
-              />
-              <SlidersHorizontal size={14} className='text-muted-foreground' />
-              <div>
-                <span className='text-sm font-medium text-foreground block'>Manual Quality</span>
-                <span className='text-xs text-muted-foreground'>Set quality level manually</span>
-              </div>
-            </label>
+        <div className='flex flex-col gap-4'>
+          {/* Quality Mode Switcher */}
+          <div className='flex p-1 bg-slate-100 dark:bg-slate-900 rounded-2xl'>
+            <button
+              onClick={() => onAutoQualityChange(true)}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all ${
+                autoQuality ? "bg-white dark:bg-slate-800 text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Sparkles size={14} />
+              Auto
+            </button>
+            <button
+              onClick={() => onAutoQualityChange(false)}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all ${
+                !autoQuality ? "bg-white dark:bg-slate-800 text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <SlidersHorizontal size={14} />
+              Manual
+            </button>
           </div>
 
-          {/* Slider */}
+          {/* Slider for Manual Mode */}
           {!autoQuality && (
-            <div className='px-1'>
-              <div className='flex items-center justify-between mb-2'>
-                <span className='text-sm text-muted-foreground'>Quality</span>
-                <span className='text-xl font-bold text-primary'>{quality}%</span>
+            <div className='space-y-3 px-1'>
+              <div className='flex items-center justify-between'>
+                <span className='text-[10px] uppercase font-black tracking-widest text-muted-foreground'>Intensity</span>
+                <span className='text-lg font-black text-primary tabular-nums'>{quality}%</span>
               </div>
-              <input
-                type='range'
-                min={1}
-                max={100}
-                value={quality}
-                onChange={(e) => onQualityChange(Math.max(1, Math.min(100, Number(e.target.value))))}
-                disabled={disabled}
-                className='w-full accent-primary h-2 rounded-full cursor-pointer disabled:opacity-50'
-              />
-              <div className='flex justify-between mt-1'>
-                <span className='text-[10px] text-muted-foreground'>Smaller file</span>
-                <span className='text-[10px] text-muted-foreground'>Better quality</span>
+              <div className='relative h-6 flex items-center group'>
+                <input
+                  type='range'
+                  min={1}
+                  max={100}
+                  value={quality}
+                  onChange={(e) => onQualityChange(Math.max(1, Math.min(100, Number(e.target.value))))}
+                  disabled={disabled}
+                  className='w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full appearance-none cursor-pointer accent-primary group-hover:h-2 transition-all'
+                />
+              </div>
+              <div className='flex justify-between text-[9px] font-bold uppercase tracking-tighter text-muted-foreground/60'>
+                <span>Max Compression</span>
+                <span>Max Quality</span>
               </div>
             </div>
           )}
-        </>
+        </div>
       )}
     </div>
   );
 }
+

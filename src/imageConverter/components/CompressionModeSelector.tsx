@@ -3,7 +3,7 @@
  * Props-based. Tailwind styling.
  */
 
-import { Gauge, Sparkles, Minimize2, ShieldCheck } from "lucide-react";
+import { Gauge, Sparkles, Minimize2, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { ConversionSettings, CompressionMode } from "../types";
 
 interface CompressionModeSelectorProps {
@@ -11,46 +11,60 @@ interface CompressionModeSelectorProps {
   updateSettings: (s: Partial<ConversionSettings>) => void;
 }
 
-const modes: { value: CompressionMode; label: string; icon: React.ReactNode; description: string; details: string }[] = [
-  { value: "balanced", label: "Balanced", icon: <Gauge size={16} />, description: "Manual quality control", details: "Standard compression. Adjust quality manually with slider below." },
-  { value: "maximum-quality", label: "Maximum Quality", icon: <Sparkles size={16} />, description: "(auto quality: 90%+)", details: "Uses advanced algorithms. Quality automatically set to 90%+." },
-  { value: "maximum-compression", label: "Maximum Compression", icon: <Minimize2 size={16} />, description: "(auto quality: ~75%)", details: "Aggressive compression. Quality optimized for maximum size reduction." },
-  { value: "lossless", label: "Lossless", icon: <ShieldCheck size={16} />, description: "No quality loss (100%)", details: "Perfect quality (PNG/WebP only). Larger files, pixel-perfect." },
-];
+
+
 
 export default function CompressionModeSelector({ settings, updateSettings }: CompressionModeSelectorProps) {
-  const currentMode = modes.find((m) => m.value === settings.compressionMode);
+  const compressionModes: { id: CompressionMode; label: string; icon: any; desc: string }[] = [
+    { id: "balanced", label: "Balanced", icon: Gauge, desc: "Size vs Quality" },
+    { id: "maximum-quality", label: "Premium", icon: Sparkles, desc: "Ultra Fidelity" },
+    { id: "maximum-compression", label: "Compact", icon: Minimize2, desc: "Max Savings" },
+    { id: "lossless", label: "Lossless", icon: ShieldCheck, desc: "Bit-Perfect" },
+  ];
+
   const isLosslessAvailable = settings.format === "png" || settings.format === "webp";
 
   return (
-    <div>
-      <select
-        value={settings.compressionMode}
-        onChange={(e) => updateSettings({ compressionMode: e.target.value as CompressionMode })}
-        className='w-full bg-card border border-border/50 rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all'
-      >
-        {modes.map((mode) => (
-          <option
-            key={mode.value}
-            value={mode.value}
-            disabled={mode.value === "lossless" && !isLosslessAvailable}
+    <div className='space-y-4'>
+      <div className='grid grid-cols-2 gap-2'>
+        {compressionModes.map((mode) => (
+          <button
+            key={mode.id}
+            onClick={() => updateSettings({ compressionMode: mode.id })}
+            disabled={mode.id === "lossless" && !isLosslessAvailable}
+            className={`group flex flex-col items-start p-3 rounded-xl border transition-all duration-200 text-left relative overflow-hidden disabled:opacity-40 disabled:grayscale ${
+              settings.compressionMode === mode.id
+                ? "border-primary bg-primary/5 shadow-md"
+                : "border-slate-100 dark:border-slate-800 bg-transparent hover:border-slate-200 dark:hover:border-slate-700"
+            }`}
           >
-            {mode.label} — {mode.description}
-          </option>
+             {settings.compressionMode === mode.id && (
+               <div className='absolute top-0 right-0 w-6 h-6 bg-primary text-white flex items-center justify-center rounded-bl-lg'>
+                  <CheckCircle2 size={10} strokeWidth={3} />
+               </div>
+             )}
+             
+            <div className={`mb-2 p-1.5 rounded-lg transition-colors ${settings.compressionMode === mode.id ? 'bg-primary text-white' : 'bg-slate-50 dark:bg-slate-900 text-muted-foreground group-hover:text-foreground'}`}>
+              <mode.icon size={16} strokeWidth={3} />
+            </div>
+            
+            <span className={`text-[10px] font-semibold uppercase ${settings.compressionMode === mode.id ? 'text-primary' : 'text-foreground'}`}>
+              {mode.label}
+            </span>
+            <p className='text-[9px] text-muted-foreground/60 leading-none mt-0.5'>
+              {mode.desc}
+            </p>
+          </button>
         ))}
-      </select>
-
-      {currentMode && (
-        <p className='text-xs text-muted-foreground mt-1.5'>{currentMode.details}</p>
-      )}
+      </div>
 
       {settings.compressionMode === "lossless" && !isLosslessAvailable && (
-        <p className='text-xs text-warning mt-1.5'>⚠️ Lossless mode only available for PNG and WebP</p>
-      )}
-
-      {settings.compressionMode === "maximum-quality" && settings.processingMode === "client" && (
-        <p className='text-xs text-info mt-1.5'>💡 Switch to Server mode for best results</p>
+        <div className='flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl'>
+           <div className='w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse' />
+           <p className='text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-tight'>Lossless restricted to PNG/WebP</p>
+        </div>
       )}
     </div>
   );
 }
+

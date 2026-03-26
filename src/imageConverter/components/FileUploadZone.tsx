@@ -97,62 +97,74 @@ export default function FileUploadZone({
   );
 
   return (
-    <div className='bg-card rounded-[2rem] p-6 shadow-soft hover:shadow-lg border border-border/50 hover:border-border transition-all duration-300'>
-      {/* Bulk Actions */}
-      {files.length > 0 && (
-        <BulkActions
-          files={files}
-          selectedCount={selectedCount}
-          selectAll={selectAll}
-          deselectAll={deselectAll}
-          removeSelected={removeSelected}
-          downloadSelected={downloadSelected}
-          convertSelected={convertSelected}
-        />
-      )}
+    <div className='flex flex-col gap-3'>
+      {/* HEADER / BULK ACTIONS AREA */}
+      <div className='flex flex-col md:flex-row md:items-center justify-between px-2'>
+        <div className='flex items-center gap-3 mb-4 md:mb-0'>
+          <h2 className='text-sm font-bold text-foreground tracking-tight'>Workspace</h2>
+          <span className='px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground text-[10px] font-semibold'>
+            {files.length} {files.length === 1 ? "File" : "Files"}
+          </span>
+        </div>
+        
+        {files.length > 0 && (
+          <BulkActions
+            files={files}
+            selectedCount={selectedCount}
+            selectAll={selectAll}
+            deselectAll={deselectAll}
+            removeSelected={removeSelected}
+            downloadSelected={downloadSelected}
+            convertSelected={convertSelected}
+          />
+        )}
+      </div>
 
-      {/* Drop Zone */}
+      {/* DROP ZONE / CONTENT AREA */}
       <div
         onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
         onDragLeave={() => setIsDragOver(false)}
         onDrop={handleDrop}
         className={`
-          relative rounded-2xl border-2 border-dashed transition-all duration-300 cursor-pointer
-          ${isDragOver
-            ? "border-primary bg-primary/5 scale-[1.01]"
-            : files.length === 0
-              ? "border-border/50 hover:border-primary/50 bg-background/50"
-              : "border-transparent"
+          relative rounded-2xl transition-all duration-300 overflow-hidden
+          ${isDragOver ? "ring-2 ring-primary/20" : ""}
+          ${files.length === 0 
+            ? "border-2 border-dashed border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg min-h-[280px]" 
+            : "bg-transparent"
           }
-          ${files.length === 0 ? "p-12" : "p-4 mt-4"}
         `}
-        onClick={() => {
-          if (files.length === 0) {
-            document.getElementById("image-file-input")?.click();
-          }
-        }}
       >
-        {/* Empty State */}
+        {/* Empty State Overlay */}
         {files.length === 0 && (
-          <div className='flex flex-col items-center justify-center gap-4 text-center'>
-            <div className='w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center'>
-              <Upload size={28} className='text-primary' />
+          <div 
+            className='absolute inset-0 flex flex-col items-center justify-center gap-5 text-center p-6 cursor-pointer group'
+            onClick={() => document.getElementById("image-file-input")?.click()}
+          >
+            <div className='relative'>
+              <div className='w-14 h-14 rounded-2xl bg-primary/5 dark:bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-all duration-300'>
+                <Upload size={28} className='text-primary' />
+              </div>
+              <div className='absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-white dark:bg-slate-800 shadow-md flex items-center justify-center border border-slate-100 dark:border-slate-700'>
+                 <ImageIcon size={14} className='text-primary' />
+              </div>
             </div>
-            <div>
-              <h3 className='text-lg font-bold text-foreground'>Drop images here</h3>
-              <p className='text-sm text-muted-foreground mt-1'>
-                or click to browse • JPEG, PNG, WebP, AVIF, GIF
+            
+            <div className='space-y-1'>
+              <h3 className='text-lg font-bold text-foreground tracking-tight'>Drop images here</h3>
+              <p className='text-xs text-muted-foreground max-w-xs mx-auto'>
+                JPEG, PNG, WebP, AVIF & GIF supported
               </p>
             </div>
+
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 document.getElementById("image-file-input")?.click();
               }}
-              className='flex items-center gap-2 bg-primary hover:brightness-110 text-primary-foreground font-bold px-6 py-2.5 rounded-full shadow-soft transition-all hover:shadow-md hover:-translate-y-0.5 active:scale-95 text-sm'
+              className='flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm px-6 py-2.5 rounded-xl shadow-md transition-all hover:-translate-y-0.5 active:scale-95'
             >
-              <ImageIcon size={16} />
-              Browse Files
+              <Upload size={16} />
+              Choose Files
             </button>
           </div>
         )}
@@ -168,7 +180,7 @@ export default function FileUploadZone({
               items={files.map((f) => f.id)}
               strategy={rectSortingStrategy}
             >
-              <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3'>
+              <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3'>
                 {files.map((file, i) => (
                   <SortableImageItem
                     key={file.id}
@@ -180,13 +192,15 @@ export default function FileUploadZone({
                   />
                 ))}
 
-                {/* Add More Button */}
+                {/* Add More Minimalist Button */}
                 <button
                   onClick={() => document.getElementById("image-file-input")?.click()}
-                  className='aspect-square rounded-xl border-2 border-dashed border-border/50 hover:border-primary/50 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-primary transition-all hover:bg-primary/5 group'
+                  className='aspect-[4/3] rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-800 hover:border-primary/50 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-primary transition-all hover:bg-white dark:hover:bg-slate-900 group'
                 >
-                  <Upload size={20} className='group-hover:scale-110 transition-transform' />
-                  <span className='text-xs font-medium'>Add more</span>
+                  <div className='w-9 h-9 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all duration-200'>
+                    <Upload size={18} className='group-hover:scale-110 transition-transform' />
+                  </div>
+                  <span className='text-[10px] font-semibold'>Add more</span>
                 </button>
               </div>
             </SortableContext>
@@ -206,3 +220,4 @@ export default function FileUploadZone({
     </div>
   );
 }
+

@@ -14,32 +14,43 @@ interface AdvancedSettingsSectionProps {
 export default function AdvancedSettingsSection({ settings, updateSettings }: AdvancedSettingsSectionProps) {
   return (
     <div className='flex flex-col gap-5'>
-      {/* Resize */}
-      <div>
+      {/* Resize Control */}
+      <section>
         <div className='flex items-center gap-2 mb-3'>
-          <Maximize2 size={14} className='text-muted-foreground' />
-          <h4 className='text-sm font-semibold text-foreground'>Resize</h4>
+          <div className='w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center text-primary'>
+            <Maximize2 size={14} strokeWidth={3} />
+          </div>
+          <h4 className='text-[10px] font-semibold uppercase text-foreground'>Resize</h4>
         </div>
-        <select
-          value={settings.resize.mode}
-          onChange={(e) => updateSettings({ resize: { ...settings.resize, mode: e.target.value as ResizeMode } })}
-          className='w-full bg-card border border-border/50 rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all'
-        >
-          <option value='original'>Original Size</option>
-          <option value='preset'>Preset Size</option>
-          <option value='custom'>Custom Size</option>
-        </select>
+        
+        <div className='bg-slate-50 dark:bg-slate-900/50 p-1 rounded-xl border border-slate-200 dark:border-slate-800 mb-3'>
+          <div className='flex gap-1'>
+            {(["original", "preset", "custom"] as ResizeMode[]).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => updateSettings({ resize: { ...settings.resize, mode } })}
+                className={`flex-1 py-1.5 text-[10px] font-semibold rounded-lg transition-all ${
+                  settings.resize.mode === mode
+                    ? "bg-white dark:bg-slate-800 text-primary shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {mode}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {settings.resize.mode === "preset" && (
-          <div className='flex gap-1.5 mt-3'>
+          <div className='grid grid-cols-3 gap-2 animate-in slide-in-from-top-2 duration-300'>
             {[1920, 1200, 800].map((size) => (
               <button
                 key={size}
                 onClick={() => updateSettings({ resize: { ...settings.resize, preset: size } })}
-                className={`flex-1 py-1.5 text-xs font-medium rounded-lg border transition-all ${
+                className={`py-1.5 text-[10px] font-semibold rounded-lg border transition-all ${
                   settings.resize.preset === size
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-card text-foreground border-border/50 hover:border-primary/50"
+                    ? "bg-primary/5 border-primary text-primary"
+                    : "bg-transparent border-slate-100 dark:border-slate-800 text-muted-foreground hover:border-slate-300 dark:hover:border-slate-700"
                 }`}
               >
                 {size}px
@@ -49,113 +60,128 @@ export default function AdvancedSettingsSection({ settings, updateSettings }: Ad
         )}
 
         {settings.resize.mode === "custom" && (
-          <div className='mt-3 flex flex-col gap-2'>
+          <div className='space-y-3'>
             <div className='flex gap-2'>
-              <input
-                type='number'
-                placeholder='Width (px)'
-                value={settings.resize.width || ""}
-                onChange={(e) => updateSettings({ resize: { ...settings.resize, width: Number(e.target.value) || undefined } })}
-                className='flex-1 bg-card border border-border/50 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary'
-              />
-              <input
-                type='number'
-                placeholder='Height (px)'
-                value={settings.resize.height || ""}
-                onChange={(e) => updateSettings({ resize: { ...settings.resize, height: Number(e.target.value) || undefined } })}
-                className='flex-1 bg-card border border-border/50 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary'
-              />
+              <div className='flex-1 space-y-1.5'>
+                <span className='text-[10px] font-medium text-muted-foreground ml-1'>W</span>
+                <input
+                  type='number'
+                  placeholder='PX'
+                  value={settings.resize.width || ""}
+                  onChange={(e) => updateSettings({ resize: { ...settings.resize, width: Number(e.target.value) || undefined } })}
+                  className='w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all'
+                />
+              </div>
+              <div className='flex-1 space-y-1.5'>
+                <span className='text-[10px] font-medium text-muted-foreground ml-1'>H</span>
+                <input
+                  type='number'
+                  placeholder='PX'
+                  value={settings.resize.height || ""}
+                  onChange={(e) => updateSettings({ resize: { ...settings.resize, height: Number(e.target.value) || undefined } })}
+                  className='w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/10 transition-all'
+                />
+              </div>
             </div>
-            <div className='flex flex-wrap gap-x-4 gap-y-2'>
-              <label className='flex items-center gap-2 cursor-pointer group'>
+            
+            <div className='grid grid-cols-2 gap-2'>
+              <label className='flex items-center gap-2 p-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 cursor-pointer group hover:border-primary/30 transition-all'>
                 <input
                   type='checkbox'
                   checked={settings.resize.preserveAspectRatio}
                   onChange={(e) => updateSettings({ resize: { ...settings.resize, preserveAspectRatio: e.target.checked } })}
-                  className='accent-primary'
+                  className='w-4 h-4 rounded-lg accent-primary'
                 />
-                <span className='text-xs text-muted-foreground group-hover:text-foreground transition-colors'>Preserve aspect ratio</span>
+                <span className='text-[10px] font-medium text-muted-foreground group-hover:text-foreground'>Keep ratio</span>
               </label>
-              <label className='flex items-center gap-2 cursor-pointer group'>
+              <label className='flex items-center gap-2 p-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-800 cursor-pointer group hover:border-primary/30 transition-all'>
                 <input
                   type='checkbox'
                   checked={settings.resize.allowUpscale}
                   onChange={(e) => updateSettings({ resize: { ...settings.resize, allowUpscale: e.target.checked } })}
-                  className='accent-primary'
+                  className='w-4 h-4 rounded-lg accent-primary'
                 />
-                <span className='text-xs text-muted-foreground group-hover:text-foreground transition-colors'>Allow upscale</span>
+                <span className='text-[10px] font-medium text-muted-foreground group-hover:text-foreground'>Upscale</span>
               </label>
             </div>
           </div>
         )}
-      </div>
+      </section>
 
-      <hr className='border-border/30' />
-
-      {/* EXIF */}
-      <div>
-        <div className='flex items-center gap-2 mb-3'>
-          <Camera size={14} className='text-muted-foreground' />
-          <h4 className='text-sm font-semibold text-foreground'>EXIF Metadata</h4>
+      {/* Metadata & Composition */}
+      <section className='space-y-4'>
+         {/* EXIF Toggle */}
+        <div className='flex items-center justify-between group'>
+          <div className='flex items-center gap-3'>
+            <div className='w-6 h-6 rounded-md bg-teal-500/10 flex items-center justify-center text-teal-600'>
+               <Camera size={14} strokeWidth={3} />
+            </div>
+            <div>
+              <h4 className='text-[10px] font-semibold uppercase text-foreground'>EXIF Data</h4>
+              <p className='text-[9px] text-muted-foreground leading-none mt-0.5'>Camera & GPS info</p>
+            </div>
+          </div>
+          <button 
+            onClick={() => updateSettings({ preserveExif: !settings.preserveExif })}
+            className={`w-10 h-5 rounded-full p-0.5 transition-all duration-300 ${settings.preserveExif ? 'bg-teal-500' : 'bg-slate-200 dark:bg-slate-800'}`}>
+            <div className={`w-4 h-4 bg-white rounded-full transition-transform duration-300 ${settings.preserveExif ? 'translate-x-5' : 'translate-x-0'}`} />
+          </button>
         </div>
-        <label className='flex items-start gap-3 cursor-pointer hover:bg-muted p-2 rounded-lg transition-colors group'>
-          <input
-            type='checkbox'
-            checked={settings.preserveExif}
-            onChange={(e) => updateSettings({ preserveExif: e.target.checked })}
-            className='accent-primary mt-0.5'
-          />
-          <div>
-            <span className='text-sm font-medium text-foreground block group-hover:text-primary transition-colors'>Preserve EXIF Data</span>
-            <span className='text-xs text-muted-foreground'>Keep camera info, location, and metadata</span>
-          </div>
-        </label>
-      </div>
 
-      {/* Background Color (JPEG only) */}
-      {settings.format === "jpeg" && (
-        <>
-          <hr className='border-border/30' />
-          <div>
-            <div className='flex items-center gap-2 mb-3'>
-              <Palette size={14} className='text-muted-foreground' />
-              <h4 className='text-sm font-semibold text-foreground'>Background Color</h4>
-            </div>
-            <div className='flex items-center gap-3 p-3 bg-card border border-border/50 rounded-xl'>
-              <input
-                type='color'
-                value={settings.backgroundColor}
-                onChange={(e) => updateSettings({ backgroundColor: e.target.value })}
-                className='w-12 h-10 rounded-lg border border-border/50 cursor-pointer bg-transparent'
-              />
-              <input
-                type='text'
-                value={settings.backgroundColor}
-                onChange={(e) => updateSettings({ backgroundColor: e.target.value })}
-                placeholder='#FFFFFF'
-                className='flex-1 bg-background border border-border/50 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary'
-              />
-            </div>
+        {/* Background Color Picker (JPEG only) */}
+        {settings.format === "jpeg" && (
+          <div className='space-y-3'>
+             <div className='flex items-center gap-2'>
+                <div className='w-6 h-6 rounded-md bg-indigo-500/10 flex items-center justify-center text-indigo-600'>
+                   <Palette size={14} strokeWidth={3} />
+                </div>
+                <h4 className='text-[10px] font-semibold uppercase text-foreground'>Background</h4>
+             </div>
+             
+             <div className='flex items-center gap-2 p-1.5 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800'>
+                <div className='relative w-8 h-8 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700'>
+                   <input
+                     type='color'
+                     value={settings.backgroundColor}
+                     onChange={(e) => updateSettings({ backgroundColor: e.target.value })}
+                     className='absolute inset-0 w-[200%] h-[200%] -translate-x-1/4 -translate-y-1/4 cursor-pointer bg-transparent'
+                   />
+                </div>
+                <input
+                  type='text'
+                  value={settings.backgroundColor}
+                  onChange={(e) => updateSettings({ backgroundColor: e.target.value })}
+                  placeholder='#FFFFFF'
+                  className='flex-1 bg-transparent border-none text-sm font-medium focus:ring-0 text-foreground'
+                />
+             </div>
           </div>
-        </>
-      )}
+        )}
+      </section>
 
-      {/* GIF Info */}
+      {/* Logic Insights (GIF/Server-Side) */}
       {(settings.format === "gif" || settings.preserveFormat) && (
-        <>
-          <hr className='border-border/30' />
-          <div>
-            <div className='flex items-center gap-2 mb-3'>
-              <Film size={14} className='text-muted-foreground' />
-              <h4 className='text-sm font-semibold text-foreground'>GIF Animation Support</h4>
-            </div>
-            <div className='p-3 bg-primary/5 border border-primary/20 rounded-xl text-[11px] leading-relaxed text-muted-foreground'>
-              <p className='mb-2'>✨ <strong className='text-primary'>Every frame compressed:</strong> We use server-side processing for GIFs to ensure all animation frames are preserved and optimized.</p>
-              <p>To resize, use the "Resize" panel above. Settings will be applied to all frames.</p>
-            </div>
+        <section className='animate-in slide-in-from-bottom-4 duration-700'>
+          <div className='p-3 bg-gradient-to-br from-indigo-500/5 to-primary/5 rounded-xl border border-primary/10'>
+             <div className='flex flex-col gap-2'>
+                <div className='flex items-center gap-2'>
+                  <Film size={16} className='text-primary' />
+                  <span className='text-[10px] font-semibold text-primary'>GIF Info</span>
+                </div>
+                
+                <p className='text-[11px] leading-relaxed text-slate-600 dark:text-slate-400'>
+                  GIFs are processed <span className='text-primary font-semibold'>server-side</span> to preserve animation frames and transparency.
+                </p>
+                
+                <div className='flex items-center gap-2 bg-white/50 dark:bg-slate-950/50 p-2 rounded-lg border border-white/20 dark:border-slate-800'>
+                   <div className='w-1.5 h-1.5 rounded-full bg-primary animate-pulse' />
+                   <span className='text-[9px] font-medium opacity-70'>All frames receive settings</span>
+                </div>
+             </div>
           </div>
-        </>
+        </section>
       )}
     </div>
   );
 }
+
