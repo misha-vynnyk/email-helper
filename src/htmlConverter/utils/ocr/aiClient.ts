@@ -78,7 +78,7 @@ export class AiBackendClient {
   /**
    * Analyzes an image using the AI Backend with retry logic
    */
-  static async analyzeImage(blob: Blob, mode: "fast" | "detailed" = "detailed"): Promise<OcrAnalyzeResult> {
+  static async analyzeImage(blob: Blob, mode: "ensemble" | "gemma3" = "gemma3"): Promise<OcrAnalyzeResult> {
     // Check if backend is available first
     const available = await this.isAvailable();
     if (!available) {
@@ -109,10 +109,10 @@ export class AiBackendClient {
   /**
    * Performs the actual analysis request
    */
-  private static async performAnalysis(blob: Blob, mode: "fast" | "detailed"): Promise<OcrAnalyzeResult> {
+  private static async performAnalysis(blob: Blob, mode: "ensemble" | "gemma3"): Promise<OcrAnalyzeResult> {
     const formData = new FormData();
     formData.append("file", blob, "image.png");
-    formData.append("mode", mode);
+    formData.append("mode", mode === "ensemble" ? "detailed" : "gemma3");
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.TIMEOUT);

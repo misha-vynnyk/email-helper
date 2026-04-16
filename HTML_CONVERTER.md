@@ -58,6 +58,8 @@ LocalStorage, ключ `html-converter-upload-history`, до 50 останніх
 
 **Щоб Upload працював:** backend (`npm run dev`), Brave з CDP (порт 9222), на Windows — шляхи Brave (README, AUTOMATION.md). Залежності automation встановлюються разом із проєктом (`cd automation && npm install`). Тест з CLI: `npm run automation:upload -- ./image.png finance` — див. [AUTOMATION.md](AUTOMATION.md).
 
+**AI Backend (Опис зображень):** Python сервер працює паралельно з Node.js для генерування SEO-назв (`image-1`) та ALT текстів. Потребує запуску `npm run dev:ai`. За замовчуванням інтегровано локальну мультимодальну модель **Gemma 3 4B** через Ollama. Деталі: `server/ai/README.md`.
+
 **API (backend):**
 
 - `POST /api/storage-upload/prepare` — FormData з файлом → `{ tempPath, filename }`.

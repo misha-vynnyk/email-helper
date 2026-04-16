@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Upload as UploadIcon, CheckCircle as SuccessIcon, AlertCircle as ErrorIcon, X as CloseIcon } from "lucide-react";
 
-import { useOcrAnalysis } from "../hooks/useOcrAnalysis";
 import { useHtmlConverterSettings } from "../hooks/useHtmlConverterSettings";
 import { UI_TIMINGS, STORAGE_PROVIDERS_CONFIG, FOLDER_NAME_REGEX, STORAGE_KEYS } from "../constants";
 import { copyToClipboard } from "../utils/clipboard";
 import type { ImageAnalysisSettings, UploadResult } from "../types";
 import type { StorageProviderKey } from "../constants";
+import type { ImageAiAnalysis } from "../utils/ocrUiTypes";
+import type { OcrAnalyzeResult } from "../utils/imageAnalysis";
+import type { OcrFile, AnalyzeFileOptions } from "../hooks/useOcrAnalysis";
 import { UploadResults, toShortPath } from "./UploadResults";
 import FileListItem from "./FileListItem";
 
@@ -21,9 +23,11 @@ interface StorageUploadDialogProps {
   onHistoryAdd?: (category: string, folderName: string, results: UploadResult[], customAlts?: Record<string, string>) => void;
   onAltsUpdate?: (altMap: Record<string, string>) => void;
   imageAnalysisSettings?: ImageAnalysisSettings;
+  aiById?: Record<string, ImageAiAnalysis>;
+  onAnalyzeFile?: (file: OcrFile, opts?: AnalyzeFileOptions) => Promise<OcrAnalyzeResult | null>;
 }
 
-export default function StorageUploadDialog({ open, onClose, storageProvider = "default", files, onUpload, onCancel, initialFolderName = "", onHistoryAdd, onAltsUpdate, imageAnalysisSettings }: StorageUploadDialogProps) {
+export default function StorageUploadDialog({ open, onClose, storageProvider = "default", files, onUpload, onCancel, initialFolderName = "", onHistoryAdd, onAltsUpdate, imageAnalysisSettings, aiById = {}, onAnalyzeFile }: StorageUploadDialogProps) {
   const { ui } = useHtmlConverterSettings();
 
   const providerCfg = STORAGE_PROVIDERS_CONFIG.providers[storageProvider] || STORAGE_PROVIDERS_CONFIG.providers.default;
@@ -58,23 +62,13 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
   const analysisEnabled = Boolean(imageAnalysisSettings?.enabled && (imageAnalysisSettings.engine === "ocr" || imageAnalysisSettings.useAiBackend));
   const analysisLabel = imageAnalysisSettings?.useAiBackend ? "Analyze (AI)" : "Analyze (OCR)";
 
-  // AI (step 1): OCR-based suggestions (configured globally in HtmlConverterPanel)
-  const {
-    aiById,
-    analyzeFile,
-    reset: resetOcrState,
-    dispose: disposeOcr,
-  } = useOcrAnalysis({
-    enabled: analysisEnabled,
-    settings: imageAnalysisSettings,
-    files: orderedFiles,
-  });
-
   const handleAnalyzeFile = useCallback(
     async (file: { id: string; name: string; path?: string; size?: number }, opts?: { force?: boolean }) => {
-      await analyzeFile(file, { force: opts?.force });
+      if (onAnalyzeFile) {
+        await onAnalyzeFile(file, { force: opts?.force });
+      }
     },
-    [analyzeFile]
+    [onAnalyzeFile]
   );
 
   // Sync orderedFiles when files prop changes, but ONLY when dialog is closed
@@ -93,7 +87,6 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
     setCustomNames({});
     setCustomAlts({});
     setEditingTag(null);
-    resetOcrState();
   }, [open]);
 
   // Propagate ALT text changes to parent
@@ -249,7 +242,6 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
       setCopiedUrl(null);
       setCustomNames({});
       setCustomAlts({});
-      disposeOcr();
     }
   };
 

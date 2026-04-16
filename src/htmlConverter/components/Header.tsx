@@ -11,7 +11,7 @@ interface HeaderProps {
   setImageAnalysis: Dispatch<SetStateAction<ImageAnalysisSettings>>;
   autoProcess: boolean;
   setAutoProcess: Dispatch<SetStateAction<boolean>>;
-  aiBackendStatus: "checking" | "online" | "offline";
+  aiBackendStatus: "checking" | "online" | "offline" | "ollama_offline";
   unseenLogCount: number;
 
 
@@ -37,11 +37,26 @@ export function Header({ ui, setUi, imageAnalysis, setImageAnalysis, autoProcess
       <div className='flex items-center gap-4'>
         {/* AI Backend Status Indicator */}
         {imageAnalysis.useAiBackend && (
-          <div className='flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-background border border-border/50 shadow-inner cursor-help' title={aiBackendStatus === "online" ? "AI сервер працює" : aiBackendStatus === "checking" ? "Перевірка AI сервера..." : "AI сервер не доступний"}>
+          <div className='flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-background border border-border/50 shadow-inner cursor-help' 
+            title={
+              aiBackendStatus === "online" 
+              ? "AI сервер працює" 
+              : aiBackendStatus === "ollama_offline"
+                ? "Ollama не знайдена"
+                : aiBackendStatus === "checking" 
+                  ? "Перевірка AI сервера..." 
+                  : "AI сервер не доступний"
+            }>
             <div
               className='w-2 h-2 rounded-full'
               style={{
-                backgroundColor: aiBackendStatus === "online" ? "#10B981" : aiBackendStatus === "checking" ? "#F59E0B" : "#EF4444",
+                backgroundColor: aiBackendStatus === "online" 
+                  ? "#10B981" 
+                  : aiBackendStatus === "checking" 
+                    ? "#F59E0B" 
+                    : aiBackendStatus === "ollama_offline"
+                      ? "#F97316"
+                      : "#EF4444",
                 animation: aiBackendStatus === "checking" ? "pulse 1.5s infinite" : "none",
               }}
             />

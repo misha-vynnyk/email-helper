@@ -29,11 +29,21 @@ function italicLinks(htmlContent: string): string {
   // Save native <a href="https://..."> links before stripping so they survive.
   const savedLinks: string[] = [];
   htmlContent = htmlContent.replace(/<a\s[^>]*href=(["'])(https?:\/\/[^"']+)\1[^>]*>([\s\S]*?)<\/a>/gi, (_match, _q, _href, inner) => {
-    const text = inner.replace(/<[^>]+>/g, "").trim();
-    if (!text) return "";
+    const text = inner.replace(/<[^>]+>/g, "");
+    
+    // Extract leading/trailing spaces to correctly place them OUTSIDE the link tag
+    const leadingSpaceMatch = text.match(/^([\s\u00A0]*)/);
+    const trailingSpaceMatch = text.match(/([\s\u00A0]*)$/);
+    
+    const leadingSpaces = leadingSpaceMatch ? leadingSpaceMatch[1] : "";
+    const trailingSpaces = trailingSpaceMatch ? trailingSpaceMatch[1] : "";
+    const coreText = text.trim();
+
+    if (!coreText) return text; // return just the whitespace to prevent empty links
+
     const placeholder = `\x02LINK${savedLinks.length}\x03`;
-    savedLinks.push(`<a href="${PLACEHOLDER_URL}" style="font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: ${config.colors.link};">${text}</a>`);
-    return placeholder;
+    savedLinks.push(`<a href="${PLACEHOLDER_URL}" style="font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: ${config.colors.link};">${coreText}</a>`);
+    return `${leadingSpaces}${placeholder}${trailingSpaces}`;
   });
 
   htmlContent = htmlContent.replace(/<a[^>]*>/gi, "").replace(/<\/a>/gi, "");
@@ -53,7 +63,16 @@ function italicLinks(htmlContent: string): string {
     }
 
     if (colorUtils.isLinkColor(color)) {
-      return `<a href="${PLACEHOLDER_URL}" style="font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: ${config.colors.link};"><em>${innerText}</em></a>`;
+      const leadingSpaceMatch = innerText.match(/^([\s\u00A0]*)/);
+      const trailingSpaceMatch = innerText.match(/([\s\u00A0]*)$/);
+      
+      const leadingSpaces = leadingSpaceMatch ? leadingSpaceMatch[1] : "";
+      const trailingSpaces = trailingSpaceMatch ? trailingSpaceMatch[1] : "";
+      const coreText = innerText.trim();
+      
+      if (!coreText) return match;
+
+      return `${leadingSpaces}<a href="${PLACEHOLDER_URL}" style="font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: ${config.colors.link};"><em>${coreText}</em></a>${trailingSpaces}`;
     }
     return match;
   });
@@ -71,7 +90,17 @@ function linksStyles(htmlContent: string): string {
     if (!color) return match;
 
     if (colorUtils.isLinkColor(color)) {
-      return `<a href="${PLACEHOLDER_URL}" style="font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: ${config.colors.link};">${innerText}</a>`;
+      const leadingSpaceMatch = innerText.match(/^([\s\u00A0]*)/);
+      const trailingSpaceMatch = innerText.match(/([\s\u00A0]*)$/);
+      
+      const leadingSpaces = leadingSpaceMatch ? leadingSpaceMatch[1] : "";
+      const trailingSpaces = trailingSpaceMatch ? trailingSpaceMatch[1] : "";
+      // Avoid mutating tags internally if any exist, just strip ends
+      const coreText = innerText.slice(leadingSpaces.length, innerText.length - trailingSpaces.length);
+
+      if (!coreText) return match;
+
+      return `${leadingSpaces}<a href="${PLACEHOLDER_URL}" style="font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: ${config.colors.link};">${coreText}</a>${trailingSpaces}`;
     }
     return match;
   });

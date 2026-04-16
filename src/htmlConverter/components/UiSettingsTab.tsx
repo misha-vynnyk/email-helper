@@ -17,9 +17,16 @@ export const UiSettingsTab: React.FC<UiSettingsTabProps> = ({ ui, setUi }) => {
         <div className='grid gap-4'>
           <div className='flex items-center justify-between'>
             <Label htmlFor='showLogsPanel' className='text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70'>
-              Показувати лог
+              Показувати лог операцій
             </Label>
             <Switch id='showLogsPanel' checked={ui.showLogsPanel} onCheckedChange={(checked) => setUi((prev) => ({ ...prev, showLogsPanel: checked }))} />
+          </div>
+
+          <div className='flex items-center justify-between'>
+            <Label htmlFor='showAiTerminal' className='text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70'>
+              Показувати термінал AI
+            </Label>
+            <Switch id='showAiTerminal' checked={ui.showAiTerminal} onCheckedChange={(checked) => setUi((prev) => ({ ...prev, showAiTerminal: checked }))} />
           </div>
 
           <div className='flex items-center justify-between'>

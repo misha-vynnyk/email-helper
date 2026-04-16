@@ -67,6 +67,7 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
           resize: parsed.resize || {
             mode: "original",
             preserveAspectRatio: true,
+            allowUpscale: false,
           },
         };
       }
@@ -82,6 +83,7 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
       resize: {
         mode: "original",
         preserveAspectRatio: true,
+        allowUpscale: false,
       },
       processingMode: DEFAULT_PROCESSING_MODE,
       compressionMode: DEFAULT_COMPRESSION_MODE,

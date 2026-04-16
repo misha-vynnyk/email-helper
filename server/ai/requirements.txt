@@ -14,3 +14,4 @@ paddlepaddle>=2.6.0
 paddleocr>=2.7.0.3
 # bitsandbytes is often problematic on non-CUDA; marking as optional or strictly Linux/Windows CUDA
 bitsandbytes>=0.42.0; sys_platform == 'linux' or sys_platform == 'win32'
+requests>=2.31.0
