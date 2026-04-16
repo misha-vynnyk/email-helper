@@ -15,6 +15,7 @@ export type UiSettings = {
   ocrSimpleMode: "custom" | "fast" | "balanced" | "banner" | "max";
   autoCloseUploadDialog: boolean;
   warningFileSizeKB: number;
+  showAiTerminal: boolean;
 };
 
 export const DEFAULT_UI_SETTINGS: UiSettings = {
@@ -30,6 +31,7 @@ export const DEFAULT_UI_SETTINGS: UiSettings = {
   ocrSimpleMode: "custom",
   autoCloseUploadDialog: true,
   warningFileSizeKB: 1024,
+  showAiTerminal: false,
 };
 
 export const DEFAULT_IMAGE_ANALYSIS_SETTINGS: ImageAnalysisSettings = {
@@ -62,6 +64,7 @@ export const DEFAULT_IMAGE_ANALYSIS_SETTINGS: ImageAnalysisSettings = {
   ocrMinWidth: 1000,
   ocrMaxWidth: 1200,
   useAiBackend: false,
+  aiProvider: "gemma3",
   autoAnalyzeMaxFiles: 0,
 };
 
@@ -90,7 +93,7 @@ const loadImageAnalysisSettings = (): ImageAnalysisSettings => {
 export function useHtmlConverterSettings() {
   const [ui, setUi] = useState<UiSettings>(() => loadUiSettings());
   const [imageAnalysis, setImageAnalysis] = useState<ImageAnalysisSettings>(() => loadImageAnalysisSettings());
-  const [aiBackendStatus, setAiBackendStatus] = useState<"checking" | "online" | "offline">("offline");
+  const [aiBackendStatus, setAiBackendStatus] = useState<"checking" | "online" | "offline" | "ollama_offline">("offline");
   const healthCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // AI Backend Health Check
@@ -110,7 +113,17 @@ export function useHtmlConverterSettings() {
           method: "GET",
           signal: AbortSignal.timeout(3000),
         });
-        setAiBackendStatus(res.ok ? "online" : "offline");
+        if (res.ok) {
+          const data = await res.json().catch(() => ({}));
+          // If User picked gemma3 but ollama is down, state is ollama_offline
+          if (data.ollama_running === false && imageAnalysis.aiProvider === "gemma3") {
+            setAiBackendStatus("ollama_offline");
+          } else {
+            setAiBackendStatus("online");
+          }
+        } else {
+          setAiBackendStatus("offline");
+        }
       } catch {
         setAiBackendStatus("offline");
       }
@@ -130,7 +143,7 @@ export function useHtmlConverterSettings() {
         healthCheckRef.current = null;
       }
     };
-  }, [imageAnalysis.useAiBackend]);
+  }, [imageAnalysis.useAiBackend, imageAnalysis.aiProvider]);
 
   // Persist UI Settings
   useEffect(() => {

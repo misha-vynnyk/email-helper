@@ -45,11 +45,11 @@ export function cleanEmptyHtmlTags(htmlContent: string): string {
   while (htmlContent.length !== prevLen) {
     prevLen = htmlContent.length;
 
-    // Clear totally empty structural tags
-    htmlContent = htmlContent.replace(/<span[^>]*>\s*<\/span>/gi, "");
-    htmlContent = htmlContent.replace(/<div[^>]*>\s*<\/div>/gi, "");
-    htmlContent = htmlContent.replace(/<td[^>]*>\s*<\/td>/gi, "");
-    htmlContent = htmlContent.replace(/<tr[^>]*>\s*<\/tr>/gi, "");
+    // Clear totally empty structural tags, preserving contained whitespace
+    htmlContent = htmlContent.replace(/<span[^>]*>([\s\u00A0]*)<\/span>/gi, "$1");
+    htmlContent = htmlContent.replace(/<div[^>]*>([\s\u00A0]*)<\/div>/gi, "$1");
+    htmlContent = htmlContent.replace(/<td[^>]*>([\s\u00A0]*)<\/td>/gi, "");
+    htmlContent = htmlContent.replace(/<tr[^>]*>([\s\u00A0]*)<\/tr>/gi, "");
 
     // Clear structural tags that contain ONLY line breaks
     htmlContent = htmlContent.replace(/<span[^>]*>\s*(?:<br\s*\/?>\s*)+\s*<\/span>/gi, "");
@@ -171,7 +171,7 @@ export function mergeSimilarTags(htmlContent: string): string {
 
   // Now handle tags normally (merge them)
   tagsToMerge.forEach((tag) => {
-    const regex = new RegExp(`(<\\/${tag}>)\\s*<${tag}[^>]*>`, "gi");
+    const regex = new RegExp(`(<\\/${tag}>)\\s*(?:<br\\s*\\/?>\\s*)*<${tag}[^>]*>`, "gi");
 
     let matchFound = true;
     let tagIterations = 0;

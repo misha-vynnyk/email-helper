@@ -57,10 +57,10 @@ async function sha256Hex(blob: Blob): Promise<string> {
  */
 function getAnalysisConfigKey(s: ImageAnalysisSettings): string {
   // bump when OCR pipeline changes to avoid stale cache hits
-  const OCR_PIPELINE_VERSION = 17;
+  const OCR_PIPELINE_VERSION = 18;
   return [
     `v${OCR_PIPELINE_VERSION}`,
-    s.useAiBackend ? "ai1" : "ai0",
+    s.useAiBackend ? `ai1-${s.aiProvider || "gemma3"}` : "ai0",
     s.ocrMinWidth ?? 0,
     s.ocrMaxWidth ?? 0,
     s.ocrScaleFactor ?? 1,
@@ -154,7 +154,7 @@ export function createOcrAnalyzer(): OcrAnalyzer {
 
           try {
             onProgress?.(0.1); // Connecting...
-            const result = await AiBackendClient.analyzeImage(blob, "detailed");
+            const result = await AiBackendClient.analyzeImage(blob, settings.aiProvider || "gemma3");
             onProgress?.(1); // Done
 
             // Cache this result

@@ -19,7 +19,7 @@ type SettingsPopoverProps = {
   setImageAnalysis: Dispatch<SetStateAction<ImageAnalysisSettings>>;
   autoProcess: boolean;
   setAutoProcess: Dispatch<SetStateAction<boolean>>;
-  aiBackendStatus: "checking" | "online" | "offline";
+  aiBackendStatus: "checking" | "online" | "offline" | "ollama_offline";
 };
 
 export const SettingsPopover: React.FC<SettingsPopoverProps> = ({ open, onOpenChange, triggerElement, settingsTab, setSettingsTab, ui, setUi, imageAnalysis, setImageAnalysis, autoProcess, setAutoProcess, aiBackendStatus }) => {

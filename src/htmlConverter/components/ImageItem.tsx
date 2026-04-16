@@ -15,6 +15,7 @@ export function ImageItem({ image, globalFormat, onDownload, onRemove, onFormatC
 
   // Distinct colors by output format
   const isPng = imgFormat === "png";
+  const isGif = imgFormat === "gif";
 
   return (
     <div className='flex flex-col gap-1 items-center'>
@@ -22,7 +23,7 @@ export function ImageItem({ image, globalFormat, onDownload, onRemove, onFormatC
         <img src={image.previewUrl} alt={image.name} className='w-full h-full object-cover' />
 
         {/* Format Badge */}
-        <span className={`absolute top-1 right-1 h-4 flex items-center px-1 text-[10px] font-bold rounded-sm border border-white/40 leading-none ${isPng ? "bg-green-600 text-white" : "bg-orange-500 text-white"}`}>{imgFormat.toUpperCase()}</span>
+        <span className={`absolute top-1 right-1 h-4 flex items-center px-1 text-[10px] font-bold rounded-sm border border-white/40 leading-none ${isPng ? "bg-green-600 text-white" : isGif ? "bg-purple-600 text-white" : "bg-orange-500 text-white"}`}>{imgFormat.toUpperCase()}</span>
 
         {image.status === "processing" && (
           <div className='absolute inset-0 bg-background/80 flex items-center justify-center'>
@@ -53,6 +54,9 @@ export function ImageItem({ image, globalFormat, onDownload, onRemove, onFormatC
         </button>
         <button onClick={() => onFormatChange(image.id, "png")} className={`flex-1 min-w-[28px] text-[10px] h-full flex items-center justify-center hover:bg-muted transition-colors ${image.formatOverride === "png" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground"}`}>
           PNG
+        </button>
+        <button onClick={() => onFormatChange(image.id, "gif")} className={`flex-1 min-w-[28px] text-[10px] h-full flex items-center justify-center hover:bg-muted transition-colors ${image.formatOverride === "gif" ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground"}`}>
+          GIF
         </button>
       </div>
     </div>

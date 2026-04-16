@@ -12,6 +12,7 @@ import { getFileExtension, getImageFormat, isCrossOrigin } from "./utils/imageUt
 import type { ImageAnalysisSettings, ImageFormatOverride, UploadSession } from "./types";
 import { useImageConversion } from "./hooks/useImageConversion";
 import { useImageUploader } from "./hooks/useImageUploader";
+import { useOcrAnalysis } from "./hooks/useOcrAnalysis";
 import { ImageGrid } from "./components/ImageGrid";
 import { ImageProcessorSettings } from "./components/ImageProcessorSettings";
 import { ImageProcessorStats } from "./components/ImageProcessorStats";
@@ -87,6 +88,37 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const initialFolderName = extractFolderName(fileName);
 
+  // Background AI processor hook logic
+  const analysisEnabled = Boolean(imageAnalysisSettings?.enabled && (imageAnalysisSettings.engine === "ocr" || imageAnalysisSettings.useAiBackend));
+  
+  const processedFiles = React.useMemo(() => {
+    return images
+      .filter((img) => (img.status === "done" && img.convertedBlob) || (img.status === "pending" && isCrossOrigin(img.src)))
+      .map((img) => ({ id: img.id, name: img.name, path: img.previewUrl, size: img.convertedSize ?? img.originalSize }));
+  }, [images]);
+
+  const effectiveAnalysisSettings = React.useMemo(() => {
+    if (!imageAnalysisSettings) return undefined;
+    const maxFiles = (imageAnalysisSettings.autoAnalyzeMaxFiles && imageAnalysisSettings.autoAnalyzeMaxFiles > 0) 
+      ? imageAnalysisSettings.autoAnalyzeMaxFiles 
+      : 50;
+    
+    return {
+      ...imageAnalysisSettings,
+      autoAnalyzeMaxFiles: imageAnalysisSettings.runMode === "auto" ? maxFiles : 0
+    };
+  }, [imageAnalysisSettings]);
+
+  const {
+    aiById,
+    analyzeFile,
+    reset: resetOcrState,
+  } = useOcrAnalysis({
+    enabled: analysisEnabled,
+    settings: effectiveAnalysisSettings,
+    files: processedFiles,
+  });
+
   // Handlers for UI
   const handleDownloadSingle = (id: string) => {
     const img = images.find((i) => i.id === id);
@@ -126,6 +158,7 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
     abortUploads();
     clearImagesAndRevoke();
     resetUploadState();
+    resetOcrState();
     onVisibilityChange(false);
     onLog && onLog("🗑️ Очищено");
   };
@@ -147,8 +180,9 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
     if (!visible && images.length > 0) {
       clearImagesAndRevoke();
       resetUploadState();
+      resetOcrState();
     }
-  }, [visible, images.length, clearImagesAndRevoke, resetUploadState]);
+  }, [visible, images.length, clearImagesAndRevoke, resetUploadState, resetOcrState]);
 
   useEffect(() => {
     return () => {
@@ -237,7 +271,7 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
         open={uploadDialogOpen}
         onClose={() => setUploadDialogOpen(false)}
         storageProvider={storageProvider}
-        files={images.filter((img) => (img.status === "done" && img.convertedBlob) || (img.status === "pending" && isCrossOrigin(img.src))).map((img) => ({ id: img.id, name: img.name, path: img.previewUrl, size: img.convertedSize ?? img.originalSize }))}
+        files={processedFiles}
         onUpload={handleUploadToStorage}
         onCancel={() => {
           abortUploads();
@@ -246,7 +280,9 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
         initialFolderName={initialFolderName}
         onHistoryAdd={onHistoryAdd}
         onAltsUpdate={onUploadedAltsChange}
-        imageAnalysisSettings={imageAnalysisSettings}
+        imageAnalysisSettings={effectiveAnalysisSettings}
+        aiById={aiById}
+        onAnalyzeFile={analyzeFile}
       />
 
       {/* Tailwind Custom Snackbar */}

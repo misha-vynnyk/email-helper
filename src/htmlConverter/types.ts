@@ -3,7 +3,7 @@
  */
 
 // Image processing types
-export type ImageFormat = "jpeg" | "png";
+export type ImageFormat = "jpeg" | "png" | "gif";
 export type ImageFormatOverride = ImageFormat | "auto";
 export type ImageStatus = "pending" | "processing" | "done" | "error";
 
@@ -155,6 +155,10 @@ export interface ImageAnalysisSettings {
    * Requires `npm run dev:ai`.
    */
   useAiBackend: boolean;
+  /**
+   * AI Backend Provider
+   */
+  aiProvider: "ensemble" | "gemma3";
   /**
    * Safety limit for auto-run mode. 0 disables auto-run even if runMode="auto".
    */

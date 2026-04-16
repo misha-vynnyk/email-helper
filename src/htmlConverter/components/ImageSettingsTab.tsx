@@ -1,16 +1,16 @@
 import React, { Dispatch, SetStateAction } from "react";
 import { STORAGE_KEYS } from "../constants";
-import type { ImageAnalysisSettings } from "../types";
 import type { UiSettings } from "../hooks/useHtmlConverterSettings";
+import type { ImageAnalysisSettings } from "../types";
 import { OCR_PRESETS } from "../utils/ocrPresets";
 
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Slider } from "@/components/ui/slider";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 
 type ImageSettingsTabProps = {
   ui: UiSettings;
@@ -19,7 +19,7 @@ type ImageSettingsTabProps = {
   setImageAnalysis: Dispatch<SetStateAction<ImageAnalysisSettings>>;
   autoProcess: boolean;
   setAutoProcess: Dispatch<SetStateAction<boolean>>;
-  aiBackendStatus: "checking" | "online" | "offline";
+  aiBackendStatus: "checking" | "online" | "offline" | "ollama_offline";
 };
 
 export const ImageSettingsTab: React.FC<ImageSettingsTabProps> = ({ ui, setUi, imageAnalysis, setImageAnalysis, autoProcess, setAutoProcess, aiBackendStatus }) => {
@@ -42,7 +42,13 @@ export const ImageSettingsTab: React.FC<ImageSettingsTabProps> = ({ ui, setUi, i
         <div className='flex items-center space-x-2'>
           <Checkbox id='autoProcess' checked={autoProcess} onCheckedChange={handleAutoProcessChange} />
           <Label htmlFor='autoProcess' className='text-sm font-medium leading-none'>
-            Автообробка зображень
+            Авто-оптимізація зображень (формат, розмір)
+          </Label>
+        </div>
+        <div className='flex items-center space-x-2'>
+          <Checkbox id='autoAnalyze' disabled={!imageAnalysis.enabled || (imageAnalysis.engine !== "ocr" && !imageAnalysis.useAiBackend)} checked={imageAnalysis.runMode === "auto"} onCheckedChange={(c) => setImageAnalysis((prev) => ({ ...prev, runMode: c ? "auto" : "manual" }))} />
+          <Label htmlFor='autoAnalyze' className={!imageAnalysis.enabled || (imageAnalysis.engine !== "ocr" && !imageAnalysis.useAiBackend) ? "text-sm font-medium leading-none opacity-50 cursor-not-allowed" : "text-sm font-medium leading-none cursor-pointer"}>
+            Автоматичний ШІ-аналіз (генерація ALT)
           </Label>
         </div>
       </div>
@@ -101,16 +107,16 @@ export const ImageSettingsTab: React.FC<ImageSettingsTabProps> = ({ ui, setUi, i
             </Select>
           </div>
 
-          <div className='flex flex-col justify-center gap-1.5 p-3 rounded-xl border border-border/50 bg-muted/20'>
+          <div className='flex flex-col gap-3 p-3 rounded-xl border border-border/50 bg-muted/20'>
             <div className='flex items-center justify-between'>
               <Label htmlFor='useAiBackend' className='text-sm font-bold flex items-center gap-2 cursor-pointer'>
                 AI Backend 🐍
                 {imageAnalysis.useAiBackend && (
                   <div
-                    title={aiBackendStatus === "online" ? "Сервер працює" : aiBackendStatus === "checking" ? "Перевірка..." : "Сервер не доступний"}
+                    title={aiBackendStatus === "online" ? "Сервер працює" : aiBackendStatus === "ollama_offline" ? "Ollama не знайдена" : aiBackendStatus === "checking" ? "Перевірка..." : "Сервер не доступний"}
                     className='w-2 h-2 rounded-full'
                     style={{
-                      backgroundColor: aiBackendStatus === "online" ? "#10B981" : aiBackendStatus === "checking" ? "#F59E0B" : "#EF4444",
+                      backgroundColor: aiBackendStatus === "online" ? "#10B981" : aiBackendStatus === "checking" ? "#F59E0B" : aiBackendStatus === "ollama_offline" ? "#F97316" : "#EF4444",
                       animation: aiBackendStatus === "checking" ? "pulse 1s infinite" : "none",
                     }}
                   />
@@ -118,21 +124,67 @@ export const ImageSettingsTab: React.FC<ImageSettingsTabProps> = ({ ui, setUi, i
               </Label>
               <Switch id='useAiBackend' checked={imageAnalysis.useAiBackend || false} onCheckedChange={(c) => setImageAnalysis((prev) => ({ ...prev, useAiBackend: c }))} />
             </div>
-            <p className='text-[11px] text-muted-foreground'>PaddleOCR + BLIP + CLIP</p>
+
+            {imageAnalysis.useAiBackend && (
+              <div className='space-y-2 pt-2 border-t border-border/30'>
+                <Label className='text-xs text-muted-foreground'>AI Модель (Провайдер)</Label>
+                <Select disabled={!imageAnalysis.enabled} value={imageAnalysis.aiProvider || "gemma3"} onValueChange={(v) => setImageAnalysis((prev) => ({ ...prev, aiProvider: v as "ensemble" | "gemma3" }))}>
+                  <SelectTrigger className='h-8'>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='gemma3'>Gemma 3 4B (Ollama) — Рекомендовано</SelectItem>
+                    <SelectItem value='ensemble'>Ensemble (OCR + CLIP) — Застаріло</SelectItem>
+                  </SelectContent>
+                </Select>
+                {imageAnalysis.aiProvider === "gemma3" && aiBackendStatus === "ollama_offline" && (
+                  <div className='bg-orange-500/10 border border-orange-500/20 text-orange-600 dark:text-orange-400 p-2 rounded-md text-[11px] mt-2'>
+                    <strong>Ollama не запущена!</strong> Увімкніть додаток Ollama на комп'ютері.
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!imageAnalysis.useAiBackend && <p className='text-[11px] text-muted-foreground'>Gemma 3 4B / PaddleOCR + BLIP</p>}
           </div>
         </div>
 
-        <div className='space-y-2'>
-          <Label>Запуск</Label>
-          <Select disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"} value={imageAnalysis.runMode} onValueChange={(v) => setImageAnalysis((prev) => ({ ...prev, runMode: v as ImageAnalysisSettings["runMode"] }))}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value='manual'>Тільки вручну</SelectItem>
-              <SelectItem value='auto'>Автоматично (обережно)</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className='flex items-center justify-between'>
+          <div>
+            <Label className='text-sm font-medium'>Кеш ШІ-аналізу</Label>
+            <p className='text-[11px] text-muted-foreground'>Очистити кеш, щоб повторно проаналізувати зображення</p>
+          </div>
+          <button
+            onClick={async () => {
+              // Clear backend (server) cache
+              try {
+                const res = await fetch("http://localhost:8000/api/cache", { method: "DELETE" });
+                if (res.ok) {
+                  const data = await res.json();
+                  console.log(`[Cache] Server cache cleared: ${data.cleared} entries`);
+                }
+              } catch {
+                console.log("[Cache] Server cache unavailable, skipping");
+              }
+
+              // Reset frontend AI results for all images
+              setImageAnalysis((prev) => ({ ...prev, _cacheBust: Date.now() }));
+
+              // Show brief feedback
+              const btn = document.getElementById("clearCacheBtn");
+              if (btn) {
+                btn.textContent = "✓ Очищено";
+                btn.classList.add("text-green-600", "dark:text-green-400");
+                setTimeout(() => {
+                  btn.textContent = "Очистити кеш";
+                  btn.classList.remove("text-green-600", "dark:text-green-400");
+                }, 1500);
+              }
+            }}
+            id='clearCacheBtn'
+            className='px-3 py-1.5 text-xs font-semibold border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-lg transition-all hover:scale-105 active:scale-95'>
+            Очистити кеш
+          </button>
         </div>
 
         <Alert className='bg-primary/5 border-primary/20 text-foreground'>
@@ -359,7 +411,7 @@ export const ImageSettingsTab: React.FC<ImageSettingsTabProps> = ({ ui, setUi, i
                 type='number'
                 min='0'
                 max='50'
-                disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off" || imageAnalysis.runMode !== "auto"}
+                disabled={!imageAnalysis.enabled || imageAnalysis.engine === "off"}
                 value={imageAnalysis.autoAnalyzeMaxFiles}
                 onChange={(e) => {
                   const n = Number(e.target.value || 0);

@@ -1,0 +1,9 @@
+import asyncio
+import websockets
+
+async def test():
+    async with websockets.connect("ws://127.0.0.1:8000/api/ws/logs") as ws:
+        msg = await ws.recv()
+        print(msg)
+
+asyncio.run(test())

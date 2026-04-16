@@ -90,5 +90,5 @@ export const getImageFormat = (image: ProcessedImage, globalFormat: ImageFormat)
   return globalFormat;
 };
 
-export const EXT_BY_FORMAT: Record<ImageFormat, string> = { jpeg: ".jpg", png: ".png" };
+export const EXT_BY_FORMAT: Record<ImageFormat, string> = { jpeg: ".jpg", png: ".png", gif: ".gif" };
 export const getFileExtension = (f: ImageFormat) => EXT_BY_FORMAT[f] ?? ".jpg";

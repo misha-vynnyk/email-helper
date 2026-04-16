@@ -116,20 +116,24 @@ export function useImageConversion({ editorRef, onLog, onVisibilityChange, autoP
       throw new Error("Зображення з іншого домену: потрібен backend (npm run dev) для конвертації, або вставте як data URL.");
     }
 
-    // For PNG, use server-side conversion to properly handle compression if available?
+    // For PNG and GIF, use server-side conversion to properly handle compression if available
     // Use fallback otherwise.
-    if (targetFormat === "png") {
+    if (targetFormat === "png" || targetFormat === "gif") {
       try {
         const response = await fetch(src, { signal });
         if (!response.ok) throw new Error("Failed to fetch image");
 
         const originalBlob = await response.blob();
         const originalSize = originalBlob.size;
-        const file = new File([originalBlob], "image.png", { type: "image/png" });
+        
+        const mimeType = targetFormat === "gif" ? "image/gif" : "image/png";
+        const filename = targetFormat === "gif" ? "image.gif" : "image.png";
+        
+        const file = new File([originalBlob], filename, { type: mimeType });
 
         const formData = new FormData();
         formData.append("image", file);
-        formData.append("format", "png");
+        formData.append("format", targetFormat);
         formData.append("quality", q.toString());
         formData.append("resizeMode", "preset");
         formData.append("preset", mw.toString());

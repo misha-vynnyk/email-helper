@@ -9,6 +9,7 @@ import { FileNamingBar } from "./components/FileNamingBar";
 import { DiagnosticsPanel } from "./components/DiagnosticsPanel";
 import { ExportPanel } from "./components/ExportPanel";
 import { useHtmlConverterLogic } from "./hooks/useHtmlConverterLogic";
+import { useAiLogger } from "./hooks/useAiLogger";
 
 export default function HtmlConverterPanel() {
   const { t } = useTranslation();
@@ -26,6 +27,9 @@ export default function HtmlConverterPanel() {
   });
 
   const { ui, setUi, imageAnalysis, setImageAnalysis, aiBackendStatus } = settings;
+
+  // AI Logger Hook
+  const { aiLogs, aiConnected } = useAiLogger(ui.showAiTerminal);
 
   return (
     <div className='w-full min-h-screen bg-background p-4 md:p-8 text-foreground font-sans transition-colors duration-300'>
@@ -69,8 +73,8 @@ export default function HtmlConverterPanel() {
             />
 
             {/* DIAGNOSTICS TABS */}
-            {((ui.showInputHtml && state.inputHtml) || (ui.showLogsPanel && state.log.length > 0)) && (
-              <DiagnosticsPanel logs={state.log} inputHtml={state.inputHtml} handleCopy={actions.handleCopy} />
+            {((ui.showInputHtml && state.inputHtml) || (ui.showLogsPanel && state.log.length > 0) || (ui.showAiTerminal)) && (
+              <DiagnosticsPanel logs={state.log} inputHtml={state.inputHtml} handleCopy={actions.handleCopy} aiLogs={aiLogs} aiConnected={aiConnected} showAiTerminal={ui.showAiTerminal} />
             )}
           </div>
 
