@@ -158,7 +158,7 @@ export const ImageSettingsTab: React.FC<ImageSettingsTabProps> = ({ ui, setUi, i
             onClick={async () => {
               // Clear backend (server) cache
               try {
-                const res = await fetch("http://localhost:8000/api/cache", { method: "DELETE" });
+                const res = await fetch("http://127.0.0.1:8000/api/cache", { method: "DELETE" });
                 if (res.ok) {
                   const data = await res.json();
                   console.log(`[Cache] Server cache cleared: ${data.cleared} entries`);

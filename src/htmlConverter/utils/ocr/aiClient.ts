@@ -49,8 +49,8 @@ function normalizeAiFilenameSuggestion(value: string): string {
  * Endpoint: http://localhost:8000/api/analyze
  */
 export class AiBackendClient {
-  private static readonly API_URL = "http://localhost:8000/api/analyze";
-  private static readonly HEALTH_URL = "http://localhost:8000/health";
+  private static readonly API_URL = "http://127.0.0.1:8000/api/analyze";
+  private static readonly HEALTH_URL = "http://127.0.0.1:8000/health";
   private static readonly TIMEOUT = 60000; // 60 second timeout for analysis
   private static readonly MAX_RETRIES = 3;
   private static readonly RETRY_DELAY = 1000; // 1 second between retries
