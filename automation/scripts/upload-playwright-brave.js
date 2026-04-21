@@ -298,15 +298,24 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
       }
     }
 
-    const browserCmd = `${escapeShellArg(config.browser.executablePath)} --remote-debugging-port=${config.browser.debugPort} --user-data-dir=${escapeShellArg(effectiveUserDataDir)} --remote-debugging-address=127.0.0.1 &`;
+    const browserCmd = `${escapeShellArg(config.browser.executablePath)} --remote-debugging-port=${config.browser.debugPort} --user-data-dir=${escapeShellArg(effectiveUserDataDir)} --disable-features=DownloadBubble,DownloadBubbleV2 --disable-component-update &`;
 
-    const connectOverCdp = async () => chromium.connectOverCDP(cdpUrl);
+    const connectOverCdp = async () =>
+      chromium.connectOverCDP(cdpUrl, {
+        timeout: 15000,
+        slowMo: 50,
+      });
 
     try {
       console.log(`🔗 Підключення до Brave: ${cdpUrl}`);
       browser = await connectOverCdp();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("Browser.setDownloadBehavior")) {
+        console.error("❌ Помилка протоколу: Браузер не дозволяє керувати завантаженнями.");
+        console.error("💡 Спробуйте закрити всі вікна Brave та запустити скрипт знову.");
+        throw err;
+      }
       if (!msg.includes("ECONNREFUSED")) throw err;
 
       if (isFinalize) {
@@ -336,8 +345,21 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
         throw new Error(`browserType.connectOverCDP: connect ECONNREFUSED 127.0.0.1:${config.browser.debugPort}`);
       }
     }
-    context = browser.contexts()[0] || (await browser.newContext());
-    page = context.pages()[0] || (await context.newPage());
+    try {
+      context = browser.contexts()[0] || (await browser.newContext());
+      page = context.pages()[0] || (await context.newPage());
+    } catch (contextErr) {
+      const msg = contextErr instanceof Error ? contextErr.message : String(contextErr);
+      if (msg.includes("Browser.setDownloadBehavior")) {
+        console.warn("⚠️ Попередження: Браузер не підтримує налаштування завантажень через CDP (це не критично).");
+        // Try to continue anyway if possible
+        context = browser.contexts()[0];
+        if (!context) throw contextErr;
+        page = context.pages()[0] || (await context.newPage());
+      } else {
+        throw contextErr;
+      }
+    }
 
     // === Finalize: close current tab after batch ===
     if (isFinalize) {

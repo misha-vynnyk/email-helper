@@ -17,7 +17,7 @@ export function useAiLogger(enabled: boolean) {
 
     const connect = () => {
       // Connect to the AI backend WebSocket
-      const ws = new WebSocket("ws://localhost:8000/api/ws/logs");
+      const ws = new WebSocket("ws://127.0.0.1:8000/api/ws/logs");
 
       ws.onopen = () => {
         setConnected(true);

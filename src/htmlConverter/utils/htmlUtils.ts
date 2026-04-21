@@ -166,7 +166,18 @@ export function replaceAllEmojisAndSymbolsExcludingHTML(htmlContent: string): st
 }
 
 export function mergeSimilarTags(htmlContent: string): string {
-  // Merge adjacent h1-h6 tags and add <br><br> between them
+  let prevLen = 0;
+  while (htmlContent.length !== prevLen) {
+    prevLen = htmlContent.length;
+    // Merge IDENTICAL adjacent blocks (same exact opening tag) for p and h1-h6
+    // This perfectly joins equivalently styled blocks (e.g. <p text-align: center>) across multiple lines.
+    const exactMatchRegex = /(<(p|h[1-6])(?:\s+[^>]*|)>)([\s\S]*?)<\/\2>\s*(?:<br\s*\/?>\s*)*\1/gi;
+    htmlContent = htmlContent.replace(exactMatchRegex, (_match, openTag, _tagName, innerContent) => {
+      return `${openTag}${innerContent}[[BR_SEP]]`;
+    });
+  }
+
+  // Merge adjacent h1-h6 tags generically as a fallback (even if styles differ) 
   const tagsToMerge = ["h1", "h4", "h5", "h6"];
 
   // Now handle tags normally (merge them)
