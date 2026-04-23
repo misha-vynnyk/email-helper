@@ -16,8 +16,10 @@ export function useAiLogger(enabled: boolean) {
     }
 
     const connect = () => {
-      // Connect to the AI backend WebSocket
-      const ws = new WebSocket("ws://127.0.0.1:8000/api/ws/logs");
+      // Connect to the AI backend WebSocket via Vite proxy
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/ai-api/api/ws/logs`;
+      const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
         setConnected(true);
