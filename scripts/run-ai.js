@@ -67,10 +67,10 @@ try {
 
   console.log("Installing Python requirements...");
   // Use --no-warn-script-location to avoid path warnings on Windows
-  run(venvPython, ["-m", "pip", "install", "--upgrade", "pip", "--no-warn-script-location"]);
+  run(venvPython, ["-m", "pip", "install", "--upgrade", "pip", "--no-warn-script-location", "--quiet"]);
 
   // Install requirements - Fail hard if this errors
-  run(venvPython, ["-m", "pip", "install", "-r", "requirements.txt", "--no-warn-script-location"]);
+  run(venvPython, ["-m", "pip", "install", "-r", "requirements.txt", "--no-warn-script-location", "--quiet"]);
 
   // Verify Critical Dependencies
   console.log("Verifying Torch installation...");

@@ -1,0 +1,17 @@
+{
+  "watch": ["dist", "index.js"],
+  "ext": "js,json",
+  "ignore": [
+    "node_modules",
+    "**/*.ts",
+    "blocks",
+    "data",
+    "temp",
+    "*.log",
+    "ai/**",
+    "server/ai/**",
+    "**/ai/venv/**"
+  ],
+  "delay": "5000",
+  "legacyWatch": true
+}
