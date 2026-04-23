@@ -1,3 +1,5 @@
+import os
+import urllib.request
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -29,20 +31,25 @@ app.add_middleware(
 
 app.include_router(routes.router, prefix="/api")
 
-import urllib.request
-
 @app.get("/health")
 async def health_check():
     ollama_ok = False
-    import os
-    ollama_base = os.getenv("OLLAMA_HOST", "http://localhost:11434").rstrip('/')
+    
+    # Get host and ensure it has a proper scheme
+    ollama_host = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+    if not ollama_host.startswith('http'):
+        ollama_host = f"http://{ollama_host}"
+    
+    ollama_base = ollama_host.rstrip('/')
+    
     try:
-        req = urllib.request.Request(f"{ollama_base}/", method="GET")
-        with urllib.request.urlopen(req, timeout=1.0) as response:
-            if response.status == 200:
+        # Simple health check to Ollama
+        with urllib.request.urlopen(f"{ollama_base}/", timeout=2.0) as response:
+            if response.getcode() == 200:
                 ollama_ok = True
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Ollama health check failed (expected if Ollama is off): {str(e)}")
+        ollama_ok = False
 
     return {
         "status": "ok", 
