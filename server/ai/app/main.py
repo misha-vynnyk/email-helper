@@ -34,14 +34,14 @@ app.include_router(routes.router, prefix="/api")
 @app.get("/health")
 async def health_check():
     ollama_ok = False
-    
+
     # Get host and ensure it has a proper scheme
     ollama_host = os.getenv("OLLAMA_HOST", "http://localhost:11434")
     if not ollama_host.startswith('http'):
         ollama_host = f"http://{ollama_host}"
-    
+
     ollama_base = ollama_host.rstrip('/')
-    
+
     try:
         # Simple health check to Ollama
         with urllib.request.urlopen(f"{ollama_base}/", timeout=2.0) as response:
@@ -52,8 +52,8 @@ async def health_check():
         ollama_ok = False
 
     return {
-        "status": "ok", 
-        "service": "ai-backend", 
+        "status": "ok",
+        "service": "ai-backend",
         "version": "0.2.1",
         "ollama_running": ollama_ok
     }
