@@ -4,7 +4,11 @@ const path = require("path");
 const fs = require("fs");
 
 // Load environment variables from .env file
-require("dotenv").config({ path: path.resolve(__dirname, "..", ".env") });
+try {
+  require("dotenv").config({ path: path.resolve(__dirname, "..", ".env") });
+} catch (e) {
+  console.warn("⚠️  dotenv not found, using system environment variables only.");
+}
 
 const aiDir = path.resolve(__dirname, "..", "server", "ai");
 const venvDir = path.join(aiDir, "venv");
