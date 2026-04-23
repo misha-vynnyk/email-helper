@@ -3,6 +3,9 @@ const { spawn, spawnSync } = require("child_process");
 const path = require("path");
 const fs = require("fs");
 
+// Load environment variables from .env file
+require("dotenv").config({ path: path.resolve(__dirname, "..", ".env") });
+
 const aiDir = path.resolve(__dirname, "..", "server", "ai");
 const venvDir = path.join(aiDir, "venv");
 
