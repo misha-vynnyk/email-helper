@@ -25,9 +25,7 @@ app.use(limiter);
 // CORS configuration - allow local development and GitHub Pages demo
 const allowedOrigins = [
   /^http:\/\/localhost:\d+$/, // Allow any localhost port
-  /^https:\/\/localhost:\d+$/, // Allow localhost over https too
   /^http:\/\/127\.0\.0\.1:\d+$/, // Allow any 127.0.0.1 port
-  /^https:\/\/127\.0\.0\.1:\d+$/, // Allow 127.0.0.1 over https too
   /^http:\/\/192\.168\.\d+\.\d+:\d+$/, // Allow local network (192.168.x.x)
   /^http:\/\/10\.\d+\.\d+\.\d+:\d+$/, // Allow local network (10.x.x.x)
   /^http:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+:\d+$/, // Allow local network (172.16.x.x - 172.31.x.x)
@@ -39,22 +37,20 @@ const allowAllCors = process.env.ALLOW_ALL_CORS_DEV === "1";
 
 // Add origin from environment variable if set
 if (process.env.ALLOWED_ORIGIN) {
-  allowedOrigins.push(process.env.ALLOWED_ORIGIN.replace(/\/$/, ""));
+  allowedOrigins.push(process.env.ALLOWED_ORIGIN);
 }
 
-// In production, also allow GitHub Pages wildcard origins for this user
+// In production, allow all GitHub Pages origins for this user
 if (process.env.NODE_ENV === "production") {
   allowedOrigins.push("https://misha-vynnyk.github.io");
+  // Also allow wildcard for any path on GitHub Pages
   allowedOrigins.push(/^https:\/\/misha-vynnyk\.github\.io/);
 }
 
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow all origins during development for local frontend/devserver workflows
-    // or if ALLOW_ALL_CORS_DEV is explicitly set
-    if (process.env.NODE_ENV !== "production" || allowAllCors) {
-      return callback(null, true);
-    }
+    // If allowAllCors is true, we skip origin checks (development only)
+    if (allowAllCors) return callback(null, true);
 
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
@@ -71,11 +67,10 @@ const corsOptions = {
     });
 
     if (isAllowed) {
-      return callback(null, true);
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
     }
-
-    console.warn("CORS denied origin:", origin, "allowed:", allowedOrigins);
-    callback(new Error("Not allowed by CORS"));
   },
   credentials: true,
   optionsSuccessStatus: 200,
