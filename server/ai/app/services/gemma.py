@@ -7,9 +7,13 @@ from PIL import Image
 from typing import Dict, Any
 from app.core.logger import logger
 
+import os
+
 class GemmaService:
     _instance = None
-    OLLAMA_URL = "http://localhost:11434/api/generate"
+    # Use OLLAMA_HOST env var if available, otherwise default to localhost
+    OLLAMA_BASE_URL = os.getenv("OLLAMA_HOST", "http://localhost:11434").rstrip('/')
+    OLLAMA_URL = f"{OLLAMA_BASE_URL}/api/generate"
     MODEL_NAME = "gemma3:4b"
 
     @classmethod
