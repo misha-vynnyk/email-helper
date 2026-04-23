@@ -19,5 +19,5 @@ if __name__ == "__main__":
     os.environ["PADDLE_NUM_THREADS"] = "1"
 
     # Run Uvicorn programmatically
-    # equivalent to: uvicorn app.main:app --reload --port 8000
-    uvicorn.run("app.main:app", host="127.0.0.1", port=8000, reload=True)
+    # equivalent to: uvicorn app.main:app --reload --host 0.0.0.0
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
