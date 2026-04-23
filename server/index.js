@@ -26,8 +26,14 @@ app.use(limiter);
 const allowedOrigins = [
   /^http:\/\/localhost:\d+$/, // Allow any localhost port
   /^http:\/\/127\.0\.0\.1:\d+$/, // Allow any 127.0.0.1 port
+  /^http:\/\/192\.168\.\d+\.\d+:\d+$/, // Allow local network (192.168.x.x)
+  /^http:\/\/10\.\d+\.\d+\.\d+:\d+$/, // Allow local network (10.x.x.x)
+  /^http:\/\/172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+:\d+$/, // Allow local network (172.16.x.x - 172.31.x.x)
   "https://misha-vynnyk.github.io",
 ];
+
+// If ALLOW_ALL_CORS_DEV is set, we will allow all origins in development
+const allowAllCors = process.env.ALLOW_ALL_CORS_DEV === "1";
 
 // Add origin from environment variable if set
 if (process.env.ALLOWED_ORIGIN) {
@@ -43,6 +49,9 @@ if (process.env.NODE_ENV === "production") {
 
 const corsOptions = {
   origin: (origin, callback) => {
+    // If allowAllCors is true, we skip origin checks (development only)
+    if (allowAllCors) return callback(null, true);
+
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
 
