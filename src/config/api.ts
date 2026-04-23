@@ -9,9 +9,7 @@ import { logger } from "../utils/logger";
 
 // In production, only use API if VITE_API_URL is explicitly set
 // Otherwise, disable API calls to avoid CORS errors
-const API_URL = import.meta.env.PROD
-  ? import.meta.env.VITE_API_URL || ""
-  : import.meta.env.VITE_API_URL || "http://localhost:3001";
+const API_URL = import.meta.env.VITE_API_URL || "";
 
 // Check if API is available
 export const isApiAvailable = () => {
