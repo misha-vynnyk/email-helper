@@ -12,7 +12,7 @@ interface ServerHealthStatus {
 
 const MAX_RETRIES = 30; // Try for up to 30 seconds
 const RETRY_INTERVAL = 1000; // 1 second between retries
-const AI_BACKEND_URL = "http://127.0.0.1:8000"; // Python AI Backend
+const AI_BACKEND_URL = "/ai-api"; // Python AI Backend (via Vite proxy)
 
 /**
  * Check if AI backend (Python FastAPI) is available
