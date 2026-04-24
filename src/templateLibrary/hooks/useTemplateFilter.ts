@@ -59,10 +59,6 @@ export function useTemplateFilter(templates: EmailTemplate[]) {
     const blockMatch = searchQuery.match(/<!(?:--)?\s*([^\s]+)/i);
     const searchBlockRaw = blockMatch ? blockMatch[1] : null;
 
-    console.log("[useTemplateFilter] Input query:", searchQuery);
-    console.log("[useTemplateFilter] Regex match raw:", searchBlockRaw);
-    console.log("[useTemplateFilter] Available blocks in all templates:", availableBlocks);
-
     let searchBlock = null;
     if (searchBlockRaw) {
       const lowerRaw = searchBlockRaw.toLowerCase();
@@ -71,7 +67,6 @@ export function useTemplateFilter(templates: EmailTemplate[]) {
         availableBlocks.find((b) => b.toLowerCase().startsWith(lowerRaw)) ||
         availableBlocks.find((b) => b.toLowerCase().includes(lowerRaw)) || 
         searchBlockRaw;
-      console.log("[useTemplateFilter] Resolved searchBlock:", searchBlock);
     }
 
     const cleanQuery = searchQuery.replace(/<!(?:--)?\s*[^\s]+/gi, "").trim();
