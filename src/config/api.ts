@@ -13,6 +13,8 @@ const API_URL = import.meta.env.VITE_API_URL || "";
 
 // Check if API is available
 export const isApiAvailable = () => {
+  // Always available in development (via proxy)
+  if (import.meta.env.DEV) return true;
   return !!API_URL;
 };
 
