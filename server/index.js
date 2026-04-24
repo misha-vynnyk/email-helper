@@ -109,57 +109,23 @@ app.use((req, res) => {
   res.status(404).json({ error: "Not found" });
 });
 
-// Helper function to find an available port
-const findAvailablePort = async (startPort, maxAttempts = 10) => {
-  const net = require("net");
+// Start server on fixed port
+const startServer = () => {
+  const PORT = parseInt(process.env.PORT) || 3001;
 
-  for (let i = 0; i < maxAttempts; i++) {
-    const port = startPort + i;
-    const isAvailable = await new Promise((resolve) => {
-      const server = net.createServer();
-
-      server.once("error", (err) => {
-        if (err.code === "EADDRINUSE") {
-          resolve(false);
-        } else {
-          resolve(false);
-        }
-      });
-
-      server.once("listening", () => {
-        server.close();
-        resolve(true);
-      });
-
-      server.listen(port);
-    });
-
-    if (isAvailable) {
-      if (i > 0) {
-        console.log(`⚠️  Port ${startPort} is in use, using port ${port} instead`);
-      }
-      return port;
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log(`📝 Environment: ${process.env.NODE_ENV || "development"}`);
+    console.log(`🌐 CORS enabled for: ${allowedOrigins.join(", ")}`);
+  }).on("error", (err) => {
+    if (err.code === "EADDRINUSE") {
+      console.error(`❌ Port ${PORT} is already in use! Please kill the process using it.`);
+      process.exit(1);
+    } else {
+      console.error("❌ Failed to start server:", err.message);
+      process.exit(1);
     }
-  }
-
-  throw new Error(`Could not find an available port after ${maxAttempts} attempts starting from ${startPort}`);
-};
-
-// Start server with automatic port detection
-const startServer = async () => {
-  try {
-    const initialPort = parseInt(process.env.PORT) || 3001;
-    const availablePort = await findAvailablePort(initialPort);
-
-    app.listen(availablePort, () => {
-      console.log(`🚀 Server running on port ${availablePort}`);
-      console.log(`📝 Environment: ${process.env.NODE_ENV || "development"}`);
-      console.log(`🌐 CORS enabled for: ${allowedOrigins.join(", ")}`);
-    });
-  } catch (error) {
-    console.error("❌ Failed to start server:", error.message);
-    process.exit(1);
-  }
+  });
 };
 
 // Graceful error handling
