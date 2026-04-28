@@ -295,107 +295,44 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
 
     // Ensure userDataDir is writable. If not, fall back to a temp directory.
     let effectiveUserDataDir = config.browser.userDataDir;
+    // === Запуск Brave через launchPersistentContext (надійніше за CDP) ===
+    console.log("🚀 Запуск Brave...");
+
     try {
-      // Try to create directory if it doesn't exist and check writability
-      if (!fs.existsSync(effectiveUserDataDir)) {
-        fs.mkdirSync(effectiveUserDataDir, { recursive: true });
-      }
-      fs.accessSync(effectiveUserDataDir, fs.constants.W_OK);
-    } catch (e) {
-      const fallbackDir = pathModule.join(os.tmpdir(), `BravePlaywright-${Date.now()}`);
-      try {
-        fs.mkdirSync(fallbackDir, { recursive: true });
-        effectiveUserDataDir = fallbackDir;
-        console.warn(`⚠️ userDataDir ${config.browser.userDataDir} is not writable — falling back to ${effectiveUserDataDir}`);
-      } catch (ee) {
-        console.error(`❌ Cannot create fallback userDataDir (${fallbackDir}): ${ee.message}`);
-        throw ee;
-      }
-    }
-
-    const browserCmd = `${escapeShellArg(config.browser.executablePath)} --remote-debugging-port=${config.browser.debugPort} --remote-allow-origins=* --user-data-dir=${escapeShellArg(effectiveUserDataDir)} --disable-features=DownloadBubble,DownloadBubbleV2 --disable-component-update &`;
-
-    const connectOverCdp = async () =>
-      chromium.connectOverCDP(cdpUrl, {
-        timeout: 10000,
+      context = await chromium.launchPersistentContext(effectiveUserDataDir, {
+        executablePath: config.browser.executablePath,
+        headless: false,
+        args: [
+          `--remote-debugging-port=${config.browser.debugPort}`,
+          "--remote-allow-origins=*",
+          "--disable-features=DownloadBubble,DownloadBubbleV2",
+          "--disable-component-update"
+        ],
+        viewport: null, // Використовувати нативне розширення
+        noViewport: true,
         slowMo: 50,
       });
 
-    try {
-      console.log(`🔗 Підключення до Brave: ${cdpUrl}`);
-      browser = await connectOverCdp();
+      browser = context.browser(); // Може бути null для persistent context
+      page = context.pages()[0] || (await context.newPage());
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       
-      if (msg.includes("Browser.setDownloadBehavior")) {
-        console.error("❌ Помилка протоколу: Браузер не дозволяє керувати контекстом.");
-        console.error("💡 Спробуйте повністю закрити Brave і запустити знову.");
-        throw err;
-      }
-
-      if (isFinalize && msg.includes("ECONNREFUSED")) {
-        await safeExit(0);
-      }
-
-      if (!msg.includes("ECONNREFUSED")) throw err;
-
-      console.log(`🧭 CDP недоступний — запускаємо Brave...`);
-      exec(browserCmd);
-      
-      // Poll for CDP availability
-      const attemptDelay = 1000;
-      const maxAttempts = 15;
-      let connected = false;
-      let lastError = null;
-
-      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        try {
-          browser = await connectOverCdp();
-          connected = true;
-          break;
-        } catch (e) {
-          lastError = e;
-          if (e.message.includes("setDownloadBehavior")) break; 
-          await new Promise((resolve) => setTimeout(resolve, attemptDelay));
-        }
-      }
-
-      if (!connected) {
-        if (lastError && lastError.message.includes("setDownloadBehavior")) {
-          console.error("❌ Критична помилка протоколу Brave. Будь ласка, закрийте всі вікна Brave та спробуйте ще раз.");
-          throw lastError;
-        }
-        throw new Error(`Не вдалося підключитися до Brave на порті ${config.browser.debugPort} після ${maxAttempts} спроб.`);
-      }
-    }
-    try {
-      context = browser.contexts()[0] || (await browser.newContext());
-      page = context.pages()[0] || (await context.newPage());
-    } catch (contextErr) {
-      const msg = contextErr instanceof Error ? contextErr.message : String(contextErr);
-      if (msg.includes("Browser.setDownloadBehavior")) {
-        console.warn("⚠️ Попередження: Браузер не підтримує налаштування завантажень через CDP (це не критично).");
-        // Try to continue anyway if possible
-        context = browser.contexts()[0];
-        if (!context) throw contextErr;
-        page = context.pages()[0] || (await context.newPage());
+      if (msg.includes("user data directory is already in use")) {
+        console.error("❌ Помилка: Цей профіль Brave вже використовується іншим вікном.");
+        console.error("💡 Будь ласка, закрийте всі вікна Brave (профіль Playwright) і спробуйте знову.");
       } else {
-        throw contextErr;
+        console.error(`❌ Не вдалося запустити Brave: ${msg}`);
       }
+      throw err;
     }
 
     // === Finalize: close current tab after batch ===
     if (isFinalize) {
       try {
         await page.close();
-      } catch {
-        // ignore
-      }
-      try {
-        await browser.disconnect();
-      } catch {
-        // ignore
-      }
+        await context.close();
+      } catch (e) {}
       await safeExit(0);
     }
 
