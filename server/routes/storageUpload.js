@@ -205,11 +205,12 @@ router.post("/api/storage-upload", async (req, res) => {
     });
   }
 
-  const providerKey = String(provider).toLowerCase();
-  const isAlphaOne = providerKey === "alphaone";
+  const providerKey = String(provider || "default").toLowerCase();
+  const providerCfg = sharedStorageProviders?.providers?.[providerKey] || sharedStorageProviders?.providers?.default;
+  const usesCategory = providerCfg?.usesCategory ?? true;
 
-  const validCategories = sharedStorageProviders?.providers?.default?.categories || ["finance", "health"];
-  if (!isAlphaOne) {
+  if (usesCategory) {
+    const validCategories = providerCfg?.categories || ["finance", "health"];
     if (!category || !validCategories.includes(category.toLowerCase())) {
       return res.status(400).json({
         success: false,
