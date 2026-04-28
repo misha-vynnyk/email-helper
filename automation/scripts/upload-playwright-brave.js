@@ -10,6 +10,21 @@ const http = require("http");
 // === Завантаження конфігурації ===
 const configPath = pathModule.join(__dirname, "..", "config.json");
 const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+
+// Функція для розв'язання динамічних шляхів (наприклад, {{HOME}})
+function resolveDynamicPath(p) {
+  if (typeof p !== 'string') return p;
+  return p.replace(/\{\{HOME\}\}/g, os.homedir());
+}
+
+// Застосовуємо розв'язання шляхів до основних налаштувань
+config.browser.userDataDir = resolveDynamicPath(config.browser.userDataDir);
+if (config.browserProfiles) {
+  Object.values(config.browserProfiles).forEach(profile => {
+    if (profile.userDataDir) profile.userDataDir = resolveDynamicPath(profile.userDataDir);
+  });
+}
+
 // Env overrides for cross-machine setup (no edit of config.json needed)
 if (process.env.BRAVE_EXECUTABLE_PATH) config.browser.executablePath = process.env.BRAVE_EXECUTABLE_PATH;
 if (process.env.BRAVE_USER_DATA_DIR) config.browser.userDataDir = process.env.BRAVE_USER_DATA_DIR;
