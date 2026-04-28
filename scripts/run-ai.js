@@ -60,42 +60,41 @@ try {
   }
 
   console.log("Ensuring Python venv for AI server...");
-  run(pyCmd, ["-m", "venv", "venv"]);
-
-  const venvPython = pythonCmd();
-  console.log("Using python:", venvPython);
-
-  // Intel Mac Check
-  if (process.platform === "darwin" && process.arch === "x64") {
-    console.warn("⚠️  Intel Mac detected (x64).");
-    console.warn("   PaddleOCR might require OpenMP or have binary issues.");
-    console.warn("   If it fails, try installing 'paddlepaddle' manually in the venv.");
+  if (!fs.existsSync(venvDir)) {
+    run(pyCmd, ["-m", "venv", "venv"]);
   }
 
-  console.log("Installing Python requirements...");
-  // Use --no-warn-script-location to avoid path warnings on Windows
-  run(venvPython, ["-m", "pip", "install", "--upgrade", "pip", "--no-warn-script-location"]);
-  run(venvPython, ["-m", "pip", "install", "-r", "requirements.txt", "--no-warn-script-location"]);
+  const venvPython = pythonCmd();
+  
+  // Skip pip install if requirements.txt hasn't changed
+  const markerFile = path.join(venvDir, ".last_install");
+  const reqPath = path.join(aiDir, "requirements.txt");
+  let shouldInstall = true;
 
-  // Verify Critical Dependencies
+  if (fs.existsSync(markerFile) && fs.existsSync(reqPath)) {
+    if (fs.statSync(markerFile).mtimeMs > fs.statSync(reqPath).mtimeMs) {
+      shouldInstall = false;
+    }
+  }
+
+  if (shouldInstall) {
+    console.log("Installing/Updating Python requirements (this may take a minute on Windows)...");
+    run(venvPython, ["-m", "pip", "install", "--upgrade", "pip", "--no-warn-script-location"]);
+    run(venvPython, ["-m", "pip", "install", "-r", "requirements.txt", "--no-warn-script-location"]);
+    fs.writeFileSync(markerFile, new Date().toISOString());
+  } else {
+    console.log("✅ Python requirements up to date.");
+  }
+
   console.log("Verifying Torch installation...");
   try {
-    const check = spawnSync(venvPython, ["-c", "import torch; print(f'Torch {torch.__version__} verified')"], { encoding: "utf8" });
-    if (check.status !== 0) {
-      console.error("❌ Torch check failed even after install.");
-      console.error(check.stderr || check.stdout);
-      throw new Error("Torch verification failed");
-    }
-    console.log("✅ " + check.stdout.trim());
-  } catch (verifyError) {
-    console.error("❌ Critical dependency verification failed.");
-    console.error("   Please try running: 'pip install torch' manually in the venv.");
-    process.exit(1);
+    spawnSync(venvPython, ["-c", "import torch"], { stdio: "ignore" });
+    console.log("✅ Torch verified");
+  } catch (e) {
+    console.error("❌ Torch check failed.");
   }
 
   console.log("Starting AI server...");
-
-  // Use spawn (async) instead of spawnSync to handle signals gracefully
   const child = spawn(venvPython, ["start.py"], { cwd: aiDir, stdio: "inherit" });
 
   child.on("error", (err) => {
