@@ -253,6 +253,10 @@ router.post("/api/storage-upload", async (req, res) => {
       if (stdout) console.log(stdout.trim());
       if (stderr) console.error(stderr.trim());
 
+      // DEBUG: Log to file
+      const logPath = path.join(__dirname, "../../error_log.txt");
+      fs.appendFileSync(logPath, `[${new Date().toISOString()}] Command: ${command}\nError: ${JSON.stringify(error)}\nStderr: ${stderr}\n\n`);
+
       // Clean up temp file first (regardless of success/failure)
       if (fs.existsSync(filePath)) {
         try {
@@ -355,6 +359,8 @@ router.post("/api/storage-upload", async (req, res) => {
     });
   } catch (error) {
     console.error("Storage upload error:", error);
+    const logPath = path.join(__dirname, "../../error_log.txt");
+    fs.appendFileSync(logPath, `[${new Date().toISOString()}] ROUTE CATCH: ${error.message}\n${error.stack}\n\n`);
 
     // Clean up temp file on error
     if (filePath && fs.existsSync(filePath)) {
