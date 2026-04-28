@@ -11,10 +11,14 @@ const http = require("http");
 const configPath = pathModule.join(__dirname, "..", "config.json");
 const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
 
-// Функція для розв'язання динамічних шляхів (наприклад, {{HOME}})
+// Функція для розв'язання динамічних шляхів (наприклад, {{HOME}} або ~/)
 function resolveDynamicPath(p) {
   if (typeof p !== "string") return p;
-  return p.replace(/\{\{HOME\}\}/g, os.homedir());
+  let resolved = p.replace(/\{\{HOME\}\}/g, os.homedir());
+  if (resolved.startsWith("~/")) {
+    resolved = pathModule.join(os.homedir(), resolved.slice(2));
+  }
+  return resolved;
 }
 
 // Застосовуємо розв'язання шляхів до основних налаштувань
@@ -92,7 +96,7 @@ const selectedBrowser = browserProfiles[provider] || browserProfiles.default;
 
 const consoleBaseUrl = shared.consoleBaseUrl || config.storage?.baseUrl || config.storage?.baseURL || config.storage?.url || config.storage?.base || "https://storage.epcnetwork.dev";
 if (selectedBrowser?.debugPort) config.browser.debugPort = selectedBrowser.debugPort;
-if (selectedBrowser?.userDataDir) config.browser.userDataDir = selectedBrowser.userDataDir;
+if (selectedBrowser?.userDataDir) config.browser.userDataDir = resolveDynamicPath(selectedBrowser.userDataDir);
 if (typeof selectedBrowser?.autoCloseTab === "boolean") {
   config.browser.autoCloseTab = selectedBrowser.autoCloseTab;
 }

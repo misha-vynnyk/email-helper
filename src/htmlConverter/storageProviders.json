@@ -27,17 +27,33 @@
       "publicBaseUrl": "https://alphaonest.com",
       "publicPathPrefix": "files",
       "publicRootPrefix": "promo"
+    },
+    "terratrans": {
+      "bucket": "terratrans",
+      "usesCategory": false,
+      "consoleRootPrefix": "promo",
+      "loginWaitMs": 600000,
+      "bootstrapWaitMs": 30000,
+      "closeTabAfterBatch": false,
+      "publicBaseUrl": "https://terratranst.com",
+      "publicPathPrefix": "files",
+      "publicRootPrefix": "promo"
     }
   },
   "browserProfiles": {
     "default": {
       "debugPort": 9222,
-      "userDataDir": "/Users/mykhailo.vynnyk/Library/Application Support/BravePlaywright",
+      "userDataDir": "{{HOME}}/Library/Application Support/BravePlaywright",
       "autoCloseTab": true
     },
     "alphaone": {
       "debugPort": 9223,
-      "userDataDir": "/Users/mykhailo.vynnyk/Library/Application Support/BravePlaywright-AlfaOne",
+      "userDataDir": "{{HOME}}/Library/Application Support/BravePlaywright-AlfaOne",
+      "autoCloseTab": true
+    },
+    "terratrans": {
+      "debugPort": 9224,
+      "userDataDir": "{{HOME}}/Library/Application Support/BravePlaywright-TerraTrans",
       "autoCloseTab": true
     }
   }
