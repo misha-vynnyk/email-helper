@@ -21,6 +21,11 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           ws: true,
           rewrite: (path) => path.replace(/^\/ai-api/, ""),
+          configure: (proxy, _options) => {
+            proxy.on("error", (err, _req, _res) => {
+              // Silence spam during startup
+            });
+          },
         },
       },
     },
