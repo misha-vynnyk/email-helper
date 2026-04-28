@@ -63,14 +63,34 @@ function validateConfigPaths() {
     const issues = [];
 
     // Check browser executable path
-    const browserPath = config.browser.executablePath;
+    let browserPath = config.browser.executablePath;
     if (browserPath && !fs.existsSync(browserPath)) {
+      // Try to detect
+      if (platform === "darwin") {
+        const macPath = "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser";
+        if (fs.existsSync(macPath)) browserPath = macPath;
+      } else if (platform === "win32") {
+        const winPaths = [
+          path.join(process.env.PROGRAMFILES || "C:\\Program Files", "BraveSoftware\\Brave-Browser\\Application\\brave.exe"),
+          path.join(process.env["PROGRAMFILES(X86)"] || "C:\\Program Files (x86)", "BraveSoftware\\Brave-Browser\\Application\\brave.exe"),
+          path.join(process.env.LOCALAPPDATA || "", "BraveSoftware\\Brave-Browser\\Application\\brave.exe"),
+        ];
+        for (const wp of winPaths) {
+          if (fs.existsSync(wp)) {
+            browserPath = wp;
+            break;
+          }
+        }
+      }
+    }
+
+    if (!browserPath || !fs.existsSync(browserPath)) {
       if (platform === "win32") {
-        issues.push(`❌ Brave Browser not found at: ${browserPath}`, "   Set environment variable: set BRAVE_EXECUTABLE_PATH=C:\\\\Path\\\\To\\\\brave.exe");
+        issues.push(`❌ Brave Browser not found at: ${config.browser.executablePath}`, "   Set environment variable: set BRAVE_EXECUTABLE_PATH=C:\\\\Path\\\\To\\\\brave.exe");
       } else if (platform === "darwin") {
-        issues.push(`❌ Brave Browser not found at: ${browserPath}`, "   Install from: https://brave.com/download/", "   Or set: export BRAVE_EXECUTABLE_PATH=/path/to/brave");
+        issues.push(`❌ Brave Browser not found at: ${config.browser.executablePath}`, "   Install from: https://brave.com/download/", "   Or set: export BRAVE_EXECUTABLE_PATH=/path/to/brave");
       } else if (platform === "linux") {
-        issues.push(`❌ Brave Browser not found at: ${browserPath}`, "   Install: sudo apt install brave-browser", "   Or set: export BRAVE_EXECUTABLE_PATH=/usr/bin/brave-browser");
+        issues.push(`❌ Brave Browser not found at: ${config.browser.executablePath}`, "   Install: sudo apt install brave-browser", "   Or set: export BRAVE_EXECUTABLE_PATH=/usr/bin/brave-browser");
       }
     }
 

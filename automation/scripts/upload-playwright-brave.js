@@ -11,18 +11,58 @@ const http = require("http");
 const configPath = pathModule.join(__dirname, "..", "config.json");
 const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
 
-// Функція для розв'язання динамічних шляхів (наприклад, {{HOME}} або ~/)
+// Функція для розв'язання динамічних шляхів (наприклад, {{HOME}}, {{APP_DATA}} або ~/)
 function resolveDynamicPath(p) {
   if (typeof p !== "string") return p;
-  let resolved = p.replace(/\{\{HOME\}\}/g, os.homedir());
+  const home = os.homedir();
+  const appData = process.platform === "win32" 
+    ? process.env.LOCALAPPDATA 
+    : pathModule.join(home, "Library/Application Support");
+
+  let resolved = p
+    .replace(/\{\{HOME\}\}/g, home)
+    .replace(/\{\{APP_DATA\}\}/g, appData);
+
   if (resolved.startsWith("~/")) {
-    resolved = pathModule.join(os.homedir(), resolved.slice(2));
+    resolved = pathModule.join(home, resolved.slice(2));
   }
   return resolved;
 }
 
+// Функція для пошуку Brave на різних ОС
+function findBraveExecutable() {
+  const platform = process.platform;
+  const envPath = process.env.BRAVE_EXECUTABLE_PATH;
+  if (envPath && fs.existsSync(envPath)) return envPath;
+
+  const configPath = config.browser.executablePath;
+  if (configPath && fs.existsSync(configPath)) return configPath;
+
+  if (platform === "darwin") {
+    const macPath = "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser";
+    if (fs.existsSync(macPath)) return macPath;
+  } else if (platform === "win32") {
+    const winPaths = [
+      pathModule.join(process.env.PROGRAMFILES || "C:\\Program Files", "BraveSoftware\\Brave-Browser\\Application\\brave.exe"),
+      pathModule.join(process.env["PROGRAMFILES(X86)"] || "C:\\Program Files (x86)", "BraveSoftware\\Brave-Browser\\Application\\brave.exe"),
+      pathModule.join(process.env.LOCALAPPDATA || "", "BraveSoftware\\Brave-Browser\\Application\\brave.exe"),
+    ];
+    for (const wp of winPaths) {
+      if (wp && fs.existsSync(wp)) return wp;
+    }
+  } else if (platform === "linux") {
+    const linuxPaths = ["/usr/bin/brave-browser", "/usr/bin/brave"];
+    for (const lp of linuxPaths) {
+      if (fs.existsSync(lp)) return lp;
+    }
+  }
+  return configPath; // Повертаємо що було в конфігу як fallback
+}
+
 // Застосовуємо розв'язання шляхів до основних налаштувань
 config.browser.userDataDir = resolveDynamicPath(config.browser.userDataDir);
+config.browser.executablePath = findBraveExecutable();
+
 if (config.browserProfiles) {
   Object.values(config.browserProfiles).forEach((profile) => {
     if (profile.userDataDir) profile.userDataDir = resolveDynamicPath(profile.userDataDir);
