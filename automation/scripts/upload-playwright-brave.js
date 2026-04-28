@@ -313,7 +313,7 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
       }
     }
 
-    const browserCmd = `${escapeShellArg(config.browser.executablePath)} --remote-debugging-port=${config.browser.debugPort} --user-data-dir=${escapeShellArg(effectiveUserDataDir)} --disable-features=DownloadBubble,DownloadBubbleV2 --disable-component-update &`;
+    const browserCmd = `${escapeShellArg(config.browser.executablePath)} --remote-debugging-port=${config.browser.debugPort} --remote-allow-origins=* --user-data-dir=${escapeShellArg(effectiveUserDataDir)} --disable-features=DownloadBubble,DownloadBubbleV2 --disable-component-update &`;
 
     const connectOverCdp = async () =>
       chromium.connectOverCDP(cdpUrl, {
@@ -326,12 +326,15 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
       browser = await connectOverCdp();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      
+      // Якщо помилка стосується лише setDownloadBehavior, це не має блокувати Upload
       if (msg.includes("Browser.setDownloadBehavior")) {
-        console.error("❌ Помилка протоколу: Браузер не дозволяє керувати завантаженнями.");
-        console.error("💡 Спробуйте закрити всі вікна Brave та запустити скрипт знову.");
-        throw err;
+        console.warn("⚠️ Попередження: Браузер обмежує керування завантаженнями, але спробуємо продовжити...");
+        // У деяких випадках Playwright все одно може встановити з'єднання, 
+        // але якщо 'browser' не повернуто, ми викинемо помилку нижче.
       }
-      if (!msg.includes("ECONNREFUSED")) throw err;
+      
+      if (!msg.includes("ECONNREFUSED") && !msg.includes("setDownloadBehavior")) throw err;
 
       if (isFinalize) {
         // Nothing to close if browser isn't running
