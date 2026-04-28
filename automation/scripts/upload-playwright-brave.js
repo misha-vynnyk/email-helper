@@ -317,7 +317,7 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
 
     const connectOverCdp = async () =>
       chromium.connectOverCDP(cdpUrl, {
-        timeout: 15000,
+        timeout: 10000,
         slowMo: 50,
       });
 
@@ -327,40 +327,45 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       
-      // Якщо помилка стосується лише setDownloadBehavior, це не має блокувати Upload
       if (msg.includes("Browser.setDownloadBehavior")) {
-        console.warn("⚠️ Попередження: Браузер обмежує керування завантаженнями, але спробуємо продовжити...");
-        // У деяких випадках Playwright все одно може встановити з'єднання, 
-        // але якщо 'browser' не повернуто, ми викинемо помилку нижче.
+        console.error("❌ Помилка протоколу: Браузер не дозволяє керувати контекстом.");
+        console.error("💡 Спробуйте повністю закрити Brave і запустити знову.");
+        throw err;
       }
-      
-      if (!msg.includes("ECONNREFUSED") && !msg.includes("setDownloadBehavior")) throw err;
 
-      if (isFinalize) {
-        // Nothing to close if browser isn't running
+      if (isFinalize && msg.includes("ECONNREFUSED")) {
         await safeExit(0);
       }
 
-      console.log(`🧭 CDP недоступний на ${cdpUrl} — запускаємо Brave...`);
-      exec(browserCmd);
-      console.log("⏳ Очікування запуску браузера...");
+      if (!msg.includes("ECONNREFUSED")) throw err;
 
-      // Poll for CDP availability (give Brave more time to start)
-      const attemptDelay = 500;
-      const maxAttempts = Math.max(10, Math.ceil((config.timeouts.browserStart || 1500) / attemptDelay));
+      console.log(`🧭 CDP недоступний — запускаємо Brave...`);
+      exec(browserCmd);
+      
+      // Poll for CDP availability
+      const attemptDelay = 1000;
+      const maxAttempts = 15;
       let connected = false;
-      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      let lastError = null;
+
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
           browser = await connectOverCdp();
           connected = true;
           break;
         } catch (e) {
+          lastError = e;
+          if (e.message.includes("setDownloadBehavior")) break; 
           await new Promise((resolve) => setTimeout(resolve, attemptDelay));
         }
       }
 
       if (!connected) {
-        throw new Error(`browserType.connectOverCDP: connect ECONNREFUSED 127.0.0.1:${config.browser.debugPort}`);
+        if (lastError && lastError.message.includes("setDownloadBehavior")) {
+          console.error("❌ Критична помилка протоколу Brave. Будь ласка, закрийте всі вікна Brave та спробуйте ще раз.");
+          throw lastError;
+        }
+        throw new Error(`Не вдалося підключитися до Brave на порті ${config.browser.debugPort} після ${maxAttempts} спроб.`);
       }
     }
     try {
