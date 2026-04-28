@@ -12,7 +12,31 @@ import os
 class GemmaService:
     _instance = None
     # Use OLLAMA_HOST env var if available, otherwise default to localhost
-    OLLAMA_BASE_URL = os.getenv("OLLAMA_HOST", "http://localhost:11434").rstrip('/')
+    @staticmethod
+    def _get_ollama_base_url():
+        host = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+        # Handle case where OLLAMA_HOST is just '0.0.0.0' or 'localhost' without protocol/port
+        if not host.startswith('http'):
+            host = f"http://{host}"
+        
+        # If port is missing, add default Ollama port
+        from urllib.parse import urlparse, urlunparse
+        parsed = urlparse(host)
+        
+        # Replace 0.0.0.0 with 127.0.0.1 for connecting
+        netloc = parsed.netloc or parsed.path # urlparse might put IP in path if no //
+        if not parsed.netloc and host.startswith('http://'):
+            netloc = host.replace('http://', '').split('/')[0]
+            
+        if ':' not in netloc:
+            netloc = f"{netloc}:11434"
+        
+        if netloc.startswith('0.0.0.0'):
+            netloc = netloc.replace('0.0.0.0', '127.0.0.1', 1)
+            
+        return f"http://{netloc}"
+
+    OLLAMA_BASE_URL = _get_ollama_base_url.__func__()
     OLLAMA_URL = f"{OLLAMA_BASE_URL}/api/generate"
     MODEL_NAME = "gemma3:4b"
 

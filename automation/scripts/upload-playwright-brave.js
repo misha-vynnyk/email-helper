@@ -3,7 +3,7 @@
 const { chromium } = require("playwright-core");
 const fs = require("fs");
 const pathModule = require("path");
-const { execSync, exec, execFileSync } = require("child_process");
+const { execSync, execFileSync } = require("child_process");
 const os = require("os");
 const http = require("http");
 
@@ -13,14 +13,14 @@ const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
 
 // Функція для розв'язання динамічних шляхів (наприклад, {{HOME}})
 function resolveDynamicPath(p) {
-  if (typeof p !== 'string') return p;
+  if (typeof p !== "string") return p;
   return p.replace(/\{\{HOME\}\}/g, os.homedir());
 }
 
 // Застосовуємо розв'язання шляхів до основних налаштувань
 config.browser.userDataDir = resolveDynamicPath(config.browser.userDataDir);
 if (config.browserProfiles) {
-  Object.values(config.browserProfiles).forEach(profile => {
+  Object.values(config.browserProfiles).forEach((profile) => {
     if (profile.userDataDir) profile.userDataDir = resolveDynamicPath(profile.userDataDir);
   });
 }
@@ -31,7 +31,7 @@ if (process.env.BRAVE_USER_DATA_DIR) config.browser.userDataDir = process.env.BR
 
 // === Константи ===
 let VALID_CATEGORIES = ["finance", "health"];
-const GLOBAL_TIMEOUT = 120000; // 120 секунд (збільшено для інтерактивного вводу)
+const GLOBAL_TIMEOUT = 300000; // 5 хвилин (збільшено для повільного інтерфейсу)
 const FORM_SERVER_PORT = 3838;
 
 function getArgValue(flag) {
@@ -52,18 +52,20 @@ try {
   // optional config
 }
 
-if (typeof sharedStorageConfig?.systemNotifications?.enabled === "boolean") {
-  config.notifications.enabled = sharedStorageConfig.systemNotifications.enabled;
+const shared = sharedStorageConfig || {};
+
+if (typeof shared.systemNotifications?.enabled === "boolean") {
+  config.notifications.enabled = shared.systemNotifications.enabled;
 }
-if (typeof sharedStorageConfig?.systemNotifications?.soundsEnabled === "boolean") {
-  config.notifications.soundsEnabled = sharedStorageConfig.systemNotifications.soundsEnabled;
+if (typeof shared.systemNotifications?.soundsEnabled === "boolean") {
+  config.notifications.soundsEnabled = shared.systemNotifications.soundsEnabled;
 }
 
-if (Array.isArray(sharedStorageConfig?.providers?.default?.categories)) {
-  VALID_CATEGORIES = sharedStorageConfig.providers.default.categories;
+if (Array.isArray(shared.providers?.default?.categories)) {
+  VALID_CATEGORIES = shared.providers.default.categories;
 }
 
-const storageProviders = sharedStorageConfig?.providers ||
+const storageProviders = shared.providers ||
   config.storageProviders || {
     default: {
       bucket: "files",
@@ -72,13 +74,14 @@ const storageProviders = sharedStorageConfig?.providers ||
       publicBaseUrl: config.storage?.publicUrl || "",
       publicPathPrefix: "files",
       publicRootPrefix: config.storage?.basePath || "Promo",
+      bootstrapWaitMs: 60000,
     },
   };
 const selectedStorage = storageProviders[provider] || storageProviders.default;
 const loginWaitMs = Number(selectedStorage.loginWaitMs ?? 600000); // default: 10 minutes
-const bootstrapWaitMs = Number(selectedStorage.bootstrapWaitMs ?? 30000); // initial UI/login detect window
+const bootstrapWaitMs = Number(selectedStorage.bootstrapWaitMs ?? 120000); // initial UI/login detect window
 
-const browserProfiles = sharedStorageConfig?.browserProfiles ||
+const browserProfiles = shared.browserProfiles ||
   config.browserProfiles || {
     default: {
       debugPort: config.browser?.debugPort,
@@ -87,7 +90,7 @@ const browserProfiles = sharedStorageConfig?.browserProfiles ||
   };
 const selectedBrowser = browserProfiles[provider] || browserProfiles.default;
 
-const consoleBaseUrl = sharedStorageConfig?.consoleBaseUrl || config.storage?.baseUrl || config.storage?.baseURL || config.storage?.url || config.storage?.base || "https://storage.epcnetwork.dev";
+const consoleBaseUrl = shared.consoleBaseUrl || config.storage?.baseUrl || config.storage?.baseURL || config.storage?.url || config.storage?.base || "https://storage.epcnetwork.dev";
 if (selectedBrowser?.debugPort) config.browser.debugPort = selectedBrowser.debugPort;
 if (selectedBrowser?.userDataDir) config.browser.userDataDir = selectedBrowser.userDataDir;
 if (typeof selectedBrowser?.autoCloseTab === "boolean") {
@@ -172,8 +175,10 @@ function showConfirmationForm(fileInfo) {
             res.writeHead(200, { "Content-Type": "application/json" });
             res.end(JSON.stringify({ success: true }));
 
-            // Закриваємо сервер через 500ms
-            setTimeout(() => server.close(), 500);
+            // Закриваємо сервер після того, як дані отримані
+            setTimeout(() => {
+              server.close();
+            }, 100);
           } catch (err) {
             res.writeHead(400);
             res.end("Invalid JSON");
@@ -196,16 +201,14 @@ function showConfirmationForm(fileInfo) {
     });
 
     server.on("close", () => {
-      // Даємо час серверу закритись
-      setTimeout(() => {
-        if (cancelled) {
-          reject(new Error("Скасовано користувачем"));
-        } else if (formData) {
-          resolve(formData);
-        } else {
-          reject(new Error("Форма закрита без введення даних"));
-        }
-      }, 100);
+      // Даємо час серверу закритись і перевіряємо результати
+      if (cancelled) {
+        reject(new Error("Скасовано користувачем"));
+      } else if (formData) {
+        resolve(formData);
+      } else {
+        reject(new Error("Форма закрита без введення даних"));
+      }
     });
 
     server.listen(FORM_SERVER_PORT, "127.0.0.1", () => {
@@ -259,27 +262,73 @@ const fileName = isFinalize ? null : pathModule.basename(filePath);
 const fileSize = isFinalize ? 0 : fs.statSync(filePath).size;
 const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB";
 
-(async () => {
-  // === Функція для безпечного виходу ===
-  const safeExit = async (code) => {
-    clearTimeout(timeoutId);
-    if (typeof browser !== "undefined" && browser) {
-      if (code !== 0 && typeof page !== "undefined" && page) {
+// === Helper: check if Brave is listening on CDP port ===
+async function isCdpAvailable(port) {
+  return new Promise((resolve) => {
+    const req = http.get(`http://127.0.0.1:${port}/json/version`, { timeout: 2000 }, (res) => {
+      let data = "";
+      res.on("data", (chunk) => (data += chunk));
+      res.on("end", () => {
         try {
-          await page.close(); // Close stuck tab on error so next run gets a fresh one
-        } catch (e) {}
-      }
-      try {
+          const info = JSON.parse(data);
+          resolve(info.webSocketDebuggerUrl || null);
+        } catch {
+          resolve(null);
+        }
+      });
+    });
+    req.on("error", () => resolve(null));
+    req.on("timeout", () => { req.destroy(); resolve(null); });
+  });
+}
+
+// === Helper: launch Brave as a detached process (survives script exit) ===
+function launchBraveDetached(execPath, userDataDir, debugPort) {
+  const { spawn: spawnChild } = require("child_process");
+  const args = [
+    `--user-data-dir=${userDataDir}`,
+    `--remote-debugging-port=${debugPort}`,
+    "--remote-allow-origins=*",
+    "--disable-features=DownloadBubble,DownloadBubbleV2",
+    "--disable-component-update",
+    "--no-first-run",
+    "--no-default-browser-check",
+    "--disable-component-extensions-with-background-pages",
+  ];
+  const child = spawnChild(execPath, args, {
+    detached: true,
+    stdio: "ignore",
+  });
+  child.unref();
+  return child;
+}
+
+(async () => {
+  let timeoutId;
+  // Track how we connected so we know how to clean up
+  let connectedViaCDP = false;
+  let launchedByUs = false;
+
+  // === Функція для безпечного виходу ===
+  // IMPORTANT: We NEVER close the browser — we only disconnect.
+  // This keeps Brave alive so the login session persists for the next run.
+  const safeExit = async (code) => {
+    if (timeoutId) clearTimeout(timeoutId);
+    
+    try {
+      if (typeof browser !== "undefined" && browser) {
+        // Always disconnect, never close — keep the browser alive
         await browser.disconnect();
-      } catch (e) {
-        // ignore
       }
+    } catch (e) {
+      // ignore cleanup errors
     }
+    
     process.exit(code);
   };
 
   // === Глобальний таймаут для всього процесу ===
-  const timeoutId = setTimeout(async () => {
+  timeoutId = setTimeout(async () => {
     console.error("⏱️ Перевищено глобальний таймаут!");
     await safeExit(1);
   }, GLOBAL_TIMEOUT);
@@ -289,49 +338,114 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
     let clipboardContent;
     let browser, context, page;
 
-    // === Запускаємо Brave / підключаємось по CDP ===
-    console.log("🚀 Brave (CDP)...");
-    const cdpUrl = `http://127.0.0.1:${config.browser.debugPort}`;
+    const effectiveUserDataDir = config.browser.userDataDir;
+    const debugPort = config.browser.debugPort;
+    const cdpUrl = `http://127.0.0.1:${debugPort}`;
 
-    // Ensure userDataDir is writable. If not, fall back to a temp directory.
-    let effectiveUserDataDir = config.browser.userDataDir;
-    // === Запуск Brave через launchPersistentContext (надійніше за CDP) ===
-    console.log("🚀 Запуск Brave...");
+    // === STEP 1: Try to connect to an already-running Brave via CDP ===
+    console.log(`🔍 Перевіряємо чи Brave вже запущений (CDP порт ${debugPort})...`);
+    let wsUrl = await isCdpAvailable(debugPort);
 
-    try {
-      context = await chromium.launchPersistentContext(effectiveUserDataDir, {
-        executablePath: config.browser.executablePath,
-        headless: false,
-        args: [
-          `--remote-debugging-port=${config.browser.debugPort}`,
-          "--remote-allow-origins=*",
-          "--disable-features=DownloadBubble,DownloadBubbleV2",
-          "--disable-component-update"
-        ],
-        viewport: null, // Використовувати нативне розширення
-        noViewport: true,
-        slowMo: 50,
-      });
+    if (wsUrl) {
+      // Brave is already running with this profile — just connect
+      console.log("✅ Brave вже працює — підключаємось через CDP...");
+      try {
+        browser = await chromium.connectOverCDP(cdpUrl);
+        connectedViaCDP = true;
+        
+        const contexts = browser.contexts();
+        context = contexts.length > 0 ? contexts[0] : null;
+        
+        if (!context) {
+          console.error("❌ Не знайдено активний контекст браузера");
+          throw new Error("No browser context available");
+        }
 
-      browser = context.browser(); // Може бути null для persistent context
-      page = context.pages()[0] || (await context.newPage());
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      
-      if (msg.includes("user data directory is already in use")) {
-        console.error("❌ Помилка: Цей профіль Brave вже використовується іншим вікном.");
-        console.error("💡 Будь ласка, закрийте всі вікна Brave (профіль Playwright) і спробуйте знову.");
-      } else {
-        console.error(`❌ Не вдалося запустити Brave: ${msg}`);
+        const pages = context.pages();
+        // Prefer to reuse an existing about:blank or storage tab, or create a new one
+        page = pages.find(p => p.url() === "about:blank")
+            || pages.find(p => p.url().includes("storage.epcnetwork.dev"))
+            || await context.newPage();
+
+        await page.bringToFront();
+        console.log(`📂 USER DATA DIR: ${effectiveUserDataDir} (CDP reuse)`);
+      } catch (cdpErr) {
+        console.warn(`⚠️ CDP підключення не вдалось: ${cdpErr.message}`);
+        wsUrl = null; // Fall through to launch
       }
-      throw err;
     }
 
-    // === Finalize: close current tab after batch ===
+    // === STEP 2: If CDP connect failed, launch Brave as a detached process and then connect ===
+    if (!wsUrl || !browser) {
+      console.log("🚀 Запуск нового екземпляра Brave...");
+      launchedByUs = true;
+
+      try {
+        launchBraveDetached(config.browser.executablePath, effectiveUserDataDir, debugPort);
+        console.log(`📂 USER DATA DIR: ${effectiveUserDataDir}`);
+
+        // Wait for Brave to start and CDP to become available
+        let cdpReady = false;
+        for (let attempt = 0; attempt < 30; attempt++) {
+          await new Promise(r => setTimeout(r, 1000));
+          wsUrl = await isCdpAvailable(debugPort);
+          if (wsUrl) {
+            cdpReady = true;
+            break;
+          }
+          if (attempt % 5 === 4) {
+            console.log(`⏳ Чекаємо на запуск Brave... (${attempt + 1}s)`);
+          }
+        }
+
+        if (!cdpReady) {
+          console.error("❌ Brave не запустився за 30 секунд");
+          throw new Error("Brave startup timeout");
+        }
+
+        console.log("✅ Brave запущений — підключаємось через CDP...");
+        browser = await chromium.connectOverCDP(cdpUrl);
+        connectedViaCDP = true;
+
+        const contexts = browser.contexts();
+        context = contexts.length > 0 ? contexts[0] : null;
+
+        if (!context) {
+          console.error("❌ Не знайдено активний контекст браузера");
+          throw new Error("No browser context available after launch");
+        }
+
+        // Wait a bit for any startup tabs to appear
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
+        const pages = context.pages();
+        page = pages.find(p => p.url() === "about:blank") || pages[0] || await context.newPage();
+        await page.bringToFront();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+
+        if (msg.includes("user data directory is already in use")) {
+          console.error("❌ Помилка: Цей профіль Brave вже використовується іншим вікном.");
+          console.error("💡 Будь ласка, закрийте всі вікна Brave (профіль Playwright) і спробуйте знову.");
+        } else {
+          console.error(`❌ Не вдалося запустити Brave: ${msg}`);
+        }
+        throw err;
+      }
+    }
+
+    // === Finalize: close current tab after batch (but keep browser alive) ===
     if (isFinalize) {
       try {
-        await page.close();
-        await context.close();
+        // Only close the specific tab, not the whole browser
+        const pages = context.pages();
+        // Close storage tabs only
+        for (const p of pages) {
+          const url = p.url();
+          if (url.includes("storage.epcnetwork.dev") || url.includes("minio")) {
+            await p.close().catch(() => {});
+          }
+        }
       } catch (e) {}
       await safeExit(0);
     }
@@ -358,7 +472,16 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
       }
 
       // folderName: з argv (крос-платформно) або з буфера на macOS
-      clipboardContent = folderNameArg || (process.platform === "darwin" ? safeExec("pbpaste", false) : null);
+      clipboardContent = folderNameArg;
+      if (!clipboardContent) {
+        if (process.platform === "darwin") {
+          clipboardContent = safeExec("pbpaste", false);
+        } else {
+          // TODO: додати підтримку xclip/powershell для Linux/Windows якщо потрібно
+          console.warn("⚠️ Буфер обміну підтримується лише на macOS. Будь ласка, вкажіть назву папки як аргумент.");
+        }
+      }
+
       if (!clipboardContent) {
         console.error("Помилка: в режимі --no-confirm потрібна назва папки (4-й аргумент) або буфер обміну (macOS)");
         await safeExit(1);
@@ -381,7 +504,7 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
       }
 
       // Читаємо буфер обміну для автозаповнення
-      const clipboardPreview = safeExec("pbpaste", false);
+      const clipboardPreview = process.platform === "darwin" ? safeExec("pbpaste", false) : null;
 
       // Запускаємо HTTP сервер форми та отримуємо Promise
       console.log("🌐 Запуск HTTP сервера форми...");
@@ -443,17 +566,20 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
 
-    // === Витягуємо літери та цифри ===
+    // === Валідація формату ===
+    if (typeof clipboardContent !== "string") {
+      console.error("Помилка: clipboardContent не є рядком");
+      await safeExit(1);
+    }
+
     const letters = clipboardContent.replace(/[^a-zA-Z]/g, "").toLowerCase();
     const digits = clipboardContent.replace(/[^0-9]/g, "");
 
-    // === Валідація формату ===
-    if (!letters || !digits) {
-      console.error("Помилка: некоректний формат");
+    if (!letters || !digits || letters.length > 20 || digits.length > 20) {
+      console.error("Помилка: некоректний формат або занадто довга назва");
       console.error(`Очікується формат на кшталт: "ABCD123" або "Finance-456"`);
       console.error(`Отримано: "${clipboardContent}"`);
       console.error(`Літери: "${letters || "(немає)"}", Цифри: "${digits || "(немає)"}"`);
-      clearTimeout(timeoutId);
       await safeExit(1);
     }
 
@@ -471,12 +597,32 @@ const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB"
 
     const targetURL = `${consoleBaseUrl}/browser/${selectedStorage.bucket}/${encodeURIComponent(consolePath)}%2F`;
     console.log(`🌐 Завантажуємо сторінку: ${targetURL}`);
-    await page.goto(targetURL, { waitUntil: "domcontentloaded" });
+    let response;
+    try {
+      response = await page.goto(targetURL, { waitUntil: "load", timeout: 60000 });
+      if (response && !response.ok()) {
+        console.warn(`⚠️ Сторінка повернула статус ${response.status()}. Можливо, потрібен VPN або доступ обмежений.`);
+      }
+    } catch (err) {
+      console.error(`❌ Не вдалося завантажити сторінку: ${err.message}`);
+      console.error("💡 ПІДКАЗКА: Перевірте, чи підключено VPN та чи доступний сервер сховища.");
+      await safeExit(1);
+    }
 
     // === Логін / UI ready (robust, slow-friendly) ===
     console.log("🔍 Очікуємо MinIO UI або логін...");
 
-    const state = await Promise.any([page.waitForSelector("#upload-main", { timeout: bootstrapWaitMs }).then(() => "upload"), page.waitForSelector("button#go-to-login", { timeout: bootstrapWaitMs }).then(() => "login")]).catch(() => null);
+    const state = await Promise.any([
+      page.waitForSelector("#upload-main", { timeout: bootstrapWaitMs }).then(() => "upload"),
+      page.waitForSelector("button#go-to-login", { timeout: bootstrapWaitMs }).then(() => "login")
+    ]).catch((err) => {
+      if (err.name === "AggregateError") {
+        console.error("❌ Помилка виявлення UI: елементи не знайдено за відведений час.");
+      } else {
+        console.error("❌ Помилка виявлення UI:", err.message);
+      }
+      return null;
+    });
 
     if (state === "login") {
       playSound("error");

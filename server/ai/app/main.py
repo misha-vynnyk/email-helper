@@ -35,12 +35,24 @@ app.include_router(routes.router, prefix="/api")
 async def health_check():
     ollama_ok = False
 
-    # Get host and ensure it has a proper scheme
-    ollama_host = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-    if not ollama_host.startswith('http'):
-        ollama_host = f"http://{ollama_host}"
+    # Use robust URL parsing similar to Gemma service
+    host = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+    if not host.startswith('http'):
+        host = f"http://{host}"
 
-    ollama_base = ollama_host.rstrip('/')
+    from urllib.parse import urlparse
+    parsed = urlparse(host)
+    netloc = parsed.netloc or parsed.path
+    if not parsed.netloc and host.startswith('http://'):
+        netloc = host.replace('http://', '').split('/')[0]
+
+    if ':' not in netloc:
+        netloc = f"{netloc}:11434"
+
+    if netloc.startswith('0.0.0.0'):
+        netloc = netloc.replace('0.0.0.0', '127.0.0.1', 1)
+
+    ollama_base = f"http://{netloc}"
 
     try:
         # Simple health check to Ollama
@@ -48,7 +60,7 @@ async def health_check():
             if response.getcode() == 200:
                 ollama_ok = True
     except Exception as e:
-        logger.warning(f"Ollama health check failed (expected if Ollama is off): {str(e)}")
+        logger.warning(f"Ollama health check failed at {ollama_base}: {str(e)}")
         ollama_ok = False
 
     return {
