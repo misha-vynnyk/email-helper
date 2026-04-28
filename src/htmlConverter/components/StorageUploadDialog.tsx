@@ -1,16 +1,16 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Upload as UploadIcon, CheckCircle as SuccessIcon, AlertCircle as ErrorIcon, X as CloseIcon } from "lucide-react";
+import { X as CloseIcon, AlertCircle as ErrorIcon, CheckCircle as SuccessIcon, Upload as UploadIcon } from "lucide-react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
-import { useHtmlConverterSettings } from "../hooks/useHtmlConverterSettings";
-import { UI_TIMINGS, STORAGE_PROVIDERS_CONFIG, FOLDER_NAME_REGEX, STORAGE_KEYS } from "../constants";
-import { copyToClipboard } from "../utils/clipboard";
-import type { ImageAnalysisSettings, UploadResult } from "../types";
 import type { StorageProviderKey } from "../constants";
-import type { ImageAiAnalysis } from "../utils/ocrUiTypes";
+import { FOLDER_NAME_REGEX, STORAGE_KEYS, STORAGE_PROVIDERS_CONFIG, UI_TIMINGS } from "../constants";
+import { useHtmlConverterSettings } from "../hooks/useHtmlConverterSettings";
+import type { AnalyzeFileOptions, OcrFile } from "../hooks/useOcrAnalysis";
+import type { ImageAnalysisSettings, UploadResult } from "../types";
+import { copyToClipboard } from "../utils/clipboard";
 import type { OcrAnalyzeResult } from "../utils/imageAnalysis";
-import type { OcrFile, AnalyzeFileOptions } from "../hooks/useOcrAnalysis";
-import { UploadResults, toShortPath } from "./UploadResults";
+import type { ImageAiAnalysis } from "../utils/ocrUiTypes";
 import FileListItem from "./FileListItem";
+import { UploadResults, toShortPath } from "./UploadResults";
 
 interface StorageUploadDialogProps {
   open: boolean;

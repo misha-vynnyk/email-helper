@@ -57,6 +57,7 @@
   },
   "notifications": {
     "enabled": true,
+    "soundsEnabled": true,
     "sounds": {
       "success": "/System/Library/Sounds/Blow.aiff",
       "error": "/System/Library/Sounds/Basso.aiff",

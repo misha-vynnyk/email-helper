@@ -249,6 +249,9 @@ router.post("/api/storage-upload", async (req, res) => {
 
     // Execute automation script with extended timeout (login may require manual steps)
     exec(command, { timeout: 900000, maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+      if (stdout) console.log(stdout.trim());
+      if (stderr) console.error(stderr.trim());
+
       // Clean up temp file first (regardless of success/failure)
       if (fs.existsSync(filePath)) {
         try {
@@ -277,7 +280,7 @@ router.post("/api/storage-upload", async (req, res) => {
           errorMessage = "Timeout: користувач не залогінився вчасно.";
         } else if (stderrText.includes("ERROR:UPLOAD_UI_TIMEOUT")) {
           statusCode = 408;
-          errorMessage = "Timeout: MinIO UI не завантажилось/не показало логін або Upload. Спробуй ще раз (або перевір, що сторінка доступна і ти залогінений).";
+          errorMessage = "Timeout: MinIO UI не завантажилось. Перевірте, чи підключено VPN та чи доступний сервер сховища.";
         } else if (stderrText.includes("ERROR:BROWSER_CLOSED") || stderrText.includes("Target page, context or browser has been closed")) {
           statusCode = 499;
           errorMessage = "Браузер було закрито — завантаження скасовано.";
