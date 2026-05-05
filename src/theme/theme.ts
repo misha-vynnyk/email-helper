@@ -1,11 +1,5 @@
 import { alpha, createTheme, lighten, Theme } from "@mui/material/styles";
-import {
-  brandColors,
-  typography as typographyTokens,
-  getPaletteColors,
-  getSemanticColors,
-  ThemeMode,
-} from "./tokens";
+import { brandColors, getPaletteColors, getSemanticColors, ThemeMode, typography as typographyTokens } from "./tokens";
 
 // Legacy brand colors (для зворотної сумісності)
 const BRAND_NAVY = brandColors.navy;
@@ -41,6 +35,7 @@ export function createAppTheme(mode: ThemeMode = "light"): Theme {
 
   return createTheme(BASE_THEME, {
     palette: {
+      mode,
       brand: {
         navy: BRAND_NAVY,
         blue: BRAND_BLUE,
@@ -61,10 +56,8 @@ export function createAppTheme(mode: ThemeMode = "light"): Theme {
         500: BRAND_YELLOW,
       },
       info: semanticColorsForMode.info,
-      // Primary залишаємо legacy blue для сумісності
-      // TODO: Оновити на paletteColorsForMode.primary.main (#6366F1) після тестування
       primary: {
-        main: BRAND_BLUE,
+        main: paletteColorsForMode.primary.main,
       },
     },
     components: {
@@ -205,8 +198,7 @@ export function createAppTheme(mode: ThemeMode = "light"): Theme {
         styleOverrides: {
           tooltip: {
             fontSize: BASE_THEME.typography.pxToRem(12),
-            backgroundColor:
-              mode === "dark" ? BASE_THEME.palette.grey[700] : BASE_THEME.palette.grey[800],
+            backgroundColor: mode === "dark" ? BASE_THEME.palette.grey[700] : BASE_THEME.palette.grey[800],
             color: BASE_THEME.palette.common.white,
             padding: `${BASE_THEME.spacing(0.75)} ${BASE_THEME.spacing(1.25)}`,
           },
@@ -509,14 +501,7 @@ export function createAppTheme(mode: ThemeMode = "light"): Theme {
         lineHeight: 1.5,
       },
     },
-    shadows: [
-      "none",
-      "0px 4px 15px rgba(33, 36, 67, 0.04), 0px 0px 2px rgba(33, 36, 67, 0.04), 0px 0px 1px rgba(33, 36, 67, 0.04)",
-      "0px 10px 20px rgba(33, 36, 67, 0.04), 0px 2px 6px rgba(33, 36, 67, 0.04), 0px 0px 1px rgba(33, 36, 67, 0.04)",
-      "0px 16px 24px rgba(33, 36, 67, 0.05), 0px 2px 6px rgba(33, 36, 67, 0.05), 0px 0px 1px rgba(33, 36, 67, 0.05)",
-      "0px 24px 32px rgba(33, 36, 67, 0.06), 0px 16px 24px rgba(33, 36, 67, 0.06), 0px 4px 8px rgba(33, 36, 67, 0.06)",
-      ...Array(20).fill("none"),
-    ],
+    shadows: ["none", "0px 4px 15px rgba(33, 36, 67, 0.04), 0px 0px 2px rgba(33, 36, 67, 0.04), 0px 0px 1px rgba(33, 36, 67, 0.04)", "0px 10px 20px rgba(33, 36, 67, 0.04), 0px 2px 6px rgba(33, 36, 67, 0.04), 0px 0px 1px rgba(33, 36, 67, 0.04)", "0px 16px 24px rgba(33, 36, 67, 0.05), 0px 2px 6px rgba(33, 36, 67, 0.05), 0px 0px 1px rgba(33, 36, 67, 0.05)", "0px 24px 32px rgba(33, 36, 67, 0.06), 0px 16px 24px rgba(33, 36, 67, 0.06), 0px 4px 8px rgba(33, 36, 67, 0.06)", ...Array(20).fill("none")],
   });
 }
 

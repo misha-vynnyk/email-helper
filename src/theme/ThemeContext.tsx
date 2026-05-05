@@ -35,7 +35,7 @@ interface ThemeProviderProps {
 }
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
-  const [mode, setMode] = useLocalStorage<ThemeMode>(STORAGE_KEYS.THEME_MODE, "light");
+  const [mode, setMode] = useLocalStorage<ThemeMode>(STORAGE_KEYS.THEME_MODE, "dark");
   const [style, setStyle] = useLocalStorage<ThemeStyle>(STORAGE_KEYS.THEME_STYLE, "default");
 
   // Sync with system preference on first load (only if no stored preference)

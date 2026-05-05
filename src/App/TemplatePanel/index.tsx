@@ -9,7 +9,7 @@ import { EmailSenderProvider } from "../../emailSender/EmailSenderContext";
 import { HtmlConverterPanel } from "../../htmlConverter";
 import { ImageConverterPanel } from "../../imageConverter";
 import { TemplateLibrary } from "../../templateLibrary";
-import { getComponentStyles, ThemeToggle, ThemeStyleSelector, useThemeMode } from "../../theme";
+import { getComponentStyles, ThemeStyleSelector, ThemeToggle, useThemeMode } from "../../theme";
 
 import ToggleSamplesPanelButton from "../SamplesDrawer/ToggleSamplesPanelButton";
 
@@ -23,7 +23,6 @@ export default function TemplatePanel() {
   const componentStyles = React.useMemo(() => getComponentStyles(mode, style), [mode, style]);
   // useDeferredValue - рендер контенту відкладається, таб-індикатор оновлюється миттєво
   const deferredTab = React.useDeferredValue(selectedMainTab);
-
 
   // Індикатор переходу між табами
   const isTransitioning = selectedMainTab !== deferredTab;
