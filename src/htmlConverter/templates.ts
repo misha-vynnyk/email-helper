@@ -55,7 +55,7 @@ function createHtmlBlock(content: string, options: BlockOptions = {}): string {
 function buttonTableHtml(content: string): string {
   return `<table cellpadding="0" cellspacing="0" role="presentation">
     <tr>
-      <td height="51" align="center" style="border-radius: 10px;font-family:${config.fontFamily};font-size:18px;font-style:normal;line-height:1.5;text-align:center;font-weight: bold; color: #FFFFFF; padding: 3px 5px; background-color: ${config.colors.button};" bgcolor="${config.colors.button}">
+      <td class="btn-edit-p" height="51" align="center" style="border-radius: 10px;font-family:${config.fontFamily};font-size:18px;font-style:normal;line-height:1.5;text-align:center;font-weight: bold; color: #FFFFFF; padding: 3px 5px; background-color: ${config.colors.button};" bgcolor="${config.colors.button}">
         <a href="${PLACEHOLDER_URL}" target="_blank" style="font-weight: bold;text-decoration:none;color:#ffffff;padding: 9px 15px;display: block;font-family:${config.fontFamily};font-size:18px;font-style:normal;line-height:1.5;text-align:center;background-color: ${config.colors.button};border-radius: 10px;">
           ${content}
         </a>
