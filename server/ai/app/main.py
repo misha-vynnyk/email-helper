@@ -36,6 +36,7 @@ async def health_check():
     ollama_ok = False
 
     # Use robust URL parsing similar to Gemma service
+    # host = os.getenv("LLAMA.CPP_HOST", "http://192.168.0.52:8080")
     host = os.getenv("OLLAMA_HOST", "http://localhost:11434")
     if not host.startswith('http'):
         host = f"http://{host}"

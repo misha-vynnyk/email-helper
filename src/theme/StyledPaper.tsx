@@ -30,7 +30,7 @@ export function StyledPaper({
       sx={{
         borderRadius: `${componentStyles.card.borderRadius}px`,
         background:
-          componentStyles.card.background || alpha(theme.palette.background.paper, backgroundAlpha),
+          componentStyles.card.background || `hsl(var(--card) / ${backgroundAlpha})`,
         backdropFilter: componentStyles.card.backdropFilter,
         WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
         border: componentStyles.card.border,

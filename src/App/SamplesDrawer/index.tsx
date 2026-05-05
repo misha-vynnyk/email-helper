@@ -51,7 +51,7 @@ export default function SamplesDrawer({
         "& .MuiDrawer-paper": {
           width: SAMPLES_DRAWER_WIDTH,
           background:
-            componentStyles.card.background || alpha(theme.palette.background.paper, 0.92),
+            componentStyles.card.background || "hsl(var(--card) / 0.92)",
           backdropFilter: componentStyles.card.backdropFilter,
           WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
           borderRight: "1px solid",
