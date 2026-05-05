@@ -628,7 +628,8 @@ function launchBraveDetached(execPath, userDataDir, debugPort) {
     }
 
     // === Формуємо шлях та ім'я ===
-    const formattedName = `${letters}/lift-${digits}`;
+    const folderPrefix = provider === "ttt" ? "creative-" : "lift-";
+    const formattedName = `${letters}/${folderPrefix}${digits}`;
     console.log(`📁 Сформовано шлях: ${selectedStorage.usesCategory ? `${serverCategory}/` : ""}${formattedName}`);
 
     // === Використовуємо ту ж вкладку для переходу на storage ===

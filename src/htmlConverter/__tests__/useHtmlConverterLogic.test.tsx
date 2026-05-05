@@ -56,16 +56,16 @@ describe("useHtmlConverterLogic", () => {
     expect(result.current.state.fileName).toBe("promo-1");
   });
 
-  it("should toggle Alfa One setting", () => {
+  it("should switch storage profile", () => {
     const { result } = renderHook(() => useHtmlConverterLogic(defaultProps));
 
-    expect(result.current.state.useAlfaOne).toBe(false);
+    expect(result.current.state.storageProfile).toBe("default");
 
     act(() => {
-      result.current.actions.setUseAlfaOne(true);
+      result.current.actions.setStorageProfile("ttt");
     });
 
-    expect(result.current.state.useAlfaOne).toBe(true);
+    expect(result.current.state.storageProfile).toBe("ttt");
   });
 
   it("should log messages when log panel is active", () => {

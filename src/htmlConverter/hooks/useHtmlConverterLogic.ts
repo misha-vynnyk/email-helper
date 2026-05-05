@@ -6,6 +6,8 @@ import { useEditorSync } from "./internal/useEditorSync";
 import { useHtmlExport } from "./internal/useHtmlExport";
 import { STORAGE_KEYS, IMAGE_DEFAULTS } from "../constants";
 
+export type StorageProfile = "default" | "alphaone" | "ttt";
+
 interface UseHtmlConverterLogicProps {
   editorRef: React.RefObject<HTMLDivElement>;
   outputHtmlRef: React.RefObject<HTMLTextAreaElement>;
@@ -19,7 +21,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
 
   // 2. Local State
   const [fileName, setFileName] = useState("promo-1");
-  const [useAlfaOne, setUseAlfaOne] = useState(false);
+  const [storageProfile, setStorageProfile] = useState<StorageProfile>("default");
   const [showImageProcessor, setShowImageProcessor] = useState(false);
   const [triggerExtract, setTriggerExtract] = useState(0);
   const [uploadedUrlMap, setUploadedUrlMap] = useState<Record<string, string>>({});
@@ -84,6 +86,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
     uploadedAltMap,
     addLog,
     setHasOutput,
+    storageProfile,
   });
 
   const handleDownloadHTML = useCallback(() => {
@@ -170,7 +173,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
     state: {
       fileName,
       approveNeeded: ui.approveNeededValue,
-      useAlfaOne,
+      storageProfile,
       log,
       unseenLogCount,
       showImageProcessor,
@@ -185,7 +188,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
     actions: {
       setFileName,
       setApproveNeeded,
-      setUseAlfaOne,
+      setStorageProfile,
       setAutoProcess,
       setUploadedUrlMap,
       setShowImageProcessor,

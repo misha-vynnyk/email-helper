@@ -33,7 +33,7 @@ interface ImageProcessorProps {
   onResetReplacement?: (resetFn: () => void) => void;
   hasOutput?: boolean;
   autoProcess?: boolean;
-  storageProvider?: "default" | "alphaone";
+  storageProvider?: "default" | "alphaone" | "ttt";
   imageAnalysisSettings?: ImageAnalysisSettings;
   uploadHistory?: UploadSession[];
 }

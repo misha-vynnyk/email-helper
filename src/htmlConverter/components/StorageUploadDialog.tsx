@@ -397,7 +397,8 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
                       const digits = folderName.replace(/[^0-9]/g, "");
                       const parts = [providerCfg.publicRootPrefix];
                       if (showCategory) parts.push(category);
-                      parts.push(letters, `lift-${digits}`);
+                      const suffixPrefix = storageProvider === "ttt" ? "creative-" : "lift-";
+                      parts.push(letters, `${suffixPrefix}${digits}`);
                       return `${parts.filter(Boolean).join("/")}/`;
                     })()}
                   </p>
