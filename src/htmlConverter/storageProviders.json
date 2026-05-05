@@ -28,16 +28,16 @@
       "publicPathPrefix": "files",
       "publicRootPrefix": "promo"
     },
-    "terratrans": {
-      "bucket": "terratrans",
+    "ttt": {
+      "bucket": "ttt",
       "usesCategory": false,
-      "consoleRootPrefix": "promo",
+      "consoleRootPrefix": "creatives",
       "loginWaitMs": 600000,
       "bootstrapWaitMs": 30000,
       "closeTabAfterBatch": false,
-      "publicBaseUrl": "https://terratranst.com",
+      "publicBaseUrl": "https://ogfinstorage.com",
       "publicPathPrefix": "files",
-      "publicRootPrefix": "promo"
+      "publicRootPrefix": "creatives"
     }
   },
   "browserProfiles": {
@@ -51,9 +51,9 @@
       "userDataDir": "{{APP_DATA}}/BravePlaywright-AlfaOne",
       "autoCloseTab": true
     },
-    "terratrans": {
+    "ttt": {
       "debugPort": 9224,
-      "userDataDir": "{{APP_DATA}}/BravePlaywright-TerraTrans",
+      "userDataDir": "{{APP_DATA}}/BravePlaywright-TTT",
       "autoCloseTab": true
     }
   }

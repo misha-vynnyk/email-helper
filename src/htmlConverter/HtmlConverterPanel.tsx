@@ -68,8 +68,8 @@ export default function HtmlConverterPanel() {
               showApproveNeeded={ui.showApproveNeeded} 
               approveNeeded={state.approveNeeded} 
               setApproveNeeded={actions.setApproveNeeded} 
-              useAlfaOne={state.useAlfaOne} 
-              setUseAlfaOne={actions.setUseAlfaOne} 
+              storageProfile={state.storageProfile} 
+              setStorageProfile={actions.setStorageProfile} 
             />
 
             {/* DIAGNOSTICS TABS */}
@@ -99,7 +99,7 @@ export default function HtmlConverterPanel() {
                   onResetReplacement={actions.handleResetReplacement}
                   hasOutput={state.hasOutput}
                   autoProcess={state.autoProcess}
-                  storageProvider={state.useAlfaOne ? "alphaone" : "default"}
+                  storageProvider={state.storageProfile}
                   imageAnalysisSettings={imageAnalysis}
                   uploadHistory={state.uploadHistory}
                 />

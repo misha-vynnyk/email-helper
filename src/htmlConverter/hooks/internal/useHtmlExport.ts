@@ -1,6 +1,8 @@
 import { useCallback, useRef } from "react";
 import { formatHtml, formatMjml } from "../../formatter";
+import { formatHtmlTTT, formatMjmlTTT } from "../../ttt/formatter";
 import { replaceUrlsInContentByMap, replaceUrlsInContent, replaceAltsInContent } from "../../utils/contentReplacer";
+import type { StorageProfile } from "../useHtmlConverterLogic";
 
 interface UseHtmlExportProps {
   editorRef: React.RefObject<HTMLDivElement>;
@@ -10,6 +12,7 @@ interface UseHtmlExportProps {
   uploadedAltMap: Record<string, string>;
   addLog: (msg: string) => void;
   setHasOutput: (val: boolean) => void;
+  storageProfile: StorageProfile;
 }
 
 export function useHtmlExport({
@@ -20,6 +23,7 @@ export function useHtmlExport({
   uploadedAltMap,
   addLog,
   setHasOutput,
+  storageProfile,
 }: UseHtmlExportProps) {
   const resetReplacementRef = useRef<(() => void) | null>(null);
 
@@ -43,7 +47,10 @@ export function useHtmlExport({
       const processOutput = (ref: React.RefObject<HTMLTextAreaElement>, type: "HTML" | "MJML") => {
         if (ref.current?.value) {
           let content = ref.current.value;
-          const regex = type === "HTML" ? /(<img[^>]+src=["'])([^"']+)(["'][^>]*>)/gi : /(<(?:mj-image|img)[^>]+src=["'])([^"']+)(["'][^>]*>)/gi;
+          const regex =
+            type === "HTML"
+              ? /(<img[^>]+src=["'])([^"']+)(["'][^>]*>)/gi
+              : /(<(?:mj-image|img)[^>]+src=["'])([^"']+)(["'][^>]*>)/gi;
 
           const mapped = replaceUrlsInContentByMap(content, regex, urlMap);
 
@@ -53,7 +60,8 @@ export function useHtmlExport({
           } else {
             const positional = replaceUrlsInContent(content, regex, storageUrls);
             content = positional.replaced;
-            if (positional.count > 0) addLog(`🔄 Замінено ${positional.count} посилань в Output ${type}`);
+            if (positional.count > 0)
+              addLog(`🔄 Замінено ${positional.count} посилань в Output ${type}`);
           }
 
           const altResult = replaceAltsInContent(content, uploadedAltMap);
@@ -80,13 +88,19 @@ export function useHtmlExport({
         addLog("⚠️ Редактор порожній, нічого експортувати");
         return;
       }
-      let formattedContent = formatHtml(editorContent);
+
+      // Pick formatter based on active profile
+      const formatFn = storageProfile === "ttt" ? formatHtmlTTT : formatHtml;
+      let formattedContent = formatFn(editorContent);
 
       if (Object.keys(uploadedUrlMap).length > 0) {
         const storageUrls = Object.values(uploadedUrlMap);
         const regex = /(<img[^>]+src=["'])([^"']+)(["'][^>]*>)/gi;
         const mapped = replaceUrlsInContentByMap(formattedContent, regex, uploadedUrlMap);
-        formattedContent = mapped.count > 0 ? mapped.replaced : replaceUrlsInContent(formattedContent, regex, storageUrls).replaced;
+        formattedContent =
+          mapped.count > 0
+            ? mapped.replaced
+            : replaceUrlsInContent(formattedContent, regex, storageUrls).replaced;
         formattedContent = replaceAltsInContent(formattedContent, uploadedAltMap).replaced;
       }
 
@@ -95,12 +109,12 @@ export function useHtmlExport({
       }
       setHasOutput(true);
       triggerResetReplacement();
-      addLog("✅ HTML експортовано");
+      addLog(`✅ HTML експортовано [${storageProfile.toUpperCase()}]`);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Невідома помилка";
       addLog(`❌ Помилка експорту HTML: ${message}`);
     }
-  }, [addLog, editorRef, outputHtmlRef, uploadedUrlMap, uploadedAltMap, setHasOutput, triggerResetReplacement]);
+  }, [addLog, editorRef, outputHtmlRef, uploadedUrlMap, uploadedAltMap, setHasOutput, triggerResetReplacement, storageProfile]);
 
   const handleExportMJML = useCallback(() => {
     if (!editorRef.current) return;
@@ -110,13 +124,19 @@ export function useHtmlExport({
         addLog("⚠️ Редактор порожній, нічого експортувати");
         return;
       }
-      let formattedContent = formatMjml(editorContent);
+
+      // Pick formatter based on active profile
+      const formatFn = storageProfile === "ttt" ? formatMjmlTTT : formatMjml;
+      let formattedContent = formatFn(editorContent);
 
       if (Object.keys(uploadedUrlMap).length > 0) {
         const storageUrls = Object.values(uploadedUrlMap);
         const regex = /(<(?:mj-image|img)[^>]+src=["'])([^"']+)(["'][^>]*>)/gi;
         const mapped = replaceUrlsInContentByMap(formattedContent, regex, uploadedUrlMap);
-        formattedContent = mapped.count > 0 ? mapped.replaced : replaceUrlsInContent(formattedContent, regex, storageUrls).replaced;
+        formattedContent =
+          mapped.count > 0
+            ? mapped.replaced
+            : replaceUrlsInContent(formattedContent, regex, storageUrls).replaced;
         formattedContent = replaceAltsInContent(formattedContent, uploadedAltMap).replaced;
       }
 
@@ -125,12 +145,12 @@ export function useHtmlExport({
       }
       setHasOutput(true);
       triggerResetReplacement();
-      addLog("✅ MJML експортовано");
+      addLog(`✅ MJML експортовано [${storageProfile.toUpperCase()}]`);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Невідома помилка";
       addLog(`❌ Помилка експорту MJML: ${message}`);
     }
-  }, [addLog, editorRef, outputMjmlRef, uploadedUrlMap, uploadedAltMap, setHasOutput, triggerResetReplacement]);
+  }, [addLog, editorRef, outputMjmlRef, uploadedUrlMap, uploadedAltMap, setHasOutput, triggerResetReplacement, storageProfile]);
 
   const downloadFile = useCallback(
     (content: string, extension: string, fileName: string, approveNeeded: boolean) => {
