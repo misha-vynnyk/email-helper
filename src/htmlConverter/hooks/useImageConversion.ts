@@ -125,10 +125,10 @@ export function useImageConversion({ editorRef, onLog, onVisibilityChange, autoP
 
         const originalBlob = await response.blob();
         const originalSize = originalBlob.size;
-        
+
         const mimeType = targetFormat === "gif" ? "image/gif" : "image/png";
         const filename = targetFormat === "gif" ? "image.gif" : "image.png";
-        
+
         const file = new File([originalBlob], filename, { type: mimeType });
 
         const formData = new FormData();
@@ -334,7 +334,15 @@ export function useImageConversion({ editorRef, onLog, onVisibilityChange, autoP
         return;
       }
 
-      const eligible = Array.from(imgElements).filter((img) => img.src && !isSignatureImageAlt(img.getAttribute("alt")));
+      const eligible = Array.from(imgElements).filter((img) => {
+        if (!img.src) return false;
+        if (isSignatureImageAlt(img.getAttribute("alt"))) return false;
+        // Filter out images whose src is a broken placeholder
+        // (happens when browser resolves "[IMAGE: png, N bytes]" as a relative URL)
+        const decodedSrc = decodeURIComponent(img.src);
+        if (decodedSrc.includes("[IMAGE:")) return false;
+        return true;
+      });
       if (eligible.length === 0) {
         onLog?.("✅ Зображень не знайдено (тільки підписи або порожні)");
         clearImagesAndRevoke();
@@ -363,7 +371,15 @@ export function useImageConversion({ editorRef, onLog, onVisibilityChange, autoP
           formatOverride: "auto",
         });
       }
-      setImages(newImages);
+      setImages((prevImages) => {
+        const newSrcs = new Set(newImages.map((img) => img.src));
+        prevImages.forEach((img) => {
+          if (img.src.startsWith("blob:") && !newSrcs.has(img.src)) {
+            URL.revokeObjectURL(img.src);
+          }
+        });
+        return newImages;
+      });
       onVisibilityChange(true);
 
       if (!autoProcess) {

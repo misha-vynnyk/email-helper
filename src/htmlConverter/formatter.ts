@@ -39,7 +39,14 @@ function italicLinks(htmlContent: string): string {
     const trailingSpaces = trailingSpaceMatch ? trailingSpaceMatch[1] : "";
     const coreText = text.trim();
 
-    if (!coreText) return text; // return just the whitespace to prevent empty links
+    if (!coreText) {
+      // If the link contains image(s) but no text — preserve the img tags so they
+      // reach wrapTextInSpan for proper template wrapping. Without this the images
+      // inside <a href="..."><img ...></a> are silently dropped.
+      const imgTags = inner.match(/<img[^>]*>/gi);
+      if (imgTags && imgTags.length > 0) return imgTags.join("");
+      return text; // just whitespace — safe to drop
+    }
 
     const placeholder = `\x02LINK${savedLinks.length}\x03`;
     savedLinks.push(`<a href="${PLACEHOLDER_URL}" style="font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: ${config.colors.link};">${coreText}</a>`);
@@ -156,7 +163,7 @@ function applyTemplate(content: string, regex: RegExp, templateFn: (content: str
 // Special handling for the function that wraps images AND the whole content
 function wrapTextInSpan(htmlContent: string, templateFn: (content: string) => string, type: "html" | "mjml" = "html"): string {
   // 1. Replace Images
-  htmlContent = htmlContent.replace(/<img[^>]*src="([^"]*)"[^>]*>/gi, function (_match, src) {
+  htmlContent = htmlContent.replace(/<img[^>]*src=["']([^"']+)["'][^>]*>/gi, function (_match, src) {
     return templateFn(src);
   });
 
