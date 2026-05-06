@@ -76,7 +76,17 @@ if (process.env.BRAVE_USER_DATA_DIR) config.browser.userDataDir = process.env.BR
 // === Константи ===
 let VALID_CATEGORIES = ["finance", "health"];
 const GLOBAL_TIMEOUT = 300000; // 5 хвилин (збільшено для повільного інтерфейсу)
-const FORM_SERVER_PORT = 3838;
+
+// Генеруємо зміщення портів на основі UID користувача macOS (щоб різні профілі не конфліктували)
+let uidOffset = 0;
+try {
+  const uid = os.userInfo().uid;
+  if (typeof uid === 'number' && uid >= 500) {
+    uidOffset = (uid - 501) * 100;
+  }
+} catch (e) {}
+
+const FORM_SERVER_PORT = 3838 + uidOffset;
 
 function getArgValue(flag) {
   const idx = process.argv.indexOf(flag);
@@ -136,6 +146,8 @@ const selectedBrowser = browserProfiles[provider] || browserProfiles.default;
 
 const consoleBaseUrl = shared.consoleBaseUrl || config.storage?.baseUrl || config.storage?.baseURL || config.storage?.url || config.storage?.base || "https://storage.epcnetwork.dev";
 if (selectedBrowser?.debugPort) config.browser.debugPort = selectedBrowser.debugPort;
+if (config.browser.debugPort) config.browser.debugPort += uidOffset; // Додаємо зміщення порту для різних macOS юзерів
+
 if (selectedBrowser?.userDataDir) config.browser.userDataDir = resolveDynamicPath(selectedBrowser.userDataDir);
 if (typeof selectedBrowser?.autoCloseTab === "boolean") {
   config.browser.autoCloseTab = selectedBrowser.autoCloseTab;

@@ -39,7 +39,11 @@ function italicLinks(htmlContent: string): string {
       const leadingSpaces = leadingSpaceMatch ? leadingSpaceMatch[1] : "";
       const trailingSpaces = trailingSpaceMatch ? trailingSpaceMatch[1] : "";
       const coreText = text.trim();
-      if (!coreText) return text;
+      if (!coreText) {
+        const imgTags = inner.match(/<img[^>]*>/gi);
+        if (imgTags && imgTags.length > 0) return imgTags.join("");
+        return text;
+      }
       const placeholder = `\x02LINK${savedLinks.length}\x03`;
       savedLinks.push(
         `<a href="${TTT_PLACEHOLDER_URL}" style="font-family:${config.fontFamily};text-decoration: underline;font-weight: 700; color: ${config.colors.link};">${coreText}</a>`
@@ -147,7 +151,7 @@ function wrapTextInDiv(
   type: "html" | "mjml" = "html"
 ): string {
   // 1. Replace Images
-  htmlContent = htmlContent.replace(/<img[^>]*src="([^"]*)"[^>]*>/gi, (_match, src) => {
+  htmlContent = htmlContent.replace(/<img[^>]*src=["']([^"']+)["'][^>]*>/gi, (_match, src) => {
     return templateFn(src);
   });
 

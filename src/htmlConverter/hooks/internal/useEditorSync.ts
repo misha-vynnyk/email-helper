@@ -47,12 +47,59 @@ export function useEditorSync({
       const handlePaste = (e: ClipboardEvent) => {
         const html = e.clipboardData?.getData("text/html");
         if (html) {
+          // For diagnostics panel: replace large base64 with human-readable placeholder
           const cleanHtml = html.replace(/src="data:image\/[^;]+;base64,[^"]{100,}"/g, (match) => {
             const mimeType = match.match(/data:image\/([^;]+)/)?.[1] || "unknown";
-            const length = match.length;
-            return `src="[IMAGE: ${mimeType}, ${length} bytes]"`;
+            const base64Match = match.match(/base64,([^"]+)/);
+            const byteCount = base64Match ? Math.ceil((base64Match[1].length * 3) / 4) : 0;
+            return `src="[IMAGE: ${mimeType}, ${byteCount} bytes]"`;
           });
           setInputHtml(cleanHtml);
+
+          // For the editor DOM: replace base64 src values with blob: URLs
+          // so that ImageProcessor can detect and process actual image data
+          const hasBase64Images = /src="data:image\/[^;]+;base64,[^"]{100,}"/.test(html);
+          if (hasBase64Images) {
+            e.preventDefault();
+
+            const processedHtml = html.replace(/src="(data:image\/([^;]+);base64,[^"]+)"/g, (_match, dataUrl, mimeType) => {
+              try {
+                const base64 = dataUrl.split(",")[1];
+                const byteChars = atob(base64);
+                const byteArray = new Uint8Array(byteChars.length);
+                for (let idx = 0; idx < byteChars.length; idx++) {
+                  byteArray[idx] = byteChars.charCodeAt(idx);
+                }
+                const blob = new Blob([byteArray], { type: `image/${mimeType}` });
+                const blobUrl = URL.createObjectURL(blob);
+                return `src="${blobUrl}"`;
+              } catch {
+                return _match; // keep original if conversion fails
+              }
+            });
+
+            // Insert processed HTML at cursor position
+            let inserted = false;
+            if (document.queryCommandSupported("insertHTML")) {
+              inserted = document.execCommand("insertHTML", false, processedHtml);
+            }
+
+            if (!inserted) {
+              // Fallback to manual range insertion
+              const selection = window.getSelection();
+              if (selection && selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                range.deleteContents();
+                const fragment = range.createContextualFragment(processedHtml);
+                range.insertNode(fragment);
+                range.collapse(false);
+                selection.removeAllRanges();
+                selection.addRange(range);
+              } else if (editorRef.current) {
+                editorRef.current.innerHTML += processedHtml;
+              }
+            }
+          }
         }
         clearMemoryRef.current();
         scheduleImageSync();
