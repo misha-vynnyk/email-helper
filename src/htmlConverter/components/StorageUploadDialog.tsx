@@ -395,10 +395,10 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
                     {(() => {
                       const letters = folderName.replace(/[^a-zA-Z]/g, "").toLowerCase();
                       const digits = folderName.replace(/[^0-9]/g, "");
-                      const parts = [providerCfg.publicRootPrefix];
+                      const parts = [providerCfg.publicBaseUrl?.replace(/\/+$/, ""), providerCfg.publicPathPrefix, providerCfg.publicRootPrefix];
                       if (showCategory) parts.push(category);
-                      const suffixPrefix = storageProvider === "ttt" ? "creative-" : "lift-";
-                      parts.push(letters, `${suffixPrefix}${digits}`);
+                      const suffixPrefix = providerCfg.folderPrefix || "lift-";
+                      parts.push(`${letters}/${suffixPrefix}${digits}`);
                       return `${parts.filter(Boolean).join("/")}/`;
                     })()}
                   </p>

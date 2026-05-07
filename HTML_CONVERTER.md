@@ -13,7 +13,7 @@
 - **Storage Upload:** завантаження на різні storage-провайдери:
   - **default** → `storage.5th-elementagency.com` (категорії `finance|health`)
   - **alphaone** → `alphaonest.com` (без категорій)
-    Налаштування в `src/htmlConverter/storageProviders.json`.
+    Налаштування в `automation/config.json`.
 - **Історія:** останні 50 сесій у LocalStorage, копіювання URL, заміна посилань у вихідному коді.
 
 ---
@@ -70,7 +70,7 @@ LocalStorage, ключ `html-converter-upload-history`, до 50 останніх
 
 - `POST /api/image-converter/convert-from-url` — `{ url, format, quality, preset, resizeMode, preserveAspectRatio, compressionMode }` → image blob + header `X-Original-Size`.
 
-**Константи (frontend):** `PREPARE_TIMEOUT` 30s, `STORAGE_TIMEOUT` 180s, `MAX_HISTORY_SESSIONS` 50. Базові URL-и storage беруться з `src/htmlConverter/storageProviders.json`.
+**Константи (frontend):** `PREPARE_TIMEOUT` 30s, `STORAGE_TIMEOUT` 180s, `MAX_HISTORY_SESSIONS` 50. Базові URL-и storage беруться з `automation/config.json`.
 
 ## 🐛 Troubleshooting
 

@@ -6,9 +6,9 @@ const os = require("os");
 const multer = require("multer");
 const router = express.Router();
 
-let sharedStorageProviders = null;
+let automationConfig = null;
 try {
-  sharedStorageProviders = require("../../src/htmlConverter/storageProviders.json");
+  automationConfig = require("../../automation/config.json");
 } catch {
   // optional
 }
@@ -193,6 +193,7 @@ router.post("/api/storage-upload/finalize", async (req, res) => {
  * - category: 'finance' or 'health'
  * - folderName: folder name (e.g., "ABCD123")
  * - skipConfirmation: boolean (optional)
+ * - provider: storage provider key (default, alphaone, ttt)
  */
 router.post("/api/storage-upload", async (req, res) => {
   const { filePath, category, folderName, skipConfirmation = true, provider = "default" } = req.body;
@@ -206,7 +207,7 @@ router.post("/api/storage-upload", async (req, res) => {
   }
 
   const providerKey = String(provider || "default").toLowerCase();
-  const providerCfg = sharedStorageProviders?.providers?.[providerKey] || sharedStorageProviders?.providers?.default;
+  const providerCfg = automationConfig?.storageProviders?.[providerKey] || automationConfig?.storageProviders?.default;
   const usesCategory = providerCfg?.usesCategory ?? true;
 
   if (usesCategory) {
