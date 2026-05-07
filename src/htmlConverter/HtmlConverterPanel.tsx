@@ -70,6 +70,8 @@ export default function HtmlConverterPanel() {
               setApproveNeeded={actions.setApproveNeeded} 
               storageProfile={state.storageProfile} 
               setStorageProfile={actions.setStorageProfile} 
+              exportType={state.exportType}
+              setExportType={actions.setExportType}
             />
 
             {/* DIAGNOSTICS TABS */}
@@ -116,6 +118,7 @@ export default function HtmlConverterPanel() {
               handleDownloadHTML={actions.handleDownloadHTML} 
               handleDownloadMJML={actions.handleDownloadMJML} 
               handleCopy={actions.handleCopy} 
+              exportType={state.exportType}
             />
           </div>
         </div>

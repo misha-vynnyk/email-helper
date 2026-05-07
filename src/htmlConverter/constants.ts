@@ -10,6 +10,8 @@ export const STORAGE_KEYS = {
   UPLOAD_HISTORY: "html-converter-upload-history",
   UI_SETTINGS: "html-converter-ui-settings",
   IMAGE_ANALYSIS_SETTINGS: "html-converter-image-analysis-settings",
+  STORAGE_PROFILE: "html-converter-storage-profile",
+  EXPORT_TYPE: "html-converter-export-type",
 } as const;
 
 // Symbols

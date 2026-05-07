@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useHtmlConverterSettings } from "./useHtmlConverterSettings";
 import { useAppDiagnostics } from "./internal/useAppDiagnostics";
 import { useUploadHistory } from "./internal/useUploadHistory";
@@ -7,6 +7,7 @@ import { useHtmlExport } from "./internal/useHtmlExport";
 import { STORAGE_KEYS, IMAGE_DEFAULTS } from "../constants";
 
 export type StorageProfile = "default" | "alphaone" | "ttt";
+export type ExportType = "html" | "mjml" | "both";
 
 interface UseHtmlConverterLogicProps {
   editorRef: React.RefObject<HTMLDivElement>;
@@ -21,7 +22,39 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
 
   // 2. Local State
   const [fileName, setFileName] = useState("promo-1");
-  const [storageProfile, setStorageProfile] = useState<StorageProfile>("default");
+  const [storageProfile, setStorageProfile] = useState<StorageProfile>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.STORAGE_PROFILE);
+      if (stored === "alphaone" || stored === "ttt" || stored === "default") {
+        return stored as StorageProfile;
+      }
+    } catch {
+      // Fallback
+    }
+    return "default";
+  });
+
+  const [exportType, setExportType] = useState<ExportType>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.EXPORT_TYPE);
+      if (stored === "html" || stored === "mjml" || stored === "both") {
+        return stored as ExportType;
+      }
+    } catch {
+      // Fallback
+    }
+    return "both";
+  });
+
+  // Persist settings when they change
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.STORAGE_PROFILE, storageProfile);
+  }, [storageProfile]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.EXPORT_TYPE, exportType);
+  }, [exportType]);
+
   const [showImageProcessor, setShowImageProcessor] = useState(false);
   const [triggerExtract, setTriggerExtract] = useState(0);
   const [uploadedUrlMap, setUploadedUrlMap] = useState<Record<string, string>>({});
@@ -117,12 +150,16 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
         addLog("ℹ️ Немає завантажених URLs для підстановки — пропускаю replace");
       }
 
-      handleDownloadHTML();
-      handleDownloadMJML();
+      if (exportType === "both" || exportType === "html") {
+        handleDownloadHTML();
+      }
+      if (exportType === "both" || exportType === "mjml") {
+        handleDownloadMJML();
+      }
     } finally {
       setIsAutoExporting(false);
     }
-  }, [addLog, editorRef, handleExportHTML, handleExportMJML, handleReplaceUrls, uploadedUrlMap, handleDownloadHTML, handleDownloadMJML]);
+  }, [addLog, editorRef, handleExportHTML, handleExportMJML, handleReplaceUrls, uploadedUrlMap, handleDownloadHTML, handleDownloadMJML, exportType]);
 
   const handleClear = useCallback(() => {
     if (editorRef.current) editorRef.current.innerHTML = "";
@@ -174,6 +211,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
       fileName,
       approveNeeded: ui.approveNeededValue,
       storageProfile,
+      exportType,
       log,
       unseenLogCount,
       showImageProcessor,
@@ -189,6 +227,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
       setFileName,
       setApproveNeeded,
       setStorageProfile,
+      setExportType,
       setAutoProcess,
       setUploadedUrlMap,
       setShowImageProcessor,

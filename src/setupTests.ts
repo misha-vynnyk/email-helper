@@ -1,5 +1,49 @@
 import "@testing-library/jest-dom";
 
+// Mock automation config
+jest.mock(
+  "../automation/config.json",
+  () => ({
+    __esModule: true,
+    default: {
+      storage: { baseUrl: "https://storage.epcnetwork.dev" },
+      storageProviders: {
+        default: {
+          bucket: "default",
+          usesCategory: true,
+          consoleRootPrefix: "Promo",
+          publicBaseUrl: "https://storage.5th-elementagency.com",
+          publicPathPrefix: "files",
+          publicRootPrefix: "Promo",
+        },
+        alphaone: {
+          bucket: "alphaone",
+          usesCategory: false,
+          consoleRootPrefix: "promo",
+          publicBaseUrl: "https://alphaonest.com",
+          publicPathPrefix: "files",
+          publicRootPrefix: "promo",
+        },
+        ttt: {
+          bucket: "ttt",
+          usesCategory: false,
+          consoleRootPrefix: "creatives",
+          publicBaseUrl: "https://ogfinstorage.com",
+          publicPathPrefix: "files",
+          publicRootPrefix: "creatives",
+          folderPrefix: "creative-",
+        },
+      },
+      browserProfiles: {
+        default: { debugPort: 9222, userDataDir: "" },
+        alphaone: { debugPort: 9223, userDataDir: "" },
+        ttt: { debugPort: 9224, userDataDir: "" },
+      },
+    },
+  }),
+  { virtual: true }
+);
+
 // Mock window.matchMedia
 Object.defineProperty(window, "matchMedia", {
   writable: true,
