@@ -2,7 +2,7 @@
  * Constants for HTML Converter module
  */
 
-import storageProvidersConfig from "./storageProviders.json";
+import automationConfig from "../../automation/config.json";
 
 // LocalStorage keys
 export const STORAGE_KEYS = {
@@ -62,9 +62,13 @@ export const IMAGE_EXCLUSION_ALT_REGEX = /Signature/i;
  * - public URL base
  * - Brave profiles (ports + userDataDir)
  *
- * Edit `src/htmlConverter/storageProviders.json` when you need to tweak paths/domains.
+ * Edit `automation/config.json` when you need to tweak paths/domains.
  */
-export const STORAGE_PROVIDERS_CONFIG = storageProvidersConfig as {
+export const STORAGE_PROVIDERS_CONFIG = {
+  consoleBaseUrl: automationConfig.storage.baseUrl,
+  providers: automationConfig.storageProviders,
+  browserProfiles: automationConfig.browserProfiles,
+} as {
   consoleBaseUrl: string;
   providers: Record<
     string,
@@ -80,6 +84,7 @@ export const STORAGE_PROVIDERS_CONFIG = storageProvidersConfig as {
       publicBaseUrl: string;
       publicPathPrefix: string;
       publicRootPrefix: string;
+      folderPrefix?: string;
     }
   >;
   browserProfiles?: Record<
@@ -91,4 +96,4 @@ export const STORAGE_PROVIDERS_CONFIG = storageProvidersConfig as {
     }
   >;
 };
-export type StorageProviderKey = keyof typeof storageProvidersConfig.providers;
+export type StorageProviderKey = keyof typeof automationConfig.storageProviders;

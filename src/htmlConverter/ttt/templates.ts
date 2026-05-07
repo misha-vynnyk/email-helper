@@ -10,10 +10,12 @@
  */
 
 import { config } from "../utils/config";
+import { STORAGE_PROVIDERS_CONFIG } from "../constants";
+
 const TTT_PLACEHOLDER_URL = "insertlink";
 
 // ─── TTT specific overrides ───────────────────────────────────────────────────
-const TTT_STORAGE_URL = "https://terratranst.com/";
+const TTT_STORAGE_URL = STORAGE_PROVIDERS_CONFIG.providers.ttt.publicBaseUrl + "/";
 const TTT_PADDING = "15px";
 
 // ─── HTML helpers ────────────────────────────────────────────────────────────

@@ -15,13 +15,9 @@ const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
 function resolveDynamicPath(p) {
   if (typeof p !== "string") return p;
   const home = os.homedir();
-  const appData = process.platform === "win32" 
-    ? process.env.LOCALAPPDATA 
-    : pathModule.join(home, "Library/Application Support");
+  const appData = process.platform === "win32" ? process.env.LOCALAPPDATA : pathModule.join(home, "Library/Application Support");
 
-  let resolved = p
-    .replace(/\{\{HOME\}\}/g, home)
-    .replace(/\{\{APP_DATA\}\}/g, appData);
+  let resolved = p.replace(/\{\{HOME\}\}/g, home).replace(/\{\{APP_DATA\}\}/g, appData);
 
   if (resolved.startsWith("~/")) {
     resolved = pathModule.join(home, resolved.slice(2));
@@ -42,11 +38,7 @@ function findBraveExecutable() {
     const macPath = "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser";
     if (fs.existsSync(macPath)) return macPath;
   } else if (platform === "win32") {
-    const winPaths = [
-      pathModule.join(process.env.PROGRAMFILES || "C:\\Program Files", "BraveSoftware\\Brave-Browser\\Application\\brave.exe"),
-      pathModule.join(process.env["PROGRAMFILES(X86)"] || "C:\\Program Files (x86)", "BraveSoftware\\Brave-Browser\\Application\\brave.exe"),
-      pathModule.join(process.env.LOCALAPPDATA || "", "BraveSoftware\\Brave-Browser\\Application\\brave.exe"),
-    ];
+    const winPaths = [pathModule.join(process.env.PROGRAMFILES || "C:\\Program Files", "BraveSoftware\\Brave-Browser\\Application\\brave.exe"), pathModule.join(process.env["PROGRAMFILES(X86)"] || "C:\\Program Files (x86)", "BraveSoftware\\Brave-Browser\\Application\\brave.exe"), pathModule.join(process.env.LOCALAPPDATA || "", "BraveSoftware\\Brave-Browser\\Application\\brave.exe")];
     for (const wp of winPaths) {
       if (wp && fs.existsSync(wp)) return wp;
     }
@@ -81,7 +73,7 @@ const GLOBAL_TIMEOUT = 300000; // 5 хвилин (збільшено для по
 let uidOffset = 0;
 try {
   const uid = os.userInfo().uid;
-  if (typeof uid === 'number' && uid >= 500) {
+  if (typeof uid === "number" && uid >= 500) {
     uidOffset = (uid - 501) * 100;
   }
 } catch (e) {}
@@ -98,53 +90,35 @@ function getArgValue(flag) {
 
 const provider = String(getArgValue("--provider") || process.env.STORAGE_PROVIDER || "default").toLowerCase();
 
-let sharedStorageConfig = null;
-try {
-  const sharedConfigPath = pathModule.join(__dirname, "..", "..", "src", "htmlConverter", "storageProviders.json");
-  sharedStorageConfig = JSON.parse(fs.readFileSync(sharedConfigPath, "utf8"));
-} catch {
-  // optional config
+// === Провайдери та профілі ===
+if (Array.isArray(config.storageProviders?.default?.categories)) {
+  VALID_CATEGORIES = config.storageProviders.default.categories;
 }
 
-const shared = sharedStorageConfig || {};
-
-if (typeof shared.systemNotifications?.enabled === "boolean") {
-  config.notifications.enabled = shared.systemNotifications.enabled;
-}
-if (typeof shared.systemNotifications?.soundsEnabled === "boolean") {
-  config.notifications.soundsEnabled = shared.systemNotifications.soundsEnabled;
-}
-
-if (Array.isArray(shared.providers?.default?.categories)) {
-  VALID_CATEGORIES = shared.providers.default.categories;
-}
-
-const storageProviders = shared.providers ||
-  config.storageProviders || {
-    default: {
-      bucket: "files",
-      usesCategory: true,
-      consoleRootPrefix: config.storage?.basePath || "Promo",
-      publicBaseUrl: config.storage?.publicUrl || "",
-      publicPathPrefix: "files",
-      publicRootPrefix: config.storage?.basePath || "Promo",
-      bootstrapWaitMs: 60000,
-    },
-  };
+const storageProviders = config.storageProviders || {
+  default: {
+    bucket: "files",
+    usesCategory: true,
+    consoleRootPrefix: config.storage?.basePath || "Promo",
+    publicBaseUrl: config.storage?.publicUrl || "",
+    publicPathPrefix: "files",
+    publicRootPrefix: config.storage?.basePath || "Promo",
+    bootstrapWaitMs: 60000,
+  },
+};
 const selectedStorage = storageProviders[provider] || storageProviders.default;
 const loginWaitMs = Number(selectedStorage.loginWaitMs ?? 600000); // default: 10 minutes
 const bootstrapWaitMs = Number(selectedStorage.bootstrapWaitMs ?? 120000); // initial UI/login detect window
 
-const browserProfiles = shared.browserProfiles ||
-  config.browserProfiles || {
-    default: {
-      debugPort: config.browser?.debugPort,
-      userDataDir: config.browser?.userDataDir,
-    },
-  };
+const browserProfiles = config.browserProfiles || {
+  default: {
+    debugPort: config.browser?.debugPort,
+    userDataDir: config.browser?.userDataDir,
+  },
+};
 const selectedBrowser = browserProfiles[provider] || browserProfiles.default;
 
-const consoleBaseUrl = shared.consoleBaseUrl || config.storage?.baseUrl || config.storage?.baseURL || config.storage?.url || config.storage?.base || "https://storage.epcnetwork.dev";
+const consoleBaseUrl = config.storage?.baseUrl || config.storage?.baseURL || config.storage?.url || config.storage?.base || "https://storage.epcnetwork.dev";
 if (selectedBrowser?.debugPort) config.browser.debugPort = selectedBrowser.debugPort;
 if (config.browser.debugPort) config.browser.debugPort += uidOffset; // Додаємо зміщення порту для різних macOS юзерів
 
@@ -182,15 +156,16 @@ function playSound(type) {
 }
 
 function showNotification(title, message) {
-  if (process.platform !== "darwin") return;
-  if (!config.notifications.enabled) return;
-  const esc = (s) => String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\r?\n/g, "\\n");
-  const script = `display notification "${esc(message)}" with title "${esc(title)}"`;
-  try {
-    execFileSync("osascript", ["-e", script], { stdio: "ignore" });
-  } catch {
-    // ignore
-  }
+  // if (process.platform !== "darwin") return;
+  // if (!config.notifications.enabled) return;
+  // const esc = (s) => String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\r?\n/g, "\\n");
+  // const script = `display notification "${esc(message)}" with title "${esc(title)}"`;
+  // try {
+  //   execFileSync("osascript", ["-e", script], { stdio: "ignore" });
+  // } catch {
+  //   // ignore
+  // }
+  // Disabled: frontend already has notifications
 }
 
 // === Функція для запуску форми підтвердження ===
@@ -334,23 +309,17 @@ async function isCdpAvailable(port) {
       });
     });
     req.on("error", () => resolve(null));
-    req.on("timeout", () => { req.destroy(); resolve(null); });
+    req.on("timeout", () => {
+      req.destroy();
+      resolve(null);
+    });
   });
 }
 
 // === Helper: launch Brave as a detached process (survives script exit) ===
 function launchBraveDetached(execPath, userDataDir, debugPort) {
   const { spawn: spawnChild } = require("child_process");
-  const args = [
-    `--user-data-dir=${userDataDir}`,
-    `--remote-debugging-port=${debugPort}`,
-    "--remote-allow-origins=*",
-    "--disable-features=DownloadBubble,DownloadBubbleV2",
-    "--disable-component-update",
-    "--no-first-run",
-    "--no-default-browser-check",
-    "--disable-component-extensions-with-background-pages",
-  ];
+  const args = [`--user-data-dir=${userDataDir}`, `--remote-debugging-port=${debugPort}`, "--remote-allow-origins=*", "--disable-features=DownloadBubble,DownloadBubbleV2", "--disable-component-update", "--no-first-run", "--no-default-browser-check", "--disable-component-extensions-with-background-pages"];
   const child = spawnChild(execPath, args, {
     detached: true,
     stdio: "ignore",
@@ -370,7 +339,7 @@ function launchBraveDetached(execPath, userDataDir, debugPort) {
   // This keeps Brave alive so the login session persists for the next run.
   const safeExit = async (code) => {
     if (timeoutId) clearTimeout(timeoutId);
-    
+
     try {
       if (typeof browser !== "undefined" && browser) {
         // Always disconnect, never close — keep the browser alive
@@ -379,7 +348,7 @@ function launchBraveDetached(execPath, userDataDir, debugPort) {
     } catch (e) {
       // ignore cleanup errors
     }
-    
+
     process.exit(code);
   };
 
@@ -408,10 +377,10 @@ function launchBraveDetached(execPath, userDataDir, debugPort) {
       try {
         browser = await chromium.connectOverCDP(cdpUrl);
         connectedViaCDP = true;
-        
+
         const contexts = browser.contexts();
         context = contexts.length > 0 ? contexts[0] : null;
-        
+
         if (!context) {
           console.error("❌ Не знайдено активний контекст браузера");
           throw new Error("No browser context available");
@@ -419,9 +388,7 @@ function launchBraveDetached(execPath, userDataDir, debugPort) {
 
         const pages = context.pages();
         // Prefer to reuse an existing about:blank or storage tab, or create a new one
-        page = pages.find(p => p.url() === "about:blank")
-            || pages.find(p => p.url().includes("storage.epcnetwork.dev"))
-            || await context.newPage();
+        page = pages.find((p) => p.url() === "about:blank") || pages.find((p) => p.url().includes("storage.epcnetwork.dev")) || (await context.newPage());
 
         await page.bringToFront();
         console.log(`📂 USER DATA DIR: ${effectiveUserDataDir} (CDP reuse)`);
@@ -443,7 +410,7 @@ function launchBraveDetached(execPath, userDataDir, debugPort) {
         // Wait for Brave to start and CDP to become available
         let cdpReady = false;
         for (let attempt = 0; attempt < 30; attempt++) {
-          await new Promise(r => setTimeout(r, 1000));
+          await new Promise((r) => setTimeout(r, 1000));
           wsUrl = await isCdpAvailable(debugPort);
           if (wsUrl) {
             cdpReady = true;
@@ -472,10 +439,10 @@ function launchBraveDetached(execPath, userDataDir, debugPort) {
         }
 
         // Wait a bit for any startup tabs to appear
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise((resolve) => setTimeout(resolve, 1500));
 
         const pages = context.pages();
-        page = pages.find(p => p.url() === "about:blank") || pages[0] || await context.newPage();
+        page = pages.find((p) => p.url() === "about:blank") || pages[0] || (await context.newPage());
         await page.bringToFront();
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -640,7 +607,7 @@ function launchBraveDetached(execPath, userDataDir, debugPort) {
     }
 
     // === Формуємо шлях та ім'я ===
-    const folderPrefix = provider === "ttt" ? "creative-" : "lift-";
+    const folderPrefix = selectedStorage.folderPrefix || "lift-";
     const formattedName = `${letters}/${folderPrefix}${digits}`;
     console.log(`📁 Сформовано шлях: ${selectedStorage.usesCategory ? `${serverCategory}/` : ""}${formattedName}`);
 
@@ -669,10 +636,7 @@ function launchBraveDetached(execPath, userDataDir, debugPort) {
     // === Логін / UI ready (robust, slow-friendly) ===
     console.log("🔍 Очікуємо MinIO UI або логін...");
 
-    const state = await Promise.any([
-      page.waitForSelector("#upload-main", { timeout: bootstrapWaitMs }).then(() => "upload"),
-      page.waitForSelector("button#go-to-login", { timeout: bootstrapWaitMs }).then(() => "login")
-    ]).catch((err) => {
+    const state = await Promise.any([page.waitForSelector("#upload-main", { timeout: bootstrapWaitMs }).then(() => "upload"), page.waitForSelector("button#go-to-login", { timeout: bootstrapWaitMs }).then(() => "login")]).catch((err) => {
       if (err.name === "AggregateError") {
         console.error("❌ Помилка виявлення UI: елементи не знайдено за відведений час.");
       } else {

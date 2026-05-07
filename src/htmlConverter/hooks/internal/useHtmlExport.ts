@@ -1,6 +1,7 @@
 import { useCallback, useRef } from "react";
 import { formatHtml, formatMjml } from "../../formatter";
 import { formatHtmlTTT, formatMjmlTTT } from "../../ttt/formatter";
+import { formatHtmlAlphaone, formatMjmlAlphaone } from "../../alphaone/formatter";
 import { replaceUrlsInContentByMap, replaceUrlsInContent, replaceAltsInContent } from "../../utils/contentReplacer";
 import type { StorageProfile } from "../useHtmlConverterLogic";
 
@@ -90,7 +91,7 @@ export function useHtmlExport({
       }
 
       // Pick formatter based on active profile
-      const formatFn = storageProfile === "ttt" ? formatHtmlTTT : formatHtml;
+      const formatFn = storageProfile === "ttt" ? formatHtmlTTT : storageProfile === "alphaone" ? formatHtmlAlphaone : formatHtml;
       let formattedContent = formatFn(editorContent);
 
       if (Object.keys(uploadedUrlMap).length > 0) {
@@ -126,7 +127,7 @@ export function useHtmlExport({
       }
 
       // Pick formatter based on active profile
-      const formatFn = storageProfile === "ttt" ? formatMjmlTTT : formatMjml;
+      const formatFn = storageProfile === "ttt" ? formatMjmlTTT : storageProfile === "alphaone" ? formatMjmlAlphaone : formatMjml;
       let formattedContent = formatFn(editorContent);
 
       if (Object.keys(uploadedUrlMap).length > 0) {

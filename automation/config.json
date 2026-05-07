@@ -10,15 +10,18 @@
   "browserProfiles": {
     "default": {
       "debugPort": 9222,
-      "userDataDir": "{{APP_DATA}}/BravePlaywright"
+      "userDataDir": "{{APP_DATA}}/BravePlaywright",
+      "autoCloseTab": true
     },
     "alphaone": {
       "debugPort": 9223,
-      "userDataDir": "{{APP_DATA}}/BravePlaywright-AlfaOne"
+      "userDataDir": "{{APP_DATA}}/BravePlaywright-AlfaOne",
+      "autoCloseTab": true
     },
-    "terratrans": {
+    "ttt": {
       "debugPort": 9224,
-      "userDataDir": "{{APP_DATA}}/BravePlaywright-TerraTrans"
+      "userDataDir": "{{APP_DATA}}/BravePlaywright-TerraTrans",
+      "autoCloseTab": true
     }
   },
   "storage": {
@@ -31,17 +34,38 @@
       "bucket": "files",
       "usesCategory": true,
       "consoleRootPrefix": "Promo",
+      "categories": ["finance", "health"],
+      "defaultCategory": "finance",
+      "closeTabAfterBatch": false,
       "publicBaseUrl": "https://storage.5th-elementagency.com",
       "publicPathPrefix": "files",
-      "publicRootPrefix": "Promo"
+      "publicRootPrefix": "Promo",
+      "folderPrefix": "lift-",
+      "bootstrapWaitMs": 60000
     },
     "alphaone": {
       "bucket": "alphaone",
       "usesCategory": false,
       "consoleRootPrefix": "promo",
+      "loginWaitMs": 600000,
+      "bootstrapWaitMs": 30000,
+      "closeTabAfterBatch": false,
       "publicBaseUrl": "https://alphaonest.com",
       "publicPathPrefix": "files",
-      "publicRootPrefix": "promo"
+      "publicRootPrefix": "promo",
+      "folderPrefix": "promo-"
+    },
+    "ttt": {
+      "bucket": "ttt",
+      "usesCategory": false,
+      "consoleRootPrefix": "creatives",
+      "loginWaitMs": 600000,
+      "bootstrapWaitMs": 30000,
+      "closeTabAfterBatch": false,
+      "publicBaseUrl": "https://ogfinstorage.com",
+      "publicPathPrefix": "files",
+      "publicRootPrefix": "creatives",
+      "folderPrefix": "creative-"
     }
   },
   "ui": {

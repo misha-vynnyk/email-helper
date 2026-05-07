@@ -1,6 +1,4 @@
-/**
- * Configuration for HTML/MJML converter
- */
+import automationConfig from "../../../automation/config.json";
 
 export const blueColors = [
   "#0000FF",
@@ -41,7 +39,7 @@ export const blueColors = [
 
 export const config = {
   fontFamily: "'Roboto', Arial, Helvetica, sans-serif",
-  storageUrl: "https://storage.5th-elementagency.com/",
+  storageUrl: automationConfig.storageProviders.default.publicBaseUrl + "/",
   colors: {
     link: "#0000EE",
     white: "#FFFFFF",
