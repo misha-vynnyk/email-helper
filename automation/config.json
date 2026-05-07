@@ -59,7 +59,7 @@
       "folderPrefix": "promo-"
     },
     "ttt": {
-      "bucket": "ttt",
+      "bucket": "organic",
       "usesCategory": false,
       "consoleRootPrefix": "creatives",
       "loginWaitMs": 600000,
