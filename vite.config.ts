@@ -3,16 +3,19 @@ import path from "path";
 import { defineConfig } from "vite";
 
 export default defineConfig(({ mode }) => {
-  // Load AI backend URL from environment variable, fallback to local
+  // Load ports from environment variables
+  const port = Number(process.env.VITE_PORT) || 5173;
+  const backendPort = process.env.VITE_BACKEND_PORT || "3001";
   const aiBackendUrl = process.env.VITE_AI_BACKEND_URL || "http://127.0.0.1:8000";
 
   return {
     base: "/email-helper/",
     plugins: [react()],
     server: {
+      port: port,
       proxy: {
         "/api": {
-          target: "http://127.0.0.1:3001",
+          target: `http://127.0.0.1:${backendPort}`,
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api/, "/api"),
         },

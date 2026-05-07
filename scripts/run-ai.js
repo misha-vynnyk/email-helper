@@ -94,8 +94,13 @@ try {
     console.error("❌ Torch check failed.");
   }
 
-  console.log("Starting AI server...");
-  const child = spawn(venvPython, ["start.py"], { cwd: aiDir, stdio: "inherit" });
+  const aiPort = process.env.AI_PORT || 8000;
+  console.log(`Starting AI server on port ${aiPort}...`);
+  const child = spawn(venvPython, ["start.py"], { 
+    cwd: aiDir, 
+    stdio: "inherit", 
+    env: { ...process.env, PORT: aiPort.toString() } 
+  });
 
   child.on("error", (err) => {
     console.error("Failed to start subprocess.", err);
