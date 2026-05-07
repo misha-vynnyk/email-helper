@@ -12,6 +12,6 @@
     "server/ai/**",
     "**/ai/venv/**"
   ],
-  "delay": "5000",
-  "legacyWatch": true
+  "delay": "2000",
+  "legacyWatch": false
 }

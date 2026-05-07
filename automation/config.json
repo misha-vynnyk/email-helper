@@ -56,7 +56,7 @@
       "publicBaseUrl": "https://alphaonest.com",
       "publicPathPrefix": "files",
       "publicRootPrefix": "promo",
-      "folderPrefix": "promo-"
+      "folderPrefix": "lift-"
     },
     "ttt": {
       "bucket": "organic",

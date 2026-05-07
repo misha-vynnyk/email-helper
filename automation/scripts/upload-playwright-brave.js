@@ -126,7 +126,7 @@ const consoleBaseUrl = config.storage?.baseUrl || config.storage?.baseURL || con
 if (selectedBrowser?.debugPort) config.browser.debugPort = selectedBrowser.debugPort;
 if (config.browser.debugPort) {
   // Додаємо зміщення порту для різних macOS юзерів та різних інстансів
-  config.browser.debugPort += (uidOffset + instanceOffset); 
+  config.browser.debugPort += (uidOffset + instanceOffset);
 }
 
 if (selectedBrowser?.userDataDir) config.browser.userDataDir = resolveDynamicPath(selectedBrowser.userDataDir);
@@ -374,7 +374,7 @@ function launchBraveDetached(execPath, userDataDir, debugPort) {
     if (portId > 0) {
       config.browser.userDataDir = `${config.browser.userDataDir}-${portId}`;
     }
-    
+
     const effectiveUserDataDir = config.browser.userDataDir;
     const debugPort = config.browser.debugPort;
     const cdpUrl = `http://127.0.0.1:${debugPort}`;

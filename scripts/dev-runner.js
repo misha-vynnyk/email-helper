@@ -2,7 +2,7 @@ const { spawn } = require('child_process');
 
 // Шукаємо ID в аргументах (наприклад, npm run dev 1) або в змінній оточення
 const argId = process.argv.find(arg => /^\d+$/.test(arg));
-const portId = parseInt(argId || process.env.PORT_ID || '1');
+const portId = parseInt(argId || process.env.PORT_ID || '0');
 const offset = portId * 10;
 
 const vitePort = 5173 + offset;
@@ -39,10 +39,10 @@ const args = [
   '\"node scripts/print-dashboard.js\"'
 ];
 
-const child = spawn(cmd, args, { 
-    stdio: 'inherit', 
-    shell: true, 
-    env: process.env 
+const child = spawn(cmd, args, {
+    stdio: 'inherit',
+    shell: true,
+    env: process.env
 });
 
 child.on('exit', (code) => process.exit(code || 0));

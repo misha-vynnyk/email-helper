@@ -13,6 +13,9 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     server: {
       port: port,
+      watch: {
+        ignored: ["**/server/ai/venv/**", "**/dist/**", "**/node_modules/**"],
+      },
       proxy: {
         "/api": {
           target: `http://127.0.0.1:${backendPort}`,
