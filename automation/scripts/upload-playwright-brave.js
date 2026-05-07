@@ -69,7 +69,7 @@ if (process.env.BRAVE_USER_DATA_DIR) config.browser.userDataDir = process.env.BR
 let VALID_CATEGORIES = ["finance", "health"];
 const GLOBAL_TIMEOUT = 300000; // 5 хвилин (збільшено для повільного інтерфейсу)
 
-// Генеруємо зміщення портів на основі UID користувача macOS (щоб різні профілі не конфліктували)
+// Генеруємо зміщення портів на основі UID користувача macOS та PORT_ID інстансу
 let uidOffset = 0;
 try {
   const uid = os.userInfo().uid;
@@ -78,7 +78,11 @@ try {
   }
 } catch (e) {}
 
-const FORM_SERVER_PORT = 3838 + uidOffset;
+// Додаємо зміщення від PORT_ID (100 портів на кожен інстанс для безпеки)
+const portId = parseInt(process.env.PORT_ID || "0");
+const instanceOffset = portId * 100;
+
+const FORM_SERVER_PORT = 3838 + uidOffset + instanceOffset;
 
 function getArgValue(flag) {
   const idx = process.argv.indexOf(flag);
@@ -120,7 +124,10 @@ const selectedBrowser = browserProfiles[provider] || browserProfiles.default;
 
 const consoleBaseUrl = config.storage?.baseUrl || config.storage?.baseURL || config.storage?.url || config.storage?.base || "https://storage.epcnetwork.dev";
 if (selectedBrowser?.debugPort) config.browser.debugPort = selectedBrowser.debugPort;
-if (config.browser.debugPort) config.browser.debugPort += uidOffset; // Додаємо зміщення порту для різних macOS юзерів
+if (config.browser.debugPort) {
+  // Додаємо зміщення порту для різних macOS юзерів та різних інстансів
+  config.browser.debugPort += (uidOffset + instanceOffset); 
+}
 
 if (selectedBrowser?.userDataDir) config.browser.userDataDir = resolveDynamicPath(selectedBrowser.userDataDir);
 if (typeof selectedBrowser?.autoCloseTab === "boolean") {
@@ -363,6 +370,11 @@ function launchBraveDetached(execPath, userDataDir, debugPort) {
     let clipboardContent;
     let browser, context, page;
 
+    // Додаємо PORT_ID до шляху профілю, щоб інстанси не блокували один одного
+    if (portId > 0) {
+      config.browser.userDataDir = `${config.browser.userDataDir}-${portId}`;
+    }
+    
     const effectiveUserDataDir = config.browser.userDataDir;
     const debugPort = config.browser.debugPort;
     const cdpUrl = `http://127.0.0.1:${debugPort}`;

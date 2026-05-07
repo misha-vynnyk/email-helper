@@ -17,7 +17,9 @@ function getIP() {
 }
 
 const ip = getIP();
-const url = `http://${ip}:5173/email-helper/`;
+const vitePort = process.env.VITE_PORT || 5173;
+const backendPort = process.env.PORT || 3001; // backend uses PORT env var
+const url = `http://${ip}:${vitePort}/email-helper/`;
 
 function checkPort(port) {
     return new Promise((resolve) => {
@@ -39,7 +41,7 @@ async function startDashboard() {
 
     let attempts = 0;
     while (attempts < 30) {
-        if (await checkPort(5173) && await checkPort(3001)) break;
+        if (await checkPort(vitePort) && await checkPort(backendPort)) break;
         attempts++;
         await new Promise(r => setTimeout(r, 2000));
     }
@@ -50,8 +52,8 @@ async function startDashboard() {
     console.log('\n' + '╔' + '═'.repeat(58) + '╗');
     console.log('║' + ' '.repeat(15) + '🚀 EMAIL HELPER - READY' + ' '.repeat(20) + '║');
     console.log('╠' + '═'.repeat(58) + '╣');
-    console.log(`║  Frontend: \x1b[36m${url}\x1b[0m` + ' '.repeat(58 - url.length - 12) + '║');
-    console.log(`║  Backend:  \x1b[36mhttp://${ip}:3001/api\x1b[0m` + ' '.repeat(20) + '║');
+    console.log(`║  Frontend: \x1b[36m${url}\x1b[0m` + ' '.repeat(Math.max(0, 58 - url.length - 12)) + '║');
+    console.log(`║  Backend:  \x1b[36mhttp://${ip}:${backendPort}/api\x1b[0m` + ' '.repeat(Math.max(0, 58 - `http://${ip}:${backendPort}/api`.length - 12)) + '║');
     console.log('╚' + '═'.repeat(58) + '╝');
     console.log(`\x1b[32m✔ Проект готовий до роботи. Адреса також закріплена в назві вкладки.\x1b[0m\n`);
 }
