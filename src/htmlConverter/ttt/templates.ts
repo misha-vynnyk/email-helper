@@ -15,8 +15,9 @@ import { STORAGE_PROVIDERS_CONFIG } from "../constants";
 const TTT_PLACEHOLDER_URL = "insertlink";
 
 // ─── TTT specific overrides ───────────────────────────────────────────────────
-const TTT_STORAGE_URL = STORAGE_PROVIDERS_CONFIG.providers.ttt.publicBaseUrl + "/";
+const TTT_STORAGE_URL = STORAGE_PROVIDERS_CONFIG.providers.publicBaseUrl + "/";
 const TTT_PADDING = "15px";
+const FULL_IMAGE_WIDTH = "400";
 
 // ─── HTML helpers ────────────────────────────────────────────────────────────
 
@@ -250,8 +251,8 @@ export const tttHtmlTemplates = {
                        <a href="${TTT_PLACEHOLDER_URL}" target="_blank">
                            <img alt="Video preview" height="auto"
                                 src="${TTT_STORAGE_URL}"
-                                style="border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;max-width: 560px;font-size:13px;"
-                                width="560"/>
+                                style="border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;max-width: ${FULL_IMAGE_WIDTH}px;font-size:13px;"
+                                width="${FULL_IMAGE_WIDTH}"/>
                        </a>
                    </td>
                 </tr>
