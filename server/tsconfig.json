@@ -17,6 +17,6 @@
     "types": ["node"],
     "allowSyntheticDefaultImports": true
   },
-  "include": ["**/*.ts", "**/*.js"],
-  "exclude": ["node_modules", "dist", "blocks", "data"]
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules", "dist", "blocks", "data", "**/*.js"]
 }
