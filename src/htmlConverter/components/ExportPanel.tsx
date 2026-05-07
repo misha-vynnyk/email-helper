@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Copy, Download, ArrowRightLeft } from "lucide-react";
 
@@ -11,6 +11,7 @@ interface ExportPanelProps {
   handleDownloadHTML: () => void;
   handleDownloadMJML: () => void;
   handleCopy: (text: string, type: string) => void;
+  exportType: "html" | "mjml" | "both";
 }
 
 export function ExportPanel({
@@ -22,20 +23,30 @@ export function ExportPanel({
   handleDownloadHTML,
   handleDownloadMJML,
   handleCopy,
+  exportType,
 }: ExportPanelProps) {
   const { t } = useTranslation();
   const [rightTab, setRightTab] = useState<"html" | "mjml">("html");
+
+  useEffect(() => {
+    if (exportType === "html" && rightTab === "mjml") setRightTab("html");
+    if (exportType === "mjml" && rightTab === "html") setRightTab("mjml");
+  }, [exportType]);
 
   return (
     <div className='bg-card rounded-[2rem] shadow-soft hover:shadow-lg flex flex-col flex-1 min-h-[500px] border border-border/50 hover:border-border transition-all duration-300 group'>
       <div className='flex items-center justify-between px-6 pt-5'>
         <div className='flex gap-6'>
-          <button onClick={() => setRightTab("html")} className={`pb-3 text-sm font-bold border-b-2 transition-all ${rightTab === "html" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground/80 hover:border-border"}`}>
-            HTML {t("Output", "Результат")}
-          </button>
-          <button onClick={() => setRightTab("mjml")} className={`pb-3 text-sm font-bold border-b-2 transition-all ${rightTab === "mjml" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground/80 hover:border-border"}`}>
-            MJML {t("Output", "Результат")}
-          </button>
+          {(exportType === "both" || exportType === "html") && (
+            <button onClick={() => setRightTab("html")} className={`pb-3 text-sm font-bold border-b-2 transition-all ${rightTab === "html" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground/80 hover:border-border"}`}>
+              HTML {t("Output", "Результат")}
+            </button>
+          )}
+          {(exportType === "both" || exportType === "mjml") && (
+            <button onClick={() => setRightTab("mjml")} className={`pb-3 text-sm font-bold border-b-2 transition-all ${rightTab === "mjml" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground/80 hover:border-border"}`}>
+              MJML {t("Output", "Результат")}
+            </button>
+          )}
         </div>
 
         <div className='flex gap-1.5 pb-3'>

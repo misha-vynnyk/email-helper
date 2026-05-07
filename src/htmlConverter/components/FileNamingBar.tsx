@@ -11,6 +11,8 @@ interface FileNamingBarProps {
   setApproveNeeded: (val: boolean) => void;
   storageProfile: StorageProfile;
   setStorageProfile: (val: StorageProfile) => void;
+  exportType: "html" | "mjml" | "both";
+  setExportType: (val: "html" | "mjml" | "both") => void;
 }
 
 const PROFILES: { value: StorageProfile; label: string }[] = [
@@ -28,6 +30,8 @@ export function FileNamingBar({
   setApproveNeeded,
   storageProfile,
   setStorageProfile,
+  exportType,
+  setExportType,
 }: FileNamingBarProps) {
   const { t } = useTranslation();
 
@@ -78,6 +82,27 @@ export function FileNamingBar({
             onClick={() => setStorageProfile(value)}
             className={`px-4 py-2 rounded-full text-sm font-bold transition-all duration-200 ${
               storageProfile === value
+                ? "bg-primary text-primary-foreground shadow-sm scale-[1.04]"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Export type selector */}
+      <div className='flex items-center bg-card rounded-full border border-border/50 shadow-soft p-1 gap-1'>
+        {[
+          { value: "both", label: "Both" },
+          { value: "html", label: "HTML only" },
+          { value: "mjml", label: "MJML only" },
+        ].map(({ value, label }) => (
+          <button
+            key={value}
+            onClick={() => setExportType(value as any)}
+            className={`px-4 py-2 rounded-full text-sm font-bold transition-all duration-200 ${
+              exportType === value
                 ? "bg-primary text-primary-foreground shadow-sm scale-[1.04]"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
