@@ -148,11 +148,6 @@ function safeExec(command, showError = true) {
   }
 }
 
-function escapeShellArg(arg) {
-  // Екрануємо спецсимволи для безпечного виконання shell команд
-  return `'${arg.replace(/'/g, "'\\''")}'`;
-}
-
 function playSound(type) {
   if (process.platform !== "darwin") return;
   const soundsEnabled = config.notifications.soundsEnabled ?? config.notifications.enabled;
@@ -483,10 +478,14 @@ function launchBraveDetached(execPath, userDataDir, debugPort) {
       await safeExit(0);
     }
 
-    // Автоматично закриваємо всі JavaScript діалоги (confirm, alert, etc)
-    page.on("dialog", (dialog) => {
-      console.log(`📢 Діалог: ${dialog.message()}`);
-      dialog.dismiss().catch(() => {});
+    // alert() має лише OK — приймаємо; для confirm/prompt/beforeunload — dismiss (Cancel)
+    page.on("dialog", async (dialog) => {
+      console.log(`📢 Діалог [${dialog.type()}]: ${dialog.message()}`);
+      if (dialog.type() === "alert") {
+        await dialog.accept().catch(() => {});
+      } else {
+        await dialog.dismiss().catch(() => {});
+      }
     });
 
     // === Якщо прапорець --no-confirm, пропускаємо форму ===
@@ -645,14 +644,20 @@ function launchBraveDetached(execPath, userDataDir, debugPort) {
     // === Логін / UI ready (robust, slow-friendly) ===
     console.log("🔍 Очікуємо MinIO UI або логін...");
 
-    const state = await Promise.any([page.waitForSelector("#upload-main", { timeout: bootstrapWaitMs }).then(() => "upload"), page.waitForSelector("button#go-to-login", { timeout: bootstrapWaitMs }).then(() => "login")]).catch((err) => {
-      if (err.name === "AggregateError") {
-        console.error("❌ Помилка виявлення UI: елементи не знайдено за відведений час.");
-      } else {
-        console.error("❌ Помилка виявлення UI:", err.message);
-      }
-      return null;
+    // Обидві promise завжди resolve (null при timeout) — жодних висячих rejects
+    const uploadP = page.waitForSelector("#upload-main", { timeout: bootstrapWaitMs }).then(() => "upload").catch(() => null);
+    const loginP = page.waitForSelector("button#go-to-login", { timeout: bootstrapWaitMs }).then(() => "login").catch(() => null);
+
+    // Перший ненульовий результат перемагає; якщо обидві timeout — null
+    const state = await new Promise((resolve) => {
+      uploadP.then((v) => v && resolve(v));
+      loginP.then((v) => v && resolve(v));
+      Promise.all([uploadP, loginP]).then(([u, l]) => resolve(u || l || null));
     });
+
+    if (!state) {
+      console.error("❌ Помилка виявлення UI: елементи не знайдено за відведений час.");
+    }
 
     if (state === "login") {
       playSound("error");
@@ -737,8 +742,11 @@ function launchBraveDetached(execPath, userDataDir, debugPort) {
 
         const publicUrl = `${String(selectedStorage.publicBaseUrl).replace(/\/+$/, "")}/${serverFilePath}`;
 
-        // Безпечне копіювання в буфер
-        process.platform === "darwin" && safeExec(`printf %s ${escapeShellArg(serverFilePath)} | pbcopy`, false);
+        if (process.platform === "darwin") {
+          try {
+            execFileSync("pbcopy", [], { input: serverFilePath, encoding: "utf8", stdio: ["pipe", "ignore", "ignore"] });
+          } catch {}
+        }
         playSound("success");
         console.log(`📋 Скопійовано в буфер: ${serverFilePath}`);
         console.log(`RESULT_JSON=${JSON.stringify({ provider, filePath: serverFilePath, publicUrl })}`);
