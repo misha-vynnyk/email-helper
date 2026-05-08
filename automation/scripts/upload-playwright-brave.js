@@ -73,7 +73,7 @@ const GLOBAL_TIMEOUT = 300000; // 5 хвилин (збільшено для по
 let uidOffset = 0;
 try {
   const uid = os.userInfo().uid;
-  if (typeof uid === "number" && uid >= 500) {
+  if (typeof uid === "number" && uid > 501) {
     uidOffset = (uid - 501) * 100;
   }
 } catch (e) {}
@@ -127,6 +127,10 @@ if (selectedBrowser?.debugPort) config.browser.debugPort = selectedBrowser.debug
 if (config.browser.debugPort) {
   // Додаємо зміщення порту для різних macOS юзерів та різних інстансів
   config.browser.debugPort += (uidOffset + instanceOffset);
+  if (config.browser.debugPort < 1024 || config.browser.debugPort > 49151) {
+    console.warn(`⚠️ Debug port ${config.browser.debugPort} виходить за безпечний діапазон (1024–49151), скидаємо до базового порту провайдера.`);
+    config.browser.debugPort = selectedBrowser?.debugPort ?? 9222;
+  }
 }
 
 if (selectedBrowser?.userDataDir) config.browser.userDataDir = resolveDynamicPath(selectedBrowser.userDataDir);
@@ -162,18 +166,6 @@ function playSound(type) {
   }
 }
 
-function showNotification(title, message) {
-  // if (process.platform !== "darwin") return;
-  // if (!config.notifications.enabled) return;
-  // const esc = (s) => String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\r?\n/g, "\\n");
-  // const script = `display notification "${esc(message)}" with title "${esc(title)}"`;
-  // try {
-  //   execFileSync("osascript", ["-e", script], { stdio: "ignore" });
-  // } catch {
-  //   // ignore
-  // }
-  // Disabled: frontend already has notifications
-}
 
 // === Функція для запуску форми підтвердження ===
 function showConfirmationForm(fileInfo) {
@@ -268,13 +260,12 @@ function showConfirmationForm(fileInfo) {
       console.log(`📝 Форма підтвердження запущена на порту ${FORM_SERVER_PORT}`);
     });
 
-    // Timeout для форми (2 хвилини)
     setTimeout(() => {
       if (!formData && !cancelled) {
         server.close();
         reject(new Error("Timeout: форма не була підтверджена вчасно"));
       }
-    }, 120000);
+    }, config.timeouts.confirmFormMs ?? 120000);
   });
 }
 
@@ -575,7 +566,6 @@ function launchBraveDetached(execPath, userDataDir, debugPort) {
         // Скасовано користувачем або timeout
         console.log(`❌ ${err.message}`);
         playSound("warning");
-        showNotification("Storage Upload", "Завантаження скасовано");
 
         // Чекаємо перед закриттям (налаштування closeDelayCancel)
         if (config.browser.closeDelayCancel > 0) {
@@ -666,7 +656,6 @@ function launchBraveDetached(execPath, userDataDir, debugPort) {
 
     if (state === "login") {
       playSound("error");
-      showNotification("Storage Upload", `🔒 Потрібен логін. Очікую до ${Math.round(loginWaitMs / 1000)}s...`);
 
       // Best-effort: navigate to login screen
       try {
@@ -705,7 +694,7 @@ function launchBraveDetached(execPath, userDataDir, debugPort) {
         return rect.width > 0 && rect.height > 0 && window.getComputedStyle(btn).opacity > 0.7;
       });
       if (ready) break;
-      await page.waitForTimeout(config.timeouts.interfaceCheck);
+      await new Promise((r) => setTimeout(r, config.timeouts.interfaceCheck));
     }
 
     await Promise.race([page.waitForSelector(".fileNameText", { timeout: 3000 }).catch(() => {}), page.waitForSelector('text="Empty folder"', { timeout: 3000 }).catch(() => {})]);
@@ -727,7 +716,6 @@ function launchBraveDetached(execPath, userDataDir, debugPort) {
     if (fileExists) {
       console.log(`⚠️ Файл "${fileName}" вже існує — завантаження пропущено.`);
       playSound("warning");
-      showNotification("Storage Upload", "❌ Файл вже існує");
       await safeExit(1);
     }
 
@@ -752,7 +740,6 @@ function launchBraveDetached(execPath, userDataDir, debugPort) {
         // Безпечне копіювання в буфер
         process.platform === "darwin" && safeExec(`printf %s ${escapeShellArg(serverFilePath)} | pbcopy`, false);
         playSound("success");
-        showNotification("Storage Upload", `✅ Файл завантажено: ${publicUrl}`);
         console.log(`📋 Скопійовано в буфер: ${serverFilePath}`);
         console.log(`RESULT_JSON=${JSON.stringify({ provider, filePath: serverFilePath, publicUrl })}`);
         return true;
@@ -768,7 +755,7 @@ function launchBraveDetached(execPath, userDataDir, debugPort) {
     // === Якщо не вдалося — повторюємо ===
     if (!success && config.retries.uploadAttempts > 1) {
       console.log("⏱ Очікування перед повторною спробою...");
-      await page.waitForTimeout(config.timeouts.uploadRetry);
+      await new Promise((r) => setTimeout(r, config.timeouts.uploadRetry));
 
       const fileNowExists = await page.evaluate((fileName) => {
         const els = document.querySelectorAll(".fileNameText");
@@ -778,7 +765,6 @@ function launchBraveDetached(execPath, userDataDir, debugPort) {
       if (!fileNowExists) {
         success = await uploadFile(true);
         if (!success) {
-          showNotification("Storage Upload", "❌ Завантаження не вдалося після двох спроб");
           console.error("🚫 Не вдалося завантажити файл після двох спроб.");
         }
       } else {
@@ -820,7 +806,6 @@ function launchBraveDetached(execPath, userDataDir, debugPort) {
     }
     console.error("❌ Критична помилка:", msg);
     playSound("error");
-    showNotification("Storage Upload", `❌ Помилка: ${msg}`);
 
     await safeExit(1);
   }
