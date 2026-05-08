@@ -81,7 +81,8 @@
     "elementWait": 5000,
     "uploadRetry": 2000,
     "interfaceCheck": 200,
-    "interfaceMaxChecks": 10
+    "interfaceMaxChecks": 10,
+    "confirmFormMs": 120000
   },
   "retries": {
     "uploadAttempts": 2
