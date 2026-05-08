@@ -82,8 +82,6 @@ try {
 const portId = parseInt(process.env.PORT_ID || "0");
 const instanceOffset = portId * 100;
 
-const FORM_SERVER_PORT = 3838 + uidOffset + instanceOffset;
-
 function getArgValue(flag) {
   const idx = process.argv.indexOf(flag);
   if (idx === -1) return null;
@@ -161,119 +159,15 @@ function playSound(type) {
   }
 }
 
-
-// === Функція для запуску форми підтвердження ===
-function showConfirmationForm(fileInfo) {
-  return new Promise((resolve, reject) => {
-    let formData = null;
-    let cancelled = false;
-
-    const formHtmlPath = pathModule.join(__dirname, "upload-form.html");
-    const formHtml = fs.readFileSync(formHtmlPath, "utf8");
-
-    const server = http.createServer((req, res) => {
-      // CORS headers
-      res.setHeader("Access-Control-Allow-Origin", "*");
-      res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-
-      if (req.method === "OPTIONS") {
-        res.writeHead(200);
-        res.end();
-        return;
-      }
-
-      // Головна сторінка з формою
-      if (req.url.startsWith("/?") || req.url === "/") {
-        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-        res.end(formHtml);
-        return;
-      }
-
-      // Обробка submit
-      if (req.url === "/submit" && req.method === "POST") {
-        let body = "";
-        req.on("data", (chunk) => (body += chunk.toString()));
-        req.on("end", () => {
-          try {
-            formData = JSON.parse(body);
-            res.writeHead(200, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({ success: true }));
-
-            // Закриваємо сервер після того, як дані отримані
-            setTimeout(() => {
-              server.close();
-            }, 100);
-          } catch (err) {
-            res.writeHead(400);
-            res.end("Invalid JSON");
-          }
-        });
-        return;
-      }
-
-      // Обробка cancel
-      if (req.url === "/cancel" && req.method === "POST") {
-        cancelled = true;
-        res.writeHead(200);
-        res.end();
-        server.close();
-        return;
-      }
-
-      res.writeHead(404);
-      res.end("Not found");
-    });
-
-    server.on("close", () => {
-      // Даємо час серверу закритись і перевіряємо результати
-      if (cancelled) {
-        reject(new Error("Скасовано користувачем"));
-      } else if (formData) {
-        resolve(formData);
-      } else {
-        reject(new Error("Форма закрита без введення даних"));
-      }
-    });
-
-    server.listen(FORM_SERVER_PORT, "127.0.0.1", () => {
-      const params = new URLSearchParams({
-        file: fileInfo.fileName,
-        size: fileInfo.fileSize,
-        path: fileInfo.filePath,
-      });
-
-      if (fileInfo.presetCategory) {
-        params.append("category", fileInfo.presetCategory);
-      }
-
-      if (fileInfo.clipboardContent) {
-        params.append("folder", fileInfo.clipboardContent);
-      }
-
-      // Не відкриваємо URL через exec, форма вже відкрита через Playwright
-      console.log(`📝 Форма підтвердження запущена на порту ${FORM_SERVER_PORT}`);
-    });
-
-    setTimeout(() => {
-      if (!formData && !cancelled) {
-        server.close();
-        reject(new Error("Timeout: форма не була підтверджена вчасно"));
-      }
-    }, config.timeouts.confirmFormMs ?? 120000);
-  });
-}
-
 // === Валідація аргументів ===
 const isFinalize = process.argv.includes("--finalize") || process.argv.includes("--close-tab");
 const filePath = process.argv[2];
 const rest = process.argv
   .slice(3)
-  .filter((x, i, arr) => !["--no-confirm", "-y"].includes(x))
+  .filter((x) => !["--no-confirm", "-y"].includes(x))
   .filter((x, i, arr) => !(x === "--provider" || arr[i - 1] === "--provider"));
-const categoryArg = rest[0] || null; // 'finance', 'health' або null
-const folderNameArg = rest[1] || null; // для --no-confirm, інакше з форми/буфера
-const skipConfirmation = process.argv.includes("--no-confirm") || process.argv.includes("-y");
+const categoryArg = rest[0] || null;
+const folderNameArg = rest[1] || null;
 
 if (!isFinalize) {
   if (!filePath || !fs.existsSync(filePath)) {
@@ -283,8 +177,6 @@ if (!isFinalize) {
 }
 
 const fileName = isFinalize ? null : pathModule.basename(filePath);
-const fileSize = isFinalize ? 0 : fs.statSync(filePath).size;
-const fileSizeFormatted = isFinalize ? "" : (fileSize / 1024).toFixed(2) + " KB";
 
 // === Helper: check if Brave is listening on CDP port ===
 async function isCdpAvailable(port) {
@@ -323,9 +215,6 @@ function launchBraveDetached(execPath, userDataDir, debugPort) {
 
 (async () => {
   let timeoutId;
-  // Track how we connected so we know how to clean up
-  let connectedViaCDP = false;
-  let launchedByUs = false;
 
   // === Функція для безпечного виходу ===
   // IMPORTANT: We NEVER close the browser — we only disconnect.
@@ -381,7 +270,6 @@ function launchBraveDetached(execPath, userDataDir, debugPort) {
       console.log("✅ Brave вже працює — підключаємось через CDP...");
       try {
         browser = await chromium.connectOverCDP(cdpUrl);
-        connectedViaCDP = true;
 
         const contexts = browser.contexts();
         context = contexts.length > 0 ? contexts[0] : null;
@@ -406,7 +294,6 @@ function launchBraveDetached(execPath, userDataDir, debugPort) {
     // === STEP 2: If CDP connect failed, launch Brave as a detached process and then connect ===
     if (!wsUrl || !browser) {
       console.log("🚀 Запуск нового екземпляра Brave...");
-      launchedByUs = true;
 
       try {
         launchBraveDetached(config.browser.executablePath, effectiveUserDataDir, debugPort);
@@ -433,7 +320,6 @@ function launchBraveDetached(execPath, userDataDir, debugPort) {
 
         console.log("✅ Brave запущений — підключаємось через CDP...");
         browser = await chromium.connectOverCDP(cdpUrl);
-        connectedViaCDP = true;
 
         const contexts = browser.contexts();
         context = contexts.length > 0 ? contexts[0] : null;
@@ -488,114 +374,32 @@ function launchBraveDetached(execPath, userDataDir, debugPort) {
       }
     });
 
-    // === Якщо прапорець --no-confirm, пропускаємо форму ===
-    if (skipConfirmation) {
-      console.log("⚡ Режим без підтвердження");
-
-      if (selectedStorage.usesCategory) {
-        // Категорія обов'язкова
-        if (!categoryArg || !VALID_CATEGORIES.includes(categoryArg.toLowerCase())) {
-          console.error(`Помилка: в режимі --no-confirm потрібна категорія (${VALID_CATEGORIES.join("|")})`);
-          await safeExit(1);
-        }
-        serverCategory = categoryArg.toLowerCase();
-      } else {
-        serverCategory = categoryArg ? categoryArg.toLowerCase() : null;
-      }
-
-      // folderName: з argv (крос-платформно) або з буфера на macOS
-      clipboardContent = folderNameArg;
-      if (!clipboardContent) {
-        if (process.platform === "darwin") {
-          clipboardContent = safeExec("pbpaste", false);
-        } else {
-          // TODO: додати підтримку xclip/powershell для Linux/Windows якщо потрібно
-          console.warn("⚠️ Буфер обміну підтримується лише на macOS. Будь ласка, вкажіть назву папки як аргумент.");
-        }
-      }
-
-      if (!clipboardContent) {
-        console.error("Помилка: в режимі --no-confirm потрібна назва папки (4-й аргумент) або буфер обміну (macOS)");
+    if (selectedStorage.usesCategory) {
+      if (!categoryArg || !VALID_CATEGORIES.includes(categoryArg.toLowerCase())) {
+        console.error(`Помилка: потрібна категорія (${VALID_CATEGORIES.join("|")})`);
         await safeExit(1);
       }
-
-      if (selectedStorage.usesCategory) console.log(`📂 Категорія: ${serverCategory}`);
-      console.log(`📋 Папка: "${clipboardContent}"`);
+      serverCategory = categoryArg.toLowerCase();
     } else {
-      // === ЗАВЖДИ показуємо форму для підтвердження ===
-      console.log("📝 Підготовка інформації для форми...");
-
-      // Визначаємо категорію з аргументів або шляху
-      let presetCategory = null;
-      if (categoryArg && VALID_CATEGORIES.includes(categoryArg.toLowerCase())) {
-        presetCategory = categoryArg.toLowerCase();
-      } else if (filePath.includes("Finance")) {
-        presetCategory = "finance";
-      } else if (filePath.includes("Health")) {
-        presetCategory = "health";
-      }
-
-      // Читаємо буфер обміну для автозаповнення
-      const clipboardPreview = process.platform === "darwin" ? safeExec("pbpaste", false) : null;
-
-      // Запускаємо HTTP сервер форми та отримуємо Promise
-      console.log("🌐 Запуск HTTP сервера форми...");
-      const formPromise = showConfirmationForm({
-        fileName: fileName,
-        fileSize: fileSizeFormatted,
-        filePath: filePath,
-        presetCategory: presetCategory,
-        clipboardContent: clipboardPreview,
-      });
-
-      // Даємо час серверу запуститись
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // Відкриваємо форму в поточній вкладці Brave
-      const formUrl = `http://127.0.0.1:${FORM_SERVER_PORT}/?file=${encodeURIComponent(fileName)}&size=${encodeURIComponent(fileSizeFormatted)}&path=${encodeURIComponent(filePath)}${presetCategory ? `&category=${presetCategory}` : ""}${clipboardPreview ? `&folder=${encodeURIComponent(clipboardPreview)}` : ""}`;
-
-      console.log("📝 Відкриття форми в Brave...");
-      await page.goto(formUrl, { waitUntil: "domcontentloaded" });
-
-      // Чекаємо відповідь від форми
-      let formData;
-      try {
-        formData = await formPromise;
-      } catch (err) {
-        // Скасовано користувачем або timeout
-        console.log(`❌ ${err.message}`);
-        playSound("warning");
-
-        // Чекаємо перед закриттям (налаштування closeDelayCancel)
-        if (config.browser.closeDelayCancel > 0) {
-          const seconds = Math.round(config.browser.closeDelayCancel / 1000);
-          console.log(`⏳ Закриття вкладки через ${seconds} секунд...`);
-          await new Promise((resolve) => setTimeout(resolve, config.browser.closeDelayCancel));
-        }
-
-        // Закриваємо вкладку якщо налаштовано
-        if (config.browser.autoCloseTab) {
-          try {
-            await page.close();
-            console.log("✓ Вкладка закрита");
-          } catch (e) {
-            console.log("Вкладка вже закрита");
-          }
-        }
-
-        await safeExit(0);
-      }
-
-      serverCategory = formData.category;
-      clipboardContent = formData.folderName;
-
-      console.log(`✓ Підтверджено користувачем`);
-      if (selectedStorage.usesCategory) console.log(`📂 Категорія: ${serverCategory}`);
-      console.log(`📋 Папка: "${clipboardContent}"`);
-
-      // Даємо час серверу закритись
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      serverCategory = categoryArg ? categoryArg.toLowerCase() : null;
     }
+
+    clipboardContent = folderNameArg;
+    if (!clipboardContent) {
+      if (process.platform === "darwin") {
+        clipboardContent = safeExec("pbpaste", false);
+      } else {
+        console.warn("⚠️ Будь ласка, вкажіть назву папки як аргумент.");
+      }
+    }
+
+    if (!clipboardContent) {
+      console.error("Помилка: потрібна назва папки (4-й аргумент) або буфер обміну (macOS)");
+      await safeExit(1);
+    }
+
+    if (selectedStorage.usesCategory) console.log(`📂 Категорія: ${serverCategory}`);
+    console.log(`📋 Папка: "${clipboardContent}"`);
 
     // === Валідація формату ===
     if (typeof clipboardContent !== "string") {
@@ -655,10 +459,6 @@ function launchBraveDetached(execPath, userDataDir, debugPort) {
       Promise.all([uploadP, loginP]).then(([u, l]) => resolve(u || l || null));
     });
 
-    if (!state) {
-      console.error("❌ Помилка виявлення UI: елементи не знайдено за відведений час.");
-    }
-
     if (state === "login") {
       playSound("error");
 
@@ -682,7 +482,7 @@ function launchBraveDetached(execPath, userDataDir, debugPort) {
         await safeExit(1);
       }
     } else if (state !== "upload") {
-      console.error("ERROR:UPLOAD_UI_TIMEOUT (MinIO UI did not show upload/login controls)");
+      console.error("❌ Помилка виявлення UI: елементи не знайдено за відведений час.");
       clearTimeout(timeoutId);
       await safeExit(1);
     }
