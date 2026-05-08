@@ -376,6 +376,13 @@ function launchBraveDetached(execPath, userDataDir, debugPort) {
     }
 
     const effectiveUserDataDir = config.browser.userDataDir;
+
+    // Pre-create the user data directory so Brave doesn't fail with a permissions dialog
+    if (!fs.existsSync(effectiveUserDataDir)) {
+      fs.mkdirSync(effectiveUserDataDir, { recursive: true });
+      console.log(`📁 Створено директорію профілю: ${effectiveUserDataDir}`);
+    }
+
     const debugPort = config.browser.debugPort;
     const cdpUrl = `http://127.0.0.1:${debugPort}`;
 
