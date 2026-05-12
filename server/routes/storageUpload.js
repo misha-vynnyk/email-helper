@@ -250,7 +250,10 @@ router.post("/api/storage-upload", async (req, res) => {
     console.log(`🚀 Executing: ${command}`);
 
     // Execute automation script with extended timeout (login may require manual steps)
-    exec(command, { timeout: 900000, maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+    // Reset PORT_ID to "0" so the automation script uses the canonical Brave profile paths
+    // (BravePlaywright-AlfaOne, not BravePlaywright-AlfaOne-2) regardless of which server instance is running.
+    const childEnv = { ...process.env, PORT_ID: "0" };
+    exec(command, { timeout: 900000, maxBuffer: 10 * 1024 * 1024, env: childEnv }, (error, stdout, stderr) => {
       if (stdout) console.log(stdout.trim());
       if (stderr) console.error(stderr.trim());
 
