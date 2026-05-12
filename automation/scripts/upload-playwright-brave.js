@@ -280,8 +280,9 @@ function launchBraveDetached(execPath, userDataDir, debugPort) {
         }
 
         const pages = context.pages();
-        // Prefer to reuse an existing about:blank or storage tab, or create a new one
-        page = pages.find((p) => p.url() === "about:blank") || pages.find((p) => p.url().includes("storage.epcnetwork.dev")) || (await context.newPage());
+        // Reuse an existing storage tab if available; otherwise create a fresh page via CDP.
+        // Never reuse about:blank — it may be Brave's New Tab page which CDP cannot navigate.
+        page = pages.find((p) => p.url().includes("storage.epcnetwork.dev")) || (await context.newPage());
 
         await page.bringToFront();
         console.log(`📂 USER DATA DIR: ${effectiveUserDataDir} (CDP reuse)`);
@@ -347,7 +348,8 @@ function launchBraveDetached(execPath, userDataDir, debugPort) {
         await new Promise((resolve) => setTimeout(resolve, 1500));
 
         const pages = context.pages();
-        page = pages.find((p) => p.url() === "about:blank") || pages[0] || (await context.newPage());
+        // Always create a fresh page — startup tabs may be Brave's New Tab page which CDP cannot navigate.
+        page = pages.find((p) => p.url().includes("storage.epcnetwork.dev")) || (await context.newPage());
         await page.bringToFront();
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
