@@ -287,12 +287,26 @@ function launchBraveDetached(execPath, userDataDir, debugPort) {
         console.log(`📂 USER DATA DIR: ${effectiveUserDataDir} (CDP reuse)`);
       } catch (cdpErr) {
         console.warn(`⚠️ CDP підключення не вдалось: ${cdpErr.message}`);
+        // Disconnect the stale browser object so Step 2 knows to relaunch
+        if (browser) {
+          try { await browser.disconnect(); } catch {}
+          browser = null;
+          context = null;
+        }
         wsUrl = null; // Fall through to launch
       }
     }
 
     // === STEP 2: If CDP connect failed, launch Brave as a detached process and then connect ===
     if (!wsUrl || !browser) {
+      // Wait for any lingering Brave process to fully release the CDP port before launching a new one.
+      // Without this, isCdpAvailable() returns true for the dying process and we connect to it again.
+      for (let i = 0; i < 12; i++) {
+        const portBusy = await isCdpAvailable(debugPort);
+        if (!portBusy) break;
+        await new Promise((r) => setTimeout(r, 500));
+      }
+
       console.log("🚀 Запуск нового екземпляра Brave...");
 
       try {
