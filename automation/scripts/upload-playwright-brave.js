@@ -347,9 +347,12 @@ function launchBraveDetached(execPath, userDataDir, debugPort) {
         // Wait a bit for any startup tabs to appear
         await new Promise((resolve) => setTimeout(resolve, 1500));
 
-        const pages = context.pages();
-        // Always create a fresh page — startup tabs may be Brave's New Tab page which CDP cannot navigate.
-        page = pages.find((p) => p.url().includes("storage.epcnetwork.dev")) || (await context.newPage());
+        const startupPages = context.pages();
+        // Create a fresh navigatable page, then close any startup tabs Brave opened automatically.
+        page = startupPages.find((p) => p.url().includes("storage.epcnetwork.dev")) || (await context.newPage());
+        for (const p of startupPages) {
+          if (p !== page) await p.close().catch(() => {});
+        }
         await page.bringToFront();
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
