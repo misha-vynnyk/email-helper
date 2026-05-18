@@ -119,6 +119,28 @@ describe("htmlConverter utils", () => {
       const result = addBrAfterClosingP(input);
       expect(result).toBe("<li>List Item</li>"); // Should strip p tags inside li
     });
+
+    it("should strip Google-Docs <br> between </p> and <p>", () => {
+      const input = "<p>First</p><br><p>Second</p>";
+      const result = addBrAfterClosingP(input);
+      // Should have exactly one <br><br> between paragraphs, not triple
+      expect(result).toContain("First\n<br><br>\n");
+      expect(result).not.toMatch(/<br>\s*<br>\s*<br>/);
+    });
+
+    it("should strip Google-Docs <br> between </p> and <ul>", () => {
+      const input = "<p>Intro</p><br><ul><li>item</li></ul>";
+      const result = addBrAfterClosingP(input);
+      // Should NOT have extra <br> between text and list
+      expect(result).not.toMatch(/<br>\s*<br>\s*<br>/);
+    });
+
+    it("should strip Google-Docs <br><br> between </ul> and <p>", () => {
+      const input = "<ul><li>item</li></ul><br><br><p>After list</p>";
+      const result = addBrAfterClosingP(input);
+      // Should NOT produce triple+ breaks
+      expect(result).not.toMatch(/<br>\s*<br>\s*<br>/);
+    });
   });
 
   describe("removeStylesFromLists", () => {

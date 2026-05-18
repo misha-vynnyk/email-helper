@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls \"/Users/mykhailo.vynnyk/Library/Application Support/\" | grep -i brave)",
+      "Read(//Users/mykhailo.vynnyk/Library/Application Support/**)",
+      "Bash(grep -E \"\\(\\\\.tsx?|\\\\.js\\)$\")"
+    ]
+  }
+}

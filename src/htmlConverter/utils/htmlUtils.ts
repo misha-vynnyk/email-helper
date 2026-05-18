@@ -111,6 +111,16 @@ export function addBrAfterClosingP(htmlContent: string): string {
     return `<li>${cleanedContent}</li>`;
   });
 
+  // --- Strip Google-Docs-injected <br> between block elements ---
+  // Google Docs pastes <br> between </p> and the next <p>/<ul>/<ol>,
+  // and between </ul>/<ol> and the next <p>. These orphan <br> cause
+  // triple+ breaks once we add our own controlled <br><br> below.
+  htmlContent = htmlContent.replace(/<\/p>\s*(?:<br\s*\/?>\s*)+(<p\b)/gi, "</p>$1");
+  htmlContent = htmlContent.replace(/<\/p>\s*(?:<br\s*\/?>\s*)+(<(?:ul|ol)\b)/gi, "</p>$1");
+  htmlContent = htmlContent.replace(/(<\/(?:ul|ol)>)\s*(?:<br\s*\/?>\s*)+(<p\b)/gi, "$1$2");
+  // Also strip <br> right after </ul>|</ol> before any next block to avoid extra spacing
+  htmlContent = htmlContent.replace(/(<\/(?:ul|ol)>)\s*(?:<br\s*\/?>\s*)+/gi, "$1\n");
+
   // Handle sequences of empty paragraphs (p tags with only br inside)
   // We want to treat even a single empty paragraph as a spacer, but NOT add extra breaks if it's just one.
   // The goal: merge the line break from the empty paragraph with the standard paragraph break.
@@ -171,7 +181,7 @@ export function mergeSimilarTags(htmlContent: string): string {
     prevLen = htmlContent.length;
     // Merge IDENTICAL adjacent blocks (same exact opening tag) for p and h1-h6
     // This perfectly joins equivalently styled blocks (e.g. <p text-align: center>) across multiple lines.
-    const exactMatchRegex = /(<(p|h[1-6])(?:\s+[^>]*|)>)([\s\S]*?)<\/\2>\s*(?:<br\s*\/?>\s*)*\1/gi;
+    const exactMatchRegex = /(<(p|h[1-6])(?:\s+[^>]*|)>)((?:(?!<\/\2>)[\s\S])*?)<\/\2>\s*(?:<br\s*\/?>\s*)*\1/gi;
     htmlContent = htmlContent.replace(exactMatchRegex, (_match, openTag, _tagName, innerContent) => {
       return `${openTag}${innerContent}[[BR_SEP]]`;
     });
