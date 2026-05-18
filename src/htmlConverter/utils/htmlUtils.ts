@@ -187,7 +187,30 @@ export function mergeSimilarTags(htmlContent: string): string {
     });
   }
 
+  /* 
+  // DEPRECATED: Merge adjacent h1-h6 tags generically as a fallback (even if styles differ)
+  // This was removed because it aggressively swallowed tags with different styles (like text-align),
+  // causing formatting bugs (e.g., centered footers merged into left-aligned footers).
+  // Kept here commented out just in case it is ever needed to be restored.
+  const tagsToMerge = ["h1", "h4", "h5", "h6"];
 
+  tagsToMerge.forEach((tag) => {
+    const regex = new RegExp(`(<\\/${tag}>)\\s*(?:<br\\s*\\/?>\\s*)*<${tag}[^>]*>`, "gi");
+
+    let matchFound = true;
+    let tagIterations = 0;
+    while (matchFound && tagIterations < 50) {
+      matchFound = false;
+      let count = 0;
+      htmlContent = htmlContent.replace(regex, (_match) => {
+        matchFound = true;
+        count++;
+        return "[[BR_SEP]]";
+      });
+      tagIterations++;
+    }
+  });
+  */
 
   return htmlContent;
 }
