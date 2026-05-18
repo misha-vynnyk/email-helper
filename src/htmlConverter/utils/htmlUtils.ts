@@ -187,26 +187,7 @@ export function mergeSimilarTags(htmlContent: string): string {
     });
   }
 
-  // Merge adjacent h1-h6 tags generically as a fallback (even if styles differ) 
-  const tagsToMerge = ["h1", "h4", "h5", "h6"];
 
-  // Now handle tags normally (merge them)
-  tagsToMerge.forEach((tag) => {
-    const regex = new RegExp(`(<\\/${tag}>)\\s*(?:<br\\s*\\/?>\\s*)*<${tag}[^>]*>`, "gi");
-
-    let matchFound = true;
-    let tagIterations = 0;
-    while (matchFound && tagIterations < 50) {
-      matchFound = false;
-      let count = 0;
-      htmlContent = htmlContent.replace(regex, (_match) => {
-        matchFound = true;
-        count++;
-        return "[[BR_SEP]]";
-      });
-      tagIterations++;
-    }
-  });
 
   return htmlContent;
 }
