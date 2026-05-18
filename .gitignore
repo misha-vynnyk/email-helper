@@ -48,6 +48,9 @@ server/data/blocks/block-manager-config.json
 server/data/templates/
 server/data/.workspaces.json
 
+# Local ideas / notes (not tracked)
+ідеї/
+
 # OS files
 Thumbs.db
 .DS_Store
