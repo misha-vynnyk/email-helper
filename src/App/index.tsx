@@ -1,7 +1,7 @@
 import "react-toastify/dist/ReactToastify.css";
 
 import { useState } from "react";
-import { ErrorBoundary } from "react-error-boundary";
+import { ErrorBoundary, type FallbackProps } from "react-error-boundary";
 import { ToastContainer } from "react-toastify";
 
 import { Stack, useTheme } from "@mui/material";
@@ -16,16 +16,17 @@ import { useServerHealthCheck } from "../hooks/useServerHealthCheck";
 import SamplesDrawer, { SAMPLES_DRAWER_WIDTH } from "./SamplesDrawer";
 import TemplatePanel from "./TemplatePanel";
 
-function ErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary: () => void }) {
+function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
+  const err = error instanceof Error ? error : null;
   // Don't show error UI for browser extension errors
-  if (error.message?.includes("_controlUniqueID") || error.message?.includes("FormMetadata") || error.stack?.includes("content_script.js")) {
+  if (!err || err.message?.includes("_controlUniqueID") || err.message?.includes("FormMetadata") || err.stack?.includes("content_script.js")) {
     return null;
   }
 
   return (
     <div role='alert'>
       <p>Something went wrong:</p>
-      <pre>{error.message}</pre>
+      <pre>{err.message}</pre>
       <button onClick={resetErrorBoundary}>Try again</button>
     </div>
   );

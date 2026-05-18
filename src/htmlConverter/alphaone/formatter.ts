@@ -2,11 +2,13 @@
  * Main HTML/MJML formatting logic
  */
 
-import { config } from "../utils/config";
 import { htmlTemplates, mjmlTemplates } from "./templates";
 import * as utils from "../utils/htmlUtils";
 import * as colorUtils from "../utils/colorUtils";
 import { PLACEHOLDER_URL } from "../constants";
+
+const ALPHAONE_FONT = "Verdana, Geneva, Tahoma, sans-serif";
+const ALPHAONE_LINK_COLOR = "#0404e4";
 
 function getInlineStyleValue(style: string, property: string): string | null {
   const targetProperty = property.trim().toLowerCase();
@@ -49,7 +51,7 @@ function italicLinks(htmlContent: string): string {
     }
 
     const placeholder = `\x02LINK${savedLinks.length}\x03`;
-    savedLinks.push(`<a href="${PLACEHOLDER_URL}" style="font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: ${config.colors.link};">${coreText}</a>`);
+    savedLinks.push(`<a href="${PLACEHOLDER_URL}" style="font-family:${ALPHAONE_FONT};font-weight: 700;color: ${ALPHAONE_LINK_COLOR};text-decoration: underline;">${coreText}</a>`);
     return `${leadingSpaces}${placeholder}${trailingSpaces}`;
   });
 
@@ -79,7 +81,7 @@ function italicLinks(htmlContent: string): string {
       
       if (!coreText) return match;
 
-      return `${leadingSpaces}<a href="${PLACEHOLDER_URL}" style="font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: ${config.colors.link};"><em>${coreText}</em></a>${trailingSpaces}`;
+      return `${leadingSpaces}<a href="${PLACEHOLDER_URL}" style="font-family:${ALPHAONE_FONT};font-weight: 700;color: ${ALPHAONE_LINK_COLOR};text-decoration: underline;"><em>${coreText}</em></a>${trailingSpaces}`;
     }
     return match;
   });
@@ -107,7 +109,7 @@ function linksStyles(htmlContent: string): string {
 
       if (!coreText) return match;
 
-      return `${leadingSpaces}<a href="${PLACEHOLDER_URL}" style="font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: ${config.colors.link};">${coreText}</a>${trailingSpaces}`;
+      return `${leadingSpaces}<a href="${PLACEHOLDER_URL}" style="font-family:${ALPHAONE_FONT};font-weight: 700;color: ${ALPHAONE_LINK_COLOR};text-decoration: underline;">${coreText}</a>${trailingSpaces}`;
     }
     return match;
   });
@@ -170,17 +172,17 @@ function wrapTextInSpan(htmlContent: string, templateFn: (content: string) => st
   // 2. Wrap the whole result in a default span block
   if (type === "html") {
     htmlContent = `<tr>
-                      <td style="font-family:${config.fontFamily};font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;padding-top: 14px; padding-bottom: 14px;">
-                                <span style="font-family:${config.fontFamily};font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;">
+                      <td style="font-family:${ALPHAONE_FONT};font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;padding-top: 16px; padding-bottom: 16px;">
+                                <div style="font-family:${ALPHAONE_FONT};font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;">
                                     ${htmlContent}
-                                </span>
+                                </div>
                       </td>
                     </tr>`;
   } else {
     htmlContent = `
             <tr>
               <td align="left" style="font-size:0px;padding:10px 25px;word-break:break-word;">
-                <div style="font-family:${config.fontFamily};font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;">
+                <div style="font-family:${ALPHAONE_FONT};font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;">
                     ${htmlContent}
                 </div>
               </td>

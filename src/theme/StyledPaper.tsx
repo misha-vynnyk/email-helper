@@ -1,8 +1,6 @@
 import type { ReactElement } from "react";
 
 import { Paper, type PaperProps } from "@mui/material";
-import { alpha, useTheme } from "@mui/material/styles";
-
 import { useThemeMode } from "./ThemeContext";
 import { getComponentStyles } from "./componentStyles";
 
@@ -19,7 +17,6 @@ export function StyledPaper({
   sx,
   ...props
 }: StyledPaperProps): ReactElement {
-  const theme = useTheme();
   const { mode, style } = useThemeMode();
   const componentStyles = getComponentStyles(mode, style);
 
