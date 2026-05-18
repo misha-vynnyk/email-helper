@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 
 import { Card, type CardProps } from "@mui/material";
-import { alpha, useTheme } from "@mui/material/styles";
+import { useTheme } from "@mui/material/styles";
 
 import { useThemeMode } from "./ThemeContext";
 import { getComponentStyles } from "./componentStyles";
