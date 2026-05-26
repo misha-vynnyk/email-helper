@@ -1,14 +1,12 @@
 {
-  "name": "automation",
+  "name": "@flexibuilder/automation",
   "version": "1.0.0",
   "description": "Automated file upload to EPC Network storage with Playwright",
   "main": "scripts/main.js",
   "scripts": {
     "upload": "node scripts/main.js",
     "upload:finance": "node scripts/main.js",
-    "upload:health": "node scripts/main.js",
-    "server": "node server.js",
-    "start": "node server.js"
+    "upload:health": "node scripts/main.js"
   },
   "keywords": ["automation", "playwright", "upload", "storage"],
   "author": "Stanislav Drahoi",

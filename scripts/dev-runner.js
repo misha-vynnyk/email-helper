@@ -34,7 +34,7 @@ const args = [
   '-n', 'VITE,SRV,AI,INFO',
   '-c', 'blue,green,magenta,cyan',
   `\"vite --port ${vitePort} ${hostArg}\"`,
-  '\"cd server && npm run dev\"',
+  '\"npm run dev -w @flexibuilder/server\"',
   '\"npm run dev:ai\"',
   '\"node scripts/print-dashboard.js\"'
 ];
