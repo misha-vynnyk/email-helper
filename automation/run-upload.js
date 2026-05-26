@@ -1,53 +1,46 @@
 #!/usr/bin/env node
 /**
- * Cross-platform entry point for storage upload automation.
- * Resolves script path from this file's location, forwards all arguments.
+ * Entry point for the modular upload automation (v2).
+ * Points to automation/scripts/main.js — original run-upload.js is unchanged.
  *
- * Usage: node automation/run-upload.js <filePath> [category] [--no-confirm]
- *   or:  npm run automation:upload -- <filePath> [category] [--no-confirm]
- * Example: npm run automation:upload -- ./image.png finance
+ * Usage: node automation/run-upload-v2.js <filePath> [category] [--provider default|alphaone|ttt]
+ *   or:  npm run automation:upload-v2 -- <filePath> [category]
  */
-const fs = require("fs");
+"use strict";
+
+const fs   = require("fs");
 const path = require("path");
-const os = require("os");
 const { spawn } = require("child_process");
 
-const scriptPath = path.join(__dirname, "scripts", "upload-playwright-brave.js");
+const scriptPath = path.join(__dirname, "scripts", "main.js");
 const configPath = path.join(__dirname, "config.json");
 const args = process.argv.slice(2);
 
-// Resolve first positional argument (file path) to absolute path when caller used relative path
+// Resolve first positional arg (file path) to absolute path
 if (args.length > 0 && !args[0].startsWith("-")) {
-  const maybePath = args[0];
   try {
-    const abs = require("path").resolve(process.cwd(), maybePath);
-    // If the file exists relative to the caller cwd, replace with absolute path
-    const fsLocal = require("fs");
-    if (fsLocal.existsSync(abs)) {
-      args[0] = abs;
-    }
-  } catch (e) {
-    // ignore resolution errors
-  }
+    const abs = path.resolve(process.cwd(), args[0]);
+    if (fs.existsSync(abs)) args[0] = abs;
+  } catch {}
 }
 
 function ensureAutomationDepsInstalled() {
-  const automationDir = __dirname;
-  const tryResolve = () => {
-    try {
-      // Prefer playwright-core (we launch Brave, no bundled browsers needed).
-      require.resolve("playwright-core", { paths: [automationDir] });
-      return true;
-    } catch {
-      return false;
-    }
-  };
-
-  if (tryResolve()) return;
-
-  const npmCmd = process.platform === "win32" ? "npm.cmd" : "npm";
-  console.error(["", "Upload automation cannot start: Playwright dependency is missing.", "", "Fix (one-time):", `  ${npmCmd} --prefix automation install`, "", "Then re-run:", "  npm run automation:upload -- <filePath> [--provider default|alphaone] ...", ""].join("\n"));
-  process.exit(1);
+  try {
+    require.resolve("playwright-core", { paths: [__dirname] });
+  } catch {
+    const npmCmd = process.platform === "win32" ? "npm.cmd" : "npm";
+    console.error([
+      "",
+      "Upload automation cannot start: Playwright dependency is missing.",
+      "",
+      "Fix (one-time):",
+      `  ${npmCmd} --prefix automation install`,
+      "",
+      "Then re-run your upload command.",
+      "",
+    ].join("\n"));
+    process.exit(1);
+  }
 }
 
 function validateConfigPaths() {
@@ -55,56 +48,41 @@ function validateConfigPaths() {
     console.error(`❌ Config file not found: ${configPath}`);
     process.exit(1);
   }
-
   try {
     const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
     const platform = process.platform;
-    const homeDir = os.homedir();
     const issues = [];
 
-    // Check browser executable path
     let browserPath = config.browser.executablePath;
     if (browserPath && !fs.existsSync(browserPath)) {
-      // Try to detect
       if (platform === "darwin") {
-        const macPath = "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser";
-        if (fs.existsSync(macPath)) browserPath = macPath;
+        const mac = "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser";
+        if (fs.existsSync(mac)) browserPath = mac;
       } else if (platform === "win32") {
-        const winPaths = [
-          path.join(process.env.PROGRAMFILES || "C:\\Program Files", "BraveSoftware\\Brave-Browser\\Application\\brave.exe"),
-          path.join(process.env["PROGRAMFILES(X86)"] || "C:\\Program Files (x86)", "BraveSoftware\\Brave-Browser\\Application\\brave.exe"),
-          path.join(process.env.LOCALAPPDATA || "", "BraveSoftware\\Brave-Browser\\Application\\brave.exe"),
-        ];
-        for (const wp of winPaths) {
-          if (fs.existsSync(wp)) {
-            browserPath = wp;
-            break;
-          }
+        for (const base of [process.env.PROGRAMFILES, process.env["PROGRAMFILES(X86)"], process.env.LOCALAPPDATA]) {
+          const wp = base && path.join(base, "BraveSoftware\\Brave-Browser\\Application\\brave.exe");
+          if (wp && fs.existsSync(wp)) { browserPath = wp; break; }
         }
       }
     }
 
     if (!browserPath || !fs.existsSync(browserPath)) {
-      if (platform === "win32") {
-        issues.push(`❌ Brave Browser not found at: ${config.browser.executablePath}`, "   Set environment variable: set BRAVE_EXECUTABLE_PATH=C:\\\\Path\\\\To\\\\brave.exe");
-      } else if (platform === "darwin") {
-        issues.push(`❌ Brave Browser not found at: ${config.browser.executablePath}`, "   Install from: https://brave.com/download/", "   Or set: export BRAVE_EXECUTABLE_PATH=/path/to/brave");
-      } else if (platform === "linux") {
-        issues.push(`❌ Brave Browser not found at: ${config.browser.executablePath}`, "   Install: sudo apt install brave-browser", "   Or set: export BRAVE_EXECUTABLE_PATH=/usr/bin/brave-browser");
-      }
+      const hints = {
+        win32:  ["   Set: set BRAVE_EXECUTABLE_PATH=C:\\\\Path\\\\To\\\\brave.exe"],
+        darwin: ["   Install: https://brave.com/download/", "   Or set: export BRAVE_EXECUTABLE_PATH=/path/to/brave"],
+        linux:  ["   Install: sudo apt install brave-browser", "   Or set: export BRAVE_EXECUTABLE_PATH=/usr/bin/brave-browser"],
+      };
+      issues.push(`❌ Brave Browser not found at: ${config.browser.executablePath}`, ...(hints[platform] || []));
     }
 
-    // Validate debug port is a number
     if (typeof config.browser.debugPort !== "number") {
       issues.push(`❌ Invalid debugPort in config: "${config.browser.debugPort}"`, "   Must be a number (e.g., 9222)");
     }
 
     if (issues.length > 0) {
       console.error("\n" + issues.join("\n") + "\n");
-      console.error("To fix these issues, you can either:");
-      console.error("  1. Install the missing software");
-      console.error("  2. Set environment variables to point to your installation");
-      console.error("  3. Manually update automation/config.json\n");
+      console.error("To fix: install the missing software, set environment variables,");
+      console.error("or manually update automation/config.json\n");
       process.exit(1);
     }
   } catch (e) {
@@ -121,6 +99,4 @@ const child = spawn(process.execPath, [scriptPath, ...args], {
   cwd: path.dirname(scriptPath),
 });
 
-child.on("exit", (code) => {
-  process.exit(code ?? 0);
-});
+child.on("exit", (code) => process.exit(code ?? 0));
