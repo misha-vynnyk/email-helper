@@ -155,10 +155,21 @@ export function addBrAfterClosingP(htmlContent: string): string {
 }
 
 export function removeStylesFromLists(htmlContent: string): string {
-  htmlContent = htmlContent.replace(/<ol[^>]*style="[^"]*"[^>]*>/gi, "<ol>\n");
-  htmlContent = htmlContent.replace(/<ul[^>]*style="[^"]*"[^>]*>/gi, "<ul>\n");
-  htmlContent = htmlContent.replace(/<li[^>]*style="[^"]*"[^>]*>/gi, "<li>");
+  // Strip ALL attributes from <ol>/<ul> (Google Docs adds style, start, etc.)
+  htmlContent = htmlContent.replace(/<ol[^>]*>/gi, "<ol>\n");
+  htmlContent = htmlContent.replace(/<ul[^>]*>/gi, "<ul>\n");
+  htmlContent = htmlContent.replace(/<li[^>]*>/gi, "<li>");
   htmlContent = htmlContent.replace(/<\/li>/gi, "</li>\n");
+
+  // Merge adjacent <ol></ol> blocks (Google Docs puts each <li> in its own <ol>)
+  // Allow any whitespace or <br> tags between </ol> and <ol>
+  let prevLen = 0;
+  while (htmlContent.length !== prevLen) {
+    prevLen = htmlContent.length;
+    htmlContent = htmlContent.replace(/<\/ol>\s*(?:<br\s*\/?> *\s*)*<ol>/gi, "\n");
+    htmlContent = htmlContent.replace(/<\/ul>\s*(?:<br\s*\/?> *\s*)*<ul>/gi, "\n");
+  }
+
   return htmlContent;
 }
 
