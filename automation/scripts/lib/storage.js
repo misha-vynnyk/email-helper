@@ -151,6 +151,10 @@ async function uploadWithRetry({ page, filePath, fileName, config, selectedStora
 
     if (fileAppearedAlready) {
       console.log(`🟡 File ${fileName} appeared after delay — retry not needed.`);
+      const publicUrl = `${(selectedStorage.publicBaseUrl || "").replace(/\/+$/, "")}/${serverFilePath}`;
+      playSound("success", config);
+      console.log(`📋 Copied to clipboard: ${serverFilePath}`);
+      console.log(`RESULT_JSON=${JSON.stringify({ provider, filePath: serverFilePath, publicUrl })}`);
       success = true;
     } else {
       success = await uploadFile({ page, filePath, fileName, config, selectedStorage, provider, serverFilePath, retry: true });
