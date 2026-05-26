@@ -1,14 +1,12 @@
 #!/usr/bin/env node
 
 /**
- * Automation setup script
- * Installs automation dependencies and validates configuration
- * Runs automatically as postinstall hook
+ * Automation setup script — validates and fixes config paths.
+ * Called by root postinstall; npm workspaces handles dependency installation.
  */
 
 const fs = require("fs");
 const path = require("path");
-const { execSync } = require("child_process");
 const os = require("os");
 
 const automationDir = __dirname;
@@ -16,22 +14,8 @@ const configPath = path.join(automationDir, "config.json");
 
 console.log("📦 Setting up automation module...\n");
 
-// Step 1: Install automation dependencies
-console.log("1️⃣  Installing automation dependencies...");
-try {
-  execSync("npm install", {
-    cwd: automationDir,
-    stdio: "pipe",
-  });
-  console.log("✅ Automation dependencies installed\n");
-} catch (e) {
-  console.error("❌ Failed to install automation dependencies");
-  console.error(e.message);
-  process.exit(1);
-}
-
-// Step 2: Validate and fix config paths
-console.log("2️⃣  Validating configuration paths...");
+// Validate and fix config paths
+console.log("⚙️  Validating configuration paths...");
 
 if (!fs.existsSync(configPath)) {
   console.error(`❌ Config file not found: ${configPath}`);
@@ -40,7 +24,6 @@ if (!fs.existsSync(configPath)) {
 
 try {
   const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-  const username = os.userInfo().username;
   const homeDir = os.homedir();
   const platform = process.platform;
 
@@ -57,19 +40,22 @@ try {
     // Update user data directories to current user
     const defaultBraveDir = path.join(homeDir, "Library/Application Support/BravePlaywright");
     const alphaBraveDir = path.join(homeDir, "Library/Application Support/BravePlaywright-AlfaOne");
+    const tttBraveDir = path.join(homeDir, "Library/Application Support/BravePlaywright-TerraTrans");
 
     if (config.browser.userDataDir !== defaultBraveDir) {
       config.browser.userDataDir = defaultBraveDir;
       configUpdated = true;
     }
-
     if (config.browserProfiles.default.userDataDir !== defaultBraveDir) {
       config.browserProfiles.default.userDataDir = defaultBraveDir;
       configUpdated = true;
     }
-
     if (config.browserProfiles.alphaone.userDataDir !== alphaBraveDir) {
       config.browserProfiles.alphaone.userDataDir = alphaBraveDir;
+      configUpdated = true;
+    }
+    if (config.browserProfiles.ttt.userDataDir !== tttBraveDir) {
+      config.browserProfiles.ttt.userDataDir = tttBraveDir;
       configUpdated = true;
     }
   } else if (platform === "win32") {
@@ -86,19 +72,22 @@ try {
     const appDataDir = process.env.APPDATA || path.join(homeDir, "AppData\\Roaming");
     const defaultBraveDirWin = path.join(appDataDir, "BravePlaywright");
     const alphaBraveDirWin = path.join(appDataDir, "BravePlaywright-AlfaOne");
+    const tttBraveDirWin = path.join(appDataDir, "BravePlaywright-TerraTrans");
 
     if (config.browser.userDataDir !== defaultBraveDirWin) {
       config.browser.userDataDir = defaultBraveDirWin;
       configUpdated = true;
     }
-
     if (config.browserProfiles.default.userDataDir !== defaultBraveDirWin) {
       config.browserProfiles.default.userDataDir = defaultBraveDirWin;
       configUpdated = true;
     }
-
     if (config.browserProfiles.alphaone.userDataDir !== alphaBraveDirWin) {
       config.browserProfiles.alphaone.userDataDir = alphaBraveDirWin;
+      configUpdated = true;
+    }
+    if (config.browserProfiles.ttt.userDataDir !== tttBraveDirWin) {
+      config.browserProfiles.ttt.userDataDir = tttBraveDirWin;
       configUpdated = true;
     }
 
@@ -115,19 +104,22 @@ try {
 
     const defaultBraveDirLinux = path.join(homeDir, ".config/BravePlaywright");
     const alphaBraveDirLinux = path.join(homeDir, ".config/BravePlaywright-AlfaOne");
+    const tttBraveDirLinux = path.join(homeDir, ".config/BravePlaywright-TerraTrans");
 
     if (config.browser.userDataDir !== defaultBraveDirLinux) {
       config.browser.userDataDir = defaultBraveDirLinux;
       configUpdated = true;
     }
-
     if (config.browserProfiles.default.userDataDir !== defaultBraveDirLinux) {
       config.browserProfiles.default.userDataDir = defaultBraveDirLinux;
       configUpdated = true;
     }
-
     if (config.browserProfiles.alphaone.userDataDir !== alphaBraveDirLinux) {
       config.browserProfiles.alphaone.userDataDir = alphaBraveDirLinux;
+      configUpdated = true;
+    }
+    if (config.browserProfiles.ttt.userDataDir !== tttBraveDirLinux) {
+      config.browserProfiles.ttt.userDataDir = tttBraveDirLinux;
       configUpdated = true;
     }
 
