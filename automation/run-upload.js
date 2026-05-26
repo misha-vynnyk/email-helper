@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * Entry point for the modular upload automation (v2).
- * Points to automation/scripts/main.js — original run-upload.js is unchanged.
+ * Entry point for the modular upload automation.
+ * Points to automation/scripts/main.js.
  *
- * Usage: node automation/run-upload-v2.js <filePath> [category] [--provider default|alphaone|ttt]
- *   or:  npm run automation:upload-v2 -- <filePath> [category]
+ * Usage: node automation/run-upload.js <filePath> [category] [--provider default|alphaone|ttt]
+ *   or:  npm run automation:upload -- <filePath> [category]
  */
 "use strict";
 
@@ -62,6 +62,10 @@ function validateConfigPaths() {
         for (const base of [process.env.PROGRAMFILES, process.env["PROGRAMFILES(X86)"], process.env.LOCALAPPDATA]) {
           const wp = base && path.join(base, "BraveSoftware\\Brave-Browser\\Application\\brave.exe");
           if (wp && fs.existsSync(wp)) { browserPath = wp; break; }
+        }
+      } else {
+        for (const lp of ["/usr/bin/brave-browser", "/usr/bin/brave"]) {
+          if (fs.existsSync(lp)) { browserPath = lp; break; }
         }
       }
     }
