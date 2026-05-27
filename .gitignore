@@ -73,3 +73,5 @@ server/ai/__pycache__/
 *.pdparams
 *.pdopt
 *.pdmodel
+out/
+dist-electron/
