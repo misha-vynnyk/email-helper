@@ -1,17 +1,5 @@
 fastapi>=0.109.2
 uvicorn[standard]>=0.27.1
-urllib3<2.0.0
 python-multipart>=0.0.9
-# Allow pip to resolve appropriate torch for the platform (cpu/cuda/mps)
-torch>=2.2.0
-# Pin transformers to avoid 5.x bleeding edge issues
-transformers==4.37.2
 pillow>=10.2.0
-# Torch/Paddle are incompatible with NumPy 2.0 (ABI issues)
-numpy<2.0.0
-# paddlepaddle can be tricky on Mac; let's allow it to try install, but users might need manual install if it fails
-paddlepaddle>=2.6.0
-paddleocr>=2.7.0.3
-# bitsandbytes is often problematic on non-CUDA; marking as optional or strictly Linux/Windows CUDA
-bitsandbytes>=0.42.0; sys_platform == 'linux' or sys_platform == 'win32'
 requests>=2.31.0

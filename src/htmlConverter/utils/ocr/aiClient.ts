@@ -45,7 +45,7 @@ function normalizeAiFilenameSuggestion(value: string): string {
 }
 
 /**
- * Client for the Python AI Backend (PaddleOCR + BLIP + CLIP)
+ * Client for the Python AI Backend (Gemma 3 via Ollama)
  * Endpoint: http://localhost:8000/api/analyze
  */
 export class AiBackendClient {
@@ -78,7 +78,7 @@ export class AiBackendClient {
   /**
    * Analyzes an image using the AI Backend with retry logic
    */
-  static async analyzeImage(blob: Blob, mode: "ensemble" | "gemma3" = "gemma3"): Promise<OcrAnalyzeResult> {
+  static async analyzeImage(blob: Blob): Promise<OcrAnalyzeResult> {
     // Check if backend is available first
     const available = await this.isAvailable();
     if (!available) {
@@ -89,7 +89,7 @@ export class AiBackendClient {
 
     for (let attempt = 1; attempt <= this.MAX_RETRIES; attempt++) {
       try {
-        return await this.performAnalysis(blob, mode);
+        return await this.performAnalysis(blob);
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
 
@@ -109,10 +109,9 @@ export class AiBackendClient {
   /**
    * Performs the actual analysis request
    */
-  private static async performAnalysis(blob: Blob, mode: "ensemble" | "gemma3"): Promise<OcrAnalyzeResult> {
+  private static async performAnalysis(blob: Blob): Promise<OcrAnalyzeResult> {
     const formData = new FormData();
     formData.append("file", blob, "image.png");
-    formData.append("mode", mode === "ensemble" ? "detailed" : "gemma3");
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.TIMEOUT);

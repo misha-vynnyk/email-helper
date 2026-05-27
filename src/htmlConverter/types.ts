@@ -158,7 +158,7 @@ export interface ImageAnalysisSettings {
   /**
    * AI Backend Provider
    */
-  aiProvider: "ensemble" | "gemma3";
+  aiProvider: "gemma3";
   /**
    * Safety limit for auto-run mode. 0 disables auto-run even if runMode="auto".
    */

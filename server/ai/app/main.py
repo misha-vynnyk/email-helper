@@ -15,8 +15,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Email Helper AI Service",
-    description="Local AI Backend for Advanced Image Analysis (OCR, Captioning, Tagging)",
-    version="0.2.1",
+    description="Local AI Backend for Image Analysis via Gemma 3 (Ollama)",
+    version="0.3.0",
     lifespan=lifespan
 )
 

@@ -154,7 +154,7 @@ export function createOcrAnalyzer(): OcrAnalyzer {
 
           try {
             onProgress?.(0.1); // Connecting...
-            const result = await AiBackendClient.analyzeImage(blob, settings.aiProvider || "gemma3");
+            const result = await AiBackendClient.analyzeImage(blob);
             onProgress?.(1); // Done
 
             // Cache this result
