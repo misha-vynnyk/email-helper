@@ -17,7 +17,7 @@
     "dev-frontend": "vite --open",
     "dev-backend": "npm run dev -w @flexibuilder/server",
     "dev:ai": "node scripts/run-ai.js",
-    "dev:electron": "electron-vite dev",
+    "dev:electron": "concurrently -n ELECTRON,AI -c green,magenta \"electron-vite dev\" \"npm run dev:ai\"",
     "build": "vite build",
     "build:electron": "electron-vite build",
     "preview": "vite preview",
