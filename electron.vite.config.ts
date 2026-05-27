@@ -38,6 +38,9 @@ export default defineConfig({
           changeOrigin: true,
           ws: true,
           rewrite: (p) => p.replace(/^\/ai-api/, ""),
+          configure: (proxy) => {
+            proxy.on("error", () => {}); // AI service may not be running — silence proxy noise
+          },
         },
       },
     },
