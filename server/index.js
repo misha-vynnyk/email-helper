@@ -5,7 +5,6 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 
 const app = express();
-const PORT = process.env.PORT || 3001;
 
 // Rate limiting - disabled for local development
 const limiter = rateLimit({
@@ -109,35 +108,39 @@ app.use((req, res) => {
   res.status(404).json({ error: "Not found" });
 });
 
-// Start server on fixed port
-const startServer = () => {
-  const PORT = parseInt(process.env.PORT) || 3001;
-
-  app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📝 Environment: ${process.env.NODE_ENV || "development"}`);
-    console.log(`🌐 CORS enabled for: ${allowedOrigins.join(", ")}`);
-  }).on("error", (err) => {
-    if (err.code === "EADDRINUSE") {
-      console.error(`❌ Port ${PORT} is already in use! Please kill the process using it.`);
-      process.exit(1);
-    } else {
-      console.error("❌ Failed to start server:", err.message);
-      process.exit(1);
-    }
+/**
+ * Starts the Express server on the given port.
+ * Returns a Promise that resolves to the http.Server instance.
+ * Used both for standalone mode and when embedded in Electron.
+ */
+const startServer = (port) => {
+  port = parseInt(port) || parseInt(process.env.PORT) || 3001;
+  return new Promise((resolve, reject) => {
+    const server = app.listen(port, () => {
+      console.log(`🚀 Server running on port ${port}`);
+      console.log(`📝 Environment: ${process.env.NODE_ENV || "development"}`);
+      resolve(server);
+    }).on("error", (err) => {
+      reject(err);
+    });
   });
 };
 
-// Graceful error handling
-process.on("uncaughtException", (error) => {
-  console.error("❌ Uncaught Exception:", error);
-  process.exit(1);
-});
+module.exports = { startServer, app };
 
-process.on("unhandledRejection", (reason, promise) => {
-  console.error("❌ Unhandled Rejection at:", promise, "reason:", reason);
-  process.exit(1);
-});
+// Run standalone when executed directly (npm run dev-backend)
+if (require.main === module) {
+  process.on("uncaughtException", (error) => {
+    console.error("❌ Uncaught Exception:", error);
+    process.exit(1);
+  });
+  process.on("unhandledRejection", (reason, promise) => {
+    console.error("❌ Unhandled Rejection at:", promise, "reason:", reason);
+    process.exit(1);
+  });
 
-// Start the server
-startServer();
+  startServer().catch((err) => {
+    console.error("❌ Failed to start server:", err.message);
+    process.exit(1);
+  });
+}
