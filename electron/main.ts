@@ -28,7 +28,10 @@ function startBackend(): Promise<void> {
     const serverDir = path.join(__dirname, "../../server");
     const serverEntry = path.join(serverDir, "index.js");
 
-    backendProcess = spawn(process.execPath, [serverEntry], {
+    // Use system node in dev; packaged builds will handle this differently (Phase 6)
+    const nodeBin = app.isPackaged ? process.execPath : "node";
+
+    backendProcess = spawn(nodeBin, [serverEntry], {
       cwd: serverDir,
       env: { ...process.env, PORT: "3001", NODE_ENV: process.env.NODE_ENV || "production" },
       stdio: ["ignore", "pipe", "pipe"],
@@ -88,7 +91,9 @@ function createWindow(): void {
 }
 
 app.whenReady().then(async () => {
-  await startBackend();
+  await startBackend().catch((err) => {
+    console.error("❌ Backend failed to start:", err.message);
+  });
   createWindow();
 
   app.on("activate", () => {
