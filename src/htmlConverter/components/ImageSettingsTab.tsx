@@ -128,13 +128,12 @@ export const ImageSettingsTab: React.FC<ImageSettingsTabProps> = ({ ui, setUi, i
             {imageAnalysis.useAiBackend && (
               <div className='space-y-2 pt-2 border-t border-border/30'>
                 <Label className='text-xs text-muted-foreground'>AI Модель (Провайдер)</Label>
-                <Select disabled={!imageAnalysis.enabled} value={imageAnalysis.aiProvider || "gemma3"} onValueChange={(v) => setImageAnalysis((prev) => ({ ...prev, aiProvider: v as "ensemble" | "gemma3" }))}>
+                <Select disabled={!imageAnalysis.enabled} value="gemma3" onValueChange={(v) => setImageAnalysis((prev) => ({ ...prev, aiProvider: v as "gemma3" }))}>
                   <SelectTrigger className='h-8'>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value='gemma3'>Gemma 3 4B (Ollama) — Рекомендовано</SelectItem>
-                    <SelectItem value='ensemble'>Ensemble (OCR + CLIP) — Застаріло</SelectItem>
+                    <SelectItem value='gemma3'>Gemma 3 4B (Ollama)</SelectItem>
                   </SelectContent>
                 </Select>
                 {imageAnalysis.aiProvider === "gemma3" && aiBackendStatus === "ollama_offline" && (
