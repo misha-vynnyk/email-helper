@@ -1,6 +1,31 @@
-import { app, BrowserWindow, shell } from "electron";
+import { app, BrowserWindow, shell, ipcMain, dialog, Notification } from "electron";
 import path from "path";
 import { spawn, ChildProcess } from "child_process";
+
+function registerIpcHandlers(): void {
+  ipcMain.handle("app:getVersion", () => app.getVersion());
+
+  ipcMain.handle("dialog:openFolder", async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ["openDirectory"],
+    });
+    return result.canceled ? null : result.filePaths[0];
+  });
+
+  ipcMain.handle("dialog:openFile", async (_event, filters) => {
+    const result = await dialog.showOpenDialog({
+      properties: ["openFile"],
+      filters: filters ?? [{ name: "All Files", extensions: ["*"] }],
+    });
+    return result.canceled ? null : result.filePaths[0];
+  });
+
+  ipcMain.on("notification:show", (_event, { title, body }: { title: string; body: string }) => {
+    if (Notification.isSupported()) {
+      new Notification({ title, body }).show();
+    }
+  });
+}
 
 const PREFERRED_PORT = 3001;
 let backendProcess: ChildProcess | null = null;
@@ -126,6 +151,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(async () => {
+  registerIpcHandlers();
   await startBackend().catch((err) => {
     console.error("❌ Backend failed to start:", err.message);
   });

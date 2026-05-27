@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import Modal from "./Modal";
 
 import { addAllowedRoot, getAllowedRoots, removeAllowedRoot } from "../utils/templateApi";
+import { useElectronAPI } from "../../hooks/useElectronAPI";
 
 interface DirectoryManagementModalProps {
   open: boolean;
@@ -15,11 +16,18 @@ interface DirectoryManagementModalProps {
 }
 
 export default function DirectoryManagementModal({ open, onClose }: DirectoryManagementModalProps) {
+  const electronAPI = useElectronAPI();
   const [allowedDirectories, setAllowedDirectories] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [manualPath, setManualPath] = useState("");
   const [showManualInput, setShowManualInput] = useState(false);
+
+  const handleBrowse = async () => {
+    if (!electronAPI) return;
+    const selected = await electronAPI.openFolderDialog();
+    if (selected) await addDirectoryToAllowed(selected);
+  };
 
   useEffect(() => {
     if (open) {
@@ -138,9 +146,16 @@ export default function DirectoryManagementModal({ open, onClose }: DirectoryMan
       )}
 
       {!showManualInput ? (
-        <button onClick={() => setShowManualInput(true)} className='w-full flex justify-center items-center gap-2 px-4 py-3 text-sm font-bold bg-muted hover:bg-muted/80 text-foreground rounded-xl transition-all active:scale-95'>
-          <FolderOpenIcon size={18} /> Add Directory Path
-        </button>
+        <div className='flex gap-2'>
+          {electronAPI && (
+            <button onClick={handleBrowse} className='flex-1 flex justify-center items-center gap-2 px-4 py-3 text-sm font-bold bg-primary hover:brightness-110 text-primary-foreground rounded-xl transition-all active:scale-95'>
+              <FolderOpenIcon size={18} /> Browse…
+            </button>
+          )}
+          <button onClick={() => setShowManualInput(true)} className='flex-1 flex justify-center items-center gap-2 px-4 py-3 text-sm font-bold bg-muted hover:bg-muted/80 text-foreground rounded-xl transition-all active:scale-95'>
+            <FolderOpenIcon size={18} /> {electronAPI ? "Enter Path Manually" : "Add Directory Path"}
+          </button>
+        </div>
       ) : (
         <div className='mt-6 p-5 border border-border/50 bg-background rounded-xl'>
           <p className='text-sm font-bold text-foreground mb-4'>Add New Directory Path</p>

@@ -1,7 +1,17 @@
-import { contextBridge } from "electron";
+import { contextBridge, ipcRenderer } from "electron";
 
-// Expose a minimal API surface to the renderer.
-// Extend this as more native capabilities are needed.
 contextBridge.exposeInMainWorld("electronAPI", {
   isElectron: true,
+
+  getAppVersion: (): Promise<string> =>
+    ipcRenderer.invoke("app:getVersion"),
+
+  openFolderDialog: (): Promise<string | null> =>
+    ipcRenderer.invoke("dialog:openFolder"),
+
+  openFileDialog: (filters?: { name: string; extensions: string[] }[]): Promise<string | null> =>
+    ipcRenderer.invoke("dialog:openFile", filters),
+
+  showNotification: (title: string, body: string): void =>
+    ipcRenderer.send("notification:show", { title, body }),
 });
