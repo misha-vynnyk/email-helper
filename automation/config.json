@@ -20,7 +20,7 @@
     },
     "ttt": {
       "debugPort": 9224,
-      "userDataDir": "{{APP_DATA}}/BravePlaywright-TerraTrans",
+      "userDataDir": "/Users/mykhailo.vynnyk/Library/Application Support/BravePlaywright-TerraTrans",
       "autoCloseTab": false
     }
   },
