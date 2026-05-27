@@ -5,6 +5,7 @@ import { defineConfig } from "electron-vite";
 export default defineConfig({
   main: {
     build: {
+      outDir: "dist-electron/main",
       rollupOptions: {
         input: {
           index: path.resolve(__dirname, "electron/main.ts"),
@@ -14,6 +15,7 @@ export default defineConfig({
   },
   preload: {
     build: {
+      outDir: "dist-electron/preload",
       rollupOptions: {
         input: {
           index: path.resolve(__dirname, "electron/preload.ts"),
@@ -45,6 +47,7 @@ export default defineConfig({
       },
     },
     build: {
+      outDir: "dist-electron/renderer",
       rollupOptions: {
         input: {
           index: path.resolve(__dirname, "index.html"),
