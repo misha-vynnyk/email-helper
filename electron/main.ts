@@ -4,8 +4,27 @@ import { spawn, ChildProcess } from "child_process";
 
 let backendProcess: ChildProcess | null = null;
 
+function waitForServer(port: number, maxWaitMs = 30000): Promise<void> {
+  const http = require("http") as typeof import("http");
+  const start = Date.now();
+  return new Promise((resolve, reject) => {
+    const check = () => {
+      const req = http.get(`http://127.0.0.1:${port}/api/health`, (res) => {
+        if (res.statusCode === 200) return resolve();
+        retry();
+      });
+      req.on("error", retry);
+    };
+    const retry = () => {
+      if (Date.now() - start > maxWaitMs) return reject(new Error("Server start timeout"));
+      setTimeout(check, 500);
+    };
+    check();
+  });
+}
+
 function startBackend(): Promise<void> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const serverDir = path.join(__dirname, "../../server");
     const serverEntry = path.join(serverDir, "index.js");
 
@@ -16,9 +35,7 @@ function startBackend(): Promise<void> {
     });
 
     backendProcess.stdout?.on("data", (data: Buffer) => {
-      const msg = data.toString().trim();
-      console.log("[server]", msg);
-      if (msg.includes("running on port")) resolve();
+      console.log("[server]", data.toString().trim());
     });
 
     backendProcess.stderr?.on("data", (data: Buffer) => {
@@ -30,8 +47,9 @@ function startBackend(): Promise<void> {
       backendProcess = null;
     });
 
-    // Resolve after timeout in case the ready message never comes
-    setTimeout(resolve, 3000);
+    waitForServer(3001)
+      .then(resolve)
+      .catch(reject);
   });
 }
 
