@@ -597,13 +597,13 @@ export class TemplateManager {
     if (!html) return [];
     const sections = new Set<string>();
 
-    const pattern = /<!--[-=*\\s]*([^>]*?)[-=*\\s]*(?:-->|--!>)/gi;
+    const pattern = /<!--[-=*\s]*([^>]*?)[-=*\s]*(?:-->|--!>)/gi;
     let match;
 
     while ((match = pattern.exec(html)) !== null) {
       let name = match[1].trim();
 
-      name = name.replace(/^[-=*~!\\s]+|[-=*~!\\s]+$/g, '');
+      name = name.replace(/^[-=*~!\s]+|[-=*~!\s]+$/g, '');
 
       // Strip generic numeric block suffixes (e.g. Note-1 -> Note, Content-2-mob -> Content)
       name = name.replace(/-\d+(?:-[a-zA-Z]+)?$/, '');
@@ -629,12 +629,9 @@ export class TemplateManager {
       }
       
       name = lowerName.charAt(0).toUpperCase() + lowerName.slice(1);
-      
-      console.log(`[Backend-extractBlocks] Added block: "${name}"`);
       sections.add(name);
     }
 
-    console.log(`[Backend-extractBlocks] Final found blocks count: ${sections.size}`);
     return Array.from(sections).sort();
   }
 

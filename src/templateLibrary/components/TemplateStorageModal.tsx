@@ -5,6 +5,7 @@
 
 import { Plus as AddIcon, X as CloseIcon, Trash2 as DeleteIcon, FolderOpen, Star as StarIcon, Eye as VisibilityIcon, EyeOff as VisibilityOffIcon } from "lucide-react";
 import { useState } from "react";
+import { getElectronAPI } from "../../hooks/useElectronAPI";
 import Modal from "./Modal";
 
 import { addTemplateStorageLocation, getTemplateStorageLocations, removeTemplateStorageLocation, setDefaultTemplateLocation, TemplateStorageLocation, toggleTemplateLocationVisibility } from "../utils/templateStorageConfig";
@@ -24,6 +25,20 @@ export default function TemplateStorageModal({ open, onClose, onSave }: Template
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
+  const electronAPI = getElectronAPI();
+
+  const handleBrowseFolder = async () => {
+    if (!electronAPI) return;
+    const selectedPath = await electronAPI.openFolderDialog();
+    if (selectedPath) {
+      setNewLocationPath(selectedPath);
+      if (!newLocationName.trim()) {
+        const folderName = selectedPath.replace(/\\/g, "/").split("/").filter(Boolean).pop() || "";
+        setNewLocationName(folderName);
+      }
+    }
+  };
+
   const handleAddLocation = () => {
     try {
       if (!newLocationName.trim() || !newLocationPath.trim()) {
@@ -32,8 +47,9 @@ export default function TemplateStorageModal({ open, onClose, onSave }: Template
       }
 
       const trimmedPath = newLocationPath.trim();
-      if (!trimmedPath.startsWith("/")) {
-        setError("Path must be absolute (start with /). Example: /Users/your-name/Documents/templates");
+      const isAbsolutePath = trimmedPath.startsWith("/") || /^[A-Za-z]:[/\\]/.test(trimmedPath);
+      if (!isAbsolutePath) {
+        setError("Path must be absolute. Example: /Users/your-name/Documents/templates or C:\\Users\\name\\templates");
         return;
       }
 
@@ -193,8 +209,16 @@ export default function TemplateStorageModal({ open, onClose, onSave }: Template
 
           <div>
             <label className='block text-xs font-semibold text-muted-foreground mb-1'>Directory Path</label>
-            <input type='text' value={newLocationPath} onChange={(e) => setNewLocationPath(e.target.value)} placeholder='/Users/your-name/Documents/templates' className='w-full px-4 py-2.5 text-sm rounded-xl border-2 border-input bg-background focus:border-primary focus:ring-4 focus:ring-primary/10 text-foreground transition-all outline-none' />
-            <p className='text-[11px] text-muted-foreground mt-1.5 font-medium ml-1'>Must be an absolute path (starting with /)</p>
+            <div className='flex gap-2'>
+              <input type='text' value={newLocationPath} onChange={(e) => setNewLocationPath(e.target.value)} placeholder='/Users/your-name/Documents/templates' className='flex-1 px-4 py-2.5 text-sm rounded-xl border-2 border-input bg-background focus:border-primary focus:ring-4 focus:ring-primary/10 text-foreground transition-all outline-none' />
+              {electronAPI && (
+                <button type='button' onClick={handleBrowseFolder} title='Browse for folder' className='flex items-center gap-1.5 px-4 py-2.5 text-sm font-bold border-2 border-input bg-background hover:bg-muted text-foreground rounded-xl transition-all active:scale-95 shrink-0'>
+                  <FolderOpen size={16} strokeWidth={2.5} />
+                  Browse
+                </button>
+              )}
+            </div>
+            <p className='text-[11px] text-muted-foreground mt-1.5 font-medium ml-1'>Must be an absolute path — use Browse or type manually</p>
           </div>
 
           <div>
