@@ -75,7 +75,10 @@
     "formServerPort": 3838,
     "interactiveMode": true,
     "uploadWindowScale": 0.8,
-    "uploadCloseDelayMs": 1500
+    "uploadCloseDelayMs": 1500,
+    "uploadIdleCloseMs": 4000,
+    "loginTimeoutMs": 600000,
+    "uploadCompletionTimeoutMs": 60000
   },
   "timeouts": {
     "browserStart": 1500,
