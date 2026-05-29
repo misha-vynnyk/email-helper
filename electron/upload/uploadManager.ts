@@ -223,24 +223,11 @@ export async function uploadFile(
       return { success: true, publicUrl: `${publicBase}/${publicPrefix}/${publicPath}`, filePath: publicPath };
     }
 
-    // ── Step 4: Open upload menu ──────────────────────────────────────────────
+    // ── Steps 4+5: Attach CDP → intercept file chooser → click → set file ──────
+    // IMPORTANT: debugger must be attached and Page.enable called BEFORE clicking
+    // "Upload File" — otherwise the OS dialog opens before interception is ready.
     uploadWindow.setTitle("Storage — завантаження файлу...");
 
-    // #upload-main already confirmed present above — click it directly
-    await uploadWindow.webContents.executeJavaScript(`document.querySelector('#upload-main').click()`);
-
-    try {
-      await waitForSelector(uploadWindow, 'div[label="Upload File"]', 5_000, isCancelled);
-    } catch (err) {
-      if (isCancelError(err)) return { success: false, error: "Upload скасовано" };
-      return { success: false, error: "Меню завантаження не відкрилось — можливо, змінився UI сховища" };
-    }
-
-    if (isCancelled()) return { success: false, error: "Upload скасовано" };
-
-    // ── Step 5: Set file via CDP — intercept file chooser before OS dialog opens ─
-    // Mirrors how Playwright handles filechooser: enable interception first,
-    // then click the button; CDP fires fileChooserOpened instead of opening Finder.
     const dbg = uploadWindow.webContents.debugger;
     try {
       dbg.attach("1.3");
@@ -250,7 +237,10 @@ export async function uploadFile(
     }
 
     try {
-      // Suppress the OS file picker dialog
+      // Page.enable is required before any Page domain events fire (incl. fileChooserOpened)
+      await dbg.sendCommand("Page.enable");
+
+      // Suppress OS file picker — must be set before the click that triggers it
       await dbg.sendCommand("Page.setInterceptFileChooserDialog", { enabled: true });
 
       // Listen for the fileChooserOpened CDP event
@@ -262,14 +252,27 @@ export async function uploadFile(
       };
       dbg.on("message", msgHandler);
 
+      // Open upload menu
+      await uploadWindow.webContents.executeJavaScript(`document.querySelector('#upload-main').click()`);
+
+      try {
+        await waitForSelector(uploadWindow, 'div[label="Upload File"]', 5_000, isCancelled);
+      } catch (err) {
+        dbg.removeListener("message", msgHandler);
+        if (isCancelError(err)) return { success: false, error: "Upload скасовано" };
+        return { success: false, error: "Меню завантаження не відкрилось — можливо, змінився UI сховища" };
+      }
+
+      if (isCancelled()) { dbg.removeListener("message", msgHandler); return { success: false, error: "Upload скасовано" }; }
+
       // Click "Upload File" — OS dialog is suppressed, CDP event fires instead
       await uploadWindow.webContents.executeJavaScript(
         `document.querySelector('div[label="Upload File"]').click()`
       );
 
-      // Wait for the fileChooserOpened event
+      // Wait for Page.fileChooserOpened
       const backendNodeId = await new Promise<number>((resolve, reject) => {
-        const deadline = setTimeout(() => reject(new Error("File chooser не відкрився (5s timeout)")), 5_000);
+        const deadline = setTimeout(() => reject(new Error("File chooser не відкрився (10s timeout)")), 10_000);
         const check = setInterval(() => {
           if (fileChooserBackendNodeId !== null) {
             clearInterval(check);
@@ -286,7 +289,7 @@ export async function uploadFile(
 
       dbg.removeListener("message", msgHandler);
 
-      // Set the file directly — no dialog, no Finder
+      // Set the file directly — no OS dialog
       await dbg.sendCommand("DOM.setFileInputFiles", {
         backendNodeId,
         files: [req.tempPath],
