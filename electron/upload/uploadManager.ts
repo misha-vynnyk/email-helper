@@ -223,84 +223,76 @@ export async function uploadFile(
       return { success: true, publicUrl: `${publicBase}/${publicPrefix}/${publicPath}`, filePath: publicPath };
     }
 
-    // ── Steps 4+5: Attach CDP → intercept file chooser → click → set file ──────
-    // IMPORTANT: debugger must be attached and Page.enable called BEFORE clicking
-    // "Upload File" — otherwise the OS dialog opens before interception is ready.
+    // ── Steps 4+5: Suppress OS dialog via monkey-patch, set file via CDP ────────
+    // Page.setInterceptFileChooserDialog is unreliable in Electron debugger.
+    // Instead: override HTMLInputElement.prototype.click in the page context to
+    // silently block the OS picker, then use DOM.setFileInputFiles which fires
+    // input/change events that React's onChange handler picks up normally.
     uploadWindow.setTitle("Storage — завантаження файлу...");
 
-    const dbg = uploadWindow.webContents.debugger;
-    try {
-      dbg.attach("1.3");
-      debuggerAttached = true;
-    } catch {
-      return { success: false, error: "Не вдалось підключити CDP debugger — спробуйте ще раз" };
-    }
-
-    try {
-      // Page.enable is required before any Page domain events fire (incl. fileChooserOpened)
-      await dbg.sendCommand("Page.enable");
-
-      // Suppress OS file picker — must be set before the click that triggers it
-      await dbg.sendCommand("Page.setInterceptFileChooserDialog", { enabled: true });
-
-      // Listen for the fileChooserOpened CDP event
-      let fileChooserBackendNodeId: number | null = null;
-      const msgHandler = (_e: unknown, method: string, params: Record<string, unknown>) => {
-        if (method === "Page.fileChooserOpened") {
-          fileChooserBackendNodeId = params.backendNodeId as number;
-        }
+    // Suppress OS file picker BEFORE anything triggers it
+    await uploadWindow.webContents.executeJavaScript(`
+      window.__origFileInputClick = HTMLInputElement.prototype.click;
+      HTMLInputElement.prototype.click = function() {
+        if (this.type === 'file') return;
+        return window.__origFileInputClick.apply(this, arguments);
       };
-      dbg.on("message", msgHandler);
+    `);
 
-      // Open upload menu
+    try {
+      // Open dropdown menu
       await uploadWindow.webContents.executeJavaScript(`document.querySelector('#upload-main').click()`);
 
       try {
         await waitForSelector(uploadWindow, 'div[label="Upload File"]', 5_000, isCancelled);
       } catch (err) {
-        dbg.removeListener("message", msgHandler);
         if (isCancelError(err)) return { success: false, error: "Upload скасовано" };
         return { success: false, error: "Меню завантаження не відкрилось — можливо, змінився UI сховища" };
       }
 
-      if (isCancelled()) { dbg.removeListener("message", msgHandler); return { success: false, error: "Upload скасовано" }; }
+      if (isCancelled()) return { success: false, error: "Upload скасовано" };
 
-      // Click "Upload File" — OS dialog is suppressed, CDP event fires instead
+      // Click "Upload File" — MinIO tries to open OS dialog but it's suppressed
       await uploadWindow.webContents.executeJavaScript(
         `document.querySelector('div[label="Upload File"]').click()`
       );
 
-      // Wait for Page.fileChooserOpened
-      const backendNodeId = await new Promise<number>((resolve, reject) => {
-        const deadline = setTimeout(() => reject(new Error("File chooser не відкрився (10s timeout)")), 10_000);
-        const check = setInterval(() => {
-          if (fileChooserBackendNodeId !== null) {
-            clearInterval(check);
-            clearTimeout(deadline);
-            resolve(fileChooserBackendNodeId!);
-          }
-          if (isCancelled()) {
-            clearInterval(check);
-            clearTimeout(deadline);
-            reject(new Error(CANCEL_MSG));
-          }
-        }, 50);
-      });
+      // Give MinIO's click handler a moment to run
+      await sleep(uploadWindow, 300);
+      if (isCancelled()) return { success: false, error: "Upload скасовано" };
 
-      dbg.removeListener("message", msgHandler);
+      // Attach CDP and set file on the input — fires change events React can detect
+      const dbg = uploadWindow.webContents.debugger;
+      try {
+        dbg.attach("1.3");
+        debuggerAttached = true;
+      } catch {
+        return { success: false, error: "Не вдалось підключити CDP debugger — спробуйте ще раз" };
+      }
 
-      // Set the file directly — no OS dialog
-      await dbg.sendCommand("DOM.setFileInputFiles", {
-        backendNodeId,
-        files: [req.tempPath],
-      });
+      try {
+        const { root } = await dbg.sendCommand("DOM.getDocument");
+        const { nodeId } = await dbg.sendCommand("DOM.querySelector", {
+          nodeId: root.nodeId,
+          selector: 'input[type="file"]',
+        });
 
-      await dbg.sendCommand("Page.setInterceptFileChooserDialog", { enabled: false });
-    } catch (err) {
-      if (isCancelError(err)) return { success: false, error: "Upload скасовано" };
-      return { success: false, error: `CDP помилка при завантаженні файлу: ${(err as Error).message}` };
+        if (!nodeId || nodeId === 0) {
+          return { success: false, error: "Поле вибору файлу не знайдено на сторінці" };
+        }
+
+        await dbg.sendCommand("DOM.setFileInputFiles", { nodeId, files: [req.tempPath] });
+      } catch (err) {
+        if (isCancelError(err)) return { success: false, error: "Upload скасовано" };
+        return { success: false, error: `CDP помилка при завантаженні файлу: ${(err as Error).message}` };
+      } finally {
+        try { dbg.detach(); debuggerAttached = false; } catch {}
+      }
     } finally {
-      try { dbg.detach(); debuggerAttached = false; } catch {}
+      // Always restore original click — even if upload fails
+      uploadWindow.webContents.executeJavaScript(`
+        if (window.__origFileInputClick) HTMLInputElement.prototype.click = window.__origFileInputClick;
+      `).catch(() => {});
     }
 
     // ── Step 6: Wait for file to appear in directory listing ─────────────────
