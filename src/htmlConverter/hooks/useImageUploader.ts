@@ -118,6 +118,7 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
       const uploadedUrls: Record<string, string> = {};
       const results: Array<UploadResult> = [];
       let successCount = 0;
+      let skippedCount = 0;
 
       // Local helper with closure access
       const getTempPathInner = async (image: ProcessedImage, fname: string): Promise<string> => {
@@ -199,7 +200,7 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
             onLog?.(`📤 [${i + 1}/${completed.length}] Завантаження ${filename}...`);
             const tempPath = await getTempPathInner(img, filename);
 
-            let result: { success?: boolean; filePath?: string; publicUrl?: string; error?: string } = {};
+            let result: { success?: boolean; filePath?: string; publicUrl?: string; error?: string; skipped?: boolean } = {};
 
             if (uploadMode === "electron") {
               const electronAPI = getElectronAPI();
@@ -236,11 +237,19 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
             if (result.filePath) {
               const fullUrl = result.publicUrl || `${STORAGE_URL_PREFIX}${result.filePath}`;
               uploadedUrls[img.src] = fullUrl;
-              successCount++;
-              onLog?.(`✅ [${i + 1}/${completed.length}] ${filename} → storage`);
-              const resObj = { fileId: img.id, filename, url: fullUrl, success: true };
-              results.push(resObj);
-              onProgress?.(resObj);
+              if (result.skipped) {
+                skippedCount++;
+                onLog?.(`⚠️ [${i + 1}/${completed.length}] ${filename}: вже існує (пропущено)`);
+                const resObj = { fileId: img.id, filename, url: fullUrl, success: true, skipped: true };
+                results.push(resObj);
+                onProgress?.(resObj);
+              } else {
+                successCount++;
+                onLog?.(`✅ [${i + 1}/${completed.length}] ${filename} → storage`);
+                const resObj = { fileId: img.id, filename, url: fullUrl, success: true };
+                results.push(resObj);
+                onProgress?.(resObj);
+              }
             }
           } catch (error) {
             const errorMsg = error instanceof Error ? error.message : "Unknown error";
@@ -279,10 +288,13 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
         }
 
         const errorCount = results.filter((r) => !r.success).length;
+        const totalDone = successCount + skippedCount;
         if (successCount === completed.length) {
           onLog?.(`🎉 Успішно завантажено всі ${successCount} зображень`);
-        } else if (successCount > 0) {
-          onLog?.(`⚠️ Завантажено ${successCount} з ${completed.length} зображень (${errorCount} помилок)`);
+        } else if (totalDone === completed.length && skippedCount > 0) {
+          onLog?.(`⚠️ Завантажено ${successCount}, пропущено (вже існують): ${skippedCount}`);
+        } else if (totalDone > 0) {
+          onLog?.(`⚠️ Завантажено ${successCount}, пропущено ${skippedCount}, помилок: ${errorCount}`);
         } else {
           onLog?.(`❌ Не вдалося завантажити жодного зображення`);
         }

@@ -39,6 +39,7 @@ export interface UploadResult {
   url: string;
   success: boolean;
   error?: string;
+  skipped?: boolean;
 }
 
 export interface StorageUploadResponse {
