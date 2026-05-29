@@ -32,21 +32,22 @@ export function useTemplateData() {
       if (Array.isArray(data)) {
         const locations = getTemplateStorageLocations(false);
 
+        let visibleTemplates: EmailTemplate[];
         if (locations.length === 0) {
-          setTemplates(data);
+          visibleTemplates = [];
         } else {
-          const allowedPaths = new Set(locations.map((loc) => loc.path));
-          const filteredTemplates = data.filter((template) => {
-            if (!template.filePath) return false;
-            return Array.from(allowedPaths).some((path) => template.filePath.startsWith(path));
-          });
-          setTemplates(filteredTemplates);
+          const allowedPaths = locations.map((loc) => loc.path);
+          visibleTemplates = data.filter(
+            (template) => template.filePath && allowedPaths.some((p) => template.filePath.startsWith(p))
+          );
         }
 
-        const templatesWithPreview = data.filter((t) => t.preview);
-        if (templatesWithPreview.length > 0) {
-          preloadImages(templatesWithPreview.map((t) => t.preview!).join(" ")).catch((error) => {
-            logger.warn("TemplateLibrary", "Failed to preload template preview images", error);
+        setTemplates(visibleTemplates);
+
+        const previews = visibleTemplates.filter((t) => t.preview).map((t) => t.preview!);
+        if (previews.length > 0) {
+          preloadImages(previews.join(" ")).catch((err) => {
+            logger.warn("TemplateLibrary", "Failed to preload template preview images", err);
           });
         }
       } else {
@@ -71,7 +72,8 @@ export function useTemplateData() {
   }, []);
 
   /**
-   * Synchronizes all configuring storage locations with the backend index.
+   * Synchronizes all configured storage locations with the backend index.
+   * Sends all paths in a single API call to avoid redundant re-syncs.
    */
   const syncTemplates = useCallback(async () => {
     setSyncing(true);
@@ -83,40 +85,20 @@ export function useTemplateData() {
 
       if (locations.length === 0) {
         setError("No storage locations configured. Please add directories in Storage settings.");
-        setSyncing(false);
         return;
       }
 
-      let totalFound = 0;
-      const errors: string[] = [];
+      const result = await syncAllTemplates({
+        recursive: true,
+        category: "Other",
+        paths: locations.map((loc) => loc.path),
+      });
 
-      for (const location of locations) {
-        try {
-          const result = await syncAllTemplates({
-            recursive: true,
-            category: "Other",
-            paths: [location.path],
-          });
-
-          totalFound += result.templatesFound;
-        } catch (err) {
-          const errorMsg = `Failed to sync ${location.name}: ${err instanceof Error ? err.message : "Unknown error"}`;
-          const isConnectionError = err instanceof Error && (err.message.includes("Failed to fetch") || err.message.includes("connection") || err.message.includes("Server connection failed"));
-
-          if (isConnectionError) {
-            logger.warn("TemplateLibrary", `Server unavailable - sync failed for ${location.name}`);
-          } else {
-            logger.error("TemplateLibrary", errorMsg, err);
-          }
-
-          errors.push(errorMsg);
-        }
-      }
-
-      if (errors.length > 0) {
-        setError(`Sync completed with errors:\n${errors.join("\n")}`);
+      if (result.errors && result.errors.length > 0) {
+        const errorMessages = result.errors.map((e) => `${e.root}: ${e.error}`);
+        setError(`Sync completed with errors:\n${errorMessages.join("\n")}`);
       } else {
-        setSyncMessage(`✅ Sync completed: ${totalFound} templates found`);
+        setSyncMessage(`✅ Sync completed: ${result.templatesFound} templates found`);
         setTimeout(() => setSyncMessage(null), 5000);
       }
 
@@ -137,18 +119,18 @@ export function useTemplateData() {
   }, [loadTemplates]);
 
   /**
-   * Initial data load integration
+   * Initial data load — only fetches existing templates from the backend index.
+   * Use syncTemplates() explicitly when the user wants to scan for new files.
    */
   const initializeTemplates = useCallback(async () => {
     if (loadingRef.current) return;
     loadingRef.current = true;
     try {
       await loadTemplates();
-      await syncTemplates();
     } finally {
       loadingRef.current = false;
     }
-  }, [loadTemplates, syncTemplates]);
+  }, [loadTemplates]);
 
   const deleteTemplate = useCallback((templateId: string) => {
     setTemplates((prev) => prev.filter((t) => t.id !== templateId));
