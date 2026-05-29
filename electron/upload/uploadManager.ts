@@ -300,18 +300,45 @@ export async function uploadFile(
       try { dbg.detach(); debuggerAttached = false; } catch {}
     }
 
-    // ── Step 6: Wait for upload to complete ───────────────────────────────────
+    // ── Step 6: Wait for file to appear in directory listing ─────────────────
+    // MinIO's upload progress dialog (.uploaded-list) appears and disappears
+    // quickly — unreliable to poll. Instead wait for the filename to show up
+    // in the directory (.fileNameText), confirming the upload completed.
     uploadWindow.setTitle("Storage — очікування завершення...");
 
-    try {
-      await waitForSelector(uploadWindow, ".uploaded-list .file-name", 60_000, isCancelled);
-    } catch (err) {
-      if (isCancelError(err)) return { success: false, error: "Upload скасовано під час передачі файлу" };
-      return { success: false, error: "Timeout завантаження (60s) — файл міг не завантажитись. Перевірте інтернет та спробуйте ще раз" };
-    }
+    const appeared = await new Promise<boolean>((resolve) => {
+      const deadline = Date.now() + 60_000;
+      const interval = setInterval(async () => {
+        if (isCancelled() || uploadWindow.isDestroyed()) {
+          clearInterval(interval);
+          resolve(false);
+          return;
+        }
+        try {
+          const found: boolean = await uploadWindow.webContents.executeJavaScript(
+            `Array.from(document.querySelectorAll('.fileNameText')).some(el => el.textContent.trim() === ${JSON.stringify(filename)})`
+          );
+          if (found) { clearInterval(interval); resolve(true); return; }
+          if (Date.now() > deadline) { clearInterval(interval); resolve(false); }
+        } catch {
+          if (uploadWindow.isDestroyed() || isCancelled()) {
+            clearInterval(interval);
+            resolve(false);
+          }
+        }
+      }, 500);
+    });
+
+    if (isCancelled()) return { success: false, error: "Upload скасовано під час передачі файлу" };
+    if (!appeared) return { success: false, error: "Timeout (60s) — файл не з'явився в директорії. Перевірте інтернет та спробуйте ще раз" };
 
     const publicPath = [publicRoot, category, formattedName, filename].filter(Boolean).join("/");
     const publicUrl  = `${publicBase}/${publicPrefix}/${publicPath}`;
+
+    // Brief pause so the user can see the completed upload before the window closes
+    const closeDelayMs = (storageConfig as Record<string, number>).closeDelayMs ?? 1500;
+    uploadWindow.setTitle(`✅ Завантажено — вікно закриється автоматично`);
+    await sleep(uploadWindow, closeDelayMs);
 
     return { success: true, publicUrl, filePath: publicPath };
 

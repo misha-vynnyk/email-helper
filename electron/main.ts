@@ -80,6 +80,9 @@ function registerIpcHandlers(): void {
         (storageProviders as Record<string, unknown>).windowWidth  = Math.round(width  * scale);
         (storageProviders as Record<string, unknown>).windowHeight = Math.round(height * scale);
       }
+      if (fullConfig.ui?.uploadCloseDelayMs !== undefined) {
+        (storageProviders as Record<string, unknown>).closeDelayMs = fullConfig.ui.uploadCloseDelayMs;
+      }
     } catch (e) {
       return { success: false, error: `Cannot read automation/config.json: ${(e as Error).message}` };
     }

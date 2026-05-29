@@ -74,7 +74,8 @@
   "ui": {
     "formServerPort": 3838,
     "interactiveMode": true,
-    "uploadWindowScale": 0.8
+    "uploadWindowScale": 0.8,
+    "uploadCloseDelayMs": 1500
   },
   "timeouts": {
     "browserStart": 1500,
