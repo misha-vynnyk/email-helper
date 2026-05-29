@@ -15,6 +15,7 @@ export interface UploadResult {
   publicUrl?: string;
   filePath?: string;
   error?: string;
+  skipped?: boolean; // true when file already existed (duplicate)
 }
 
 const CANCEL_MSG = "cancelled";
@@ -320,7 +321,7 @@ export async function uploadFile(
       keepWindowOpen = true;
       uploadWindow.setTitle("Storage — файл вже існує");
       scheduleSessionClose(req.provider, idleCloseMs);
-      return { success: true, publicUrl: `${publicBase}/${publicPrefix}/${publicPath}`, filePath: publicPath };
+      return { success: true, skipped: true, publicUrl: `${publicBase}/${publicPrefix}/${publicPath}`, filePath: publicPath };
     }
 
     // ── Steps 4-6: Upload with retry ───────────────────────────────────────
