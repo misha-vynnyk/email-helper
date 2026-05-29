@@ -94,9 +94,12 @@ function waitForSelector(
           reject(new Error(`Елемент "${selector}" не з'явився за ${timeoutMs / 1000}s`));
         }
       } catch {
-        // executeJavaScript throws when webContents is destroyed (window closed)
-        clearInterval(interval);
-        reject(new Error(CANCEL_MSG));
+        // executeJavaScript can throw during page navigation (not just on window close).
+        // Only stop polling if the window is actually gone — otherwise keep waiting.
+        if (win.isDestroyed() || isCancelled()) {
+          clearInterval(interval);
+          reject(new Error(CANCEL_MSG));
+        }
       }
     }, 500);
   });
