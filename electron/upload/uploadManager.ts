@@ -282,6 +282,17 @@ export async function uploadFile(
         }
 
         await dbg.sendCommand("DOM.setFileInputFiles", { nodeId, files: [req.tempPath] });
+
+        // Dispatch input + change events explicitly so React's synthetic event system
+        // picks them up regardless of how MinIO Console hooks into the file input.
+        await uploadWindow.webContents.executeJavaScript(`
+          (function() {
+            const el = document.querySelector('input[type="file"]');
+            if (!el) return;
+            el.dispatchEvent(new Event('input',  { bubbles: true, cancelable: true }));
+            el.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+          })();
+        `);
       } catch (err) {
         if (isCancelError(err)) return { success: false, error: "Upload скасовано" };
         return { success: false, error: `CDP помилка при завантаженні файлу: ${(err as Error).message}` };
