@@ -12,6 +12,7 @@ export const STORAGE_KEYS = {
   IMAGE_ANALYSIS_SETTINGS: "html-converter-image-analysis-settings",
   STORAGE_PROFILE: "html-converter-storage-profile",
   EXPORT_TYPE: "html-converter-export-type",
+  UPLOAD_MODE: "html-converter-upload-mode",
 } as const;
 
 // Symbols

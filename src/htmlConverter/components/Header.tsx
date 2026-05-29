@@ -3,6 +3,7 @@ import { Code, Settings } from "lucide-react";
 import { SettingsPopover } from "./SettingsPopover";
 import type { UiSettings } from "../hooks/useHtmlConverterSettings";
 import type { ImageAnalysisSettings } from "../types";
+import type { UploadMode } from "../hooks/useHtmlConverterLogic";
 
 interface HeaderProps {
   ui: UiSettings;
@@ -13,12 +14,11 @@ interface HeaderProps {
   setAutoProcess: Dispatch<SetStateAction<boolean>>;
   aiBackendStatus: "checking" | "online" | "offline" | "ollama_offline";
   unseenLogCount: number;
-
-
-
+  uploadMode: UploadMode;
+  setUploadMode: Dispatch<SetStateAction<UploadMode>>;
 }
 
-export function Header({ ui, setUi, imageAnalysis, setImageAnalysis, autoProcess, setAutoProcess, aiBackendStatus, unseenLogCount }: HeaderProps) {
+export function Header({ ui, setUi, imageAnalysis, setImageAnalysis, autoProcess, setAutoProcess, aiBackendStatus, unseenLogCount, uploadMode, setUploadMode }: HeaderProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<"ui" | "image">("ui");
 
@@ -78,6 +78,8 @@ export function Header({ ui, setUi, imageAnalysis, setImageAnalysis, autoProcess
             autoProcess={autoProcess}
             setAutoProcess={setAutoProcess}
             aiBackendStatus={aiBackendStatus}
+            uploadMode={uploadMode}
+            setUploadMode={setUploadMode}
             triggerElement={
               <button
                 className='relative p-2 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-all duration-200 hover:scale-105 active:scale-95'

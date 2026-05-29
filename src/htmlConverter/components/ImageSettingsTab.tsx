@@ -1,4 +1,4 @@
-import React, { Dispatch, SetStateAction } from "react";
+import React, { Dispatch, SetStateAction, useState, useEffect } from "react";
 import { STORAGE_KEYS } from "../constants";
 import type { UiSettings } from "../hooks/useHtmlConverterSettings";
 import type { ImageAnalysisSettings } from "../types";
@@ -22,7 +22,34 @@ type ImageSettingsTabProps = {
   aiBackendStatus: "checking" | "online" | "offline" | "ollama_offline";
 };
 
+const OLLAMA_HOST_KEY = "html-converter-ollama-host";
+const DEFAULT_OLLAMA_HOST = "http://localhost:11434";
+
 export const ImageSettingsTab: React.FC<ImageSettingsTabProps> = ({ ui, setUi, imageAnalysis, setImageAnalysis, autoProcess, setAutoProcess, aiBackendStatus }) => {
+  const [ollamaHost, setOllamaHost] = useState<string>(() => {
+    try { return localStorage.getItem(OLLAMA_HOST_KEY) || DEFAULT_OLLAMA_HOST; } catch { return DEFAULT_OLLAMA_HOST; }
+  });
+  const [ollamaSaveStatus, setOllamaSaveStatus] = useState<"idle" | "saving" | "ok" | "error">("idle");
+
+  useEffect(() => {
+    localStorage.setItem(OLLAMA_HOST_KEY, ollamaHost);
+  }, [ollamaHost]);
+
+  const handleSaveOllamaHost = async () => {
+    setOllamaSaveStatus("saving");
+    try {
+      const res = await fetch("/ai-api/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ollama_host: ollamaHost.trim() }),
+      });
+      setOllamaSaveStatus(res.ok ? "ok" : "error");
+    } catch {
+      setOllamaSaveStatus("error");
+    }
+    setTimeout(() => setOllamaSaveStatus("idle"), 2500);
+  };
+
   const handleAutoProcessChange = (checked: boolean) => {
     setAutoProcess(checked);
     try {
@@ -141,6 +168,25 @@ export const ImageSettingsTab: React.FC<ImageSettingsTabProps> = ({ ui, setUi, i
                     <strong>Ollama не запущена!</strong> Увімкніть додаток Ollama на комп'ютері.
                   </div>
                 )}
+
+                <div className='space-y-1.5 pt-2 border-t border-border/30'>
+                  <Label className='text-xs text-muted-foreground'>Ollama URL</Label>
+                  <div className='flex gap-1.5'>
+                    <Input
+                      className='h-8 text-xs font-mono'
+                      value={ollamaHost}
+                      onChange={(e) => setOllamaHost(e.target.value)}
+                      placeholder='http://localhost:11434'
+                    />
+                    <button
+                      onClick={handleSaveOllamaHost}
+                      disabled={ollamaSaveStatus === "saving"}
+                      className='px-2.5 py-1 text-xs font-bold rounded-lg border border-input bg-background hover:bg-accent transition-all shrink-0 disabled:opacity-50'>
+                      {ollamaSaveStatus === "saving" ? "..." : ollamaSaveStatus === "ok" ? "✓" : ollamaSaveStatus === "error" ? "✗" : "Save"}
+                    </button>
+                  </div>
+                  <p className='text-[10px] text-muted-foreground'>Для Ollama на іншому ПК: http://192.168.x.x:11434</p>
+                </div>
               </div>
             )}
 

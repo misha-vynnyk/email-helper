@@ -45,8 +45,7 @@ function normalizeAiFilenameSuggestion(value: string): string {
 }
 
 /**
- * Client for the Python AI Backend (Gemma 3 via Ollama)
- * Endpoint: http://localhost:8000/api/analyze
+ * Client for the AI proxy (Gemma 3 via Ollama, served by Express at /ai-api)
  */
 export class AiBackendClient {
   private static readonly API_URL = "/ai-api/api/analyze";
@@ -82,7 +81,7 @@ export class AiBackendClient {
     // Check if backend is available first
     const available = await this.isAvailable();
     if (!available) {
-      throw new Error("AI Backend is not available. Please ensure the Python FastAPI server is running (npm run dev:ai)");
+      throw new Error("AI Backend is not available. Make sure the backend is running and Ollama is started.");
     }
 
     let lastError: Error | null = null;

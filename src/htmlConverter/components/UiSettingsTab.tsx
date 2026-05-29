@@ -1,15 +1,20 @@
 import React, { Dispatch, SetStateAction } from "react";
 import type { UiSettings } from "../hooks/useHtmlConverterSettings";
+import type { UploadMode } from "../hooks/useHtmlConverterLogic";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { useElectronAPI } from "@/hooks/useElectronAPI";
 
 type UiSettingsTabProps = {
   ui: UiSettings;
   setUi: Dispatch<SetStateAction<UiSettings>>;
+  uploadMode: UploadMode;
+  setUploadMode: Dispatch<SetStateAction<UploadMode>>;
 };
 
-export const UiSettingsTab: React.FC<UiSettingsTabProps> = ({ ui, setUi }) => {
+export const UiSettingsTab: React.FC<UiSettingsTabProps> = ({ ui, setUi, uploadMode, setUploadMode }) => {
+  const electronAPI = useElectronAPI();
   return (
     <div className='flex flex-col gap-6'>
       <div className='space-y-4'>
@@ -97,6 +102,27 @@ export const UiSettingsTab: React.FC<UiSettingsTabProps> = ({ ui, setUi }) => {
           className='w-24'
         />
       </div>
+
+      {electronAPI && (
+        <div className='space-y-4'>
+          <h3 className='text-sm font-semibold tracking-tight'>Завантаження (Electron)</h3>
+          <div className='flex items-center justify-between'>
+            <div>
+              <Label htmlFor='uploadModeElectron' className='text-sm font-medium leading-none'>
+                Вбудований Upload (Built-in)
+              </Label>
+              <p className='text-xs text-muted-foreground mt-1'>
+                {uploadMode === "electron" ? "BrowserWindow замість Playwright" : "Playwright (зовнішній Brave)"}
+              </p>
+            </div>
+            <Switch
+              id='uploadModeElectron'
+              checked={uploadMode === "electron"}
+              onCheckedChange={(checked) => setUploadMode(checked ? "electron" : "playwright")}
+            />
+          </div>
+        </div>
+      )}
 
       <p className='text-[13px] text-muted-foreground'>Якщо вимкнути «Запамʼятовувати вигляд» — ці налаштування не збережуться після перезавантаження.</p>
     </div>

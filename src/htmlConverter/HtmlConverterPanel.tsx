@@ -36,7 +36,7 @@ export default function HtmlConverterPanel() {
       <div className='max-w-[1600px] mx-auto flex flex-col gap-6'>
         {/* TOP BAR */}
         <div className='w-full flex items-center justify-between'>
-          <Header ui={ui} setUi={setUi} imageAnalysis={imageAnalysis} setImageAnalysis={setImageAnalysis} autoProcess={state.autoProcess} setAutoProcess={actions.setAutoProcess} aiBackendStatus={aiBackendStatus} unseenLogCount={state.unseenLogCount} />
+          <Header ui={ui} setUi={setUi} imageAnalysis={imageAnalysis} setImageAnalysis={setImageAnalysis} autoProcess={state.autoProcess} setAutoProcess={actions.setAutoProcess} aiBackendStatus={aiBackendStatus} unseenLogCount={state.unseenLogCount} uploadMode={state.uploadMode} setUploadMode={actions.setUploadMode} />
         </div>
 
         {/* MAIN GRID */}
@@ -104,6 +104,7 @@ export default function HtmlConverterPanel() {
                   storageProvider={state.storageProfile}
                   imageAnalysisSettings={imageAnalysis}
                   uploadHistory={state.uploadHistory}
+                  uploadMode={state.uploadMode}
                 />
               </div>
             )}

@@ -8,6 +8,7 @@ import { STORAGE_KEYS, IMAGE_DEFAULTS } from "../constants";
 
 export type StorageProfile = "default" | "alphaone" | "ttt";
 export type ExportType = "html" | "mjml" | "both";
+export type UploadMode = "playwright" | "electron";
 
 interface UseHtmlConverterLogicProps {
   editorRef: React.RefObject<HTMLDivElement>;
@@ -46,6 +47,16 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
     return "both";
   });
 
+  const [uploadMode, setUploadMode] = useState<UploadMode>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.UPLOAD_MODE);
+      if (stored === "playwright" || stored === "electron") return stored as UploadMode;
+    } catch {
+      // Fallback
+    }
+    return "playwright";
+  });
+
   // Persist settings when they change
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.STORAGE_PROFILE, storageProfile);
@@ -54,6 +65,10 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.EXPORT_TYPE, exportType);
   }, [exportType]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.UPLOAD_MODE, uploadMode);
+  }, [uploadMode]);
 
   const [showImageProcessor, setShowImageProcessor] = useState(false);
   const [triggerExtract, setTriggerExtract] = useState(0);
@@ -212,6 +227,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
       approveNeeded: ui.approveNeededValue,
       storageProfile,
       exportType,
+      uploadMode,
       log,
       unseenLogCount,
       showImageProcessor,
@@ -228,6 +244,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
       setApproveNeeded,
       setStorageProfile,
       setExportType,
+      setUploadMode,
       setAutoProcess,
       setUploadedUrlMap,
       setShowImageProcessor,

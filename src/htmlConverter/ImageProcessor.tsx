@@ -10,6 +10,7 @@ import StorageUploadDialog from "./components/StorageUploadDialog";
 import { extractFolderName } from "./utils/formatters";
 import { getFileExtension, getImageFormat, isCrossOrigin } from "./utils/imageUtils";
 import type { ImageAnalysisSettings, ImageFormatOverride, UploadSession } from "./types";
+import type { UploadMode } from "./hooks/useHtmlConverterLogic";
 import { useImageConversion } from "./hooks/useImageConversion";
 import { useImageUploader } from "./hooks/useImageUploader";
 import { useOcrAnalysis } from "./hooks/useOcrAnalysis";
@@ -36,9 +37,10 @@ interface ImageProcessorProps {
   storageProvider?: "default" | "alphaone" | "ttt";
   imageAnalysisSettings?: ImageAnalysisSettings;
   uploadHistory?: UploadSession[];
+  uploadMode?: UploadMode;
 }
 
-export default function ImageProcessor({ editorRef, onLog, visible, onVisibilityChange, triggerExtract = 0, fileName = "", onHistoryAdd, onReplaceUrls, onUploadedUrlsChange, onUploadedAltsChange, onResetReplacement, hasOutput = false, autoProcess: autoProcessProp, storageProvider = "default", imageAnalysisSettings, uploadHistory }: ImageProcessorProps) {
+export default function ImageProcessor({ editorRef, onLog, visible, onVisibilityChange, triggerExtract = 0, fileName = "", onHistoryAdd, onReplaceUrls, onUploadedUrlsChange, onUploadedAltsChange, onResetReplacement, hasOutput = false, autoProcess: autoProcessProp, storageProvider = "default", imageAnalysisSettings, uploadHistory, uploadMode }: ImageProcessorProps) {
   // 1. Conversion Logic
   const {
     images,
@@ -83,6 +85,7 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
     onUploadedAltsChange,
     showSnackbar,
     uploadHistory,
+    uploadMode,
   });
 
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);

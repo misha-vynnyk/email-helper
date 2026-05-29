@@ -4,6 +4,8 @@ import { UPLOAD_CONFIG, STORAGE_URL_PREFIX, STORAGE_PROVIDERS_CONFIG } from "../
 import { copyToClipboard } from "../utils/clipboard";
 import { getImageFormat, getFileExtension, isCrossOrigin } from "../utils/imageUtils";
 import { ProcessedImage, ImageFormat, UploadResult, UploadSession } from "../types";
+import type { UploadMode } from "./useHtmlConverterLogic";
+import { getElectronAPI } from "../../hooks/useElectronAPI";
 
 function findImageInHistory(folderName: string, filename: string, baseName: string, index: number, uploadHistory: UploadSession[]) {
   let existingUrl: string | null = null;
@@ -39,9 +41,10 @@ interface UseImageUploaderProps {
   onUploadedAltsChange?: (altMap: Record<string, string>) => void;
   showSnackbar: (message: string, severity?: "success" | "info" | "warning" | "error") => void;
   uploadHistory?: UploadSession[];
+  uploadMode?: UploadMode;
 }
 
-export function useImageUploader({ images, imagesSessionId, editorRef, storageProvider, format, onLog, onUploadedUrlsChange, onReplaceUrls, onUploadedAltsChange, showSnackbar, uploadHistory }: UseImageUploaderProps) {
+export function useImageUploader({ images, imagesSessionId, editorRef, storageProvider, format, onLog, onUploadedUrlsChange, onReplaceUrls, onUploadedAltsChange, showSnackbar, uploadHistory, uploadMode = "playwright" }: UseImageUploaderProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [lastUploadedUrls, setLastUploadedUrls] = useState<Record<string, string>>({});
   const [lastUploadedSessionId, setLastUploadedSessionId] = useState<number | null>(null);
@@ -196,32 +199,38 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
             onLog?.(`📤 [${i + 1}/${completed.length}] Завантаження ${filename}...`);
             const tempPath = await getTempPathInner(img, filename);
 
-            const storageResponse = await Promise.race([
-              fetch(`${API_URL}/api/storage-upload`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  filePath: tempPath,
-                  provider: storageProvider,
-                  category,
-                  folderName,
-                  skipConfirmation: true,
+            let result: { success?: boolean; filePath?: string; publicUrl?: string; error?: string } = {};
+
+            if (uploadMode === "electron") {
+              const electronAPI = getElectronAPI();
+              if (!electronAPI) throw new Error("Electron API недоступний");
+              result = await Promise.race([
+                electronAPI.uploadFile({ tempPath, provider: storageProvider, category, folderName }),
+                createTimeout(UPLOAD_CONFIG.STORAGE_TIMEOUT, "Timeout: electron upload не відповідає (180s)"),
+              ]);
+              if (!result.success) throw new Error(result.error || "Electron upload failed");
+            } else {
+              const storageResponse = await Promise.race([
+                fetch(`${API_URL}/api/storage-upload`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    filePath: tempPath,
+                    provider: storageProvider,
+                    category,
+                    folderName,
+                    skipConfirmation: true,
+                  }),
+                  signal: uploadAbortControllerRef.current.signal,
                 }),
-                signal: uploadAbortControllerRef.current.signal,
-              }),
-              createTimeout(UPLOAD_CONFIG.STORAGE_TIMEOUT, "Timeout: storage не відповідає (180s)"),
-            ]);
-
-            let result: any = {};
-            try {
-              result = await storageResponse.json();
-            } catch (e) {
-              // ignore parse error if ok
-            }
-
-            if (!storageResponse.ok) {
-              const msg = result.error || `Storage HTTP ${storageResponse.status}`;
-              throw new Error(msg);
+                createTimeout(UPLOAD_CONFIG.STORAGE_TIMEOUT, "Timeout: storage не відповідає (180s)"),
+              ]);
+              try {
+                result = await storageResponse.json();
+              } catch {
+                // ignore parse error if ok
+              }
+              if (!storageResponse.ok) throw new Error(result.error || `Storage HTTP ${storageResponse.status}`);
             }
 
             if (result.filePath) {
@@ -293,7 +302,7 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
         uploadAbortControllerRef.current = null;
       }
     },
-    [images, imagesSessionId, isUploading, storageProvider, format, onLog, editorRef, onUploadedUrlsChange, onUploadedAltsChange, uploadHistory]
+    [images, imagesSessionId, isUploading, storageProvider, format, onLog, editorRef, onUploadedUrlsChange, onUploadedAltsChange, uploadHistory, uploadMode]
   );
 
   const handleReplaceInOutput = useCallback(() => {
