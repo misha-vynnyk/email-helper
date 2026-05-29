@@ -1,4 +1,5 @@
 import { BrowserWindow, session } from "electron";
+import { execFileSync } from "child_process";
 import path from "path";
 import fs from "fs";
 
@@ -27,7 +28,6 @@ interface ProviderSession {
   closeTimer: ReturnType<typeof setTimeout> | null;
 }
 const activeSessions = new Map<string, ProviderSession>();
-const IDLE_CLOSE_MS = 8_000;
 
 function clearSession(provider: string): void {
   const s = activeSessions.get(provider);
@@ -48,6 +48,15 @@ function scheduleSessionClose(provider: string, delayMs: number): void {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+
+function playSound(type: "success" | "error" | "warning", storageConfig: Record<string, unknown>): void {
+  if (process.platform !== "darwin") return;
+  if (!storageConfig.soundsEnabled) return;
+  const sounds = storageConfig.sounds as Record<string, string> | undefined;
+  const file = sounds?.[type];
+  if (!file) return;
+  try { execFileSync("afplay", [file], { stdio: "ignore" }); } catch {}
+}
 
 function getProviderSession(provider: string) {
   return session.fromPartition(`persist:storage-${provider}`);
@@ -161,9 +170,13 @@ export async function uploadFile(
     return { success: false, error: `Невідомий провайдер: ${req.provider}` };
   }
 
-  const closeDelay   = (storageConfig as Record<string, number>).closeDelayMs ?? 1500;
-  const windowWidth  = (storageConfig as Record<string, number>).windowWidth  ?? 1200;
-  const windowHeight = (storageConfig as Record<string, number>).windowHeight ?? 800;
+  const cfg = storageConfig as Record<string, number>;
+  const closeDelay          = cfg.closeDelayMs       ?? 1500;
+  const windowWidth         = cfg.windowWidth        ?? 1200;
+  const windowHeight        = cfg.windowHeight       ?? 800;
+  const idleCloseMs         = cfg.idleCloseMs        ?? 4_000;
+  const loginTimeoutMs      = Number(providerCfg.loginWaitMs ?? cfg.loginTimeoutMs ?? 600_000);
+  const uploadCompletionMs  = cfg.uploadCompletionMs ?? 60_000;
 
   // ── Acquire window (reuse or create) ─────────────────────────────────────
   const existing   = activeSessions.get(req.provider);
@@ -197,7 +210,9 @@ export async function uploadFile(
   const isCancelled = () => cancelled;
 
   let debuggerAttached = false;
-  let keepWindowOpen  = false; // set to true on success so finally doesn't destroy
+  let keepWindowOpen   = false; // set to true on success so finally doesn't destroy
+  let uploadSucceeded  = false;
+  let isDuplicate      = false;
 
   try {
     const consoleRoot  = providerCfg.consoleRootPrefix  as string ?? "";
@@ -232,7 +247,7 @@ export async function uploadFile(
       // time to log in if needed. On subsequent uploads this is skipped.
       uploadWindow.setTitle("Storage — якщо потрібно, увійдіть (вікно закриється автоматично)");
       try {
-        await waitForSelector(uploadWindow, "#upload-main", 600_000, isCancelled);
+        await waitForSelector(uploadWindow, "#upload-main", loginTimeoutMs, isCancelled);
       } catch (err) {
         if (isCancelError(err)) return { success: false, error: "Upload скасовано — вікно закрито під час авторизації" };
         return { success: false, error: "Timeout (10 хв) — кнопка завантаження не з'явилась. Перевірте, чи вдалось увійти у сховище" };
@@ -296,9 +311,10 @@ export async function uploadFile(
 
     if (fileExists) {
       const publicPath = [publicRoot, req.category, formattedName, filename].filter(Boolean).join("/");
+      isDuplicate = true;
       keepWindowOpen = true;
       uploadWindow.setTitle("Storage — файл вже існує");
-      scheduleSessionClose(req.provider, IDLE_CLOSE_MS);
+      scheduleSessionClose(req.provider, idleCloseMs);
       return { success: true, publicUrl: `${publicBase}/${publicPrefix}/${publicPath}`, filePath: publicPath };
     }
 
@@ -357,7 +373,7 @@ export async function uploadFile(
     // ── Step 6: Wait for file to appear in folder listing ───────────────────
     uploadWindow.setTitle("Storage — очікування завершення...");
 
-    const deadline = Date.now() + 60_000;
+    const deadline = Date.now() + uploadCompletionMs;
     let uploaded = false;
     while (!uploaded) {
       if (isCancelled()) return { success: false, error: "Upload скасовано під час передачі файлу" };
@@ -373,10 +389,11 @@ export async function uploadFile(
     const publicPath = [publicRoot, req.category, formattedName, filename].filter(Boolean).join("/");
     const publicUrl  = `${publicBase}/${publicPrefix}/${publicPath}`;
 
+    uploadSucceeded = true;
     keepWindowOpen = true;
     uploadWindow.setTitle("✅ Завантажено — вікно закриється автоматично");
     await sleep(uploadWindow, closeDelay);
-    scheduleSessionClose(req.provider, IDLE_CLOSE_MS);
+    scheduleSessionClose(req.provider, idleCloseMs);
 
     return { success: true, publicUrl, filePath: publicPath };
 
@@ -387,6 +404,10 @@ export async function uploadFile(
     if (debuggerAttached) {
       try { uploadWindow.webContents.debugger.detach(); } catch {}
     }
+    if (uploadSucceeded)  playSound("success", storageConfig);
+    else if (isDuplicate) playSound("warning", storageConfig);
+    else if (!cancelled)  playSound("error",   storageConfig);
+
     if (!keepWindowOpen) {
       // Error or cancel path — destroy window and clear session immediately
       clearSession(req.provider);
