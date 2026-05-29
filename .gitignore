@@ -55,23 +55,5 @@ idea/
 Thumbs.db
 .DS_Store
 
-# Python / AI Backend
-server/ai/venv/
-server/ai/__pycache__/
-# local python venv helper logs
-/.venv_logs
-**/__pycache__/
-*.py[cod]
-*$py.class
-.pytest_cache/
-.mypy_cache/
-# Common Model Weights (prevent accidental commit)
-*.pt
-*.pth
-*.onnx
-*.bin
-*.pdparams
-*.pdopt
-*.pdmodel
 out/
 dist-electron/

@@ -1,0 +1,84 @@
+appId: com.flexibuilder.pro
+productName: FlexiBuilder Pro
+copyright: Copyright © 2025-2026 FlexiBuilder
+
+# ── Output ─────────────────────────────────────────────────────────────────────
+directories:
+  output: release
+  buildResources: build
+
+# ── Pre-pack hook (installs server prod deps) ──────────────────────────────────
+beforePack: scripts/electron-before-pack.js
+
+# ── Files to bundle ────────────────────────────────────────────────────────────
+# server/ is included WITH server/node_modules (installed by beforePack)
+# dist-electron/ is the output of `electron-vite build`
+# automation/config.json holds storage provider settings
+files:
+  - dist-electron/**
+  - server/**
+  - automation/config.json
+  - "!**/*.map"
+  - "!**/*.md"
+  - "!server/node_modules/.cache/**"
+  - "!**/test/**"
+  - "!**/__tests__/**"
+  - "!**/tests/**"
+
+# ── ASAR ───────────────────────────────────────────────────────────────────────
+# sharp and gifsicle contain native .node binaries — must stay outside asar
+asar: true
+asarUnpack:
+  - "**/node_modules/sharp/**"
+  - "**/node_modules/@img/**"
+  - "**/node_modules/gifsicle/**"
+  - "**/node_modules/better-sqlite3/**"
+
+# ── macOS ──────────────────────────────────────────────────────────────────────
+mac:
+  category: public.app-category.productivity
+  icon: build/icon.icns
+  # Hardened runtime required for notarization
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  target:
+    - target: dmg
+      arch: [x64, arm64]
+    - target: zip
+      arch: [x64, arm64]
+
+dmg:
+  title: FlexiBuilder Pro ${version}
+  sign: false
+
+# ── Windows ────────────────────────────────────────────────────────────────────
+win:
+  icon: build/icon.ico
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+
+nsis:
+  oneClick: true
+  perMachine: false
+  allowToChangeInstallationDirectory: false
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: FlexiBuilder Pro
+
+# ── Linux (optional) ───────────────────────────────────────────────────────────
+linux:
+  target:
+    - target: AppImage
+      arch: [x64]
+  category: Office
+
+# ── Auto-update (Phase 8) ──────────────────────────────────────────────────────
+# publish:
+#   provider: github
+#   owner: misha-vynnyk
+#   repo: email-helper

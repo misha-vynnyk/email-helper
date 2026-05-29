@@ -2,11 +2,10 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { defineConfig } from "vite";
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(() => {
   // Load ports from environment variables
   const port = Number(process.env.VITE_PORT) || 5173;
   const backendPort = process.env.VITE_BACKEND_PORT || "3001";
-  const aiBackendUrl = process.env.VITE_AI_BACKEND_URL || "http://127.0.0.1:8000";
 
   return {
     base: "/email-helper/",
@@ -14,7 +13,7 @@ export default defineConfig(({ mode }) => {
     server: {
       port: port,
       watch: {
-        ignored: ["**/server/ai/venv/**", "**/dist/**", "**/node_modules/**"],
+        ignored: ["**/dist/**", "**/node_modules/**"],
       },
       proxy: {
         "/api": {
@@ -23,14 +22,10 @@ export default defineConfig(({ mode }) => {
           rewrite: (path) => path.replace(/^\/api/, "/api"),
         },
         "/ai-api": {
-          target: aiBackendUrl,
+          target: `http://127.0.0.1:${backendPort}`,
           changeOrigin: true,
-          ws: true,
-          rewrite: (path) => path.replace(/^\/ai-api/, ""),
-          configure: (proxy, _options) => {
-            proxy.on("error", (err, _req, _res) => {
-              // Silence spam during startup
-            });
+          configure: (proxy) => {
+            proxy.on("error", () => {});
           },
         },
       },

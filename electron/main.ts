@@ -1,14 +1,51 @@
 import { app, BrowserWindow, shell, ipcMain, dialog, Notification } from "electron";
 import path from "path";
-import { spawn, ChildProcess } from "child_process";
+import type { Server } from "http";
+import { uploadFile } from "./upload/uploadManager";
+
+// ── Embedded Express server ───────────────────────────────────────────────────
+
+let serverInstance: Server | null = null;
+
+async function startEmbeddedServer(): Promise<void> {
+  // path resolves to <project-root>/server/index.js both in dev and packaged
+  const serverPath = path.join(__dirname, "../../server/index.js");
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { startServer } = require(serverPath) as { startServer: (port: number) => Promise<Server> };
+
+  const preferred = parseInt(process.env.PORT || "3001");
+
+  for (let port = preferred; port <= preferred + 9; port++) {
+    try {
+      serverInstance = await startServer(port);
+      console.log(`✅ Embedded server on port ${port}`);
+      return;
+    } catch (err: any) {
+      if (err.code === "EADDRINUSE") {
+        console.log(`⚠️  Port ${port} in use, trying ${port + 1}...`);
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  throw new Error("No free port found in range 3001-3010");
+}
+
+function stopEmbeddedServer(): void {
+  if (serverInstance) {
+    serverInstance.close();
+    serverInstance = null;
+  }
+}
+
+// ── IPC handlers ──────────────────────────────────────────────────────────────
 
 function registerIpcHandlers(): void {
   ipcMain.handle("app:getVersion", () => app.getVersion());
 
   ipcMain.handle("dialog:openFolder", async () => {
-    const result = await dialog.showOpenDialog({
-      properties: ["openDirectory"],
-    });
+    const result = await dialog.showOpenDialog({ properties: ["openDirectory"] });
     return result.canceled ? null : result.filePaths[0];
   });
 
@@ -21,107 +58,25 @@ function registerIpcHandlers(): void {
   });
 
   ipcMain.on("notification:show", (_event, { title, body }: { title: string; body: string }) => {
-    if (Notification.isSupported()) {
-      new Notification({ title, body }).show();
+    if (Notification.isSupported()) new Notification({ title, body }).show();
+  });
+
+  ipcMain.handle("upload:executeFile", async (_event, req) => {
+    // ../../ from dist-electron/main/ → project root → automation/config.json
+    const configPath = path.join(__dirname, "../../automation/config.json");
+    let storageProviders: Record<string, unknown> = {};
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const raw = require("fs").readFileSync(configPath, "utf8");
+      storageProviders = JSON.parse(raw).storageProviders ?? {};
+    } catch (e) {
+      return { success: false, error: `Cannot read automation/config.json: ${(e as Error).message}` };
     }
+    return uploadFile(req, storageProviders);
   });
 }
 
-const PREFERRED_PORT = 3001;
-let backendProcess: ChildProcess | null = null;
-
-function isOurServerRunning(port: number): Promise<boolean> {
-  const http = require("http") as typeof import("http");
-  return new Promise((resolve) => {
-    const req = http.get(`http://127.0.0.1:${port}/api/health`, (res) => {
-      resolve(res.statusCode === 200);
-    });
-    req.on("error", () => resolve(false));
-    req.setTimeout(1000, () => { req.destroy(); resolve(false); });
-  });
-}
-
-function findFreePort(from: number): Promise<number> {
-  const net = require("net") as typeof import("net");
-  return new Promise((resolve, reject) => {
-    const server = net.createServer();
-    server.listen(from, "127.0.0.1", () => {
-      const port = (server.address() as { port: number }).port;
-      server.close(() => resolve(port));
-    });
-    server.on("error", () => {
-      if (from < 3010) resolve(findFreePort(from + 1));
-      else reject(new Error("No free port found in range 3001-3010"));
-    });
-  });
-}
-
-function waitForServer(port: number, maxWaitMs = 30000): Promise<void> {
-  const http = require("http") as typeof import("http");
-  const start = Date.now();
-  return new Promise((resolve, reject) => {
-    const check = () => {
-      const req = http.get(`http://127.0.0.1:${port}/api/health`, (res) => {
-        if (res.statusCode === 200) return resolve();
-        retry();
-      });
-      req.on("error", retry);
-    };
-    const retry = () => {
-      if (Date.now() - start > maxWaitMs) return reject(new Error("Server start timeout"));
-      setTimeout(check, 500);
-    };
-    check();
-  });
-}
-
-async function startBackend(): Promise<void> {
-  // Reuse if already running (e.g. previous session that wasn't cleaned up)
-  if (await isOurServerRunning(PREFERRED_PORT)) {
-    console.log(`✅ Reusing existing server on port ${PREFERRED_PORT}`);
-    return;
-  }
-
-  const port = await findFreePort(PREFERRED_PORT);
-
-  if (port !== PREFERRED_PORT) {
-    console.log(`⚠️  Port ${PREFERRED_PORT} is taken by another app, using ${port}`);
-  }
-
-  const serverDir = path.join(__dirname, "../../server");
-  const serverEntry = path.join(serverDir, "index.js");
-
-  // Use system node in dev; packaged builds will handle this differently (Phase 6)
-  const nodeBin = app.isPackaged ? process.execPath : "node";
-
-  backendProcess = spawn(nodeBin, [serverEntry], {
-    cwd: serverDir,
-    env: { ...process.env, PORT: String(port), NODE_ENV: process.env.NODE_ENV || "production" },
-    stdio: ["ignore", "pipe", "pipe"],
-  });
-
-  backendProcess.stdout?.on("data", (data: Buffer) => {
-    console.log("[server]", data.toString().trim());
-  });
-
-  backendProcess.stderr?.on("data", (data: Buffer) => {
-    console.error("[server:err]", data.toString().trim());
-  });
-
-  backendProcess.on("exit", (code) => {
-    console.log(`[server] exited with code ${code}`);
-    backendProcess = null;
-  });
-
-  await waitForServer(port);
-}
-
-function stopBackend(): void {
-  if (backendProcess) {
-    backendProcess.kill();
-    backendProcess = null;
-  }
-}
+// ── Window ────────────────────────────────────────────────────────────────────
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -150,10 +105,12 @@ function createWindow(): void {
   }
 }
 
+// ── Lifecycle ─────────────────────────────────────────────────────────────────
+
 app.whenReady().then(async () => {
   registerIpcHandlers();
-  await startBackend().catch((err) => {
-    console.error("❌ Backend failed to start:", err.message);
+  await startEmbeddedServer().catch((err) => {
+    console.error("❌ Embedded server failed to start:", err.message);
   });
   createWindow();
 
@@ -162,7 +119,7 @@ app.whenReady().then(async () => {
   });
 });
 
-app.on("before-quit", stopBackend);
+app.on("before-quit", stopEmbeddedServer);
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();

@@ -14,4 +14,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   showNotification: (title: string, body: string): void =>
     ipcRenderer.send("notification:show", { title, body }),
+
+  uploadFile: (req: { tempPath: string; provider: string; category: string; folderName: string }) =>
+    ipcRenderer.invoke("upload:executeFile", req),
 });

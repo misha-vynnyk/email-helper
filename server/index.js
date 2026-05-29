@@ -93,6 +93,7 @@ app.use("/api/storage-paths", require("./routes/storagePaths"));
 app.use(require("./routes/imageProxy"));
 app.use(require("./routes/storageUpload"));
 app.use("/api", require("./routes/email"));
+app.use("/ai-api", require("./routes/aiProxy"));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

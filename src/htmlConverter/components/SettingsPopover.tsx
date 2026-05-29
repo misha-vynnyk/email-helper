@@ -1,6 +1,7 @@
 import React, { Dispatch, SetStateAction } from "react";
 import type { ImageAnalysisSettings } from "../types";
 import type { UiSettings } from "../hooks/useHtmlConverterSettings";
+import type { UploadMode } from "../hooks/useHtmlConverterLogic";
 import { UiSettingsTab } from "./UiSettingsTab";
 import { ImageSettingsTab } from "./ImageSettingsTab";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -20,9 +21,11 @@ type SettingsPopoverProps = {
   autoProcess: boolean;
   setAutoProcess: Dispatch<SetStateAction<boolean>>;
   aiBackendStatus: "checking" | "online" | "offline" | "ollama_offline";
+  uploadMode: UploadMode;
+  setUploadMode: Dispatch<SetStateAction<UploadMode>>;
 };
 
-export const SettingsPopover: React.FC<SettingsPopoverProps> = ({ open, onOpenChange, triggerElement, settingsTab, setSettingsTab, ui, setUi, imageAnalysis, setImageAnalysis, autoProcess, setAutoProcess, aiBackendStatus }) => {
+export const SettingsPopover: React.FC<SettingsPopoverProps> = ({ open, onOpenChange, triggerElement, settingsTab, setSettingsTab, ui, setUi, imageAnalysis, setImageAnalysis, autoProcess, setAutoProcess, aiBackendStatus, uploadMode, setUploadMode }) => {
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>{triggerElement}</PopoverTrigger>
@@ -53,7 +56,7 @@ export const SettingsPopover: React.FC<SettingsPopoverProps> = ({ open, onOpenCh
 
           <div className='p-4 max-h-[60vh] overflow-y-auto'>
             <TabsContent value='ui' className='m-0 border-none p-0 outline-none'>
-              <UiSettingsTab ui={ui} setUi={setUi} />
+              <UiSettingsTab ui={ui} setUi={setUi} uploadMode={uploadMode} setUploadMode={setUploadMode} />
             </TabsContent>
             <TabsContent value='image' className='m-0 border-none p-0 outline-none'>
               <ImageSettingsTab ui={ui} setUi={setUi} imageAnalysis={imageAnalysis} setImageAnalysis={setImageAnalysis} autoProcess={autoProcess} setAutoProcess={setAutoProcess} aiBackendStatus={aiBackendStatus} />
