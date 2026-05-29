@@ -156,20 +156,15 @@ export async function uploadFile(
     const publicBase   = providerCfg.publicBaseUrl      as string ?? "";
     const publicPrefix = providerCfg.publicPathPrefix   as string ?? "files";
     const publicRoot   = providerCfg.publicRootPrefix   as string ?? "";
-    const folderPrefix = providerCfg.folderPrefix       as string ?? "lift-";
 
-    // Format folder name the same way as the Brave automation:
-    // "ABCD1234" → letters="abcd", digits="1234" → "abcd/lift-1234"
+    const folderPrefix  = providerCfg.folderPrefix as string ?? "lift-";
     const letters       = req.folderName.replace(/[^a-zA-Z]/g, "").toLowerCase();
     const digits        = req.folderName.replace(/[^0-9]/g, "");
-    const formattedName = `${letters}/${folderPrefix}${digits}`;
-    const category      = req.category ? req.category.toLowerCase() : "";
+    const formattedName = letters && digits ? `${letters}/${folderPrefix}${digits}` : req.folderName.toLowerCase();
 
-    // MinIO Console expects the full sub-path encoded as one segment with %2F separators,
-    // matching the Brave automation: encodeURIComponent(consolePath) + "%2F"
-    const consolePath = [consoleRoot, category, formattedName].filter(Boolean).join("/");
+    const folderPath  = [consoleRoot, req.category, formattedName].filter(Boolean).join("/");
     const consoleHost = (storageConfig as Record<string, string>).consoleUrl ?? "http://localhost:9001";
-    const targetUrl   = `${consoleHost}/browser/${bucket}/${encodeURIComponent(consolePath)}%2F`;
+    const targetUrl   = `${consoleHost}/browser/${bucket}/${encodeURIComponent(folderPath)}%2F`;
 
     // ── Step 1: Initial page load ─────────────────────────────────────────────
     uploadWindow.setTitle("Storage — підключення...");
@@ -219,132 +214,71 @@ export async function uploadFile(
     ).catch(() => false);
 
     if (fileExists) {
-      const publicPath = [publicRoot, category, formattedName, filename].filter(Boolean).join("/");
+      const publicPath = [publicRoot, req.category, formattedName, filename].filter(Boolean).join("/");
       return { success: true, publicUrl: `${publicBase}/${publicPrefix}/${publicPath}`, filePath: publicPath };
     }
 
-    // ── Steps 4+5: Suppress OS dialog via monkey-patch, set file via CDP ────────
-    // Page.setInterceptFileChooserDialog is unreliable in Electron debugger.
-    // Instead: override HTMLInputElement.prototype.click in the page context to
-    // silently block the OS picker, then use DOM.setFileInputFiles which fires
-    // input/change events that React's onChange handler picks up normally.
+    // ── Step 4: Open upload menu ──────────────────────────────────────────────
     uploadWindow.setTitle("Storage — завантаження файлу...");
 
-    // Suppress OS file picker BEFORE anything triggers it
-    await uploadWindow.webContents.executeJavaScript(`
-      window.__origFileInputClick = HTMLInputElement.prototype.click;
-      HTMLInputElement.prototype.click = function() {
-        if (this.type === 'file') return;
-        return window.__origFileInputClick.apply(this, arguments);
-      };
-    `);
+    // #upload-main already confirmed present above — click it directly
+    await uploadWindow.webContents.executeJavaScript(`document.querySelector('#upload-main').click()`);
 
     try {
-      // Open dropdown menu
-      await uploadWindow.webContents.executeJavaScript(`document.querySelector('#upload-main').click()`);
-
-      try {
-        await waitForSelector(uploadWindow, 'div[label="Upload File"]', 5_000, isCancelled);
-      } catch (err) {
-        if (isCancelError(err)) return { success: false, error: "Upload скасовано" };
-        return { success: false, error: "Меню завантаження не відкрилось — можливо, змінився UI сховища" };
-      }
-
-      if (isCancelled()) return { success: false, error: "Upload скасовано" };
-
-      // Click "Upload File" — MinIO tries to open OS dialog but it's suppressed
-      await uploadWindow.webContents.executeJavaScript(
-        `document.querySelector('div[label="Upload File"]').click()`
-      );
-
-      // Give MinIO's click handler a moment to run
-      await sleep(uploadWindow, 300);
-      if (isCancelled()) return { success: false, error: "Upload скасовано" };
-
-      // Attach CDP and set file on the input — fires change events React can detect
-      const dbg = uploadWindow.webContents.debugger;
-      try {
-        dbg.attach("1.3");
-        debuggerAttached = true;
-      } catch {
-        return { success: false, error: "Не вдалось підключити CDP debugger — спробуйте ще раз" };
-      }
-
-      try {
-        const { root } = await dbg.sendCommand("DOM.getDocument");
-        const { nodeId } = await dbg.sendCommand("DOM.querySelector", {
-          nodeId: root.nodeId,
-          selector: 'input[type="file"]',
-        });
-
-        if (!nodeId || nodeId === 0) {
-          return { success: false, error: "Поле вибору файлу не знайдено на сторінці" };
-        }
-
-        await dbg.sendCommand("DOM.setFileInputFiles", { nodeId, files: [req.tempPath] });
-
-        // Dispatch input + change events explicitly so React's synthetic event system
-        // picks them up regardless of how MinIO Console hooks into the file input.
-        await uploadWindow.webContents.executeJavaScript(`
-          (function() {
-            const el = document.querySelector('input[type="file"]');
-            if (!el) return;
-            el.dispatchEvent(new Event('input',  { bubbles: true, cancelable: true }));
-            el.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
-          })();
-        `);
-      } catch (err) {
-        if (isCancelError(err)) return { success: false, error: "Upload скасовано" };
-        return { success: false, error: `CDP помилка при завантаженні файлу: ${(err as Error).message}` };
-      } finally {
-        try { dbg.detach(); debuggerAttached = false; } catch {}
-      }
-    } finally {
-      // Always restore original click — even if upload fails
-      uploadWindow.webContents.executeJavaScript(`
-        if (window.__origFileInputClick) HTMLInputElement.prototype.click = window.__origFileInputClick;
-      `).catch(() => {});
+      await waitForSelector(uploadWindow, 'div[label="Upload File"]', 5_000, isCancelled);
+    } catch (err) {
+      if (isCancelError(err)) return { success: false, error: "Upload скасовано" };
+      return { success: false, error: "Меню завантаження не відкрилось — можливо, змінився UI сховища" };
     }
 
-    // ── Step 6: Wait for file to appear in directory listing ─────────────────
-    // MinIO's upload progress dialog (.uploaded-list) appears and disappears
-    // quickly — unreliable to poll. Instead wait for the filename to show up
-    // in the directory (.fileNameText), confirming the upload completed.
+    if (isCancelled()) return { success: false, error: "Upload скасовано" };
+
+    await uploadWindow.webContents.executeJavaScript(`document.querySelector('div[label="Upload File"]').click()`);
+
+    // ── Step 5: Set file via CDP debugger ─────────────────────────────────────
+    const dbg = uploadWindow.webContents.debugger;
+    try {
+      dbg.attach("1.3");
+      debuggerAttached = true;
+    } catch {
+      return { success: false, error: "Не вдалось підключити CDP debugger — спробуйте ще раз" };
+    }
+
+    try {
+      const { root } = await dbg.sendCommand("DOM.getDocument");
+      const { nodeId } = await dbg.sendCommand("DOM.querySelector", {
+        nodeId: root.nodeId,
+        selector: 'input[type="file"]',
+      });
+
+      if (!nodeId) {
+        return { success: false, error: "Поле вибору файлу не знайдено на сторінці" };
+      }
+
+      await dbg.sendCommand("DOM.setFileInputFiles", { nodeId, files: [req.tempPath] });
+    } catch (err) {
+      if (isCancelError(err)) return { success: false, error: "Upload скасовано" };
+      return { success: false, error: `CDP помилка при завантаженні файлу: ${(err as Error).message}` };
+    } finally {
+      try { dbg.detach(); debuggerAttached = false; } catch {}
+    }
+
+    // ── Step 6: Wait for upload to complete ───────────────────────────────────
     uploadWindow.setTitle("Storage — очікування завершення...");
 
-    const appeared = await new Promise<boolean>((resolve) => {
-      const deadline = Date.now() + 60_000;
-      const interval = setInterval(async () => {
-        if (isCancelled() || uploadWindow.isDestroyed()) {
-          clearInterval(interval);
-          resolve(false);
-          return;
-        }
-        try {
-          const found: boolean = await uploadWindow.webContents.executeJavaScript(
-            `Array.from(document.querySelectorAll('.fileNameText')).some(el => el.textContent.trim() === ${JSON.stringify(filename)})`
-          );
-          if (found) { clearInterval(interval); resolve(true); return; }
-          if (Date.now() > deadline) { clearInterval(interval); resolve(false); }
-        } catch {
-          if (uploadWindow.isDestroyed() || isCancelled()) {
-            clearInterval(interval);
-            resolve(false);
-          }
-        }
-      }, 500);
-    });
+    try {
+      await waitForSelector(uploadWindow, ".uploaded-list .file-name", 60_000, isCancelled);
+    } catch (err) {
+      if (isCancelError(err)) return { success: false, error: "Upload скасовано під час передачі файлу" };
+      return { success: false, error: "Timeout завантаження (60s) — файл міг не завантажитись. Перевірте інтернет та спробуйте ще раз" };
+    }
 
-    if (isCancelled()) return { success: false, error: "Upload скасовано під час передачі файлу" };
-    if (!appeared) return { success: false, error: "Timeout (60s) — файл не з'явився в директорії. Перевірте інтернет та спробуйте ще раз" };
+    const publicPath  = [publicRoot, req.category, formattedName, filename].filter(Boolean).join("/");
+    const publicUrl   = `${publicBase}/${publicPrefix}/${publicPath}`;
+    const closeDelay  = (storageConfig as Record<string, number>).closeDelayMs ?? 1500;
 
-    const publicPath = [publicRoot, category, formattedName, filename].filter(Boolean).join("/");
-    const publicUrl  = `${publicBase}/${publicPrefix}/${publicPath}`;
-
-    // Brief pause so the user can see the completed upload before the window closes
-    const closeDelayMs = (storageConfig as Record<string, number>).closeDelayMs ?? 1500;
-    uploadWindow.setTitle(`✅ Завантажено — вікно закриється автоматично`);
-    await sleep(uploadWindow, closeDelayMs);
+    uploadWindow.setTitle("✅ Завантажено — вікно закриється автоматично");
+    await sleep(uploadWindow, closeDelay);
 
     return { success: true, publicUrl, filePath: publicPath };
 
