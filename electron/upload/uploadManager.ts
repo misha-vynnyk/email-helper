@@ -235,6 +235,14 @@ export async function uploadFile(
 
     await uploadWindow.webContents.executeJavaScript(`document.querySelector('div[label="Upload File"]').click()`);
 
+    // Wait for the file input to appear in the DOM (React renders it asynchronously)
+    try {
+      await waitForSelector(uploadWindow, 'input[type="file"]', 5_000, isCancelled);
+    } catch (err) {
+      if (isCancelError(err)) return { success: false, error: "Upload скасовано" };
+      return { success: false, error: "Поле вибору файлу не з'явилось — можливо, змінився UI сховища" };
+    }
+
     // ── Step 5: Set file via CDP debugger ─────────────────────────────────────
     const dbg = uploadWindow.webContents.debugger;
     try {
