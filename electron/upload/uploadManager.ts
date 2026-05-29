@@ -171,37 +171,31 @@ export async function uploadFile(
 
     if (isCancelled()) return { success: false, error: "Upload скасовано" };
 
-    // ── Step 2: Login detection ───────────────────────────────────────────────
-    const needsLogin: boolean = await uploadWindow.webContents.executeJavaScript(`
-      !!(document.querySelector('button#go-to-login') ||
-         document.querySelector('input[id="accessKey"]') ||
-         document.querySelector('input[placeholder*="Access"]') ||
-         document.querySelector('[class*="login-page"]'))
-    `).catch(() => false);
+    // ── Step 2: Wait for upload UI (handles login automatically) ─────────────
+    // Instead of detecting login state via fragile selectors, always wait for
+    // #upload-main with a generous timeout. If the user is already authenticated
+    // the element appears immediately; if not, they have time to log in.
+    uploadWindow.setTitle("Storage — якщо потрібно, увійдіть (вікно закриється автоматично)");
 
-    if (needsLogin) {
-      uploadWindow.setTitle("Storage — увійдіть у браузері (вікно закриється автоматично)");
+    try {
+      await waitForSelector(uploadWindow, "#upload-main", 600_000, isCancelled);
+    } catch (err) {
+      if (isCancelError(err)) return { success: false, error: "Upload скасовано — вікно закрито під час авторизації" };
+      return { success: false, error: "Timeout (10 хв) — кнопка завантаження не з'явилась. Перевірте, чи вдалось увійти у сховище" };
+    }
 
-      try {
-        // Wait up to 10 min for the user to complete login
-        await waitForSelector(uploadWindow, "#upload-main", 600_000, isCancelled);
-      } catch (err) {
-        if (isCancelError(err)) return { success: false, error: "Upload скасовано — вікно закрито під час авторизації" };
-        return { success: false, error: "Timeout авторизації — вікно було відкрите понад 10 хвилин без входу" };
-      }
+    if (isCancelled()) return { success: false, error: "Upload скасовано" };
 
-      if (isCancelled()) return { success: false, error: "Upload скасовано" };
-
-      // Re-navigate to the target folder after login
+    // After login MinIO may redirect to /browser root — re-navigate to target folder
+    const currentUrl: string = await uploadWindow.webContents.executeJavaScript(`window.location.href`).catch(() => "");
+    if (!currentUrl.includes(bucket)) {
       uploadWindow.setTitle("Storage — навігація до папки...");
       try {
         await loadUrlWithTimeout(uploadWindow, targetUrl, 30_000, isCancelled);
-        // Give React Router time to render the folder contents
         await sleep(uploadWindow, 2_000);
       } catch {
-        // Non-fatal: page may already be at the right location via client-side routing
+        // Non-fatal: React Router may have already navigated client-side
       }
-
       if (isCancelled()) return { success: false, error: "Upload скасовано" };
     }
 
@@ -221,15 +215,7 @@ export async function uploadFile(
     // ── Step 4: Open upload menu ──────────────────────────────────────────────
     uploadWindow.setTitle("Storage — завантаження файлу...");
 
-    try {
-      await waitForSelector(uploadWindow, "#upload-main", 10_000, isCancelled);
-    } catch (err) {
-      if (isCancelError(err)) return { success: false, error: "Upload скасовано" };
-      return { success: false, error: "Кнопка завантаження (#upload-main) не знайдена — сесія могла закінчитись або змінився UI сховища" };
-    }
-
-    if (isCancelled()) return { success: false, error: "Upload скасовано" };
-
+    // #upload-main already confirmed present above — click it directly
     await uploadWindow.webContents.executeJavaScript(`document.querySelector('#upload-main').click()`);
 
     try {
