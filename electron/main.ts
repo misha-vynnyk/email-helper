@@ -81,10 +81,14 @@ function registerIpcHandlers(): void {
         (storageProviders as Record<string, unknown>).windowHeight = Math.round(height * scale);
       }
       const ui = fullConfig.ui ?? {};
-      if (ui.uploadCloseDelayMs     !== undefined) (storageProviders as Record<string, unknown>).closeDelayMs      = ui.uploadCloseDelayMs;
-      if (ui.uploadIdleCloseMs      !== undefined) (storageProviders as Record<string, unknown>).idleCloseMs       = ui.uploadIdleCloseMs;
-      if (ui.loginTimeoutMs         !== undefined) (storageProviders as Record<string, unknown>).loginTimeoutMs    = ui.loginTimeoutMs;
+      if (ui.uploadCloseDelayMs        !== undefined) (storageProviders as Record<string, unknown>).closeDelayMs       = ui.uploadCloseDelayMs;
+      if (ui.uploadIdleCloseMs         !== undefined) (storageProviders as Record<string, unknown>).idleCloseMs        = ui.uploadIdleCloseMs;
+      if (ui.loginTimeoutMs            !== undefined) (storageProviders as Record<string, unknown>).loginTimeoutMs     = ui.loginTimeoutMs;
       if (ui.uploadCompletionTimeoutMs !== undefined) (storageProviders as Record<string, unknown>).uploadCompletionMs = ui.uploadCompletionTimeoutMs;
+      const timeouts = fullConfig.timeouts ?? {};
+      if (timeouts.elementWait !== undefined) (storageProviders as Record<string, unknown>).elementWaitMs = timeouts.elementWait;
+      const retries = fullConfig.retries ?? {};
+      if (retries.uploadAttempts !== undefined) (storageProviders as Record<string, unknown>).uploadAttempts = retries.uploadAttempts;
       const notif = fullConfig.notifications ?? {};
       (storageProviders as Record<string, unknown>).soundsEnabled = notif.soundsEnabled ?? notif.enabled ?? true;
       (storageProviders as Record<string, unknown>).sounds        = notif.sounds ?? {};

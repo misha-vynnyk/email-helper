@@ -176,7 +176,10 @@ export async function uploadFile(
   const windowHeight        = cfg.windowHeight       ?? 800;
   const idleCloseMs         = cfg.idleCloseMs        ?? 4_000;
   const loginTimeoutMs      = Number(providerCfg.loginWaitMs ?? cfg.loginTimeoutMs ?? 600_000);
+  const bootstrapWaitMs     = Number(providerCfg.bootstrapWaitMs ?? 30_000);
   const uploadCompletionMs  = cfg.uploadCompletionMs ?? 60_000;
+  const elementWaitMs       = cfg.elementWaitMs      ?? 5_000;
+  const uploadAttempts      = cfg.uploadAttempts     ?? 1;
 
   // ── Acquire window (reuse or create) ─────────────────────────────────────
   const existing   = activeSessions.get(req.provider);
@@ -293,7 +296,7 @@ export async function uploadFile(
 
       if (!uploadReady) {
         try {
-          await waitForSelector(uploadWindow, "#upload-main", 15_000, isCancelled);
+          await waitForSelector(uploadWindow, "#upload-main", bootstrapWaitMs, isCancelled);
         } catch (err) {
           if (isCancelError(err)) return { success: false, error: "Upload скасовано" };
           return { success: false, error: "Сесія сховища закінчилась — спробуйте ще раз (відкриється вікно входу)" };
@@ -320,73 +323,91 @@ export async function uploadFile(
       return { success: true, publicUrl: `${publicBase}/${publicPrefix}/${publicPath}`, filePath: publicPath };
     }
 
-    // ── Step 4: Open upload menu ────────────────────────────────────────────
-    uploadWindow.setTitle("Storage — завантаження файлу...");
+    // ── Steps 4-6: Upload with retry ───────────────────────────────────────
+    const checkInListing = () => uploadWindow.webContents.executeJavaScript(
+      `Array.from(document.querySelectorAll('.fileNameText')).some(el => el.textContent.trim() === ${JSON.stringify(filename)})`
+    ).catch(() => false) as Promise<boolean>;
 
-    await uploadWindow.webContents.executeJavaScript(`document.querySelector('#upload-main').click()`);
-
-    try {
-      await waitForSelector(uploadWindow, 'div[label="Upload File"]', 5_000, isCancelled);
-    } catch (err) {
-      if (isCancelError(err)) return { success: false, error: "Upload скасовано" };
-      return { success: false, error: "Меню завантаження не відкрилось — можливо, змінився UI сховища" };
-    }
-
-    if (isCancelled()) return { success: false, error: "Upload скасовано" };
-
-    await uploadWindow.webContents.executeJavaScript(`document.querySelector('div[label="Upload File"]').click()`);
-
-    // Wait for the file input to appear in the DOM (React renders it asynchronously)
-    try {
-      await waitForSelector(uploadWindow, 'input[type="file"]', 5_000, isCancelled);
-    } catch (err) {
-      if (isCancelError(err)) return { success: false, error: "Upload скасовано" };
-      return { success: false, error: "Поле вибору файлу не з'явилось — можливо, змінився UI сховища" };
-    }
-
-    // ── Step 5: Set file via CDP debugger ───────────────────────────────────
-    const dbg = uploadWindow.webContents.debugger;
-    try {
-      dbg.attach("1.3");
-      debuggerAttached = true;
-    } catch {
-      return { success: false, error: "Не вдалось підключити CDP debugger — спробуйте ще раз" };
-    }
-
-    try {
-      const { root } = await dbg.sendCommand("DOM.getDocument");
-      const { nodeId } = await dbg.sendCommand("DOM.querySelector", {
-        nodeId: root.nodeId,
-        selector: 'input[type="file"]',
-      });
-
-      if (!nodeId) {
-        return { success: false, error: "Поле вибору файлу не знайдено на сторінці" };
-      }
-
-      await dbg.sendCommand("DOM.setFileInputFiles", { nodeId, files: [req.tempPath] });
-    } catch (err) {
-      if (isCancelError(err)) return { success: false, error: "Upload скасовано" };
-      return { success: false, error: `CDP помилка при завантаженні файлу: ${(err as Error).message}` };
-    } finally {
-      try { dbg.detach(); debuggerAttached = false; } catch {}
-    }
-
-    // ── Step 6: Wait for file to appear in folder listing ───────────────────
-    uploadWindow.setTitle("Storage — очікування завершення...");
-
-    const deadline = Date.now() + uploadCompletionMs;
     let uploaded = false;
-    while (!uploaded) {
-      if (isCancelled()) return { success: false, error: "Upload скасовано під час передачі файлу" };
-      if (Date.now() > deadline) {
-        return { success: false, error: "Timeout завантаження (60s) — файл міг не завантажитись. Перевірте інтернет та спробуйте ще раз" };
+    let uploadError = "";
+
+    attemptLoop: for (let attempt = 1; attempt <= uploadAttempts; attempt++) {
+      if (attempt > 1) {
+        uploadWindow.setTitle(`Storage — повтор ${attempt}/${uploadAttempts}...`);
+        await sleep(uploadWindow, 2_000);
+        if (isCancelled()) return { success: false, error: "Upload скасовано" };
+        uploaded = await checkInListing();
+        if (uploaded) break;
       }
-      await sleep(uploadWindow, 1_000);
-      uploaded = await uploadWindow.webContents.executeJavaScript(
-        `Array.from(document.querySelectorAll('.fileNameText')).some(el => el.textContent.trim() === ${JSON.stringify(filename)})`
-      ).catch(() => false);
+
+      // ── Step 4: Open upload menu ──────────────────────────────────────────
+      uploadWindow.setTitle("Storage — завантаження файлу...");
+      await uploadWindow.webContents.executeJavaScript(`document.querySelector('#upload-main').click()`);
+
+      try {
+        await waitForSelector(uploadWindow, 'div[label="Upload File"]', elementWaitMs, isCancelled);
+      } catch (err) {
+        if (isCancelError(err)) return { success: false, error: "Upload скасовано" };
+        uploadError = "Меню завантаження не відкрилось — можливо, змінився UI сховища";
+        continue attemptLoop;
+      }
+      if (isCancelled()) return { success: false, error: "Upload скасовано" };
+
+      await uploadWindow.webContents.executeJavaScript(`document.querySelector('div[label="Upload File"]').click()`);
+
+      try {
+        await waitForSelector(uploadWindow, 'input[type="file"]', elementWaitMs, isCancelled);
+      } catch (err) {
+        if (isCancelError(err)) return { success: false, error: "Upload скасовано" };
+        uploadError = "Поле вибору файлу не з'явилось — можливо, змінився UI сховища";
+        continue attemptLoop;
+      }
+
+      // ── Step 5: Set file via CDP debugger ─────────────────────────────────
+      const dbg = uploadWindow.webContents.debugger;
+      try {
+        dbg.attach("1.3");
+        debuggerAttached = true;
+      } catch {
+        uploadError = "Не вдалось підключити CDP debugger — спробуйте ще раз";
+        continue attemptLoop;
+      }
+
+      try {
+        const { root } = await dbg.sendCommand("DOM.getDocument");
+        const { nodeId } = await dbg.sendCommand("DOM.querySelector", {
+          nodeId: root.nodeId,
+          selector: 'input[type="file"]',
+        });
+        if (!nodeId) {
+          uploadError = "Поле вибору файлу не знайдено на сторінці";
+          continue attemptLoop;
+        }
+        await dbg.sendCommand("DOM.setFileInputFiles", { nodeId, files: [req.tempPath] });
+      } catch (err) {
+        if (isCancelError(err)) return { success: false, error: "Upload скасовано" };
+        uploadError = `CDP помилка при завантаженні файлу: ${(err as Error).message}`;
+        continue attemptLoop;
+      } finally {
+        try { dbg.detach(); debuggerAttached = false; } catch {}
+      }
+
+      // ── Step 6: Wait for file to appear in folder listing ─────────────────
+      uploadWindow.setTitle("Storage — очікування завершення...");
+      const deadline = Date.now() + uploadCompletionMs;
+      while (!uploaded) {
+        if (isCancelled()) return { success: false, error: "Upload скасовано під час передачі файлу" };
+        if (Date.now() > deadline) {
+          uploadError = `Timeout завантаження (${Math.round(uploadCompletionMs / 1000)}s) — файл міг не завантажитись. Перевірте інтернет та спробуйте ще раз`;
+          break;
+        }
+        await sleep(uploadWindow, 1_000);
+        uploaded = await checkInListing();
+      }
+      if (uploaded) break;
     }
+
+    if (!uploaded) return { success: false, error: uploadError || "Upload не вдався" };
 
     const publicPath = [publicRoot, effectiveCat, formattedName, filename].filter(Boolean).join("/");
     const publicUrl  = `${publicBase}/${publicPrefix}/${publicPath}`;
