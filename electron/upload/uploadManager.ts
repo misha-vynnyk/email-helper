@@ -156,12 +156,20 @@ export async function uploadFile(
     const publicBase   = providerCfg.publicBaseUrl      as string ?? "";
     const publicPrefix = providerCfg.publicPathPrefix   as string ?? "files";
     const publicRoot   = providerCfg.publicRootPrefix   as string ?? "";
+    const folderPrefix = providerCfg.folderPrefix       as string ?? "lift-";
 
-    const folderPath  = [consoleRoot, req.category, req.folderName].filter(Boolean).join("/");
+    // Format folder name the same way as the Brave automation:
+    // "ABCD1234" → letters="abcd", digits="1234" → "abcd/lift-1234"
+    const letters       = req.folderName.replace(/[^a-zA-Z]/g, "").toLowerCase();
+    const digits        = req.folderName.replace(/[^0-9]/g, "");
+    const formattedName = `${letters}/${folderPrefix}${digits}`;
+    const category      = req.category ? req.category.toLowerCase() : "";
+
+    // MinIO Console expects the full sub-path encoded as one segment with %2F separators,
+    // matching the Brave automation: encodeURIComponent(consolePath) + "%2F"
+    const consolePath = [consoleRoot, category, formattedName].filter(Boolean).join("/");
     const consoleHost = (storageConfig as Record<string, string>).consoleUrl ?? "http://localhost:9001";
-    // Encode each segment individually so slashes remain path separators, not %2F
-    const encodedPath = folderPath.split("/").map(encodeURIComponent).join("/");
-    const targetUrl   = `${consoleHost}/browser/${bucket}/${encodedPath}/`;
+    const targetUrl   = `${consoleHost}/browser/${bucket}/${encodeURIComponent(consolePath)}%2F`;
 
     // ── Step 1: Initial page load ─────────────────────────────────────────────
     uploadWindow.setTitle("Storage — підключення...");
@@ -211,7 +219,7 @@ export async function uploadFile(
     ).catch(() => false);
 
     if (fileExists) {
-      const publicPath = [publicRoot, req.category, req.folderName, filename].filter(Boolean).join("/");
+      const publicPath = [publicRoot, category, formattedName, filename].filter(Boolean).join("/");
       return { success: true, publicUrl: `${publicBase}/${publicPrefix}/${publicPath}`, filePath: publicPath };
     }
 
@@ -230,9 +238,9 @@ export async function uploadFile(
 
     if (isCancelled()) return { success: false, error: "Upload скасовано" };
 
-    await uploadWindow.webContents.executeJavaScript(`document.querySelector('div[label="Upload File"]').click()`);
-
-    // ── Step 5: Set file via CDP debugger ─────────────────────────────────────
+    // ── Step 5: Set file via CDP — intercept file chooser before OS dialog opens ─
+    // Mirrors how Playwright handles filechooser: enable interception first,
+    // then click the button; CDP fires fileChooserOpened instead of opening Finder.
     const dbg = uploadWindow.webContents.debugger;
     try {
       dbg.attach("1.3");
@@ -242,17 +250,49 @@ export async function uploadFile(
     }
 
     try {
-      const { root } = await dbg.sendCommand("DOM.getDocument");
-      const { nodeId } = await dbg.sendCommand("DOM.querySelector", {
-        nodeId: root.nodeId,
-        selector: 'input[type="file"]',
+      // Suppress the OS file picker dialog
+      await dbg.sendCommand("Page.setInterceptFileChooserDialog", { enabled: true });
+
+      // Listen for the fileChooserOpened CDP event
+      let fileChooserBackendNodeId: number | null = null;
+      const msgHandler = (_e: unknown, method: string, params: Record<string, unknown>) => {
+        if (method === "Page.fileChooserOpened") {
+          fileChooserBackendNodeId = params.backendNodeId as number;
+        }
+      };
+      dbg.on("message", msgHandler);
+
+      // Click "Upload File" — OS dialog is suppressed, CDP event fires instead
+      await uploadWindow.webContents.executeJavaScript(
+        `document.querySelector('div[label="Upload File"]').click()`
+      );
+
+      // Wait for the fileChooserOpened event
+      const backendNodeId = await new Promise<number>((resolve, reject) => {
+        const deadline = setTimeout(() => reject(new Error("File chooser не відкрився (5s timeout)")), 5_000);
+        const check = setInterval(() => {
+          if (fileChooserBackendNodeId !== null) {
+            clearInterval(check);
+            clearTimeout(deadline);
+            resolve(fileChooserBackendNodeId!);
+          }
+          if (isCancelled()) {
+            clearInterval(check);
+            clearTimeout(deadline);
+            reject(new Error(CANCEL_MSG));
+          }
+        }, 50);
       });
 
-      if (!nodeId) {
-        return { success: false, error: "Поле вибору файлу не знайдено на сторінці" };
-      }
+      dbg.removeListener("message", msgHandler);
 
-      await dbg.sendCommand("DOM.setFileInputFiles", { nodeId, files: [req.tempPath] });
+      // Set the file directly — no dialog, no Finder
+      await dbg.sendCommand("DOM.setFileInputFiles", {
+        backendNodeId,
+        files: [req.tempPath],
+      });
+
+      await dbg.sendCommand("Page.setInterceptFileChooserDialog", { enabled: false });
     } catch (err) {
       if (isCancelError(err)) return { success: false, error: "Upload скасовано" };
       return { success: false, error: `CDP помилка при завантаженні файлу: ${(err as Error).message}` };
@@ -270,7 +310,7 @@ export async function uploadFile(
       return { success: false, error: "Timeout завантаження (60s) — файл міг не завантажитись. Перевірте інтернет та спробуйте ще раз" };
     }
 
-    const publicPath = [publicRoot, req.category, req.folderName, filename].filter(Boolean).join("/");
+    const publicPath = [publicRoot, category, formattedName, filename].filter(Boolean).join("/");
     const publicUrl  = `${publicBase}/${publicPrefix}/${publicPath}`;
 
     return { success: true, publicUrl, filePath: publicPath };
