@@ -73,7 +73,8 @@
   },
   "ui": {
     "formServerPort": 3838,
-    "interactiveMode": true
+    "interactiveMode": true,
+    "uploadWindowScale": 0.8
   },
   "timeouts": {
     "browserStart": 1500,

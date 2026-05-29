@@ -61,14 +61,25 @@ function registerIpcHandlers(): void {
     if (Notification.isSupported()) new Notification({ title, body }).show();
   });
 
-  ipcMain.handle("upload:executeFile", async (_event, req) => {
+  ipcMain.handle("upload:executeFile", async (event, req) => {
     // ../../ from dist-electron/main/ → project root → automation/config.json
     const configPath = path.join(__dirname, "../../automation/config.json");
     let storageProviders: Record<string, unknown> = {};
     try {
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const raw = require("fs").readFileSync(configPath, "utf8");
-      storageProviders = JSON.parse(raw).storageProviders ?? {};
+      const fullConfig = JSON.parse(raw);
+      storageProviders = fullConfig.storageProviders ?? {};
+      if (fullConfig.storage?.baseUrl) {
+        (storageProviders as Record<string, unknown>).consoleUrl = fullConfig.storage.baseUrl;
+      }
+      const scale = fullConfig.ui?.uploadWindowScale ?? 0.8;
+      const mainWin = BrowserWindow.fromWebContents(event.sender);
+      if (mainWin) {
+        const { width, height } = mainWin.getBounds();
+        (storageProviders as Record<string, unknown>).windowWidth  = Math.round(width  * scale);
+        (storageProviders as Record<string, unknown>).windowHeight = Math.round(height * scale);
+      }
     } catch (e) {
       return { success: false, error: `Cannot read automation/config.json: ${(e as Error).message}` };
     }
