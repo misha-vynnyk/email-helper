@@ -18,6 +18,37 @@ export interface UploadResult {
 
 const CANCEL_MSG = "cancelled";
 
+// ── Session state ─────────────────────────────────────────────────────────────
+// One persistent window per provider. Reused across uploads to avoid repeated
+// login. Destroyed after IDLE_CLOSE_MS of inactivity.
+
+interface ProviderSession {
+  window: BrowserWindow;
+  closeTimer: ReturnType<typeof setTimeout> | null;
+}
+const activeSessions = new Map<string, ProviderSession>();
+const IDLE_CLOSE_MS = 8_000;
+
+function clearSession(provider: string): void {
+  const s = activeSessions.get(provider);
+  if (!s) return;
+  if (s.closeTimer) clearTimeout(s.closeTimer);
+  if (!s.window.isDestroyed()) s.window.destroy();
+  activeSessions.delete(provider);
+}
+
+function scheduleSessionClose(provider: string, delayMs: number): void {
+  const s = activeSessions.get(provider);
+  if (!s) return;
+  if (s.closeTimer) clearTimeout(s.closeTimer);
+  s.closeTimer = setTimeout(() => {
+    if (!s.window.isDestroyed()) s.window.destroy();
+    activeSessions.delete(provider);
+  }, delayMs);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 function getProviderSession(provider: string) {
   return session.fromPartition(`persist:storage-${provider}`);
 }
@@ -130,25 +161,43 @@ export async function uploadFile(
     return { success: false, error: `Невідомий провайдер: ${req.provider}` };
   }
 
+  const closeDelay   = (storageConfig as Record<string, number>).closeDelayMs ?? 1500;
   const windowWidth  = (storageConfig as Record<string, number>).windowWidth  ?? 1200;
   const windowHeight = (storageConfig as Record<string, number>).windowHeight ?? 800;
 
-  const uploadWindow = new BrowserWindow({
-    width: windowWidth,
-    height: windowHeight,
-    show: true,
-    webPreferences: {
-      session: getProviderSession(req.provider),
-      contextIsolation: true,
-      nodeIntegration: false,
-    },
-  });
+  // ── Acquire window (reuse or create) ─────────────────────────────────────
+  const existing   = activeSessions.get(req.provider);
+  const reuseWindow = !!(existing && !existing.window.isDestroyed());
+
+  let uploadWindow: BrowserWindow;
+  if (reuseWindow) {
+    // Cancel pending idle-close so we don't destroy the window mid-upload
+    if (existing!.closeTimer) { clearTimeout(existing!.closeTimer); existing!.closeTimer = null; }
+    uploadWindow = existing!.window;
+  } else {
+    if (existing) activeSessions.delete(req.provider); // stale entry
+    uploadWindow = new BrowserWindow({
+      width: windowWidth,
+      height: windowHeight,
+      show: true,
+      webPreferences: {
+        session: getProviderSession(req.provider),
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
+    activeSessions.set(req.provider, { window: uploadWindow, closeTimer: null });
+  }
 
   let cancelled = false;
-  uploadWindow.once("closed", () => { cancelled = true; });
+  uploadWindow.once("closed", () => {
+    cancelled = true;
+    activeSessions.delete(req.provider);
+  });
   const isCancelled = () => cancelled;
 
   let debuggerAttached = false;
+  let keepWindowOpen  = false; // set to true on success so finally doesn't destroy
 
   try {
     const consoleRoot  = providerCfg.consoleRootPrefix  as string ?? "";
@@ -166,46 +215,78 @@ export async function uploadFile(
     const consoleHost = (storageConfig as Record<string, string>).consoleUrl ?? "http://localhost:9001";
     const targetUrl   = `${consoleHost}/browser/${bucket}/${encodeURIComponent(folderPath)}%2F`;
 
-    // ── Step 1: Initial page load ─────────────────────────────────────────────
-    uploadWindow.setTitle("Storage — підключення...");
-    try {
-      await loadUrlWithTimeout(uploadWindow, targetUrl, 30_000, isCancelled);
-    } catch (err) {
-      if (isCancelError(err)) return { success: false, error: "Upload скасовано" };
-      return { success: false, error: (err as Error).message };
-    }
-
-    if (isCancelled()) return { success: false, error: "Upload скасовано" };
-
-    // ── Step 2: Wait for upload UI (handles login automatically) ─────────────
-    // Instead of detecting login state via fragile selectors, always wait for
-    // #upload-main with a generous timeout. If the user is already authenticated
-    // the element appears immediately; if not, they have time to log in.
-    uploadWindow.setTitle("Storage — якщо потрібно, увійдіть (вікно закриється автоматично)");
-
-    try {
-      await waitForSelector(uploadWindow, "#upload-main", 600_000, isCancelled);
-    } catch (err) {
-      if (isCancelError(err)) return { success: false, error: "Upload скасовано — вікно закрито під час авторизації" };
-      return { success: false, error: "Timeout (10 хв) — кнопка завантаження не з'явилась. Перевірте, чи вдалось увійти у сховище" };
-    }
-
-    if (isCancelled()) return { success: false, error: "Upload скасовано" };
-
-    // After login MinIO may redirect to /browser root — re-navigate to target folder
-    const currentUrl: string = await uploadWindow.webContents.executeJavaScript(`window.location.href`).catch(() => "");
-    if (!currentUrl.includes(bucket)) {
-      uploadWindow.setTitle("Storage — навігація до папки...");
+    if (!reuseWindow) {
+      // ── Step 1: Initial page load ───────────────────────────────────────
+      uploadWindow.setTitle("Storage — підключення...");
       try {
         await loadUrlWithTimeout(uploadWindow, targetUrl, 30_000, isCancelled);
-        await sleep(uploadWindow, 2_000);
-      } catch {
-        // Non-fatal: React Router may have already navigated client-side
+      } catch (err) {
+        if (isCancelError(err)) return { success: false, error: "Upload скасовано" };
+        return { success: false, error: (err as Error).message };
       }
+
+      if (isCancelled()) return { success: false, error: "Upload скасовано" };
+
+      // ── Step 2: Wait for upload UI (allows login) ───────────────────────
+      // Always wait for #upload-main with a generous timeout so the user has
+      // time to log in if needed. On subsequent uploads this is skipped.
+      uploadWindow.setTitle("Storage — якщо потрібно, увійдіть (вікно закриється автоматично)");
+      try {
+        await waitForSelector(uploadWindow, "#upload-main", 600_000, isCancelled);
+      } catch (err) {
+        if (isCancelError(err)) return { success: false, error: "Upload скасовано — вікно закрито під час авторизації" };
+        return { success: false, error: "Timeout (10 хв) — кнопка завантаження не з'явилась. Перевірте, чи вдалось увійти у сховище" };
+      }
+
+      if (isCancelled()) return { success: false, error: "Upload скасовано" };
+
+      // After login MinIO may redirect to /browser root — re-navigate to target folder
+      const currentUrl: string = await uploadWindow.webContents.executeJavaScript(`window.location.href`).catch(() => "");
+      if (!currentUrl.includes(bucket)) {
+        uploadWindow.setTitle("Storage — навігація до папки...");
+        try {
+          await loadUrlWithTimeout(uploadWindow, targetUrl, 30_000, isCancelled);
+          await sleep(uploadWindow, 2_000);
+        } catch {
+          // Non-fatal: React Router may have already navigated client-side
+        }
+        if (isCancelled()) return { success: false, error: "Upload скасовано" };
+      }
+
+    } else {
+      // ── Reuse: navigate only if the folder has changed ──────────────────
+      const currentUrl: string = await uploadWindow.webContents.executeJavaScript(`window.location.href`).catch(() => "");
+      const onTarget = currentUrl.startsWith(targetUrl) || targetUrl.startsWith(currentUrl.replace(/\/$/, ""));
+
+      if (!onTarget) {
+        uploadWindow.setTitle("Storage — навігація до папки...");
+        try {
+          await loadUrlWithTimeout(uploadWindow, targetUrl, 30_000, isCancelled);
+        } catch (err) {
+          if (isCancelError(err)) return { success: false, error: "Upload скасовано" };
+          return { success: false, error: (err as Error).message };
+        }
+        if (isCancelled()) return { success: false, error: "Upload скасовано" };
+      }
+
+      // Verify we're still authenticated (session could have expired)
+      const uploadReady: boolean = await uploadWindow.webContents.executeJavaScript(
+        `!!document.querySelector('#upload-main')`
+      ).catch(() => false);
+
+      if (!uploadReady) {
+        try {
+          await waitForSelector(uploadWindow, "#upload-main", 15_000, isCancelled);
+        } catch (err) {
+          if (isCancelError(err)) return { success: false, error: "Upload скасовано" };
+          return { success: false, error: "Сесія сховища закінчилась — спробуйте ще раз (відкриється вікно входу)" };
+        }
+      }
+
       if (isCancelled()) return { success: false, error: "Upload скасовано" };
     }
 
-    // ── Step 3: Duplicate check ───────────────────────────────────────────────
+    // ── Step 3: Duplicate check ─────────────────────────────────────────────
     uploadWindow.setTitle("Storage — перевірка дублікатів...");
     const filename = path.basename(req.tempPath);
 
@@ -215,13 +296,15 @@ export async function uploadFile(
 
     if (fileExists) {
       const publicPath = [publicRoot, req.category, formattedName, filename].filter(Boolean).join("/");
+      keepWindowOpen = true;
+      uploadWindow.setTitle("Storage — файл вже існує");
+      scheduleSessionClose(req.provider, IDLE_CLOSE_MS);
       return { success: true, publicUrl: `${publicBase}/${publicPrefix}/${publicPath}`, filePath: publicPath };
     }
 
-    // ── Step 4: Open upload menu ──────────────────────────────────────────────
+    // ── Step 4: Open upload menu ────────────────────────────────────────────
     uploadWindow.setTitle("Storage — завантаження файлу...");
 
-    // #upload-main already confirmed present above — click it directly
     await uploadWindow.webContents.executeJavaScript(`document.querySelector('#upload-main').click()`);
 
     try {
@@ -243,7 +326,7 @@ export async function uploadFile(
       return { success: false, error: "Поле вибору файлу не з'явилось — можливо, змінився UI сховища" };
     }
 
-    // ── Step 5: Set file via CDP debugger ─────────────────────────────────────
+    // ── Step 5: Set file via CDP debugger ───────────────────────────────────
     const dbg = uploadWindow.webContents.debugger;
     try {
       dbg.attach("1.3");
@@ -271,22 +354,29 @@ export async function uploadFile(
       try { dbg.detach(); debuggerAttached = false; } catch {}
     }
 
-    // ── Step 6: Wait for upload to complete ───────────────────────────────────
+    // ── Step 6: Wait for file to appear in folder listing ───────────────────
     uploadWindow.setTitle("Storage — очікування завершення...");
 
-    try {
-      await waitForSelector(uploadWindow, ".uploaded-list .file-name", 60_000, isCancelled);
-    } catch (err) {
-      if (isCancelError(err)) return { success: false, error: "Upload скасовано під час передачі файлу" };
-      return { success: false, error: "Timeout завантаження (60s) — файл міг не завантажитись. Перевірте інтернет та спробуйте ще раз" };
+    const deadline = Date.now() + 60_000;
+    let uploaded = false;
+    while (!uploaded) {
+      if (isCancelled()) return { success: false, error: "Upload скасовано під час передачі файлу" };
+      if (Date.now() > deadline) {
+        return { success: false, error: "Timeout завантаження (60s) — файл міг не завантажитись. Перевірте інтернет та спробуйте ще раз" };
+      }
+      await sleep(uploadWindow, 1_000);
+      uploaded = await uploadWindow.webContents.executeJavaScript(
+        `Array.from(document.querySelectorAll('.fileNameText')).some(el => el.textContent.trim() === ${JSON.stringify(filename)})`
+      ).catch(() => false);
     }
 
-    const publicPath  = [publicRoot, req.category, formattedName, filename].filter(Boolean).join("/");
-    const publicUrl   = `${publicBase}/${publicPrefix}/${publicPath}`;
-    const closeDelay  = (storageConfig as Record<string, number>).closeDelayMs ?? 1500;
+    const publicPath = [publicRoot, req.category, formattedName, filename].filter(Boolean).join("/");
+    const publicUrl  = `${publicBase}/${publicPrefix}/${publicPath}`;
 
+    keepWindowOpen = true;
     uploadWindow.setTitle("✅ Завантажено — вікно закриється автоматично");
     await sleep(uploadWindow, closeDelay);
+    scheduleSessionClose(req.provider, IDLE_CLOSE_MS);
 
     return { success: true, publicUrl, filePath: publicPath };
 
@@ -297,6 +387,9 @@ export async function uploadFile(
     if (debuggerAttached) {
       try { uploadWindow.webContents.debugger.detach(); } catch {}
     }
-    if (!uploadWindow.isDestroyed()) uploadWindow.destroy();
+    if (!keepWindowOpen) {
+      // Error or cancel path — destroy window and clear session immediately
+      clearSession(req.provider);
+    }
   }
 }
