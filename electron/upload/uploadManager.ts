@@ -221,12 +221,14 @@ export async function uploadFile(
     const publicPrefix = providerCfg.publicPathPrefix   as string ?? "files";
     const publicRoot   = providerCfg.publicRootPrefix   as string ?? "";
 
-    const folderPrefix  = providerCfg.folderPrefix as string ?? "lift-";
-    const letters       = req.folderName.replace(/[^a-zA-Z]/g, "").toLowerCase();
-    const digits        = req.folderName.replace(/[^0-9]/g, "");
-    const formattedName = letters && digits ? `${letters}/${folderPrefix}${digits}` : req.folderName.toLowerCase();
+    const folderPrefix   = providerCfg.folderPrefix  as string ?? "lift-";
+    const usesCategory   = !!(providerCfg.usesCategory);
+    const effectiveCat   = usesCategory ? req.category : "";
+    const letters        = req.folderName.replace(/[^a-zA-Z]/g, "").toLowerCase();
+    const digits         = req.folderName.replace(/[^0-9]/g, "");
+    const formattedName  = letters && digits ? `${letters}/${folderPrefix}${digits}` : req.folderName.toLowerCase();
 
-    const folderPath  = [consoleRoot, req.category, formattedName].filter(Boolean).join("/");
+    const folderPath  = [consoleRoot, effectiveCat, formattedName].filter(Boolean).join("/");
     const consoleHost = (storageConfig as Record<string, string>).consoleUrl ?? "http://localhost:9001";
     const targetUrl   = `${consoleHost}/browser/${bucket}/${encodeURIComponent(folderPath)}%2F`;
 
@@ -310,7 +312,7 @@ export async function uploadFile(
     ).catch(() => false);
 
     if (fileExists) {
-      const publicPath = [publicRoot, req.category, formattedName, filename].filter(Boolean).join("/");
+      const publicPath = [publicRoot, effectiveCat, formattedName, filename].filter(Boolean).join("/");
       isDuplicate = true;
       keepWindowOpen = true;
       uploadWindow.setTitle("Storage — файл вже існує");
@@ -386,7 +388,7 @@ export async function uploadFile(
       ).catch(() => false);
     }
 
-    const publicPath = [publicRoot, req.category, formattedName, filename].filter(Boolean).join("/");
+    const publicPath = [publicRoot, effectiveCat, formattedName, filename].filter(Boolean).join("/");
     const publicUrl  = `${publicBase}/${publicPrefix}/${publicPath}`;
 
     uploadSucceeded = true;
