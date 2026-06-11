@@ -9,6 +9,7 @@ const fs = require("fs");
 
 exports.default = async function (context) {
   const serverDir = path.resolve(__dirname, "../server");
+  const automationDir = path.resolve(__dirname, "../automation");
 
   console.log("\n📦 [beforePack] Installing server production dependencies...");
   console.log(`   cwd: ${serverDir}`);
@@ -25,6 +26,19 @@ exports.default = async function (context) {
   } catch (err) {
     console.error("❌ [beforePack] Failed to install server deps:", err.message);
     throw err;
+  }
+
+  console.log("📦 [beforePack] Installing automation dependencies (playwright-core)...");
+  try {
+    execSync("npm install --omit=dev --no-workspaces", {
+      cwd: automationDir,
+      stdio: "inherit",
+      shell: process.platform === "win32",
+    });
+    console.log("✅ [beforePack] Automation dependencies installed.\n");
+  } catch (err) {
+    console.warn("⚠️  [beforePack] Failed to install automation deps:", err.message);
+    // Non-fatal: upload will show a clear error at runtime if playwright-core is missing
   }
 
   // After npm install, rebuild native modules for the correct Electron version

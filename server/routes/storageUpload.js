@@ -13,6 +13,14 @@ try {
   // optional
 }
 
+// In a packaged Electron app server/ lives inside app.asar but automation/ is
+// in app.asar.unpacked (asarUnpack). Plain `node` cannot open asar paths, so
+// we redirect the path to the unpacked location when running inside an asar.
+function resolveAutomationPath(...segments) {
+  const p = path.join(__dirname, "..", "..", "automation", ...segments);
+  return p.replace(/app\.asar([/\\])/g, "app.asar.unpacked$1");
+}
+
 // Configure multer for temporary file storage
 const upload = multer({
   dest: path.join(os.tmpdir(), "email-helper-uploads"),
@@ -156,7 +164,7 @@ router.post("/api/storage-upload/prepare-from-url", async (req, res) => {
 router.post("/api/storage-upload/finalize", async (req, res) => {
   const providerKey = String(req.body?.provider || "default").toLowerCase();
   try {
-    const runUploadPath = path.join(__dirname, "../../automation/run-upload.js");
+    const runUploadPath = resolveAutomationPath("run-upload.js");
     if (!fs.existsSync(runUploadPath)) {
       return res.status(500).json({
         success: false,
@@ -228,7 +236,7 @@ router.post("/api/storage-upload", async (req, res) => {
   }
 
   try {
-    const runUploadPath = path.join(__dirname, "../../automation/run-upload.js");
+    const runUploadPath = resolveAutomationPath("run-upload.js");
 
     if (!fs.existsSync(runUploadPath)) {
       return res.status(500).json({
