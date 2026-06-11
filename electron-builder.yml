@@ -44,8 +44,8 @@ mac:
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
   target:
-    - target: dmg
-      arch: [x64, arm64]
+    # DMG disabled: dmgbuild@1.2.0 fails on macOS 15 Sequoia with read-only volume error.
+    # Re-enable once electron-builder ships a dmgbuild fix or we upgrade.
     - target: zip
       arch: [x64, arm64]
 

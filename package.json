@@ -2,6 +2,7 @@
   "name": "flexibuilder-pro-editor",
   "version": "1.0.0",
   "private": true,
+  "author": "FlexiBuilder Pro",
   "description": "FlexiBuilder Pro - Flexible Content Builder Frontend Application",
   "workspaces": [
     "server",
