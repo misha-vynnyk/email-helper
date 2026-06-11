@@ -3,7 +3,7 @@
     "executablePath": "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
     "debugPort": 9222,
     "userDataDir": "/Users/mykhailo.vynnyk/Library/Application Support/BravePlaywright",
-    "autoCloseTab": true,
+    "autoCloseTab": false,
     "closeDelaySuccess": 2000,
     "closeDelayCancel": 3000
   },
@@ -11,17 +11,17 @@
     "default": {
       "debugPort": 9222,
       "userDataDir": "/Users/mykhailo.vynnyk/Library/Application Support/BravePlaywright",
-      "autoCloseTab": true
+      "autoCloseTab": false
     },
     "alphaone": {
       "debugPort": 9223,
       "userDataDir": "/Users/mykhailo.vynnyk/Library/Application Support/BravePlaywright-AlfaOne",
-      "autoCloseTab": true
+      "autoCloseTab": false
     },
     "ttt": {
       "debugPort": 9224,
       "userDataDir": "/Users/mykhailo.vynnyk/Library/Application Support/BravePlaywright-TerraTrans",
-      "autoCloseTab": true
+      "autoCloseTab": false
     }
   },
   "storage": {
@@ -39,7 +39,7 @@
         "health"
       ],
       "defaultCategory": "finance",
-      "closeTabAfterBatch": false,
+      "closeTabAfterBatch": true,
       "publicBaseUrl": "https://storage.5th-elementagency.com",
       "publicPathPrefix": "files",
       "publicRootPrefix": "Promo",
@@ -52,7 +52,7 @@
       "consoleRootPrefix": "promo",
       "loginWaitMs": 600000,
       "bootstrapWaitMs": 30000,
-      "closeTabAfterBatch": false,
+      "closeTabAfterBatch": true,
       "publicBaseUrl": "https://alphaonest.com",
       "publicPathPrefix": "files",
       "publicRootPrefix": "promo",
@@ -64,7 +64,7 @@
       "consoleRootPrefix": "creatives",
       "loginWaitMs": 600000,
       "bootstrapWaitMs": 30000,
-      "closeTabAfterBatch": false,
+      "closeTabAfterBatch": true,
       "publicBaseUrl": "https://ogfinstorage.com",
       "publicPathPrefix": "files",
       "publicRootPrefix": "creatives",
