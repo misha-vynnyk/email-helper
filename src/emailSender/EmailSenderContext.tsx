@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
 
-import API_URL, { isApiAvailable } from "../config/api";
+import { getApiBase, isApiAvailable } from "../config/api";
 import { preloadImages } from "../utils/imageUrlReplacer";
 
 interface EmailSenderContextType {
@@ -80,7 +80,7 @@ export const EmailSenderProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
 
     try {
-      const response = await fetch(`${API_URL}/api/health`);
+      const response = await fetch(`${getApiBase()}/api/health`);
       setServerStatus(response.ok ? "online" : "offline");
     } catch {
       setServerStatus("offline");
@@ -93,7 +93,7 @@ export const EmailSenderProvider: React.FC<{ children: React.ReactNode }> = ({ c
   }, [editorHtml]);
 
   // Debounced preload зображень з HTML (чекаємо 500ms після останньої зміни)
-  const preloadTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const preloadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!editorHtml) return;
 
@@ -189,7 +189,7 @@ export const EmailSenderProvider: React.FC<{ children: React.ReactNode }> = ({ c
     try {
       setLoading(true);
 
-      const response = await fetch(`${API_URL}/api/send-email`, {
+      const response = await fetch(`${getApiBase()}/api/send-email`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -248,7 +248,7 @@ export const EmailSenderProvider: React.FC<{ children: React.ReactNode }> = ({ c
       try {
         setLoading(true);
 
-        const response = await fetch(`${API_URL}/api/send-email`, {
+        const response = await fetch(`${getApiBase()}/api/send-email`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

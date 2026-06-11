@@ -1,4 +1,4 @@
-import API_URL, { isApiAvailable } from "../../config/api";
+import { getApiBase, isApiAvailable } from "../../config/api";
 import { ConversionSettings, ImageFormat } from "../types";
 import { detectImageFormat } from "./imageFormatDetector";
 
@@ -47,7 +47,7 @@ export async function convertImageServer(file: File, settings: ConversionSetting
     throw new Error("Backend server is not available. Please configure VITE_API_URL environment variable.");
   }
 
-  const response = await fetch(`${API_URL}/api/image-converter/convert`, {
+  const response = await fetch(`${getApiBase()}/api/image-converter/convert`, {
     method: "POST",
     body: formData,
   });

@@ -4,15 +4,9 @@
  */
 
 import { logger } from '../utils/logger';
-import API_URL, { isApiAvailable } from '../config/api';
+import { getApiBase, isApiAvailable } from '../config/api';
 
 class ApiClient {
-  private baseUrl: string;
-
-  constructor(baseUrl: string) {
-    this.baseUrl = baseUrl;
-  }
-
   async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     // If API is not available, reject immediately without making a request
     if (!isApiAvailable()) {
@@ -22,7 +16,7 @@ class ApiClient {
     }
 
     try {
-      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      const response = await fetch(`${getApiBase()}${endpoint}`, {
         ...options,
         headers: {
           'Content-Type': 'application/json',
@@ -70,5 +64,5 @@ class ApiClient {
   }
 }
 
-export const apiClient = new ApiClient(API_URL);
+export const apiClient = new ApiClient();
 export { ApiClient };

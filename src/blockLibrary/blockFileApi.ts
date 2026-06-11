@@ -3,10 +3,8 @@
  * HTTP client for managing TypeScript block files
  */
 
-import API_URL from "../config/api";
+import { getApiBase } from "../config/api";
 import { logger } from "../utils/logger";
-
-const API_BASE_URL = `${API_URL}/api/blocks`;
 
 export interface BlockFileData {
   id: string;
@@ -24,11 +22,7 @@ export interface BlockFileData {
  * Block File API Client
  */
 export class BlockFileApiClient {
-  private baseUrl: string;
-
-  constructor(baseUrl: string = API_BASE_URL) {
-    this.baseUrl = baseUrl;
-  }
+  private get baseUrl() { return `${getApiBase()}/api/blocks`; }
 
   /**
    * Fetch with error handling

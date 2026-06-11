@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { STORAGE_KEYS, IMAGE_DEFAULTS } from "../constants";
 import type { ProcessedImage, ImageFormat, ImageSettings } from "../types";
 import { isCrossOrigin, detectTransparency, getImageFormat, isSignatureImageAlt } from "../utils/imageUtils";
-import API_URL, { isApiAvailable } from "../../config/api";
+import { getApiBase, isApiAvailable } from "../../config/api";
 
 export interface UseImageConversionProps {
   editorRef: React.RefObject<HTMLDivElement>;
@@ -89,7 +89,7 @@ export function useImageConversion({ editorRef, onLog, onVisibilityChange, autoP
     const isCrossOriginUrl = isCrossOrigin(src);
 
     if (isCrossOriginUrl && isApiAvailable()) {
-      const convertRes = await fetch(`${API_URL}/api/image-converter/convert-from-url`, {
+      const convertRes = await fetch(`${getApiBase()}/api/image-converter/convert-from-url`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal,
@@ -141,7 +141,7 @@ export function useImageConversion({ editorRef, onLog, onVisibilityChange, autoP
         formData.append("compressionMode", "balanced");
 
         if (isApiAvailable()) {
-          const convertResponse = await fetch(`${API_URL}/api/image-converter/convert`, {
+          const convertResponse = await fetch(`${getApiBase()}/api/image-converter/convert`, {
             method: "POST",
             body: formData,
             signal,

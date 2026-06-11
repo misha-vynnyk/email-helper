@@ -2,7 +2,7 @@
  * Image API Endpoints
  */
 
-import { apiClient } from '../client';
+import { getApiBase } from '../../config/api';
 
 export interface ImageConversionOptions {
   format: 'webp' | 'jpeg' | 'png' | 'avif';
@@ -27,7 +27,7 @@ export const imageEndpoints = {
     if (options.width) formData.append('width', options.width.toString());
     if (options.height) formData.append('height', options.height.toString());
 
-    return fetch(`${apiClient['baseUrl']}/api/images/convert`, {
+    return fetch(`${getApiBase()}/api/images/convert`, {
       method: 'POST',
       body: formData,
     }).then(res => res.json());
@@ -37,7 +37,7 @@ export const imageEndpoints = {
     const formData = new FormData();
     formData.append('image', file);
 
-    return fetch(`${apiClient['baseUrl']}/api/images/upload`, {
+    return fetch(`${getApiBase()}/api/images/upload`, {
       method: 'POST',
       body: formData,
     }).then(res => res.json());
