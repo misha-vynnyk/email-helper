@@ -11,7 +11,7 @@ import * as utils from "../utils/htmlUtils";
 import * as colorUtils from "../utils/colorUtils";
 import { config } from "../utils/config";
 
-const TTT_PLACEHOLDER_URL = "insertlink";
+const TTT_PLACEHOLDER_URL = "urlhere";
 
 // ─── Shared inline-style helpers (duplicated from formatter.ts intentionally) ─
 

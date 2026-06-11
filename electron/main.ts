@@ -8,6 +8,9 @@ import { uploadFile } from "./upload/uploadManager";
 let serverInstance: Server | null = null;
 
 async function startEmbeddedServer(): Promise<void> {
+  // Expose userData path so Express routes can persist settings across restarts
+  process.env.ELECTRON_USER_DATA = app.getPath("userData");
+
   // path resolves to <project-root>/server/index.js both in dev and packaged
   const serverPath = path.join(__dirname, "../../server/index.js");
   // eslint-disable-next-line @typescript-eslint/no-var-requires
