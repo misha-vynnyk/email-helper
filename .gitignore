@@ -6,6 +6,9 @@ server/node_modules/
 dist/
 !server/dist/  # Exception: keep server/dist for Render deployment
 build/
+!build/icon.*
+!build/entitlements.mac.plist
+!build/ICONS_NEEDED.md
 
 # Logs
 *.log

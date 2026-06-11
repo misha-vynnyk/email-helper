@@ -14,7 +14,9 @@ exports.default = async function (context) {
   console.log(`   cwd: ${serverDir}`);
 
   try {
-    execSync("npm install --omit=dev", {
+    // --no-workspaces prevents npm from touching root node_modules (which would
+    // evict devDependencies like app-builder-lib needed by electron-builder later).
+    execSync("npm install --omit=dev --no-workspaces", {
       cwd: serverDir,
       stdio: "inherit",
       shell: process.platform === "win32",
@@ -32,8 +34,10 @@ exports.default = async function (context) {
   if (fs.existsSync(path.join(nodeModulesDir, "sharp"))) {
     console.log(`🔧 [beforePack] Rebuilding sharp for Electron ${electronVersion}...`);
     try {
+      // --module-dir must point to the package root (where package.json lives),
+      // not to node_modules itself — @electron/rebuild reads package.json from there.
       execSync(
-        `npx @electron/rebuild --version ${electronVersion} --module-dir ${nodeModulesDir} --which-module sharp`,
+        `npx @electron/rebuild --version ${electronVersion} --module-dir ${serverDir} --which-module sharp`,
         { cwd: serverDir, stdio: "inherit", shell: process.platform === "win32" }
       );
       console.log("✅ [beforePack] sharp rebuilt.\n");
