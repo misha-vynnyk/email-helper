@@ -1,3 +1,4 @@
+import { getApiBase } from "../../../config/api";
 import { OcrAnalyzeResult } from "./analyzer";
 import { cleanupAltCandidate, formatCtaAsAction, truncateAlt } from "./postprocess/cleanup";
 import { FILENAME_STOP_WORDS } from "./constants";
@@ -48,8 +49,6 @@ function normalizeAiFilenameSuggestion(value: string): string {
  * Client for the AI proxy (Gemma 3 via Ollama, served by Express at /ai-api)
  */
 export class AiBackendClient {
-  private static readonly API_URL = "/ai-api/api/analyze";
-  private static readonly HEALTH_URL = "/ai-api/health";
   private static readonly TIMEOUT = 60000; // 60 second timeout for analysis
   private static readonly MAX_RETRIES = 3;
   private static readonly RETRY_DELAY = 1000; // 1 second between retries
@@ -62,7 +61,7 @@ export class AiBackendClient {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-      const res = await fetch(this.HEALTH_URL, {
+      const res = await fetch(`${getApiBase()}/ai-api/health`, {
         method: "GET",
         signal: controller.signal,
       });
@@ -116,7 +115,7 @@ export class AiBackendClient {
     const timeoutId = setTimeout(() => controller.abort(), this.TIMEOUT);
 
     try {
-      const response = await fetch(this.API_URL, {
+      const response = await fetch(`${getApiBase()}/ai-api/api/analyze`, {
         method: "POST",
         body: formData,
         signal: controller.signal,

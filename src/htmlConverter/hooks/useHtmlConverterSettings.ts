@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { getApiBase } from "@/config/api";
 import { STORAGE_KEYS } from "../constants";
 import type { ImageAnalysisSettings } from "../types";
 
@@ -105,7 +106,7 @@ export function useHtmlConverterSettings() {
 
     const checkHealth = async () => {
       try {
-        const res = await fetch("/ai-api/health", {
+        const res = await fetch(`${getApiBase()}/ai-api/health`, {
           method: "GET",
           signal: AbortSignal.timeout(3000),
         });

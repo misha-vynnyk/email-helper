@@ -1,4 +1,5 @@
 import React, { Dispatch, SetStateAction, useState, useEffect, useCallback } from "react";
+import { getApiBase } from "@/config/api";
 import { STORAGE_KEYS } from "../constants";
 import type { UiSettings } from "../hooks/useHtmlConverterSettings";
 import type { ImageAnalysisSettings } from "../types";
@@ -60,8 +61,8 @@ export const ImageSettingsTab: React.FC<ImageSettingsTabProps> = ({ ui, setUi, i
   const fetchModelsAndSettings = useCallback(async () => {
     try {
       const [modelsRes, settingsRes] = await Promise.all([
-        fetch("/ai-api/api/models"),
-        fetch("/ai-api/api/settings"),
+        fetch(`${getApiBase()}/ai-api/api/models`),
+        fetch(`${getApiBase()}/ai-api/api/settings`),
       ]);
       if (modelsRes.ok) {
         const data = await modelsRes.json();
@@ -101,7 +102,7 @@ export const ImageSettingsTab: React.FC<ImageSettingsTabProps> = ({ ui, setUi, i
   const handleSaveOllamaSettings = async () => {
     setOllamaSaveStatus("saving");
     try {
-      const res = await fetch("/ai-api/api/settings", {
+      const res = await fetch(`${getApiBase()}/ai-api/api/settings`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -124,7 +125,7 @@ export const ImageSettingsTab: React.FC<ImageSettingsTabProps> = ({ ui, setUi, i
     setTestStatus("testing");
     setTestResult(null);
     try {
-      const res = await fetch("/ai-api/api/test", {
+      const res = await fetch(`${getApiBase()}/ai-api/api/test`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ model: ollamaModel }),
@@ -165,7 +166,7 @@ export const ImageSettingsTab: React.FC<ImageSettingsTabProps> = ({ ui, setUi, i
 
   const handleClearCache = async () => {
     try {
-      await fetch("/ai-api/api/cache", { method: "DELETE" });
+      await fetch(`${getApiBase()}/ai-api/api/cache`, { method: "DELETE" });
     } catch { /* non-fatal */ }
     setImageAnalysis((prev) => ({ ...prev, _cacheBust: Date.now() }));
   };

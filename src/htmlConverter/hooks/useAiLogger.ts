@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { getApiBase } from "@/config/api";
 
 export function useAiLogger(enabled: boolean) {
   const [logs, setLogs] = useState<string[]>([]);
@@ -16,9 +17,11 @@ export function useAiLogger(enabled: boolean) {
     }
 
     const connect = () => {
-      // Connect to the AI backend WebSocket via Vite proxy
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/ai-api/api/ws/logs`;
+      // In Electron (file:// origin) window.location.host is empty, so use getApiBase()
+      const base = getApiBase();
+      const wsUrl = base
+        ? `${base.replace(/^http/, "ws")}/ai-api/api/ws/logs`
+        : `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/ai-api/api/ws/logs`;
       const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
