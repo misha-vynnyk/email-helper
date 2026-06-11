@@ -7,8 +7,6 @@ export type UiSettings = {
   showInputHtml: boolean;
   showUploadHistory: boolean;
   rememberUiLayout: boolean;
-  compactMode: boolean;
-  stickyActions: boolean;
   showAdvancedOcrSettings: boolean;
   showApproveNeeded: boolean;
   approveNeededValue: boolean;
@@ -23,8 +21,6 @@ export const DEFAULT_UI_SETTINGS: UiSettings = {
   showInputHtml: true,
   showUploadHistory: true,
   rememberUiLayout: true,
-  compactMode: false,
-  stickyActions: false,
   showAdvancedOcrSettings: false,
   showApproveNeeded: true,
   approveNeededValue: false,

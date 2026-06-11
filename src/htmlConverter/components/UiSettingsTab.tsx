@@ -53,17 +53,6 @@ export const UiSettingsTab: React.FC<UiSettingsTabProps> = ({ ui, setUi, uploadM
 
       <div className='h-px bg-border' />
 
-      {/* ── Вигляд ─────────────────────────────────────────────────────────── */}
-      <section className='space-y-3'>
-        <h3 className='text-xs font-semibold uppercase tracking-widest text-muted-foreground'>Вигляд</h3>
-        <div className='space-y-3'>
-          <Row id='compactMode'   label='Компактний режим'      checked={ui.compactMode}   onCheckedChange={(v) => set("compactMode", v)} />
-          <Row id='stickyActions' label='Закріпити кнопки зверху' checked={ui.stickyActions} onCheckedChange={(v) => set("stickyActions", v)} />
-        </div>
-      </section>
-
-      <div className='h-px bg-border' />
-
       {/* ── Поведінка ──────────────────────────────────────────────────────── */}
       <section className='space-y-3'>
         <h3 className='text-xs font-semibold uppercase tracking-widest text-muted-foreground'>Поведінка</h3>
