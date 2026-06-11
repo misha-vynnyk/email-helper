@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { alpha, Box, Typography, useTheme } from "@mui/material";
+import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useState } from "react";
 
 import { brandColors } from "../../theme/tokens";
 
@@ -55,8 +55,7 @@ const SplashLoader: React.FC<SplashLoaderProps> = ({ onComplete, duration = 2500
               position: "absolute",
               inset: 0,
               opacity: 0.5,
-              background: `radial-gradient(circle at 20% 30%, ${alpha(theme.palette.primary.main, 0.08)} 0%, transparent 50%),
-                           radial-gradient(circle at 80% 70%, ${alpha(theme.palette.primary.main, 0.06)} 0%, transparent 50%)`,
+              background: `radial-gradient(circle at 20% 30%, ${alpha(theme.palette.primary.main, 0.08)} 0%, transparent 50%), radial-gradient(circle at 80% 70%, ${alpha(theme.palette.primary.main, 0.06)} 0%, transparent 50%)`,
             }}
           />
 

@@ -13,118 +13,127 @@ type UiSettingsTabProps = {
   setUploadMode: Dispatch<SetStateAction<UploadMode>>;
 };
 
+type RowProps = {
+  id: string;
+  label: string;
+  hint?: string;
+  checked: boolean;
+  onCheckedChange: (v: boolean) => void;
+};
+
+const Row: React.FC<RowProps> = ({ id, label, hint, checked, onCheckedChange }) => (
+  <div className='flex items-center justify-between'>
+    <div>
+      <Label htmlFor={id} className='text-sm cursor-pointer'>{label}</Label>
+      {hint && <p className='text-[11px] text-muted-foreground mt-0.5'>{hint}</p>}
+    </div>
+    <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} />
+  </div>
+);
+
 export const UiSettingsTab: React.FC<UiSettingsTabProps> = ({ ui, setUi, uploadMode, setUploadMode }) => {
   const electronAPI = useElectronAPI();
+
+  const set = (key: keyof UiSettings, value: boolean) =>
+    setUi((prev) => ({ ...prev, [key]: value }));
+
   return (
-    <div className='flex flex-col gap-6'>
-      <div className='space-y-4'>
-        <h3 className='text-sm font-semibold tracking-tight'>Інтерфейс</h3>
-        <div className='grid gap-4'>
-          <div className='flex items-center justify-between'>
-            <Label htmlFor='showLogsPanel' className='text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70'>
-              Показувати лог операцій
-            </Label>
-            <Switch id='showLogsPanel' checked={ui.showLogsPanel} onCheckedChange={(checked) => setUi((prev) => ({ ...prev, showLogsPanel: checked }))} />
-          </div>
+    <div className='flex flex-col gap-5'>
 
-          <div className='flex items-center justify-between'>
-            <Label htmlFor='showAiTerminal' className='text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70'>
-              Показувати термінал AI
-            </Label>
-            <Switch id='showAiTerminal' checked={ui.showAiTerminal} onCheckedChange={(checked) => setUi((prev) => ({ ...prev, showAiTerminal: checked }))} />
-          </div>
-
-          <div className='flex items-center justify-between'>
-            <Label htmlFor='showInputHtml' className='text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70'>
-              Показувати вхідний HTML
-            </Label>
-            <Switch id='showInputHtml' checked={ui.showInputHtml} onCheckedChange={(checked) => setUi((prev) => ({ ...prev, showInputHtml: checked }))} />
-          </div>
-
-          <div className='flex items-center justify-between'>
-            <Label htmlFor='showUploadHistory' className='text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70'>
-              Показувати історію завантажень
-            </Label>
-            <Switch id='showUploadHistory' checked={ui.showUploadHistory} onCheckedChange={(checked) => setUi((prev) => ({ ...prev, showUploadHistory: checked }))} />
-          </div>
-
-          <div className='flex items-center justify-between'>
-            <Label htmlFor='rememberUiLayout' className='text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70'>
-              Запамʼятовувати вигляд (layout)
-            </Label>
-            <Switch id='rememberUiLayout' checked={ui.rememberUiLayout} onCheckedChange={(checked) => setUi((prev) => ({ ...prev, rememberUiLayout: checked }))} />
-          </div>
-
-          <div className='flex items-center justify-between'>
-            <Label htmlFor='compactMode' className='text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70'>
-              Компактний режим
-            </Label>
-            <Switch id='compactMode' checked={ui.compactMode} onCheckedChange={(checked) => setUi((prev) => ({ ...prev, compactMode: checked }))} />
-          </div>
-
-          <div className='flex items-center justify-between'>
-            <Label htmlFor='stickyActions' className='text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70'>
-              Закріпити кнопки зверху
-            </Label>
-            <Switch id='stickyActions' checked={ui.stickyActions} onCheckedChange={(checked) => setUi((prev) => ({ ...prev, stickyActions: checked }))} />
-          </div>
-
-          <div className='flex items-center justify-between'>
-            <Label htmlFor='showApproveNeeded' className='text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70'>
-              Показувати "Approve Needed"
-            </Label>
-            <Switch id='showApproveNeeded' checked={ui.showApproveNeeded} onCheckedChange={(checked) => setUi((prev) => ({ ...prev, showApproveNeeded: checked }))} />
-          </div>
-
-          <div className='flex items-center justify-between'>
-            <Label htmlFor='autoCloseUploadDialog' className='text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70'>
-              Авто-закриття після завантаження
-            </Label>
-            <Switch id='autoCloseUploadDialog' checked={ui.autoCloseUploadDialog} onCheckedChange={(checked) => setUi((prev) => ({ ...prev, autoCloseUploadDialog: checked }))} />
-          </div>
+      {/* ── Панелі ─────────────────────────────────────────────────────────── */}
+      <section className='space-y-3'>
+        <h3 className='text-xs font-semibold uppercase tracking-widest text-muted-foreground'>Панелі</h3>
+        <div className='space-y-3'>
+          <Row id='showLogsPanel'     label='Лог операцій'           checked={ui.showLogsPanel}     onCheckedChange={(v) => set("showLogsPanel", v)} />
+          <Row id='showAiTerminal'    label='Термінал AI'             checked={ui.showAiTerminal}    onCheckedChange={(v) => set("showAiTerminal", v)} />
+          <Row id='showInputHtml'     label='Вхідний HTML'            checked={ui.showInputHtml}     onCheckedChange={(v) => set("showInputHtml", v)} />
+          <Row id='showUploadHistory' label='Історія завантажень'     checked={ui.showUploadHistory} onCheckedChange={(v) => set("showUploadHistory", v)} />
         </div>
-      </div>
+      </section>
 
-      <div className='flex items-center gap-4'>
-        <Label htmlFor='warningSize' className='min-w-[200px] text-sm font-medium leading-none'>
-          Попередження про розмір файлу (KB):
-        </Label>
-        <Input
-          id='warningSize'
-          type='number'
-          value={ui.warningFileSizeKB}
-          onChange={(e) => {
-            const val = parseInt(e.target.value, 10);
-            if (!isNaN(val)) setUi((prev) => ({ ...prev, warningFileSizeKB: val }));
-          }}
-          min={0}
-          step={100}
-          className='w-24'
-        />
-      </div>
+      <div className='h-px bg-border' />
 
-      {electronAPI && (
-        <div className='space-y-4'>
-          <h3 className='text-sm font-semibold tracking-tight'>Завантаження (Electron)</h3>
-          <div className='flex items-center justify-between'>
-            <div>
-              <Label htmlFor='uploadModeElectron' className='text-sm font-medium leading-none'>
-                Вбудований Upload (Built-in)
-              </Label>
-              <p className='text-xs text-muted-foreground mt-1'>
-                {uploadMode === "electron" ? "BrowserWindow замість Playwright" : "Playwright (зовнішній Brave)"}
-              </p>
-            </div>
-            <Switch
-              id='uploadModeElectron'
-              checked={uploadMode === "electron"}
-              onCheckedChange={(checked) => setUploadMode(checked ? "electron" : "playwright")}
+      {/* ── Вигляд ─────────────────────────────────────────────────────────── */}
+      <section className='space-y-3'>
+        <h3 className='text-xs font-semibold uppercase tracking-widest text-muted-foreground'>Вигляд</h3>
+        <div className='space-y-3'>
+          <Row id='compactMode'   label='Компактний режим'      checked={ui.compactMode}   onCheckedChange={(v) => set("compactMode", v)} />
+          <Row id='stickyActions' label='Закріпити кнопки зверху' checked={ui.stickyActions} onCheckedChange={(v) => set("stickyActions", v)} />
+        </div>
+      </section>
+
+      <div className='h-px bg-border' />
+
+      {/* ── Поведінка ──────────────────────────────────────────────────────── */}
+      <section className='space-y-3'>
+        <h3 className='text-xs font-semibold uppercase tracking-widest text-muted-foreground'>Поведінка</h3>
+        <div className='space-y-3'>
+          <Row id='rememberUiLayout'      label='Запамʼятовувати layout'          hint='Вимкни, щоб скидати вигляд при перезавантаженні'   checked={ui.rememberUiLayout}      onCheckedChange={(v) => set("rememberUiLayout", v)} />
+          <Row id='autoCloseUploadDialog' label='Авто-закриття після завантаження' checked={ui.autoCloseUploadDialog} onCheckedChange={(v) => set("autoCloseUploadDialog", v)} />
+          <Row id='showApproveNeeded'     label='Показувати "Approve Needed"'      checked={ui.showApproveNeeded}     onCheckedChange={(v) => set("showApproveNeeded", v)} />
+        </div>
+
+        <div className='flex items-center justify-between pt-1'>
+          <Label htmlFor='warningSize' className='text-sm'>Попередження про розмір файлу</Label>
+          <div className='flex items-center gap-1.5'>
+            <Input
+              id='warningSize'
+              type='number'
+              value={ui.warningFileSizeKB}
+              onChange={(e) => {
+                const val = parseInt(e.target.value, 10);
+                if (!isNaN(val)) setUi((prev) => ({ ...prev, warningFileSizeKB: val }));
+              }}
+              min={0}
+              step={100}
+              className='h-8 w-20 text-xs text-center'
             />
+            <span className='text-xs text-muted-foreground'>KB</span>
           </div>
         </div>
+      </section>
+
+      {/* ── Завантаження (Electron) ────────────────────────────────────────── */}
+      {electronAPI && (
+        <>
+          <div className='h-px bg-border' />
+          <section className='space-y-3'>
+            <h3 className='text-xs font-semibold uppercase tracking-widest text-muted-foreground'>Завантаження</h3>
+            <div className='grid grid-cols-2 gap-2'>
+              {(["electron", "playwright"] as const).map((mode) => {
+                const active = uploadMode === mode;
+                const isElectron = mode === "electron";
+                return (
+                  <button
+                    key={mode}
+                    onClick={() => setUploadMode(mode)}
+                    className={[
+                      "flex flex-col items-start gap-1 rounded-xl border px-3 py-2.5 text-left transition-all duration-150",
+                      active
+                        ? "border-primary bg-primary/8 shadow-sm"
+                        : "border-border/60 bg-muted/20 hover:bg-muted/40 hover:border-border",
+                    ].join(" ")}
+                  >
+                    <div className='flex items-center justify-between w-full'>
+                      <span className={`text-xs font-semibold ${active ? "text-primary" : "text-foreground"}`}>
+                        {isElectron ? "Built-in" : "Playwright"}
+                      </span>
+                      <span className={[
+                        "w-2 h-2 rounded-full border transition-all",
+                        active ? "bg-primary border-primary" : "bg-transparent border-muted-foreground/40",
+                      ].join(" ")} />
+                    </div>
+                    <span className='text-[11px] text-muted-foreground leading-snug'>
+                      {isElectron ? "BrowserWindow вбудований" : "Зовнішній Brave + CDP"}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        </>
       )}
 
-      <p className='text-[13px] text-muted-foreground'>Якщо вимкнути «Запамʼятовувати вигляд» — ці налаштування не збережуться після перезавантаження.</p>
     </div>
   );
 };

@@ -76,7 +76,7 @@
     "interactiveMode": true,
     "uploadWindowScale": 0.8,
     "uploadCloseDelayMs": 1500,
-    "uploadIdleCloseMs": 4000,
+    "uploadIdleCloseMs": 3000,
     "loginTimeoutMs": 600000,
     "uploadCompletionTimeoutMs": 60000
   },

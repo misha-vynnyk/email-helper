@@ -5,25 +5,70 @@
  * Mounted at: /ai-api
  * Endpoints:
  *   GET  /health            — check Ollama connectivity
- *   POST /api/analyze       — analyze image via Gemma 3 / Ollama
+ *   GET  /api/models        — list models available in Ollama
+ *   POST /api/analyze       — analyze image via Ollama
+ *   POST /api/test          — test model with a text-only prompt, returns response + latency
  *   DELETE /api/cache       — clear in-memory response cache
- *   GET  /api/settings      — get current Ollama host
- *   PUT  /api/settings      — update Ollama host
+ *   GET  /api/settings      — get all current settings
+ *   PUT  /api/settings      — update host, model, generation params, prompt
  */
 
 const express = require("express");
 const multer = require("multer");
 const https = require("https");
 const http = require("http");
+const fs = require("fs");
+const nodePath = require("path");
 const { createHash } = require("crypto");
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
-// ── In-memory state ────────────────────────────────────────────────────────────
+// ── Persisted settings ────────────────────────────────────────────────────────
+// userData dir is set by electron/main.ts; falls back to cwd in dev/web mode.
 
-let ollamaHost = (process.env.OLLAMA_HOST || "http://localhost:11434").replace(/\/$/, "");
-const MODEL_NAME = process.env.OLLAMA_MODEL || "gemma3:4b";
+function settingsFilePath() {
+  const base = process.env.ELECTRON_USER_DATA || process.cwd();
+  return nodePath.join(base, "ollama-settings.json");
+}
+
+function loadPersistedSettings() {
+  try {
+    const raw = fs.readFileSync(settingsFilePath(), "utf8");
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+function persistSettings(data) {
+  try {
+    const filePath = settingsFilePath();
+    fs.mkdirSync(nodePath.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf8");
+  } catch {
+    // non-fatal — in-memory state still works
+  }
+}
+
+// ── In-memory state (initialised from persisted file) ────────────────────────
+
+const _saved = loadPersistedSettings();
+let ollamaHost = (_saved.ollama_host || process.env.OLLAMA_HOST || "http://localhost:11434").replace(/\/$/, "");
+let ollamaModel = _saved.model || process.env.OLLAMA_MODEL || "gemma3:4b";
+let modelTemperature = _saved.temperature ?? 0.1;
+let modelNumPredict = _saved.num_predict ?? 64;
+let modelNumCtx = _saved.num_ctx ?? 1024;
+
+const DEFAULT_PROMPT =
+  'Analyze this image and return a strictly formatted JSON object with these keys:\n' +
+  '- "filename": Exactly ONE lowercase word representing the main object (e.g., \'sneaker\', \'logo\', \'fashion\').\n' +
+  '- "alt_text": A very short, crisp, and clean description (max 10 words). No "Image of" or "This is".\n' +
+  '- "cta": Only the text from a Call-to-Action button if visible. Otherwise empty string.\n\n' +
+  'Respond ONLY with valid JSON.';
+
+let modelPrompt = DEFAULT_PROMPT;
+
 const responseCache = new Map();
 const CACHE_MAX = 100;
 
@@ -92,6 +137,19 @@ router.get("/health", async (_req, res) => {
   }
 });
 
+// List models available in Ollama
+router.get("/api/models", async (_req, res) => {
+  try {
+    const r = await httpGet(`${ollamaHost}/api/tags`);
+    if (r.status !== 200) return res.json({ models: [] });
+    const data = JSON.parse(r.body);
+    const models = (data.models || []).map((m) => m.name);
+    res.json({ models });
+  } catch {
+    res.json({ models: [] });
+  }
+});
+
 // Analyze image via Ollama
 router.post("/api/analyze", upload.single("file"), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: "No file provided" });
@@ -105,20 +163,13 @@ router.post("/api/analyze", upload.single("file"), async (req, res) => {
     const optimized = await resizeImageToJpeg(req.file.buffer);
     const base64Image = optimized.toString("base64");
 
-    const prompt =
-      'Analyze this image and return a strictly formatted JSON object with these keys:\n' +
-      '- "filename": Exactly ONE lowercase word representing the main object (e.g., \'sneaker\', \'logo\', \'fashion\').\n' +
-      '- "alt_text": A very short, crisp, and clean description (max 10 words). No "Image of" or "This is".\n' +
-      '- "cta": Only the text from a Call-to-Action button if visible. Otherwise empty string.\n\n' +
-      'Respond ONLY with valid JSON.';
-
     const payload = {
-      model: MODEL_NAME,
-      prompt,
+      model: ollamaModel,
+      prompt: modelPrompt,
       images: [base64Image],
       stream: false,
       format: "json",
-      options: { temperature: 0.1, num_predict: 64, num_ctx: 1024 },
+      options: { temperature: modelTemperature, num_predict: modelNumPredict, num_ctx: modelNumCtx },
     };
 
     const r = await httpPost(`${ollamaHost}/api/generate`, payload);
@@ -159,6 +210,30 @@ router.post("/api/analyze", upload.single("file"), async (req, res) => {
   }
 });
 
+// Test model with a text-only prompt — returns response + latency
+router.post("/api/test", express.json(), async (req, res) => {
+  const start = Date.now();
+  const testModel = req.body?.model || ollamaModel;
+  try {
+    const payload = {
+      model: testModel,
+      prompt: 'Reply with exactly this JSON and nothing else: {"filename":"test","alt_text":"test image","cta":""}',
+      stream: false,
+      format: "json",
+      options: { temperature: modelTemperature, num_predict: modelNumPredict, num_ctx: modelNumCtx },
+    };
+    const r = await httpPost(`${ollamaHost}/api/generate`, payload);
+    const latency_ms = Date.now() - start;
+    if (r.status !== 200) {
+      return res.json({ success: false, error: `Ollama returned ${r.status}`, latency_ms });
+    }
+    const raw = JSON.parse(r.body);
+    res.json({ success: true, response: raw.response, latency_ms, model: testModel });
+  } catch (err) {
+    res.json({ success: false, error: err.message, latency_ms: Date.now() - start });
+  }
+});
+
 // Clear cache
 router.delete("/api/cache", (_req, res) => {
   const count = responseCache.size;
@@ -166,20 +241,31 @@ router.delete("/api/cache", (_req, res) => {
   res.json({ cleared: count });
 });
 
-// Get Ollama settings
+// Get all current settings
 router.get("/api/settings", (_req, res) => {
-  res.json({ ollama_host: ollamaHost, model: MODEL_NAME });
+  res.json({
+    ollama_host: ollamaHost,
+    model: ollamaModel,
+    temperature: modelTemperature,
+    num_predict: modelNumPredict,
+    num_ctx: modelNumCtx,
+    prompt: modelPrompt,
+    default_prompt: DEFAULT_PROMPT,
+  });
 });
 
-// Update Ollama host
+// Update settings (all fields optional)
 router.put("/api/settings", express.json(), (req, res) => {
-  const { ollama_host } = req.body || {};
-  if (!ollama_host || typeof ollama_host !== "string") {
-    return res.status(400).json({ error: "ollama_host is required" });
-  }
-  ollamaHost = ollama_host.replace(/\/$/, "");
+  const { ollama_host, model, temperature, num_predict, num_ctx, prompt } = req.body || {};
+  if (ollama_host && typeof ollama_host === "string") ollamaHost = ollama_host.replace(/\/$/, "");
+  if (model && typeof model === "string") ollamaModel = model;
+  if (typeof temperature === "number") modelTemperature = temperature;
+  if (typeof num_predict === "number") modelNumPredict = num_predict;
+  if (typeof num_ctx === "number") modelNumCtx = num_ctx;
+  if (typeof prompt === "string") modelPrompt = prompt || DEFAULT_PROMPT;
   responseCache.clear();
-  res.json({ ollama_host: ollamaHost, model: MODEL_NAME });
+  persistSettings({ ollama_host: ollamaHost, model: ollamaModel, temperature: modelTemperature, num_predict: modelNumPredict, num_ctx: modelNumCtx });
+  res.json({ ollama_host: ollamaHost, model: ollamaModel, temperature: modelTemperature, num_predict: modelNumPredict, num_ctx: modelNumCtx, prompt: modelPrompt });
 });
 
 module.exports = router;
