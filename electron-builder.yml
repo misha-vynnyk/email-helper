@@ -7,42 +7,54 @@ directories:
   output: release
   buildResources: build
 
-# ── Pre-pack hook (installs server prod deps) ──────────────────────────────────
+# ── Pack hooks ─────────────────────────────────────────────────────────────────
 beforePack: scripts/electron-before-pack.js
+# afterPack re-signs the whole .app bundle ad-hoc so that the main binary and
+# Electron Framework share the same Team ID (required on macOS 15+/Apple Silicon).
+afterPack: scripts/electron-after-pack.js
 
 # ── Files to bundle ────────────────────────────────────────────────────────────
 # server/ is included WITH server/node_modules (installed by beforePack)
 # dist-electron/ is the output of `electron-vite build`
-# automation/config.json holds storage provider settings
+# automation/ scripts + node_modules (playwright-core) installed by beforePack
 files:
   - dist-electron/**
   - server/**
-  - automation/config.json
+  - automation/**
+  - "!automation/README.md"
+  - "!automation/upload.bat"
   - "!**/*.map"
   - "!**/*.md"
   - "!server/node_modules/.cache/**"
+  - "!automation/node_modules/.cache/**"
   - "!**/test/**"
   - "!**/__tests__/**"
   - "!**/tests/**"
 
 # ── ASAR ───────────────────────────────────────────────────────────────────────
-# sharp and gifsicle contain native .node binaries — must stay outside asar
+# sharp and gifsicle contain native .node binaries — must stay outside asar.
+# automation/ must be outside asar so `node` can execute scripts from disk.
 asar: true
 asarUnpack:
   - "**/node_modules/sharp/**"
   - "**/node_modules/@img/**"
   - "**/node_modules/gifsicle/**"
   - "**/node_modules/better-sqlite3/**"
+  - "automation/**"
 
 # ── macOS ──────────────────────────────────────────────────────────────────────
 mac:
   category: public.app-category.productivity
   icon: build/icon.icns
-  # Hardened runtime required for notarization
-  hardenedRuntime: true
+  # hardenedRuntime requires a real Apple Developer certificate + notarization.
+  # Disable for local/unsigned builds; re-enable only when notarizing for distribution.
+  hardenedRuntime: false
   gatekeeperAssess: false
-  entitlements: build/entitlements.mac.plist
-  entitlementsInherit: build/entitlements.mac.plist
+  # identity: null skips code signing entirely so electron-builder doesn't
+  # produce a partially-signed bundle where the main binary and Electron Framework
+  # have mismatched Team IDs (which crashes on macOS 15+/Apple Silicon).
+  # We re-sign the whole bundle ad-hoc in afterPack instead.
+  identity: null
   target:
     # DMG disabled: dmgbuild@1.2.0 fails on macOS 15 Sequoia with read-only volume error.
     # Re-enable once electron-builder ships a dmgbuild fix or we upgrade.

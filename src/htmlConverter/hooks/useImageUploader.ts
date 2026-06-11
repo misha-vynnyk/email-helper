@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from "react";
-import API_URL, { isApiAvailable } from "../../config/api";
+import { getApiBase, isApiAvailable } from "../../config/api";
 import { UPLOAD_CONFIG, STORAGE_URL_PREFIX, STORAGE_PROVIDERS_CONFIG } from "../constants";
 import { copyToClipboard } from "../utils/clipboard";
 import { getImageFormat, getFileExtension, isCrossOrigin } from "../utils/imageUtils";
@@ -129,7 +129,7 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
           formData.append("category", category);
           formData.append("folderName", folderName);
           const res = await Promise.race([
-            fetch(`${API_URL}/api/storage-upload/prepare`, {
+            fetch(`${getApiBase()}/api/storage-upload/prepare`, {
               method: "POST",
               body: formData,
               signal,
@@ -144,7 +144,7 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
           return data.tempPath;
         }
         const res = await Promise.race([
-          fetch(`${API_URL}/api/storage-upload/prepare-from-url`, {
+          fetch(`${getApiBase()}/api/storage-upload/prepare-from-url`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ url: image.src, filename: fname }),
@@ -212,7 +212,7 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
               if (!result.success) throw new Error(result.error || "Electron upload failed");
             } else {
               const storageResponse = await Promise.race([
-                fetch(`${API_URL}/api/storage-upload`, {
+                fetch(`${getApiBase()}/api/storage-upload`, {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
@@ -303,7 +303,7 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
       } finally {
         // Always attempt to finalize (close tab) if provider requires it
         if (providerCfg.closeTabAfterBatch) {
-          fetch(`${API_URL}/api/storage-upload/finalize`, {
+          fetch(`${getApiBase()}/api/storage-upload/finalize`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ provider: storageProvider }),
