@@ -4,10 +4,10 @@
  * Frontend client for interacting with the Template Manager backend
  */
 
-import API_URL from "../../config/api";
+import { getApiBase } from "../../config/api";
 import { AddTemplatePayload, AllowedRootPayload, EmailTemplate, ImportFolderPayload, TemplateStats, UpdateTemplatePayload } from "../../types/template";
 
-const API_BASE = `${API_URL}/api/templates`;
+const apiBase = () => `${getApiBase()}/api/templates`;
 
 // Helper to handle connection errors
 const handleConnectionError = (error: unknown): Error => {
@@ -22,7 +22,7 @@ const handleConnectionError = (error: unknown): Error => {
  */
 export async function listTemplates(): Promise<EmailTemplate[]> {
   try {
-    const response = await fetch(`${API_BASE}/list`);
+    const response = await fetch(`${apiBase()}/list`);
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
       throw new Error(error.error || "Failed to list templates");
@@ -37,7 +37,7 @@ export async function listTemplates(): Promise<EmailTemplate[]> {
  * Add a new template from a file path
  */
 export async function addTemplate(payload: AddTemplatePayload): Promise<EmailTemplate> {
-  const response = await fetch(`${API_BASE}/add`, {
+  const response = await fetch(`${apiBase()}/add`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -53,7 +53,7 @@ export async function addTemplate(payload: AddTemplatePayload): Promise<EmailTem
  * Get template HTML content
  */
 export async function getTemplateContent(id: string): Promise<string> {
-  const response = await fetch(`${API_BASE}/${id}/content`);
+  const response = await fetch(`${apiBase()}/${id}/content`);
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || "Failed to get template content");
@@ -65,7 +65,7 @@ export async function getTemplateContent(id: string): Promise<string> {
  * Update template metadata
  */
 export async function updateTemplate(id: string, payload: UpdateTemplatePayload): Promise<EmailTemplate> {
-  const response = await fetch(`${API_BASE}/${id}`, {
+  const response = await fetch(`${apiBase()}/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -81,7 +81,7 @@ export async function updateTemplate(id: string, payload: UpdateTemplatePayload)
  * Remove template from library (does not delete the file)
  */
 export async function removeTemplate(id: string): Promise<void> {
-  const response = await fetch(`${API_BASE}/${id}`, {
+  const response = await fetch(`${apiBase()}/${id}`, {
     method: "DELETE",
   });
   if (!response.ok && response.status !== 204) {
@@ -94,7 +94,7 @@ export async function removeTemplate(id: string): Promise<void> {
  * Import all HTML files from a folder
  */
 export async function importFolder(payload: ImportFolderPayload): Promise<EmailTemplate[]> {
-  const response = await fetch(`${API_BASE}/import-folder`, {
+  const response = await fetch(`${apiBase()}/import-folder`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -110,7 +110,7 @@ export async function importFolder(payload: ImportFolderPayload): Promise<EmailT
  * Sync template metadata with file system
  */
 export async function syncTemplate(id: string): Promise<EmailTemplate> {
-  const response = await fetch(`${API_BASE}/${id}/sync`, {
+  const response = await fetch(`${apiBase()}/${id}/sync`, {
     method: "POST",
   });
   if (!response.ok) {
@@ -124,7 +124,7 @@ export async function syncTemplate(id: string): Promise<EmailTemplate> {
  * Get library statistics
  */
 export async function getStats(): Promise<TemplateStats> {
-  const response = await fetch(`${API_BASE}/stats/summary`);
+  const response = await fetch(`${apiBase()}/stats/summary`);
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || "Failed to get stats");
@@ -136,7 +136,7 @@ export async function getStats(): Promise<TemplateStats> {
  * Get allowed root directories
  */
 export async function getAllowedRoots(): Promise<string[]> {
-  const response = await fetch(`${API_BASE}/settings/allowed-roots`);
+  const response = await fetch(`${apiBase()}/settings/allowed-roots`);
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || "Failed to get allowed roots");
@@ -148,7 +148,7 @@ export async function getAllowedRoots(): Promise<string[]> {
  * Add an allowed root directory
  */
 export async function addAllowedRoot(payload: AllowedRootPayload): Promise<string[]> {
-  const response = await fetch(`${API_BASE}/settings/allowed-roots`, {
+  const response = await fetch(`${apiBase()}/settings/allowed-roots`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -165,7 +165,7 @@ export async function addAllowedRoot(payload: AllowedRootPayload): Promise<strin
  * Remove an allowed root directory
  */
 export async function removeAllowedRoot(payload: AllowedRootPayload): Promise<{ allowedRoots: string[]; removedTemplates: number; message: string }> {
-  const response = await fetch(`${API_BASE}/settings/allowed-roots`, {
+  const response = await fetch(`${apiBase()}/settings/allowed-roots`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -196,7 +196,7 @@ export async function syncAllTemplates(
   message: string;
 }> {
   try {
-    const response = await fetch(`${API_BASE}/sync-all`, {
+    const response = await fetch(`${apiBase()}/sync-all`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(options),

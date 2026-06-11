@@ -3,7 +3,7 @@
  */
 
 import { imageCacheService } from './imageCache';
-import API_URL from '../config/api';
+import { getApiBase } from '../config/api';
 
 // Конфігурація
 const CONFIG = {
@@ -101,7 +101,7 @@ async function loadImageWithLimit(url: string, semaphore: Semaphore): Promise<vo
     }
 
     // Use proxy for external images to bypass CORS
-    const proxyUrl = `${API_URL}/api/image-proxy?url=${encodeURIComponent(url)}`;
+    const proxyUrl = `${getApiBase()}/api/image-proxy?url=${encodeURIComponent(url)}`;
 
     // Завантажуємо зображення
     const response = await fetch(proxyUrl, {

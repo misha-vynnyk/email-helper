@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import API_URL, { getApiBase } from "../config/api";
+import { getApiBase, isApiAvailable } from "../config/api";
 import { logger } from "../utils/logger";
 
 interface ServerHealthStatus {
@@ -47,10 +47,10 @@ export const useServerHealthCheck = (): ServerHealthStatus => {
   });
 
   useEffect(() => {
-    if (!API_URL) {
-      // API is disabled
+    if (!isApiAvailable()) {
+      // API is disabled (production web build without VITE_API_URL)
       setStatus({
-        isHealthy: true, // Treat as healthy if API is disabled
+        isHealthy: true,
         isChecking: false,
         error: null,
         lastCheck: Date.now(),
@@ -67,7 +67,7 @@ export const useServerHealthCheck = (): ServerHealthStatus => {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-        const response = await fetch(`${API_URL}/api/health`, {
+        const response = await fetch(`${getApiBase()}/api/health`, {
           method: "GET",
           signal: controller.signal,
         });
