@@ -3,25 +3,25 @@
     "executablePath": "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
     "debugPort": 9222,
     "userDataDir": "/Users/mykhailo.vynnyk/Library/Application Support/BravePlaywright",
-    "autoCloseTab": false,
-    "closeDelaySuccess": 0,
+    "autoCloseTab": true,
+    "closeDelaySuccess": 2000,
     "closeDelayCancel": 3000
   },
   "browserProfiles": {
     "default": {
       "debugPort": 9222,
       "userDataDir": "/Users/mykhailo.vynnyk/Library/Application Support/BravePlaywright",
-      "autoCloseTab": false
+      "autoCloseTab": true
     },
     "alphaone": {
       "debugPort": 9223,
       "userDataDir": "/Users/mykhailo.vynnyk/Library/Application Support/BravePlaywright-AlfaOne",
-      "autoCloseTab": false
+      "autoCloseTab": true
     },
     "ttt": {
       "debugPort": 9224,
       "userDataDir": "/Users/mykhailo.vynnyk/Library/Application Support/BravePlaywright-TerraTrans",
-      "autoCloseTab": false
+      "autoCloseTab": true
     }
   },
   "storage": {
