@@ -45,6 +45,11 @@ coverage/
 .cache
 .temp
 .tmp
+.tmp-trace.log
+
+# Gemini / external AI agent files
+.agent/
+docs/
 
 # User data (sensitive)
 server/data/blocks/block-manager-config.json
