@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import API_URL from "../config/api";
+import API_URL, { getApiBase } from "../config/api";
 import { logger } from "../utils/logger";
 
 interface ServerHealthStatus {
@@ -12,7 +12,7 @@ interface ServerHealthStatus {
 
 const MAX_RETRIES = 30; // Try for up to 30 seconds
 const RETRY_INTERVAL = 1000; // 1 second between retries
-const AI_BACKEND_URL = "/ai-api"; // Python AI Backend (via Vite proxy)
+const AI_BACKEND_URL = `${getApiBase()}/ai-api`;
 
 /**
  * Check if AI backend (Python FastAPI) is available
