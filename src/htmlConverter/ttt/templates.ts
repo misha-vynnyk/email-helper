@@ -12,7 +12,7 @@
 import { config } from "../utils/config";
 import { STORAGE_PROVIDERS_CONFIG } from "../constants";
 
-const TTT_PLACEHOLDER_URL = "insertlink";
+export const TTT_PLACEHOLDER_URL = "urlhere";
 
 // ─── TTT specific overrides ───────────────────────────────────────────────────
 const TTT_STORAGE_URL = STORAGE_PROVIDERS_CONFIG.providers.publicBaseUrl + "/";
