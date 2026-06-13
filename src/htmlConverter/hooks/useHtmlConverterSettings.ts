@@ -15,6 +15,7 @@ export type UiSettings = {
   autoCloseUploadDialog: boolean;
   warningFileSizeKB: number;
   showAiTerminal: boolean;
+  downloadFolder: string;
 };
 
 export const DEFAULT_UI_SETTINGS: UiSettings = {
@@ -29,6 +30,7 @@ export const DEFAULT_UI_SETTINGS: UiSettings = {
   autoCloseUploadDialog: true,
   warningFileSizeKB: 1024,
   showAiTerminal: false,
+  downloadFolder: "",
 };
 
 export const DEFAULT_IMAGE_ANALYSIS_SETTINGS: ImageAnalysisSettings = {

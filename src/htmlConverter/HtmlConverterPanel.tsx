@@ -8,6 +8,7 @@ import { Header } from "./components/Header";
 import { FileNamingBar } from "./components/FileNamingBar";
 import { DiagnosticsPanel } from "./components/DiagnosticsPanel";
 import { ExportPanel } from "./components/ExportPanel";
+import { CheatsheetPanel } from "./components/CheatsheetPanel";
 import { useHtmlConverterLogic } from "./hooks/useHtmlConverterLogic";
 import { useAiLogger } from "./hooks/useAiLogger";
 
@@ -60,8 +61,11 @@ export default function HtmlConverterPanel() {
               <div ref={editorRef} contentEditable suppressContentEditableWarning className='w-full min-h-[300px] max-h-[600px] overflow-auto bg-background border border-border/50 rounded-2xl p-6 font-mono text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary transition-all empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground shadow-inner editor-content' data-placeholder={t("Paste or type text here...", "Вставте або введіть текст сюди...")} />
             </div>
 
+            {/* CHEATSHEET */}
+            <CheatsheetPanel />
+
             {/* FILE SETTINGS (Floating Pills) */}
-            <FileNamingBar 
+            <FileNamingBar
               fileName={state.fileName} 
               setFileName={actions.setFileName} 
               changeFileNumber={actions.changeFileNumber} 

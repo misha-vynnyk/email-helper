@@ -19,6 +19,7 @@ interface ElectronAPI {
   openFileDialog: (filters?: { name: string; extensions: string[] }[]) => Promise<string | null>;
   showNotification: (title: string, body: string) => void;
   uploadFile: (req: ElectronUploadRequest) => Promise<ElectronUploadResult>;
+  saveToPath: (content: string, folderPath: string, fileName: string) => Promise<{ saved: boolean; filePath?: string; error?: string }>;
 }
 
 declare global {

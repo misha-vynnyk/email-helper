@@ -1,4 +1,5 @@
 import React, { Dispatch, SetStateAction } from "react";
+import { FolderOpen } from "lucide-react";
 import type { UiSettings } from "../hooks/useHtmlConverterSettings";
 import type { UploadMode } from "../hooks/useHtmlConverterLogic";
 import { Switch } from "@/components/ui/switch";
@@ -80,6 +81,44 @@ export const UiSettingsTab: React.FC<UiSettingsTabProps> = ({ ui, setUi, uploadM
             <span className='text-xs text-muted-foreground'>KB</span>
           </div>
         </div>
+      </section>
+
+      {/* ── Папка для збереження файлів ───────────────────────────────────── */}
+      <div className='h-px bg-border' />
+      <section className='space-y-3'>
+        <h3 className='text-xs font-semibold uppercase tracking-widest text-muted-foreground'>Папка для збереження</h3>
+        <div className='flex gap-2 items-center'>
+          <Input
+            value={ui.downloadFolder}
+            onChange={(e) => setUi((prev) => ({ ...prev, downloadFolder: e.target.value }))}
+            placeholder={electronAPI ? "Оберіть папку або введіть шлях..." : "Введіть шлях до папки..."}
+            className='h-8 text-xs flex-1 font-mono'
+          />
+          {electronAPI && (
+            <button
+              onClick={async () => {
+                const folder = await electronAPI.openFolderDialog();
+                if (folder) setUi((prev) => ({ ...prev, downloadFolder: folder }));
+              }}
+              className='h-8 px-2 flex items-center gap-1.5 rounded-lg border border-input bg-background hover:bg-muted text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0'
+              title='Обрати папку'>
+              <FolderOpen size={14} />
+            </button>
+          )}
+          {ui.downloadFolder && (
+            <button
+              onClick={() => setUi((prev) => ({ ...prev, downloadFolder: "" }))}
+              className='h-8 px-2 rounded-lg border border-input bg-background hover:bg-destructive/10 hover:text-destructive text-xs text-muted-foreground transition-colors shrink-0'
+              title='Очистити'>
+              ✕
+            </button>
+          )}
+        </div>
+        {!ui.downloadFolder && (
+          <p className='text-[11px] text-muted-foreground'>
+            {electronAPI ? "Без папки — файли збережуться через діалог браузера" : "Без шляху — стандартне завантаження браузером"}
+          </p>
+        )}
       </section>
 
       {/* ── Завантаження (Electron) ────────────────────────────────────────── */}

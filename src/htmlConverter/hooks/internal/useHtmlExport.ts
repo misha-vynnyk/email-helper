@@ -4,6 +4,7 @@ import { formatHtmlTTT, formatMjmlTTT } from "../../ttt/formatter";
 import { formatHtmlAlphaone, formatMjmlAlphaone } from "../../alphaone/formatter";
 import { replaceUrlsInContentByMap, replaceUrlsInContent, replaceAltsInContent } from "../../utils/contentReplacer";
 import type { StorageProfile } from "../useHtmlConverterLogic";
+import { getElectronAPI } from "@/hooks/useElectronAPI";
 
 interface UseHtmlExportProps {
   editorRef: React.RefObject<HTMLDivElement>;
@@ -14,6 +15,8 @@ interface UseHtmlExportProps {
   addLog: (msg: string) => void;
   setHasOutput: (val: boolean) => void;
   storageProfile: StorageProfile;
+  downloadFolder?: string;
+  setDownloadFolder?: (folder: string) => void;
 }
 
 export function useHtmlExport({
@@ -25,6 +28,8 @@ export function useHtmlExport({
   addLog,
   setHasOutput,
   storageProfile,
+  downloadFolder = "",
+  setDownloadFolder,
 }: UseHtmlExportProps) {
   const resetReplacementRef = useRef<(() => void) | null>(null);
 
@@ -154,10 +159,25 @@ export function useHtmlExport({
   }, [addLog, editorRef, outputMjmlRef, uploadedUrlMap, uploadedAltMap, setHasOutput, triggerResetReplacement, storageProfile]);
 
   const downloadFile = useCallback(
-    (content: string, extension: string, fileName: string, approveNeeded: boolean) => {
+    async (content: string, extension: string, fileName: string, approveNeeded: boolean) => {
       const name = fileName.replace(/\s+/g, "").toUpperCase();
       const approvalText = approveNeeded ? "(Approve needed)" : "";
       const fullName = `${name}_${extension}${approvalText}.html`;
+
+      const electronAPI = getElectronAPI();
+      if (electronAPI?.saveToPath) {
+        let folder = downloadFolder;
+        if (!folder) {
+          const picked = await electronAPI.openFolderDialog();
+          if (!picked) return;
+          folder = picked;
+          setDownloadFolder?.(folder);
+        }
+        const result = await electronAPI.saveToPath(content, folder, fullName);
+        if (result.saved) addLog(`📥 Збережено: ${fullName}`);
+        else addLog(`❌ Помилка збереження: ${result.error ?? "невідома помилка"}`);
+        return;
+      }
 
       const blob = new Blob([content], { type: "text/html" });
       const url = URL.createObjectURL(blob);
@@ -169,7 +189,7 @@ export function useHtmlExport({
 
       addLog(`📥 Завантажено: ${fullName}`);
     },
-    [addLog]
+    [addLog, downloadFolder, setDownloadFolder]
   );
 
   return {

@@ -1,5 +1,6 @@
 import { app, BrowserWindow, shell, ipcMain, dialog, Notification } from "electron";
 import path from "path";
+import fs from "fs/promises";
 import type { Server } from "http";
 import { uploadFile } from "./upload/uploadManager";
 
@@ -62,6 +63,16 @@ function registerIpcHandlers(): void {
 
   ipcMain.on("notification:show", (_event, { title, body }: { title: string; body: string }) => {
     if (Notification.isSupported()) new Notification({ title, body }).show();
+  });
+
+  ipcMain.handle("file:saveToPath", async (_event, { content, folderPath, fileName }: { content: string; folderPath: string; fileName: string }) => {
+    try {
+      const fullPath = path.join(folderPath, fileName);
+      await fs.writeFile(fullPath, content, "utf8");
+      return { saved: true, filePath: fullPath };
+    } catch (err) {
+      return { saved: false, error: (err as Error).message };
+    }
   });
 
   ipcMain.handle("upload:executeFile", async (event, req) => {
