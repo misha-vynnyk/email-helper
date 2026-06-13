@@ -135,18 +135,20 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
     addLog,
     setHasOutput,
     storageProfile,
+    downloadFolder: ui.downloadFolder,
+    setDownloadFolder: (folder) => settings.setUi((prev) => ({ ...prev, downloadFolder: folder })),
   });
 
-  const handleDownloadHTML = useCallback(() => {
-    if (outputHtmlRef.current) downloadFile(outputHtmlRef.current.value, "html", fileName, ui.approveNeededValue);
+  const handleDownloadHTML = useCallback(async () => {
+    if (outputHtmlRef.current) await downloadFile(outputHtmlRef.current.value, "html", fileName, ui.approveNeededValue);
   }, [downloadFile, outputHtmlRef, fileName, ui.approveNeededValue]);
 
-  const handleDownloadMJML = useCallback(() => {
-    if (outputMjmlRef.current) downloadFile(outputMjmlRef.current.value, "mjml", fileName, ui.approveNeededValue);
+  const handleDownloadMJML = useCallback(async () => {
+    if (outputMjmlRef.current) await downloadFile(outputMjmlRef.current.value, "mjml", fileName, ui.approveNeededValue);
   }, [downloadFile, outputMjmlRef, fileName, ui.approveNeededValue]);
 
   // Combined Operations
-  const handleAutoExportAll = useCallback(() => {
+  const handleAutoExportAll = useCallback(async () => {
     if (!editorRef.current) return;
     const editorContent = editorRef.current.innerHTML;
     if (!editorContent.trim()) {
@@ -166,10 +168,10 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
       }
 
       if (exportType === "both" || exportType === "html") {
-        handleDownloadHTML();
+        await handleDownloadHTML();
       }
       if (exportType === "both" || exportType === "mjml") {
-        handleDownloadMJML();
+        await handleDownloadMJML();
       }
     } finally {
       setIsAutoExporting(false);

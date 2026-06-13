@@ -17,4 +17,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   uploadFile: (req: { tempPath: string; provider: string; category: string; folderName: string }) =>
     ipcRenderer.invoke("upload:executeFile", req),
+
+  saveToPath: (content: string, folderPath: string, fileName: string): Promise<{ saved: boolean; filePath?: string; error?: string }> =>
+    ipcRenderer.invoke("file:saveToPath", { content, folderPath, fileName }),
 });
