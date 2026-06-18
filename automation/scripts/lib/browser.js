@@ -1,7 +1,7 @@
 "use strict";
 
 const http = require("http");
-const { spawn: spawnChild } = require("child_process");
+const { spawn: spawnChild, execFile } = require("child_process");
 const { chromium } = require("playwright-core");
 
 const PORT_CLEAR_RETRIES   = 12;
@@ -55,6 +55,18 @@ function launchBraveDetached(executablePath, userDataDir, debugPort) {
   return child;
 }
 
+// On macOS, bring the Brave window to the front so it's visible above other apps.
+// Waits up to 2 s for the window to appear before giving up (non-fatal if it fails).
+function activateBraveOnMac() {
+  if (process.platform !== "darwin") return;
+  execFile(
+    "osascript",
+    ["-e", 'tell application "Brave Browser" to activate'],
+    { timeout: 2000 },
+    () => {} // ignore errors
+  );
+}
+
 // Tries to connect to an already-running Brave (STEP 1).
 // If that fails, launches a new Brave instance and connects (STEP 2).
 // storageBaseUrl — used to detect an existing storage tab for the active provider.
@@ -82,6 +94,7 @@ async function connectOrLaunch(executablePath, debugPort, userDataDir, storageBa
       const pages = context.pages();
       page = pages.find(isStorageTab) || (await context.newPage());
       await page.bringToFront();
+      activateBraveOnMac();
       console.log(`📂 USER DATA DIR: ${userDataDir} (CDP reuse)`);
     } catch (cdpErr) {
       console.warn(`⚠️ CDP connect failed: ${cdpErr.message}`);
@@ -132,6 +145,7 @@ async function connectOrLaunch(executablePath, debugPort, userDataDir, storageBa
         if (p !== page) await p.close().catch(() => {});
       }
       await page.bringToFront();
+      activateBraveOnMac();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes("user data directory is already in use")) {

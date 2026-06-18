@@ -412,6 +412,11 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
                     <div className='h-full bg-primary rounded-full w-full animate-pulse origin-left'></div>
                   </div>
                   <p className='text-xs text-center text-muted-foreground font-medium'>Uploading files...</p>
+                  {providerCfg.loginWaitMs && (
+                    <p className='text-xs text-center text-amber-600 dark:text-amber-400 font-medium mt-1.5'>
+                      ↗ Відкрилось вікно браузера — якщо потрібен логін, переключіться на нього
+                    </p>
+                  )}
                 </div>
               )}
 

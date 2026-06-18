@@ -13,10 +13,12 @@ const API_URL = import.meta.env.VITE_API_URL || "";
 
 // In packaged Electron the renderer loads from file://, so relative URLs like
 // "/api/..." resolve to "file:///api/..." and never reach the Express server.
-// We detect Electron via the preload-injected flag and use an absolute base URL.
+// We detect Electron via the preload-injected flag and use the actual port
+// communicated by the main process (may differ from 3001 if that port was busy).
 export const getApiBase = (): string => {
   if (typeof window !== "undefined" && (window as any).electronAPI?.isElectron) {
-    return "http://localhost:3001";
+    const port = (window as any).electronAPI?.serverPort ?? 3001;
+    return `http://localhost:${port}`;
   }
   return "";
 };
