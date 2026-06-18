@@ -55,6 +55,7 @@ docs/
 server/data/blocks/block-manager-config.json
 server/data/templates/
 server/data/.workspaces.json
+server/ollama-settings.json
 
 # Local ideas / notes (not tracked)
 idea/
