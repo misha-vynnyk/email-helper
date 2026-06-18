@@ -114,16 +114,17 @@ export default function HtmlConverterPanel() {
             )}
 
             {/* OUTPUT TABS */}
-            <ExportPanel 
-              outputHtmlRef={outputHtmlRef} 
-              outputMjmlRef={outputMjmlRef} 
-              isAutoExporting={state.isAutoExporting} 
-              handleExportHTML={actions.handleExportHTML} 
-              handleExportMJML={actions.handleExportMJML} 
-              handleDownloadHTML={actions.handleDownloadHTML} 
-              handleDownloadMJML={actions.handleDownloadMJML} 
-              handleCopy={actions.handleCopy} 
+            <ExportPanel
+              outputHtmlRef={outputHtmlRef}
+              outputMjmlRef={outputMjmlRef}
+              isAutoExporting={state.isAutoExporting}
+              handleExportHTML={actions.handleExportHTML}
+              handleExportMJML={actions.handleExportMJML}
+              handleDownloadHTML={actions.handleDownloadHTML}
+              handleDownloadMJML={actions.handleDownloadMJML}
+              handleCopy={actions.handleCopy}
               exportType={state.exportType}
+              previewHtml={state.previewHtml}
             />
           </div>
         </div>

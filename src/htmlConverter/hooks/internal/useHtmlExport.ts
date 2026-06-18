@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { formatHtml, formatMjml } from "../../formatter";
 import { formatHtmlTTT, formatMjmlTTT } from "../../ttt/formatter";
 import { formatHtmlAlphaone, formatMjmlAlphaone } from "../../alphaone/formatter";
@@ -31,6 +31,9 @@ export function useHtmlExport({
   downloadFolder = "",
   setDownloadFolder,
 }: UseHtmlExportProps) {
+  const [previewHtml, setPreviewHtml] = useState("");
+  const clearPreviewHtml = useCallback(() => setPreviewHtml(""), []);
+
   const resetReplacementRef = useRef<(() => void) | null>(null);
 
   const handleResetReplacement = useCallback((resetFn: () => void) => {
@@ -113,6 +116,7 @@ export function useHtmlExport({
       if (outputHtmlRef.current) {
         outputHtmlRef.current.value = formattedContent;
       }
+      setPreviewHtml(formattedContent);
       setHasOutput(true);
       triggerResetReplacement();
       addLog(`✅ HTML експортовано [${storageProfile.toUpperCase()}]`);
@@ -199,5 +203,7 @@ export function useHtmlExport({
     handleExportHTML,
     handleExportMJML,
     downloadFile,
+    previewHtml,
+    clearPreviewHtml,
   };
 }
