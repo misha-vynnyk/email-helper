@@ -126,6 +126,8 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
     handleExportHTML,
     handleExportMJML,
     downloadFile,
+    previewHtml,
+    clearPreviewHtml,
   } = useHtmlExport({
     editorRef,
     outputHtmlRef,
@@ -185,6 +187,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
 
     clearLogs();
     clearInputHtml();
+    clearPreviewHtml();
     setShowImageProcessor(false);
     setTriggerExtract(0);
     setHasOutput(false);
@@ -193,7 +196,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
 
     triggerResetReplacement();
     addLog("🧹 Очищено");
-  }, [addLog, editorRef, outputHtmlRef, outputMjmlRef, clearLogs, clearInputHtml, triggerResetReplacement]);
+  }, [addLog, editorRef, outputHtmlRef, outputMjmlRef, clearLogs, clearInputHtml, clearPreviewHtml, triggerResetReplacement]);
 
   const handleCopy = useCallback(
     async (content: string, type: string) => {
@@ -240,6 +243,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
       uploadHistory,
       hasOutput,
       autoProcess,
+      previewHtml,
     },
     actions: {
       setFileName,

@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Copy, Download, ArrowRightLeft } from "lucide-react";
+import { EmailPreviewPane } from "./EmailPreviewPane";
+
+type Tab = "html" | "mjml" | "preview";
 
 interface ExportPanelProps {
   outputHtmlRef: React.RefObject<HTMLTextAreaElement>;
@@ -12,6 +15,7 @@ interface ExportPanelProps {
   handleDownloadMJML: () => void;
   handleCopy: (text: string, type: string) => void;
   exportType: "html" | "mjml" | "both";
+  previewHtml: string;
 }
 
 export function ExportPanel({
@@ -24,11 +28,13 @@ export function ExportPanel({
   handleDownloadMJML,
   handleCopy,
   exportType,
+  previewHtml,
 }: ExportPanelProps) {
   const { t } = useTranslation();
-  const [rightTab, setRightTab] = useState<"html" | "mjml">("html");
+  const [rightTab, setRightTab] = useState<Tab>("html");
 
   useEffect(() => {
+    // Не торкаємось "preview" — він доступний завжди
     if (exportType === "html" && rightTab === "mjml") setRightTab("html");
     if (exportType === "mjml" && rightTab === "html") setRightTab("mjml");
   }, [exportType]);
@@ -47,31 +53,37 @@ export function ExportPanel({
               MJML {t("Output", "Результат")}
             </button>
           )}
+          <button onClick={() => setRightTab("preview")} className={`pb-3 text-sm font-bold border-b-2 transition-all ${rightTab === "preview" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground/80 hover:border-border"}`}>
+            Preview
+          </button>
         </div>
 
-        <div className='flex gap-1.5 pb-3'>
-          <button onClick={rightTab === "html" ? handleExportHTML : handleExportMJML} disabled={isAutoExporting} className='p-2 bg-secondary hover:bg-muted text-foreground rounded-full transition-all hover:scale-105 active:scale-95 shadow-sm hover:shadow group/btn' title='Export'>
-            <ArrowRightLeft size={15} strokeWidth={2.5} className='group-hover/btn:text-primary transition-colors' />
-          </button>
-          <button
-            onClick={() => {
-              const ref = rightTab === "html" ? outputHtmlRef : outputMjmlRef;
-              if (ref.current) handleCopy(ref.current.value, rightTab.toUpperCase());
-            }}
-            className='p-2 bg-secondary hover:bg-muted text-foreground rounded-full transition-all hover:scale-105 active:scale-95 shadow-sm hover:shadow group/btn'
-            title='Copy'>
-            <Copy size={15} strokeWidth={2.5} className='group-hover/btn:text-primary transition-colors' />
-          </button>
-          <button onClick={rightTab === "html" ? handleDownloadHTML : handleDownloadMJML} className='p-2 bg-secondary hover:bg-muted text-foreground rounded-full transition-all hover:scale-105 active:scale-95 shadow-sm hover:shadow group/btn' title='Download'>
-            <Download size={15} strokeWidth={2.5} className='group-hover/btn:text-primary transition-colors' />
-          </button>
-        </div>
+        {rightTab !== "preview" && (
+          <div className='flex gap-1.5 pb-3'>
+            <button onClick={rightTab === "html" ? handleExportHTML : handleExportMJML} disabled={isAutoExporting} className='p-2 bg-secondary hover:bg-muted text-foreground rounded-full transition-all hover:scale-105 active:scale-95 shadow-sm hover:shadow group/btn' title='Export'>
+              <ArrowRightLeft size={15} strokeWidth={2.5} className='group-hover/btn:text-primary transition-colors' />
+            </button>
+            <button
+              onClick={() => {
+                const ref = rightTab === "html" ? outputHtmlRef : outputMjmlRef;
+                if (ref.current) handleCopy(ref.current.value, rightTab.toUpperCase());
+              }}
+              className='p-2 bg-secondary hover:bg-muted text-foreground rounded-full transition-all hover:scale-105 active:scale-95 shadow-sm hover:shadow group/btn'
+              title='Copy'>
+              <Copy size={15} strokeWidth={2.5} className='group-hover/btn:text-primary transition-colors' />
+            </button>
+            <button onClick={rightTab === "html" ? handleDownloadHTML : handleDownloadMJML} className='p-2 bg-secondary hover:bg-muted text-foreground rounded-full transition-all hover:scale-105 active:scale-95 shadow-sm hover:shadow group/btn' title='Download'>
+              <Download size={15} strokeWidth={2.5} className='group-hover/btn:text-primary transition-colors' />
+            </button>
+          </div>
+        )}
       </div>
 
-      <div className='p-5 flex-1 flex flex-col bg-background shadow-inner rounded-b-[2rem]'>
-        {/* Both textareas must be mounted so refs don't break logic */}
+      <div className='p-5 flex-1 flex flex-col bg-background shadow-inner rounded-b-[2rem] min-h-0'>
+        {/* Textareas — завжди в DOM щоб refs не ламались */}
         <textarea ref={outputHtmlRef} readOnly className={`flex-[1_1_300px] w-full bg-card border border-border/50 shadow-sm rounded-2xl p-5 font-mono text-[13px] leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-primary transition-all text-foreground ${rightTab === "html" ? "block" : "hidden"}`} placeholder={t("HTML output will appear here...", "Після експорту тут з'явиться готовий HTML код...")} />
         <textarea ref={outputMjmlRef} readOnly className={`flex-[1_1_300px] w-full bg-card border border-border/50 shadow-sm rounded-2xl p-5 font-mono text-[13px] leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-primary transition-all text-foreground ${rightTab === "mjml" ? "block" : "hidden"}`} placeholder={t("MJML output will appear here...", "Після експорту тут з'явиться готовий MJML код...")} />
+        {rightTab === "preview" && <EmailPreviewPane html={previewHtml} />}
       </div>
     </div>
   );
