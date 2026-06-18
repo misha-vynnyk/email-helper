@@ -8,7 +8,7 @@ import { uploadFile } from "./upload/uploadManager";
 
 let serverInstance: Server | null = null;
 
-async function startEmbeddedServer(): Promise<void> {
+async function startEmbeddedServer(): Promise<number> {
   // Expose userData path so Express routes can persist settings across restarts
   process.env.ELECTRON_USER_DATA = app.getPath("userData");
 
@@ -23,7 +23,7 @@ async function startEmbeddedServer(): Promise<void> {
     try {
       serverInstance = await startServer(port);
       console.log(`✅ Embedded server on port ${port}`);
-      return;
+      return port;
     } catch (err: any) {
       if (err.code === "EADDRINUSE") {
         console.log(`⚠️  Port ${port} in use, trying ${port + 1}...`);
@@ -146,9 +146,12 @@ function createWindow(): void {
 
 app.whenReady().then(async () => {
   registerIpcHandlers();
-  await startEmbeddedServer().catch((err) => {
+  const serverPort = await startEmbeddedServer().catch((err) => {
     console.error("❌ Embedded server failed to start:", err.message);
+    return 3001; // fallback — renderer will show an error when API calls fail
   });
+  // Make the actual port available to the preload script before the window loads
+  process.env.ELECTRON_SERVER_PORT = String(serverPort);
   createWindow();
 
   app.on("activate", () => {

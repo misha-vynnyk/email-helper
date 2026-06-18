@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from "electron";
 
 contextBridge.exposeInMainWorld("electronAPI", {
   isElectron: true,
+  serverPort: parseInt(process.env.ELECTRON_SERVER_PORT || "3001", 10),
 
   getAppVersion: (): Promise<string> =>
     ipcRenderer.invoke("app:getVersion"),

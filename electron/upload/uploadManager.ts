@@ -206,6 +206,13 @@ export async function uploadFile(
     activeSessions.set(req.provider, { window: uploadWindow, closeTimer: null });
   }
 
+  // Bring window to front so it's visible above the main Electron window.
+  // This is especially important when the session requires manual login (alphaone/ttt).
+  if (!uploadWindow.isDestroyed()) {
+    uploadWindow.show();
+    uploadWindow.focus();
+  }
+
   let cancelled = false;
   uploadWindow.once("closed", () => {
     cancelled = true;
