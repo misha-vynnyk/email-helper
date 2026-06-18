@@ -8,13 +8,17 @@ import { SYMBOLS } from "../constants";
 const ONE_BR_RE = new RegExp(SYMBOLS.ONE_BR, "gi");
 
 export function cleanEmptyHtmlTags(htmlContent: string): string {
+  // Merge adjacent <a> tags (same link split across spans) BEFORE converting &nbsp;.
+  // After &nbsp; → ' ' it would look like plain whitespace and unrelated links
+  // sitting on the same line (e.g. "Privacy Policy | Terms of Use | Unsubscribe")
+  // would get fused into a single anchor.
+  htmlContent = htmlContent.replace(/<\/a>\s*<a[^>]*>/g, " ");
   htmlContent = htmlContent.replace(/&nbsp;/g, " ");
   htmlContent = htmlContent.replace(/<b>\s*<\/b>/g, "");
   htmlContent = htmlContent.replace(/<li>\s*<\/li>/g, "");
   // Crush any sequence of 3+ breaks into 2
   htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*){3,}/gi, "\n<br><br>\n");
   htmlContent = htmlContent.replace(/(<span[^>]*>)\s*<br><br>/gi, "$1");
-  htmlContent = htmlContent.replace(/<\/a>\s*<a[^>]*>/g, " ");
   htmlContent = htmlContent.replace(/<pre>/g, "");
   htmlContent = htmlContent.replace(/<a[^>]*>\s*<\/a>/g, " ");
   htmlContent = htmlContent.replace(/<b\b[^>]*>\s*<\/b>/g, " ");
