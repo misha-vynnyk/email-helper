@@ -21,6 +21,20 @@ function resolveAutomationPath(...segments) {
   return p.replace(/app\.asar([/\\])/g, "app.asar.unpacked$1");
 }
 
+// Returns the path to the Node.js executable for spawning child scripts.
+// When the server is embedded inside Electron, process.execPath is the Electron
+// binary — using it to run .js scripts would fail. Instead:
+//   1. prefer npm_node_execpath (set by npm, points to the actual node binary)
+//   2. fall back to process.execPath only in a pure Node.js process
+//   3. last resort: bare "node" (relies on PATH being set correctly)
+function getNodeExec() {
+  const npmNode = process.env.npm_node_execpath;
+  if (npmNode && fs.existsSync(npmNode)) return npmNode;
+  // process.versions.electron is defined inside an Electron main process
+  if (!process.versions.electron) return process.execPath;
+  return "node";
+}
+
 // Configure multer for temporary file storage
 const upload = multer({
   dest: path.join(os.tmpdir(), "email-helper-uploads"),
@@ -175,7 +189,7 @@ router.post("/api/storage-upload/finalize", async (req, res) => {
     const args = [];
     if (providerKey && providerKey !== "default") args.push("--provider", providerKey);
     args.push("--finalize");
-    const command = `node "${runUploadPath}" ${args.map((a) => `"${String(a).replace(/"/g, '\\"')}"`).join(" ")}`;
+    const command = `"${getNodeExec()}" "${runUploadPath}" ${args.map((a) => `"${String(a).replace(/"/g, '\\"')}"`).join(" ")}`;
 
     exec(command, { timeout: 60000, maxBuffer: 2 * 1024 * 1024 }, (error, stdout, stderr) => {
       if (error) {
@@ -253,7 +267,7 @@ router.post("/api/storage-upload", async (req, res) => {
     if (skipConfirmation) {
       args.push("--no-confirm", folderName);
     }
-    const command = `node "${runUploadPath}" ${args.map((a) => `"${String(a).replace(/"/g, '\\"')}"`).join(" ")}`;
+    const command = `"${getNodeExec()}" "${runUploadPath}" ${args.map((a) => `"${String(a).replace(/"/g, '\\"')}"`).join(" ")}`;
 
     console.log(`🚀 Executing: ${command}`);
 
