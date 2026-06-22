@@ -1,4 +1,4 @@
-import { BrowserWindow, session } from "electron";
+import { BrowserWindow, session, app } from "electron";
 import { execFileSync } from "child_process";
 import path from "path";
 import fs from "fs";
@@ -196,7 +196,7 @@ export async function uploadFile(
     uploadWindow = new BrowserWindow({
       width: windowWidth,
       height: windowHeight,
-      show: true,
+      show: false,
       webPreferences: {
         session: getProviderSession(req.provider),
         contextIsolation: true,
@@ -206,11 +206,14 @@ export async function uploadFile(
     activeSessions.set(req.provider, { window: uploadWindow, closeTimer: null });
   }
 
-  // Bring window to front so it's visible above the main Electron window.
-  // This is especially important when the session requires manual login (alphaone/ttt).
+  // Bring window to front. On macOS, focus() alone is not enough when the
+  // main window holds focus — app.focus({ steal: true }) + moveTop() are
+  // needed to guarantee the upload window appears above the main window.
   if (!uploadWindow.isDestroyed()) {
+    app.focus({ steal: true });
     uploadWindow.show();
     uploadWindow.focus();
+    uploadWindow.moveTop();
   }
 
   let cancelled = false;

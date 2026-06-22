@@ -13,6 +13,7 @@ export const STORAGE_KEYS = {
   STORAGE_PROFILE: "html-converter-storage-profile",
   EXPORT_TYPE: "html-converter-export-type",
   UPLOAD_MODE: "html-converter-upload-mode",
+  UPLOAD_MODE_ELECTRON: "html-converter-upload-mode-electron",
 } as const;
 
 // Symbols

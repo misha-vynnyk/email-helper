@@ -1,11 +1,11 @@
-import { useState, useCallback, useRef, useEffect } from "react";
-import { useHtmlConverterSettings } from "./useHtmlConverterSettings";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { getElectronAPI } from "../../hooks/useElectronAPI";
+import { IMAGE_DEFAULTS, STORAGE_KEYS } from "../constants";
 import { useAppDiagnostics } from "./internal/useAppDiagnostics";
-import { useUploadHistory } from "./internal/useUploadHistory";
 import { useEditorSync } from "./internal/useEditorSync";
 import { useHtmlExport } from "./internal/useHtmlExport";
-import { STORAGE_KEYS, IMAGE_DEFAULTS } from "../constants";
-import { getElectronAPI } from "../../hooks/useElectronAPI";
+import { useUploadHistory } from "./internal/useUploadHistory";
+import { useHtmlConverterSettings } from "./useHtmlConverterSettings";
 
 export type StorageProfile = "default" | "alphaone" | "ttt";
 export type ExportType = "html" | "mjml" | "both";
@@ -48,14 +48,19 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
     return "both";
   });
 
+  // Electron and browser mode use separate localStorage keys so that an old
+  // "playwright" value from the browser era never overrides Electron's default.
+  const isElectron = !!getElectronAPI();
+  const uploadModeKey = isElectron ? STORAGE_KEYS.UPLOAD_MODE_ELECTRON : STORAGE_KEYS.UPLOAD_MODE;
+
   const [uploadMode, setUploadMode] = useState<UploadMode>(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEYS.UPLOAD_MODE);
+      const stored = localStorage.getItem(uploadModeKey);
       if (stored === "playwright" || stored === "electron") return stored as UploadMode;
     } catch {
       // Fallback
     }
-    return getElectronAPI() ? "electron" : "playwright";
+    return isElectron ? "electron" : "playwright";
   });
 
   // Persist settings when they change
@@ -68,8 +73,8 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
   }, [exportType]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.UPLOAD_MODE, uploadMode);
-  }, [uploadMode]);
+    localStorage.setItem(uploadModeKey, uploadMode);
+  }, [uploadMode, uploadModeKey]);
 
   const [showImageProcessor, setShowImageProcessor] = useState(false);
   const [triggerExtract, setTriggerExtract] = useState(0);
@@ -103,7 +108,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
     },
     [addLog, updateSessionAlts]
   );
-  
+
   const showImageProcessorRef = useRef(false);
   showImageProcessorRef.current = showImageProcessor;
 
@@ -120,16 +125,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
   });
 
   // Export Logic
-  const {
-    handleResetReplacement,
-    triggerResetReplacement,
-    handleReplaceUrls,
-    handleExportHTML,
-    handleExportMJML,
-    downloadFile,
-    previewHtml,
-    clearPreviewHtml,
-  } = useHtmlExport({
+  const { handleResetReplacement, triggerResetReplacement, handleReplaceUrls, handleExportHTML, handleExportMJML, downloadFile, previewHtml, clearPreviewHtml } = useHtmlExport({
     editorRef,
     outputHtmlRef,
     outputMjmlRef,
@@ -210,7 +206,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
     },
     [addLog]
   );
-  
+
   const changeFileNumber = (delta: number) => {
     const match = fileName.match(/(\D*)(\d+)/);
     if (match) {
@@ -270,7 +266,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
       handleClear,
       handleCopy,
       // For backwards compat:
-      handleAutoProcess: handleAutoExportAll
+      handleAutoProcess: handleAutoExportAll,
     },
     settings,
   };
