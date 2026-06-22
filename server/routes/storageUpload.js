@@ -26,12 +26,25 @@ function resolveAutomationPath(...segments) {
 // binary — using it to run .js scripts would fail. Instead:
 //   1. prefer npm_node_execpath (set by npm, points to the actual node binary)
 //   2. fall back to process.execPath only in a pure Node.js process
-//   3. last resort: bare "node" (relies on PATH being set correctly)
+//   3. search common installation paths (covers packaged app + missing PATH)
+//   4. last resort: bare "node" (works only if PATH is already correct)
 function getNodeExec() {
   const npmNode = process.env.npm_node_execpath;
   if (npmNode && fs.existsSync(npmNode)) return npmNode;
-  // process.versions.electron is defined inside an Electron main process
   if (!process.versions.electron) return process.execPath;
+
+  // In a packaged Electron app PATH is stripped — homebrew/nvm paths are absent.
+  // Search well-known locations before falling back to bare "node".
+  const candidates = [
+    process.env.NODE_EXEC_PATH,    // explicit override via env var
+    "/opt/homebrew/bin/node",      // homebrew on Apple Silicon
+    "/usr/local/bin/node",         // homebrew on Intel / nvm
+    "/usr/bin/node",               // system node (rare on macOS)
+    "/opt/local/bin/node",         // MacPorts
+  ];
+  for (const p of candidates) {
+    try { if (p && fs.existsSync(p)) return p; } catch {}
+  }
   return "node";
 }
 
