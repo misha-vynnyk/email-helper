@@ -56,15 +56,18 @@ function launchBraveDetached(executablePath, userDataDir, debugPort) {
 }
 
 // On macOS, bring the Brave window to the front so it's visible above other apps.
-// Waits up to 2 s for the window to appear before giving up (non-fatal if it fails).
+// Uses `open -a` (no Automation permission required) as primary method.
+// Falls back to osascript for cases where open -a doesn't steal focus in time.
 function activateBraveOnMac() {
   if (process.platform !== "darwin") return;
-  execFile(
-    "osascript",
-    ["-e", 'tell application "Brave Browser" to activate'],
-    { timeout: 2000 },
-    () => {} // ignore errors
-  );
+  // `open -a` activates any running instance of the app without AppleScript permissions.
+  // This is important when the caller is an Electron app that has not been granted
+  // Automation access to Brave Browser.
+  execFile("open", ["-a", "Brave Browser"], { timeout: 5000 }, () => {
+    // Fallback: AppleScript works when Terminal/shell is the caller, may silently
+    // fail from within Electron (no-op in that case, which is acceptable).
+    execFile("osascript", ["-e", 'tell application "Brave Browser" to activate'], { timeout: 2000 }, () => {});
+  });
 }
 
 // Tries to connect to an already-running Brave (STEP 1).
