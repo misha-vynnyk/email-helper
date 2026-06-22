@@ -3,26 +3,14 @@
  * Props-based (no context). Tailwind styling.
  */
 
+import { closestCenter, DndContext, DragEndEvent, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { rectSortingStrategy, SortableContext, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
+import { ImageIcon, Upload } from "lucide-react";
 import { useCallback, useState } from "react";
-import { Upload, ImageIcon } from "lucide-react";
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  rectSortingStrategy,
-} from "@dnd-kit/sortable";
 
 import { ImageFile } from "../types";
-import SortableImageItem from "./SortableImageItem";
 import BulkActions from "./BulkActions";
+import SortableImageItem from "./SortableImageItem";
 
 interface FileUploadZoneProps {
   files: ImageFile[];
@@ -39,34 +27,16 @@ interface FileUploadZoneProps {
   selectedCount: number;
 }
 
-export default function FileUploadZone({
-  files,
-  addFiles,
-  removeFile,
-  downloadFile,
-  reorderFiles,
-  toggleSelection,
-  selectAll,
-  deselectAll,
-  removeSelected,
-  downloadSelected,
-  convertSelected,
-  selectedCount,
-}: FileUploadZoneProps) {
+export default function FileUploadZone({ files, addFiles, removeFile, downloadFile, reorderFiles, toggleSelection, selectAll, deselectAll, removeSelected, downloadSelected, convertSelected, selectedCount }: FileUploadZoneProps) {
   const [isDragOver, setIsDragOver] = useState(false);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
       setIsDragOver(false);
-      const droppedFiles = Array.from(e.dataTransfer.files).filter((f) =>
-        f.type.startsWith("image/")
-      );
+      const droppedFiles = Array.from(e.dataTransfer.files).filter((f) => f.type.startsWith("image/"));
       if (droppedFiles.length > 0) addFiles(droppedFiles);
     },
     [addFiles]
@@ -106,54 +76,38 @@ export default function FileUploadZone({
             {files.length} {files.length === 1 ? "File" : "Files"}
           </span>
         </div>
-        
-        {files.length > 0 && (
-          <BulkActions
-            files={files}
-            selectedCount={selectedCount}
-            selectAll={selectAll}
-            deselectAll={deselectAll}
-            removeSelected={removeSelected}
-            downloadSelected={downloadSelected}
-            convertSelected={convertSelected}
-          />
-        )}
+
+        {files.length > 0 && <BulkActions files={files} selectedCount={selectedCount} selectAll={selectAll} deselectAll={deselectAll} removeSelected={removeSelected} downloadSelected={downloadSelected} convertSelected={convertSelected} />}
       </div>
 
       {/* DROP ZONE / CONTENT AREA */}
       <div
-        onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setIsDragOver(true);
+        }}
         onDragLeave={() => setIsDragOver(false)}
         onDrop={handleDrop}
         className={`
-          relative rounded-2xl transition-all duration-300 overflow-hidden
+          relative h-[calc(100vh-250px)] rounded-2xl transition-all duration-300 overflow-hidden
           ${isDragOver ? "ring-2 ring-primary/20" : ""}
-          ${files.length === 0 
-            ? "border-2 border-dashed border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg min-h-[280px]" 
-            : "bg-transparent"
-          }
-        `}
-      >
+          ${files.length === 0 ? "border-2 border-dashed border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg min-h-[280px]" : "bg-transparent"}
+        `}>
         {/* Empty State Overlay */}
         {files.length === 0 && (
-          <div 
-            className='absolute inset-0 flex flex-col items-center justify-center gap-5 text-center p-6 cursor-pointer group'
-            onClick={() => document.getElementById("image-file-input")?.click()}
-          >
+          <div className='absolute inset-0 flex flex-col items-center justify-center gap-5 text-center p-6 cursor-pointer group' onClick={() => document.getElementById("image-file-input")?.click()}>
             <div className='relative'>
               <div className='w-14 h-14 rounded-2xl bg-primary/5 dark:bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-all duration-300'>
                 <Upload size={28} className='text-primary' />
               </div>
               <div className='absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-white dark:bg-slate-800 shadow-md flex items-center justify-center border border-slate-100 dark:border-slate-700'>
-                 <ImageIcon size={14} className='text-primary' />
+                <ImageIcon size={14} className='text-primary' />
               </div>
             </div>
-            
+
             <div className='space-y-1'>
               <h3 className='text-lg font-bold text-foreground tracking-tight'>Drop images here</h3>
-              <p className='text-xs text-muted-foreground max-w-xs mx-auto'>
-                JPEG, PNG, WebP, AVIF & GIF supported
-              </p>
+              <p className='text-xs text-muted-foreground max-w-xs mx-auto'>JPEG, PNG, WebP, AVIF & GIF supported</p>
             </div>
 
             <button
@@ -161,8 +115,7 @@ export default function FileUploadZone({
                 e.stopPropagation();
                 document.getElementById("image-file-input")?.click();
               }}
-              className='flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm px-6 py-2.5 rounded-xl shadow-md transition-all hover:-translate-y-0.5 active:scale-95'
-            >
+              className='flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm px-6 py-2.5 rounded-xl shadow-md transition-all hover:-translate-y-0.5 active:scale-95'>
               <Upload size={16} />
               Choose Files
             </button>
@@ -171,32 +124,15 @@ export default function FileUploadZone({
 
         {/* File Grid */}
         {files.length > 0 && (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={files.map((f) => f.id)}
-              strategy={rectSortingStrategy}
-            >
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={files.map((f) => f.id)} strategy={rectSortingStrategy}>
               <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3'>
                 {files.map((file, i) => (
-                  <SortableImageItem
-                    key={file.id}
-                    file={file}
-                    index={i}
-                    onDownload={() => downloadFile(file.id)}
-                    onRemove={() => removeFile(file.id)}
-                    onToggleSelection={() => toggleSelection(file.id)}
-                  />
+                  <SortableImageItem key={file.id} file={file} index={i} onDownload={() => downloadFile(file.id)} onRemove={() => removeFile(file.id)} onToggleSelection={() => toggleSelection(file.id)} />
                 ))}
 
                 {/* Add More Minimalist Button */}
-                <button
-                  onClick={() => document.getElementById("image-file-input")?.click()}
-                  className='aspect-[4/3] rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-800 hover:border-primary/50 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-primary transition-all hover:bg-white dark:hover:bg-slate-900 group'
-                >
+                <button onClick={() => document.getElementById("image-file-input")?.click()} className='aspect-[4/3] rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-800 hover:border-primary/50 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-primary transition-all hover:bg-white dark:hover:bg-slate-900 group'>
                   <div className='w-9 h-9 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all duration-200'>
                     <Upload size={18} className='group-hover:scale-110 transition-transform' />
                   </div>
@@ -209,15 +145,7 @@ export default function FileUploadZone({
       </div>
 
       {/* Hidden File Input */}
-      <input
-        id='image-file-input'
-        type='file'
-        accept='image/*'
-        multiple
-        className='hidden'
-        onChange={handleFileInput}
-      />
+      <input id='image-file-input' type='file' accept='image/*' multiple className='hidden' onChange={handleFileInput} />
     </div>
   );
 }
-

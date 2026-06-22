@@ -5,6 +5,7 @@ import { useUploadHistory } from "./internal/useUploadHistory";
 import { useEditorSync } from "./internal/useEditorSync";
 import { useHtmlExport } from "./internal/useHtmlExport";
 import { STORAGE_KEYS, IMAGE_DEFAULTS } from "../constants";
+import { getElectronAPI } from "../../hooks/useElectronAPI";
 
 export type StorageProfile = "default" | "alphaone" | "ttt";
 export type ExportType = "html" | "mjml" | "both";
@@ -54,7 +55,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
     } catch {
       // Fallback
     }
-    return "playwright";
+    return getElectronAPI() ? "electron" : "playwright";
   });
 
   // Persist settings when they change
