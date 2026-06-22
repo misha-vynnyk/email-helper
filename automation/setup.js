@@ -32,9 +32,15 @@ try {
   // Fix browser paths for macOS
   if (platform === "darwin") {
     const bravePath = "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser";
-    if (!fs.existsSync(bravePath)) {
+    const braveEnvPath = process.env.BRAVE_EXECUTABLE_PATH;
+    const resolvedBravePath = (braveEnvPath && fs.existsSync(braveEnvPath)) ? braveEnvPath : (fs.existsSync(bravePath) ? bravePath : null);
+
+    if (!resolvedBravePath) {
       console.warn(`⚠️  Brave Browser not found at default location: ${bravePath}`);
-      console.warn("   (This is OK if you have Brave installed elsewhere)\n");
+      console.warn("   Set BRAVE_EXECUTABLE_PATH env variable if Brave is installed elsewhere.\n");
+    } else if (config.browser.executablePath !== resolvedBravePath) {
+      config.browser.executablePath = resolvedBravePath;
+      configUpdated = true;
     }
 
     // Update user data directories to current user
