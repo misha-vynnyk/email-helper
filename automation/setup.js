@@ -7,7 +7,6 @@
 
 const fs = require("fs");
 const path = require("path");
-const os = require("os");
 
 const automationDir = __dirname;
 const configPath = path.join(automationDir, "config.json");
@@ -24,7 +23,6 @@ if (!fs.existsSync(configPath)) {
 
 try {
   const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-  const homeDir = os.homedir();
   const platform = process.platform;
 
   let configUpdated = false;
@@ -43,10 +41,11 @@ try {
       configUpdated = true;
     }
 
-    // Update user data directories to current user
-    const defaultBraveDir = path.join(homeDir, "Library/Application Support/BravePlaywright");
-    const alphaBraveDir = path.join(homeDir, "Library/Application Support/BravePlaywright-AlfaOne");
-    const tttBraveDir = path.join(homeDir, "Library/Application Support/BravePlaywright-TerraTrans");
+    // Store userDataDirs as {{HOME}} templates so config.json stays portable
+    // across different macOS users. loadConfig() resolves {{HOME}} at runtime.
+    const defaultBraveDir = "{{HOME}}/Library/Application Support/BravePlaywright";
+    const alphaBraveDir   = "{{HOME}}/Library/Application Support/BravePlaywright-AlfaOne";
+    const tttBraveDir     = "{{HOME}}/Library/Application Support/BravePlaywright-TerraTrans";
 
     if (config.browser.userDataDir !== defaultBraveDir) {
       config.browser.userDataDir = defaultBraveDir;
@@ -74,11 +73,10 @@ try {
       console.warn("   Example: set BRAVE_EXECUTABLE_PATH=C:\\\\Path\\\\To\\\\brave.exe\n");
     }
 
-    // Update Windows user data directories
-    const appDataDir = process.env.APPDATA || path.join(homeDir, "AppData\\Roaming");
-    const defaultBraveDirWin = path.join(appDataDir, "BravePlaywright");
-    const alphaBraveDirWin = path.join(appDataDir, "BravePlaywright-AlfaOne");
-    const tttBraveDirWin = path.join(appDataDir, "BravePlaywright-TerraTrans");
+    // Store as {{APP_DATA}} templates — loadConfig() resolves at runtime per user.
+    const defaultBraveDirWin = "{{APP_DATA}}/BravePlaywright";
+    const alphaBraveDirWin   = "{{APP_DATA}}/BravePlaywright-AlfaOne";
+    const tttBraveDirWin     = "{{APP_DATA}}/BravePlaywright-TerraTrans";
 
     if (config.browser.userDataDir !== defaultBraveDirWin) {
       config.browser.userDataDir = defaultBraveDirWin;
@@ -108,9 +106,10 @@ try {
       console.warn("   Or set BRAVE_EXECUTABLE_PATH environment variable\n");
     }
 
-    const defaultBraveDirLinux = path.join(homeDir, ".config/BravePlaywright");
-    const alphaBraveDirLinux = path.join(homeDir, ".config/BravePlaywright-AlfaOne");
-    const tttBraveDirLinux = path.join(homeDir, ".config/BravePlaywright-TerraTrans");
+    // Store as {{HOME}} templates — loadConfig() resolves at runtime per user.
+    const defaultBraveDirLinux = "{{HOME}}/.config/BravePlaywright";
+    const alphaBraveDirLinux   = "{{HOME}}/.config/BravePlaywright-AlfaOne";
+    const tttBraveDirLinux     = "{{HOME}}/.config/BravePlaywright-TerraTrans";
 
     if (config.browser.userDataDir !== defaultBraveDirLinux) {
       config.browser.userDataDir = defaultBraveDirLinux;
