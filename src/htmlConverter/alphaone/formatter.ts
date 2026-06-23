@@ -124,7 +124,7 @@ function processStyles(htmlContent: string): string {
   htmlContent = htmlContent.replace(/<span[^>]*style=["']([^"']*)["'][^>]*>(.*?)<\/span>/gi, (_match: string, style: string, inner: string) => {
     const bold = /font-weight:\s*700/i.test(style);
     const italic = /font-style:\s*italic/i.test(style);
-    const underline = /text-decoration-line:\s*underline/i.test(style);
+    const underline = /text-decoration(?:-line)?\s*:[^;]*\bunderline\b/i.test(style);
 
     if (bold && italic && underline) return `<em style="text-decoration: underline;font-weight: bold;">${inner}</em>`;
     if (italic && underline) return `<em style="text-decoration: underline;">${inner}</em>`;
