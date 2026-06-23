@@ -118,16 +118,35 @@ async function connectOrLaunch(executablePath, debugPort, userDataDir, storageBa
       await new Promise((r) => setTimeout(r, PORT_CLEAR_INTERVAL));
     }
 
+    // If the port is still occupied after waiting, it is held by another session
+    // (different macOS user via Fast User Switching, or a second converter instance).
+    // Find a free alternate port so we don't launch Brave without remote-debugging.
+    // Use basePort + 1000 as starting point to avoid colliding with other providers'
+    // fixed ports (e.g. 9223 for alphaone, 9224 for ttt).
+    let actualPort = debugPort;
+    if (await isCdpAvailable(debugPort)) {
+      console.log(`⚠️ Port ${debugPort} is held by another session — scanning for a free port...`);
+      const altBase = debugPort + 1000;
+      for (let offset = 0; offset <= 50; offset++) {
+        if (!(await isCdpAvailable(altBase + offset))) {
+          actualPort = altBase + offset;
+          break;
+        }
+      }
+      console.log(`🔀 Using alternate CDP port: ${actualPort}`);
+    }
+
+    const actualCdpUrl = `http://127.0.0.1:${actualPort}`;
     console.log("🚀 Launching new Brave instance...");
 
     try {
-      launchBraveDetached(executablePath, userDataDir, debugPort);
+      launchBraveDetached(executablePath, userDataDir, actualPort);
       console.log(`📂 USER DATA DIR: ${userDataDir}`);
 
       let cdpReady = false;
       for (let attempt = 0; attempt < BRAVE_START_RETRIES; attempt++) {
         await new Promise((r) => setTimeout(r, BRAVE_START_INTERVAL));
-        wsUrl = await isCdpAvailable(debugPort);
+        wsUrl = await isCdpAvailable(actualPort);
         if (wsUrl) { cdpReady = true; break; }
         if (attempt % 5 === 4) console.log(`⏳ Waiting for Brave... (${attempt + 1}s)`);
       }
@@ -135,7 +154,7 @@ async function connectOrLaunch(executablePath, debugPort, userDataDir, storageBa
       if (!cdpReady) throw new Error("Brave startup timeout");
 
       console.log("✅ Brave launched — connecting via CDP...");
-      browser = await chromium.connectOverCDP(cdpUrl);
+      browser = await chromium.connectOverCDP(actualCdpUrl);
       const contexts = browser.contexts();
       context = contexts.length > 0 ? contexts[0] : null;
       if (!context) throw new Error("No browser context available after launch");
