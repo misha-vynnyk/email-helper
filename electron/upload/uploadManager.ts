@@ -364,6 +364,21 @@ export async function uploadFile(
       }
       if (isCancelled()) return { success: false, error: "Upload скасовано" };
 
+      // ── Step 5: Attach debugger and suppress native file dialog ───────────
+      // Must happen BEFORE clicking "Upload File" so the OS file picker (Finder
+      // on macOS) never appears. Page.setInterceptFileChooserDialog tells
+      // Chromium to suppress the native dialog — identical to what Playwright's
+      // page.waitForEvent("filechooser") does internally.
+      const dbg = uploadWindow.webContents.debugger;
+      try {
+        dbg.attach("1.3");
+        debuggerAttached = true;
+        await dbg.sendCommand("Page.setInterceptFileChooserDialog", { enabled: true });
+      } catch {
+        uploadError = "Не вдалось підключити CDP debugger — спробуйте ще раз";
+        continue attemptLoop;
+      }
+
       await uploadWindow.webContents.executeJavaScript(`document.querySelector('div[label="Upload File"]').click()`);
 
       try {
@@ -374,16 +389,7 @@ export async function uploadFile(
         continue attemptLoop;
       }
 
-      // ── Step 5: Set file via CDP debugger ─────────────────────────────────
-      const dbg = uploadWindow.webContents.debugger;
-      try {
-        dbg.attach("1.3");
-        debuggerAttached = true;
-      } catch {
-        uploadError = "Не вдалось підключити CDP debugger — спробуйте ще раз";
-        continue attemptLoop;
-      }
-
+      // ── Step 6: Set file via CDP ───────────────────────────────────────────
       try {
         const { root } = await dbg.sendCommand("DOM.getDocument");
         const { nodeId } = await dbg.sendCommand("DOM.querySelector", {
@@ -400,7 +406,11 @@ export async function uploadFile(
         uploadError = `CDP помилка при завантаженні файлу: ${(err as Error).message}`;
         continue attemptLoop;
       } finally {
-        try { dbg.detach(); debuggerAttached = false; } catch {}
+        try {
+          await dbg.sendCommand("Page.setInterceptFileChooserDialog", { enabled: false });
+          dbg.detach();
+          debuggerAttached = false;
+        } catch {}
       }
 
       // ── Step 6: Wait for file to appear in folder listing ─────────────────
