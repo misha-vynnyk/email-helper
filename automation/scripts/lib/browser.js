@@ -94,8 +94,15 @@ async function connectOrLaunch(executablePath, debugPort, userDataDir, storageBa
       context = contexts.length > 0 ? contexts[0] : null;
       if (!context) throw new Error("No browser context available");
 
-      const pages = context.pages();
-      page = pages.find(isStorageTab) || (await context.newPage());
+      // Close stale tabs from previous failed attempts to avoid accumulation.
+      // The automation profile should only ever have the active storage tab.
+      const allPages = context.pages();
+      for (const p of allPages) {
+        if (!isStorageTab(p)) await p.close().catch(() => {});
+      }
+
+      const remainingPages = context.pages();
+      page = remainingPages.find(isStorageTab) || (await context.newPage());
       await page.bringToFront();
       activateBraveOnMac();
       console.log(`📂 USER DATA DIR: ${userDataDir} (CDP reuse)`);
