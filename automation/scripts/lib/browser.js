@@ -100,9 +100,12 @@ async function connectOrLaunch(executablePath, debugPort, userDataDir, storageBa
       activateBraveOnMac();
       console.log(`📂 USER DATA DIR: ${userDataDir} (CDP reuse)`);
     } catch (cdpErr) {
-      console.warn(`⚠️ CDP connect failed: ${cdpErr.message}`);
+      console.warn(`⚠️ CDP reuse failed: ${cdpErr.message}`);
       if (browser) {
-        try { await browser.disconnect(); } catch {}
+        // browser.close() sends Browser.close over CDP — exits the Brave process and
+        // frees the port so STEP 2 can relaunch on the same port.
+        // browser.disconnect() would leave Brave running and keep the port occupied.
+        try { await browser.close(); } catch {}
         browser = null;
         context = null;
       }
