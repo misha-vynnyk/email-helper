@@ -94,25 +94,15 @@ async function connectOrLaunch(executablePath, debugPort, userDataDir, storageBa
       context = contexts.length > 0 ? contexts[0] : null;
       if (!context) throw new Error("No browser context available");
 
-      // Close stale tabs from previous failed attempts to avoid accumulation.
-      // The automation profile should only ever have the active storage tab.
-      const allPages = context.pages();
-      for (const p of allPages) {
-        if (!isStorageTab(p)) await p.close().catch(() => {});
-      }
-
-      const remainingPages = context.pages();
-      page = remainingPages.find(isStorageTab) || (await context.newPage());
+      const pages = context.pages();
+      page = pages.find(isStorageTab) || (await context.newPage());
       await page.bringToFront();
       activateBraveOnMac();
       console.log(`📂 USER DATA DIR: ${userDataDir} (CDP reuse)`);
     } catch (cdpErr) {
-      console.warn(`⚠️ CDP reuse failed: ${cdpErr.message}`);
+      console.warn(`⚠️ CDP connect failed: ${cdpErr.message}`);
       if (browser) {
-        // browser.close() sends Browser.close over CDP — exits the Brave process and
-        // frees the port so STEP 2 can relaunch on the same port.
-        // browser.disconnect() would leave Brave running and keep the port occupied.
-        try { await browser.close(); } catch {}
+        try { await browser.disconnect(); } catch {}
         browser = null;
         context = null;
       }
@@ -122,35 +112,30 @@ async function connectOrLaunch(executablePath, debugPort, userDataDir, storageBa
 
   // STEP 2: launch a fresh Brave and connect
   if (!wsUrl || !browser) {
-    // Wait for Brave to release the CDP port (it was closed in STEP 1 or died on its own).
+    // Wait for the dying Brave to release the CDP port before launching a new one.
     for (let i = 0; i < PORT_CLEAR_RETRIES; i++) {
       if (!(await isCdpAvailable(debugPort))) break;
       await new Promise((r) => setTimeout(r, PORT_CLEAR_INTERVAL));
     }
 
-    // If the port is still occupied after waiting, forcefully terminate the blocking
-    // process. We always launch on the original debugPort so the Brave window appears
-    // in the same OS context and activateBraveOnMac() brings it to the foreground.
-    // Using an alternate port would create a hidden second Brave instance that the
-    // user never sees while activateBraveOnMac brings a different window to front.
+    // If the port is still occupied after waiting, it is held by another session
+    // (different macOS user via Fast User Switching, or a second converter instance).
+    // Find a free alternate port so we don't launch Brave without remote-debugging.
+    // Use basePort + 1000 as starting point to avoid colliding with other providers'
+    // fixed ports (e.g. 9223 for alphaone, 9224 for ttt).
+    let actualPort = debugPort;
     if (await isCdpAvailable(debugPort)) {
-      console.log(`⚠️ Port ${debugPort} still occupied — terminating the blocking process...`);
-      try {
-        const { execSync } = require("child_process");
-        if (process.platform === "darwin" || process.platform === "linux") {
-          execSync(`lsof -ti tcp:${debugPort} | xargs kill -9 2>/dev/null`, { timeout: 5000, stdio: "pipe" });
-        } else if (process.platform === "win32") {
-          execSync(`for /f "tokens=5" %a in ('netstat -aon ^| findstr :${debugPort}') do taskkill /F /PID %a`, { timeout: 5000, stdio: "pipe", shell: true });
+      console.log(`⚠️ Port ${debugPort} is held by another session — scanning for a free port...`);
+      const altBase = debugPort + 1000;
+      for (let offset = 0; offset <= 50; offset++) {
+        if (!(await isCdpAvailable(altBase + offset))) {
+          actualPort = altBase + offset;
+          break;
         }
-        // Give the OS a moment to fully release the port
-        for (let i = 0; i < 6; i++) {
-          await new Promise((r) => setTimeout(r, 500));
-          if (!(await isCdpAvailable(debugPort))) break;
-        }
-      } catch {}
+      }
+      console.log(`🔀 Using alternate CDP port: ${actualPort}`);
     }
 
-    const actualPort = debugPort;
     const actualCdpUrl = `http://127.0.0.1:${actualPort}`;
     console.log("🚀 Launching new Brave instance...");
 
