@@ -89,7 +89,7 @@ async function connectOrLaunch(executablePath, debugPort, userDataDir, storageBa
   if (wsUrl) {
     console.log("✅ Brave is already running — connecting via CDP...");
     try {
-      browser = await chromium.connectOverCDP(cdpUrl);
+      browser = await chromium.connectOverCDP(cdpUrl, { timeout: 10000 });
       const contexts = browser.contexts();
       context = contexts.length > 0 ? contexts[0] : null;
       if (!context) throw new Error("No browser context available");
