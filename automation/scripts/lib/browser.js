@@ -96,6 +96,11 @@ async function connectOrLaunch(executablePath, debugPort, userDataDir, storageBa
 
       const pages = context.pages();
       page = pages.find(isStorageTab) || (await context.newPage());
+      // Close leftover tabs/windows from session restore so only our page remains.
+      // We create/find page first to ensure context stays alive during cleanup.
+      for (const p of context.pages()) {
+        if (p !== page) await p.close().catch(() => {});
+      }
       await page.bringToFront();
       activateBraveOnMac();
       console.log(`📂 USER DATA DIR: ${userDataDir} (CDP reuse)`);
