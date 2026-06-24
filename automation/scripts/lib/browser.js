@@ -122,30 +122,35 @@ async function connectOrLaunch(executablePath, debugPort, userDataDir, storageBa
 
   // STEP 2: launch a fresh Brave and connect
   if (!wsUrl || !browser) {
-    // Wait for the dying Brave to release the CDP port before launching a new one.
+    // Wait for Brave to release the CDP port (it was closed in STEP 1 or died on its own).
     for (let i = 0; i < PORT_CLEAR_RETRIES; i++) {
       if (!(await isCdpAvailable(debugPort))) break;
       await new Promise((r) => setTimeout(r, PORT_CLEAR_INTERVAL));
     }
 
-    // If the port is still occupied after waiting, it is held by another session
-    // (different macOS user via Fast User Switching, or a second converter instance).
-    // Find a free alternate port so we don't launch Brave without remote-debugging.
-    // Use basePort + 1000 as starting point to avoid colliding with other providers'
-    // fixed ports (e.g. 9223 for alphaone, 9224 for ttt).
-    let actualPort = debugPort;
+    // If the port is still occupied after waiting, forcefully terminate the blocking
+    // process. We always launch on the original debugPort so the Brave window appears
+    // in the same OS context and activateBraveOnMac() brings it to the foreground.
+    // Using an alternate port would create a hidden second Brave instance that the
+    // user never sees while activateBraveOnMac brings a different window to front.
     if (await isCdpAvailable(debugPort)) {
-      console.log(`⚠️ Port ${debugPort} is held by another session — scanning for a free port...`);
-      const altBase = debugPort + 1000;
-      for (let offset = 0; offset <= 50; offset++) {
-        if (!(await isCdpAvailable(altBase + offset))) {
-          actualPort = altBase + offset;
-          break;
+      console.log(`⚠️ Port ${debugPort} still occupied — terminating the blocking process...`);
+      try {
+        const { execSync } = require("child_process");
+        if (process.platform === "darwin" || process.platform === "linux") {
+          execSync(`lsof -ti tcp:${debugPort} | xargs kill -9 2>/dev/null`, { timeout: 5000, stdio: "pipe" });
+        } else if (process.platform === "win32") {
+          execSync(`for /f "tokens=5" %a in ('netstat -aon ^| findstr :${debugPort}') do taskkill /F /PID %a`, { timeout: 5000, stdio: "pipe", shell: true });
         }
-      }
-      console.log(`🔀 Using alternate CDP port: ${actualPort}`);
+        // Give the OS a moment to fully release the port
+        for (let i = 0; i < 6; i++) {
+          await new Promise((r) => setTimeout(r, 500));
+          if (!(await isCdpAvailable(debugPort))) break;
+        }
+      } catch {}
     }
 
+    const actualPort = debugPort;
     const actualCdpUrl = `http://127.0.0.1:${actualPort}`;
     console.log("🚀 Launching new Brave instance...");
 
