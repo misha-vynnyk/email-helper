@@ -202,30 +202,30 @@ export function mergeSimilarTags(htmlContent: string): string {
     });
   }
 
-  /* 
-  // DEPRECATED: Merge adjacent h1-h6 tags generically as a fallback (even if styles differ)
-  // This was removed because it aggressively swallowed tags with different styles (like text-align),
-  // causing formatting bugs (e.g., centered footers merged into left-aligned footers).
-  // Kept here commented out just in case it is ever needed to be restored.
-  const tagsToMerge = ["h1", "h4", "h5", "h6"];
-
-  tagsToMerge.forEach((tag) => {
-    const regex = new RegExp(`(<\\/${tag}>)\\s*(?:<br\\s*\\/?>\\s*)*<${tag}[^>]*>`, "gi");
-
+  // Merge adjacent h6 tags that share the same text-align value (or both have none).
+  // This handles footer text from Google Docs where tags are split but differ only in minor
+  // style attributes like margin-bottom. Skips pairs with mismatched text-align (e.g. center
+  // vs left) to avoid the layout bug the deprecated generic merge caused.
+  {
+    const getAlign = (attrs: string) =>
+      (attrs.match(/text-align:\s*(\w+)/i) || [])[1]?.toLowerCase() ?? "";
     let matchFound = true;
-    let tagIterations = 0;
-    while (matchFound && tagIterations < 50) {
+    let iterations = 0;
+    while (matchFound && iterations < 50) {
       matchFound = false;
-      let count = 0;
-      htmlContent = htmlContent.replace(regex, (_match) => {
-        matchFound = true;
-        count++;
-        return "[[BR_SEP]]";
-      });
-      tagIterations++;
+      htmlContent = htmlContent.replace(
+        /<h6([^>]*)>([\s\S]*?)<\/h6>\s*(?:<br\s*\/?>\s*)*<h6([^>]*)>/gi,
+        (_match, attrs1, innerContent, attrs2) => {
+          if (getAlign(attrs1) === getAlign(attrs2)) {
+            matchFound = true;
+            return `<h6${attrs1}>${innerContent}[[BR_SEP]]`;
+          }
+          return _match;
+        }
+      );
+      iterations++;
     }
-  });
-  */
+  }
 
   return htmlContent;
 }
