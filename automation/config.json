@@ -3,7 +3,7 @@
     "executablePath": "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
     "debugPort": 9222,
     "userDataDir": "{{HOME}}/Library/Application Support/BravePlaywright",
-    "autoCloseTab": false,
+    "autoCloseTab": true,
     "closeDelaySuccess": 2000,
     "closeDelayCancel": 3000
   },

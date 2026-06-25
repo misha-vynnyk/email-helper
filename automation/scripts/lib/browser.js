@@ -8,7 +8,8 @@ const PORT_CLEAR_RETRIES   = 12;
 const PORT_CLEAR_INTERVAL  = 500;   // ms between checks when waiting for port to free
 const BRAVE_START_RETRIES  = 30;
 const BRAVE_START_INTERVAL = 1000;  // ms between CDP availability checks
-const STARTUP_SETTLE_MS    = 1500;  // ms to wait for startup tabs to appear
+const STARTUP_SETTLE_MS    = 3000;  // ms to wait for startup tabs to appear (increased for session restore)
+const LATE_PAGE_GUARD_MS   = 5000;  // ms to intercept late-arriving session restore pages
 
 // Returns the WebSocket debugger URL if Brave is listening on the given CDP port,
 // or null if the port is not yet available.
@@ -49,25 +50,37 @@ function launchBraveDetached(executablePath, userDataDir, debugPort) {
     "--no-first-run",
     "--no-default-browser-check",
     "--disable-component-extensions-with-background-pages",
+    "--no-restore-session-state", // skip session restore — prevents phantom windows
   ];
   const child = spawnChild(executablePath, args, { detached: true, stdio: "ignore" });
   child.unref();
   return child;
 }
 
-// On macOS, bring the Brave window to the front so it's visible above other apps.
-// Uses `open -a` (no Automation permission required) as primary method.
-// Falls back to osascript for cases where open -a doesn't steal focus in time.
+// Brings Brave to the OS foreground on macOS.
+// Uses osascript `activate` (no new windows) instead of `open -a` which can
+// create a new Brave window when no window is currently visible.
 function activateBraveOnMac() {
   if (process.platform !== "darwin") return;
-  // `open -a` activates any running instance of the app without AppleScript permissions.
-  // This is important when the caller is an Electron app that has not been granted
-  // Automation access to Brave Browser.
-  execFile("open", ["-a", "Brave Browser"], { timeout: 5000 }, () => {
-    // Fallback: AppleScript works when Terminal/shell is the caller, may silently
-    // fail from within Electron (no-op in that case, which is acceptable).
-    execFile("osascript", ["-e", 'tell application "Brave Browser" to activate'], { timeout: 2000 }, () => {});
-  });
+  execFile(
+    "osascript",
+    ["-e", 'tell application "Brave Browser" to activate'],
+    { timeout: 2000 },
+    () => {}
+  );
+}
+
+// Closes any page that appears in `context` for the next `durationMs` ms,
+// as long as it isn't `keepPage`. This catches session-restore pages that
+// arrive asynchronously after the initial startup cleanup.
+function guardAgainstLatePages(context, keepPage, durationMs) {
+  const handler = (newPage) => {
+    if (newPage !== keepPage) {
+      newPage.close().catch(() => {});
+    }
+  };
+  context.on("page", handler);
+  setTimeout(() => context.off("page", handler), durationMs);
 }
 
 // Tries to connect to an already-running Brave (STEP 1).
@@ -94,18 +107,34 @@ async function connectOrLaunch(executablePath, debugPort, userDataDir, storageBa
       context = contexts.length > 0 ? contexts[0] : null;
       if (!context) throw new Error("No browser context available");
 
+      // Find existing storage tab or create a fresh one.
+      // Create/find our page FIRST so the context stays alive when we close others.
       const pages = context.pages();
       page = pages.find(isStorageTab) || (await context.newPage());
-      // Close leftover tabs/windows from session restore so only our page remains.
-      // We create/find page first to ensure context stays alive during cleanup.
+
+      // Close all other tabs (stale tabs, session restore leftovers, etc.)
       for (const p of context.pages()) {
         if (p !== page) await p.close().catch(() => {});
       }
+
+      // Intercept any tabs that Brave opens in the next few seconds (late restore).
+      guardAgainstLatePages(context, page, LATE_PAGE_GUARD_MS);
+
       await page.bringToFront();
       activateBraveOnMac();
       console.log(`📂 USER DATA DIR: ${userDataDir} (CDP reuse)`);
     } catch (cdpErr) {
-      console.warn(`⚠️ CDP connect failed: ${cdpErr.message}`);
+      const cdpMsg = cdpErr instanceof Error ? cdpErr.message : String(cdpErr);
+      // If the user closed the tab/window, don't fall through to STEP 2 (which would
+      // launch a new Brave window). Propagate the error so main.js handles it cleanly.
+      if (
+        cdpMsg.includes("Target page, context or browser has been closed") ||
+        cdpMsg.includes("Target closed") ||
+        cdpMsg.toLowerCase().includes("browser has been closed")
+      ) {
+        throw new Error("ERROR:BROWSER_CLOSED (user closed Brave during setup)");
+      }
+      console.warn(`⚠️ CDP connect failed: ${cdpMsg}`);
       if (browser) {
         try { await browser.disconnect(); } catch {}
         browser = null;
@@ -164,13 +193,21 @@ async function connectOrLaunch(executablePath, debugPort, userDataDir, storageBa
       context = contexts.length > 0 ? contexts[0] : null;
       if (!context) throw new Error("No browser context available after launch");
 
+      // Wait for Brave to finish opening startup / session-restore windows.
       await new Promise((resolve) => setTimeout(resolve, STARTUP_SETTLE_MS));
 
+      // Create our page FIRST so the context doesn't die when we close others.
       const startupPages = context.pages();
       page = startupPages.find(isStorageTab) || (await context.newPage());
+
+      // Close all startup pages (session restore, new-tab, etc.)
       for (const p of startupPages) {
         if (p !== page) await p.close().catch(() => {});
       }
+
+      // Intercept any pages Brave creates after our initial cleanup (async restore).
+      guardAgainstLatePages(context, page, LATE_PAGE_GUARD_MS);
+
       await page.bringToFront();
       activateBraveOnMac();
     } catch (err) {
