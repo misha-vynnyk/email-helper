@@ -48,7 +48,6 @@ export interface Tokens {
     recordCellPadX: number;
     recordBorderPx: number;
     buttonSubtitlePadTop: number;
-    gridBorder: string;
   };
   button: {
     radius: number;
@@ -121,7 +120,6 @@ export const tokens: Tokens = {
     recordCellPadX:         6,   // recordRow cell padding left/right
     recordBorderPx:         1,   // recordRow cell border-bottom width
     buttonSubtitlePadTop:   8,   // gap above buttonBand subtitle line
-    gridBorder: "1px solid #E4E4E4",
   },
   button: { radius: 10, height: 51, padding: "3px 5px", innerPadding: "9px 15px", target: "_blank" },
   tags: { bold: "b", italic: "em", underline: "u", colorWrap: "span" },

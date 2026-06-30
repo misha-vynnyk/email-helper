@@ -111,6 +111,7 @@ export function useEditorSync({
       };
 
       const handleInput = () => {
+        if (rawPastedHtmlRef) rawPastedHtmlRef.current = null;
         clearMemoryRef.current();
         scheduleImageSync();
       };

@@ -4,7 +4,6 @@
 
 import { tokens as defaultTokens } from "./tokens";
 import type { Tokens } from "./tokens";
-import { htmlTemplates } from "../../templates";
 import { PLACEHOLDER_URL } from "../../constants";
 import { isDarkBg } from "../ir/color";
 import type { Run } from "../ir/types";
@@ -92,7 +91,7 @@ export function blockRow(
 }
 
 function escHref(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 export function buttonTableHtml(
@@ -125,7 +124,27 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
 
   return {
 
-    document: htmlTemplates.fullStructure,
+    document(content: string): string {
+      const { sidePadding: sp, spacerPx, containerMaxWidth: maxW } = tok.layout;
+      const { primaryTable, verticalSpace, innerTable, spacer } = tok.classes;
+      return `<table width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="max-width:100%;">
+  <tr>
+    <td align="center" valign="top">
+      <table class="${primaryTable}" bgcolor="${tok.color.rootBackground}" border="0" cellspacing="0" cellpadding="0" role="presentation" width="100%" style="max-width:${maxW}px;">
+        <tr>
+          <td class="${verticalSpace}" align="center" style="padding-left:${sp}px;padding-right:${sp}px;">
+            <table class="${innerTable}" border="0" cellspacing="0" role="presentation" cellpadding="0" width="100%" style="width:100%;">
+              <tr><td height="${spacerPx}" width="100%" style="max-width:100%" class="${spacer}"></td></tr>
+              ${content}
+              <tr><td height="${spacerPx}" width="100%" style="max-width:100%" class="${spacer}"></td></tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>`;
+    },
 
     spacer(heightPx: number): string {
       return `<tr><td height="${heightPx}" width="100%" style="max-width:100%" class="${tok.classes.spacer}"></td></tr>`;
@@ -212,16 +231,18 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
       const cy = tok.layout.gridCellPadY;
       const cx = tok.layout.gridCellPadX;
       const cellStyle = baseStyle({ align: "center", fontSize: tok.font.smallPx }, tok);
-      const cellsHtml = cells.map(cellHtml =>
-        `<td valign="top" align="center" class="${tok.classes.inlineCell}" width="${pct}%"
-          style="display:inline-block;width:${pct}%;max-width:100%;min-width:${tok.layout.gridMinWidth}px;border:${tok.layout.gridBorder};">
+      const gridBorder = `${tok.layout.recordBorderPx}px solid ${tok.color.tableBorder}`;
+      const cellsHtml = cells.map((cellHtml, i) => {
+        const w = i === cells.length - 1 ? 100 - pct * (cells.length - 1) : pct;
+        return `<td valign="top" align="center" class="${tok.classes.inlineCell}" width="${w}%"
+          style="display:inline-block;width:${w}%;max-width:100%;min-width:${tok.layout.gridMinWidth}px;border:${gridBorder};">
           <table border="0" cellspacing="0" cellpadding="0" role="presentation" width="100%" style="width:100%;">
             <tr>
               <td style="${cellStyle} padding:${cy}px ${cx}px;">${cellHtml}</td>
             </tr>
           </table>
-        </td>`
-      ).join("\n");
+        </td>`;
+      }).join("\n");
 
       return `<tr>
   <td style="padding-top:${p}px;padding-bottom:${p}px;">
