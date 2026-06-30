@@ -180,9 +180,10 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
       const style = baseStyle({}, tok);
       const p = pad();
       const px = tok.layout.calloutPadX;
+      const bw = tok.layout.calloutBoxBorderPx;
       return `<tr>
   <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
-    <table align="center" border="0" bgcolor="${bg}" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;border:2px solid ${accentColor};" role="presentation">
+    <table align="center" border="0" bgcolor="${bg}" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;border:${bw}px solid ${accentColor};" role="presentation">
       <tr>
         <td align="left" style="${style} padding-left:${px}px;padding-right:${px}px;padding-top:${p}px;padding-bottom:${p}px;">${innerHtml}</td>
       </tr>
@@ -237,11 +238,12 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
     divider(opts: DividerOpts): string {
       const { color } = opts;
       const p = pad();
+      const d = tok.layout.dividerPx;
       return `<tr>
   <td style="padding-top:${p}px;padding-bottom:${p}px;">
     <table border="0" cellspacing="0" cellpadding="0" role="presentation" width="100%" style="width:100%;">
       <tr>
-        <td height="1" style="border-top:1px solid ${color};font-size:0;line-height:0;mso-line-height-rule:exactly;"></td>
+        <td height="${d}" style="border-top:${d}px solid ${color};font-size:0;line-height:0;mso-line-height-rule:exactly;"></td>
       </tr>
     </table>
   </td>
@@ -266,7 +268,7 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
           const textColor = bg && isDarkBg(bg) ? tok.color.white : rowTextColor;
           const style = baseStyle({ fontSize: tok.font.smallPx, color: textColor }, tok);
           const align = cell.align ?? "left";
-          return `<td align="${align}"${bgAttr} style="${style} padding:${ry}px ${rx}px;border-bottom:1px solid ${border};">${cell.innerHtml}</td>`;
+          return `<td align="${align}"${bgAttr} style="${style} padding:${ry}px ${rx}px;border-bottom:${tok.layout.recordBorderPx}px solid ${border};">${cell.innerHtml}</td>`;
         }).join("\n");
 
         const rowBgAttr = row.bg ? ` bgcolor="${row.bg}"` : "";
