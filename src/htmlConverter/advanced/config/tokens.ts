@@ -38,12 +38,15 @@ export interface Tokens {
     gridMinWidth: number;
     calloutAccentPx: number;
     calloutPadX: number;
+    calloutBoxBorderPx: number;
+    dividerPx: number;
     alertBandPadH: number;
     alertBandPadV: number;
     gridCellPadY: number;
     gridCellPadX: number;
     recordCellPadY: number;
     recordCellPadX: number;
+    recordBorderPx: number;
     buttonSubtitlePadTop: number;
     gridBorder: string;
   };
@@ -102,12 +105,15 @@ export const tokens: Tokens = {
     gridMinWidth:         100,
     calloutAccentPx:       10,   // calloutLeft left-border width
     calloutPadX:           10,   // callout left/right inner padding
+    calloutBoxBorderPx:     2,   // calloutBox full-border width
+    dividerPx:              1,   // divider line height/border-top width
     alertBandPadH:         10,   // alertBand horizontal inner padding
     alertBandPadV:          4,   // alertBand vertical inner padding
     gridCellPadY:          10,   // statsGrid card cell padding top/bottom
     gridCellPadX:           6,   // statsGrid card cell padding left/right
     recordCellPadY:         4,   // recordRow cell padding top/bottom
     recordCellPadX:         6,   // recordRow cell padding left/right
+    recordBorderPx:         1,   // recordRow cell border-bottom width
     buttonSubtitlePadTop:   8,   // gap above buttonBand subtitle line
     gridBorder: "1px solid #E4E4E4",
   },
