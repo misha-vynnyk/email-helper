@@ -66,16 +66,18 @@ export default function HtmlConverterPanel() {
 
             {/* FILE SETTINGS (Floating Pills) */}
             <FileNamingBar
-              fileName={state.fileName} 
-              setFileName={actions.setFileName} 
-              changeFileNumber={actions.changeFileNumber} 
-              showApproveNeeded={ui.showApproveNeeded} 
-              approveNeeded={state.approveNeeded} 
-              setApproveNeeded={actions.setApproveNeeded} 
-              storageProfile={state.storageProfile} 
-              setStorageProfile={actions.setStorageProfile} 
+              fileName={state.fileName}
+              setFileName={actions.setFileName}
+              changeFileNumber={actions.changeFileNumber}
+              showApproveNeeded={ui.showApproveNeeded}
+              approveNeeded={state.approveNeeded}
+              setApproveNeeded={actions.setApproveNeeded}
+              storageProfile={state.storageProfile}
+              setStorageProfile={actions.setStorageProfile}
               exportType={state.exportType}
               setExportType={actions.setExportType}
+              converterMode={state.converterMode}
+              setConverterMode={actions.setConverterMode}
             />
 
             {/* DIAGNOSTICS TABS */}

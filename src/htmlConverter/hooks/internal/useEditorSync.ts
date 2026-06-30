@@ -4,6 +4,7 @@ const IMAGE_DETECT_DEBOUNCE_MS = 250;
 
 interface UseEditorSyncProps {
   editorRef: React.RefObject<HTMLDivElement>;
+  rawPastedHtmlRef?: React.MutableRefObject<string | null>;
   showImageProcessorRef: React.RefObject<boolean>;
   setShowImageProcessor: React.Dispatch<React.SetStateAction<boolean>>;
   setTriggerExtract: React.Dispatch<React.SetStateAction<number>>;
@@ -12,6 +13,7 @@ interface UseEditorSyncProps {
 
 export function useEditorSync({
   editorRef,
+  rawPastedHtmlRef,
   showImageProcessorRef,
   setShowImageProcessor,
   setTriggerExtract,
@@ -47,6 +49,9 @@ export function useEditorSync({
       const handlePaste = (e: ClipboardEvent) => {
         const html = e.clipboardData?.getData("text/html");
         if (html) {
+          // Save unmodified raw HTML for Advanced converter (before browser or our code alters it).
+          if (rawPastedHtmlRef) rawPastedHtmlRef.current = html;
+
           // For diagnostics panel: replace large base64 with human-readable placeholder
           const cleanHtml = html.replace(/src="data:image\/[^;]+;base64,[^"]{100,}"/g, (match) => {
             const mimeType = match.match(/data:image\/([^;]+)/)?.[1] || "unknown";

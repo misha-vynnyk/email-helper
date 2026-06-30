@@ -10,6 +10,7 @@ import { useHtmlConverterSettings } from "./useHtmlConverterSettings";
 export type StorageProfile = "default" | "alphaone" | "ttt";
 export type ExportType = "html" | "mjml" | "both";
 export type UploadMode = "playwright" | "electron";
+export type ConverterMode = "simple" | "advanced";
 
 interface UseHtmlConverterLogicProps {
   editorRef: React.RefObject<HTMLDivElement>;
@@ -23,6 +24,18 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
   const { ui } = settings;
 
   // 2. Local State
+  const rawPastedHtmlRef = useRef<string | null>(null);
+
+  const [converterMode, setConverterMode] = useState<ConverterMode>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.CONVERTER_MODE);
+      if (stored === "simple" || stored === "advanced") return stored as ConverterMode;
+    } catch {
+      // Fallback
+    }
+    return "simple";
+  });
+
   const [fileName, setFileName] = useState("promo-1");
   const [storageProfile, setStorageProfile] = useState<StorageProfile>(() => {
     try {
@@ -76,6 +89,10 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
     localStorage.setItem(uploadModeKey, uploadMode);
   }, [uploadMode, uploadModeKey]);
 
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.CONVERTER_MODE, converterMode);
+  }, [converterMode]);
+
   const [showImageProcessor, setShowImageProcessor] = useState(false);
   const [triggerExtract, setTriggerExtract] = useState(0);
   const [uploadedUrlMap, setUploadedUrlMap] = useState<Record<string, string>>({});
@@ -115,6 +132,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
   // Sync Logic (Editor -> HTML + triggers)
   const { inputHtml, clearInputHtml } = useEditorSync({
     editorRef,
+    rawPastedHtmlRef,
     showImageProcessorRef,
     setShowImageProcessor,
     setTriggerExtract,
@@ -134,6 +152,8 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
     addLog,
     setHasOutput,
     storageProfile,
+    converterMode,
+    rawPastedHtmlRef,
     downloadFolder: ui.downloadFolder,
     setDownloadFolder: (folder) => settings.setUi((prev) => ({ ...prev, downloadFolder: folder })),
   });
@@ -158,7 +178,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
     try {
       setIsAutoExporting(true);
       handleExportHTML();
-      handleExportMJML();
+      if (converterMode !== "advanced") handleExportMJML();
 
       if (Object.keys(uploadedUrlMap).length > 0) {
         handleReplaceUrls(uploadedUrlMap);
@@ -169,18 +189,19 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
       if (exportType === "both" || exportType === "html") {
         await handleDownloadHTML();
       }
-      if (exportType === "both" || exportType === "mjml") {
+      if ((exportType === "both" || exportType === "mjml") && converterMode !== "advanced") {
         await handleDownloadMJML();
       }
     } finally {
       setIsAutoExporting(false);
     }
-  }, [addLog, editorRef, handleExportHTML, handleExportMJML, handleReplaceUrls, uploadedUrlMap, handleDownloadHTML, handleDownloadMJML, exportType]);
+  }, [addLog, editorRef, handleExportHTML, handleExportMJML, handleReplaceUrls, uploadedUrlMap, handleDownloadHTML, handleDownloadMJML, exportType, converterMode]);
 
   const handleClear = useCallback(() => {
     if (editorRef.current) editorRef.current.innerHTML = "";
     if (outputHtmlRef.current) outputHtmlRef.current.value = "";
     if (outputMjmlRef.current) outputMjmlRef.current.value = "";
+    rawPastedHtmlRef.current = null;
 
     clearLogs();
     clearInputHtml();
@@ -230,6 +251,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
       storageProfile,
       exportType,
       uploadMode,
+      converterMode,
       log,
       unseenLogCount,
       showImageProcessor,
@@ -248,6 +270,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
       setStorageProfile,
       setExportType,
       setUploadMode,
+      setConverterMode,
       setAutoProcess,
       setUploadedUrlMap,
       setShowImageProcessor,

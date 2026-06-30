@@ -42,7 +42,7 @@ export const config = {
   storageUrl: automationConfig.storageProviders.default.publicBaseUrl + "/",
   colors: {
     link: "#0000EE",
-    white: "#FFFFFF",
+    white: "#ffffff",
     black: "#000000",
     button: "#28b628",
   },
