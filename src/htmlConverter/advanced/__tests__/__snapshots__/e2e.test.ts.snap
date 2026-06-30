@@ -1,0 +1,238 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`convertAdvanced — button-dark fixture snapshot — default profile 1`] = `
+"<table width=\\"100%\\" border=\\"0\\" cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" style=\\"max-width:100%;\\">
+  <tr>
+    <td align=\\"center\\" valign=\\"top\\">
+      <table class=\\"primary-table-limit content-table\\" bgcolor=\\"#ffffff\\" border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"max-width:600px;\\">
+        <tr>
+          <td class=\\"content-vertical-space\\" align=\\"center\\" style=\\"padding-left:20px;padding-right:20px;\\">
+            <table class=\\"content-inner-table\\" border=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" cellpadding=\\"0\\" width=\\"100%\\" style=\\"width:100%;\\">
+              <tr><td height=\\"16\\" width=\\"100%\\" style=\\"max-width:100%\\" class=\\"md-horizontal-space\\"></td></tr>
+              <tr>
+  <td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-top:14px;padding-bottom:14px;\\">
+    Ready to get started?
+  </td>
+</tr>
+<tr>
+  <td align=\\"center\\" style=\\"padding-top:14px;padding-bottom:14px;\\">
+    <table cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;max-width:100%;\\">
+  <tr>
+    <td class=\\"btn-edit-p\\" height=\\"51\\" align=\\"center\\"
+        style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:bold;line-height:1.5;text-align:center;color:#ffffff; padding:3px 5px;background-color:#28b628;border-radius:10px;\\" bgcolor=\\"#28b628\\">
+      <a href=\\"https://example.com/signup\\" target=\\"_blank\\"
+         style=\\"font-weight:bold;text-decoration:none;color:#ffffff;padding:9px 15px;display:block;font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:bold;line-height:1.5;text-align:center;color:#ffffff;;background-color:#28b628;border-radius:10px;\\">
+        
+            <b>
+              </b><b><a href=\\"https://example.com/signup\\" target=\\"_blank\\" style=\\"color:#0000EE;text-decoration:underline;\\">Create your account</a></b><b>
+            </b>
+          
+      </a>
+    </td>
+  </tr>
+</table>
+  </td>
+</tr>
+<tr>
+  <td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-top:14px;padding-bottom:14px;\\">
+    <span style=\\"color:#666666;\\">
+      No credit card required. Cancel any time.
+    </span>
+  </td>
+</tr>
+              <tr><td height=\\"16\\" width=\\"100%\\" style=\\"max-width:100%\\" class=\\"md-horizontal-space\\"></td></tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>"
+`;
+
+exports[`convertAdvanced — plain-text fixture snapshot — default profile 1`] = `
+"<table width=\\"100%\\" border=\\"0\\" cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" style=\\"max-width:100%;\\">
+  <tr>
+    <td align=\\"center\\" valign=\\"top\\">
+      <table class=\\"primary-table-limit content-table\\" bgcolor=\\"#ffffff\\" border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"max-width:600px;\\">
+        <tr>
+          <td class=\\"content-vertical-space\\" align=\\"center\\" style=\\"padding-left:20px;padding-right:20px;\\">
+            <table class=\\"content-inner-table\\" border=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" cellpadding=\\"0\\" width=\\"100%\\" style=\\"width:100%;\\">
+              <tr><td height=\\"16\\" width=\\"100%\\" style=\\"max-width:100%\\" class=\\"md-horizontal-space\\"></td></tr>
+              <tr>
+  <td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-top:14px;padding-bottom:14px;\\">
+    
+      Welcome to our monthly newsletter!
+    
+  <br>
+
+    
+      This month we are sharing important updates about our products and services.
+    
+  <br>
+
+    <b>
+      Key highlight:
+    </b>
+    <span style=\\"color:#cc0000;\\">
+      new pricing takes effect July 1.
+    </span>
+  <br>
+
+    <em>
+      Please review the attached documents carefully.
+    </em>
+  <br>
+
+    
+      Visit us at
+    
+    <span style=\\"color:#1155cc;\\"><u>
+      </u></span><span style=\\"color:#1155cc;\\"><a href=\\"https://example.com\\" target=\\"_blank\\" style=\\"color:#0000EE;text-decoration:underline;\\">our website</a></span><span style=\\"color:#1155cc;\\"><u>
+    </u></span>
+    
+      for details.
+    
+  <br>
+
+    <span style=\\"color:#666666;\\">
+      Small print: terms and conditions apply.
+    </span>
+  </td>
+</tr>
+              <tr><td height=\\"16\\" width=\\"100%\\" style=\\"max-width:100%\\" class=\\"md-horizontal-space\\"></td></tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>"
+`;
+
+exports[`convertAdvanced — tables fixture snapshot — default profile 1`] = `
+"<table width=\\"100%\\" border=\\"0\\" cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" style=\\"max-width:100%;\\">
+  <tr>
+    <td align=\\"center\\" valign=\\"top\\">
+      <table class=\\"primary-table-limit content-table\\" bgcolor=\\"#ffffff\\" border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"max-width:600px;\\">
+        <tr>
+          <td class=\\"content-vertical-space\\" align=\\"center\\" style=\\"padding-left:20px;padding-right:20px;\\">
+            <table class=\\"content-inner-table\\" border=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" cellpadding=\\"0\\" width=\\"100%\\" style=\\"width:100%;\\">
+              <tr><td height=\\"16\\" width=\\"100%\\" style=\\"max-width:100%\\" class=\\"md-horizontal-space\\"></td></tr>
+              <tr>
+  <td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-top:14px;padding-bottom:14px;\\">
+    
+      Below are some table examples.
+    
+  </td>
+</tr>
+<tr>
+  <td align=\\"center\\" style=\\"padding-top:14px;padding-bottom:14px;\\">
+    <table align=\\"center\\" border=\\"0\\" bgcolor=\\"#1a1a2e\\" cellspacing=\\"0\\" cellpadding=\\"0\\" width=\\"100%\\" style=\\"width:100%;max-width:100%;padding:0;margin:0;\\" role=\\"presentation\\">
+      <tr>
+        <td style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#ffffff; padding-left:10px;padding-right:10px;padding-top:4px;padding-bottom:4px;\\">
+            <b>Important notice: your account needs attention.</b>
+          </td>
+      </tr>
+    </table>
+  </td>
+</tr>
+<tr>
+  <td align=\\"center\\" style=\\"padding-top:14px;padding-bottom:14px;\\">
+    <table align=\\"center\\" border=\\"0\\" bgcolor=\\"#fff3cd\\" cellspacing=\\"0\\" cellpadding=\\"0\\" width=\\"100%\\" style=\\"width:100%;max-width:100%;padding:0;margin:0;border-left:10px solid #28b628;\\" role=\\"presentation\\">
+      <tr>
+        <td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-left:10px;padding-right:10px;padding-top:14px;padding-bottom:14px;\\">
+            Tip: you can save 20% by switching to annual billing.
+          </td>
+      </tr>
+    </table>
+  </td>
+</tr>
+<tr>
+  <td style=\\"padding-top:14px;padding-bottom:14px;\\">
+    <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\"
+      style=\\"width:100%;min-width:100%;font-size:0;line-height:0;mso-line-height-rule:exactly;text-align:center;\\">
+      <tr>
+        <td valign=\\"top\\" align=\\"center\\" class=\\"inline-block-element\\" width=\\"33%\\"
+          style=\\"display:inline-block;width:33%;max-width:100%;min-width:100px;border:1px solid #E4E4E4;\\">
+          <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;\\">
+            <tr>
+              <td style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000; padding:10px 6px;\\">
+            <b>12,500</b>
+          <br>
+
+            <span style=\\"color:#666666;\\">Active users</span>
+          </td>
+            </tr>
+          </table>
+        </td>
+<td valign=\\"top\\" align=\\"center\\" class=\\"inline-block-element\\" width=\\"33%\\"
+          style=\\"display:inline-block;width:33%;max-width:100%;min-width:100px;border:1px solid #E4E4E4;\\">
+          <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;\\">
+            <tr>
+              <td style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000; padding:10px 6px;\\">
+            <b>98.7%</b>
+          <br>
+
+            <span style=\\"color:#666666;\\">Uptime</span>
+          </td>
+            </tr>
+          </table>
+        </td>
+<td valign=\\"top\\" align=\\"center\\" class=\\"inline-block-element\\" width=\\"34%\\"
+          style=\\"display:inline-block;width:34%;max-width:100%;min-width:100px;border:1px solid #E4E4E4;\\">
+          <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;\\">
+            <tr>
+              <td style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000; padding:10px 6px;\\">
+            <b>4.9 ★</b>
+          <br>
+
+            <span style=\\"color:#666666;\\">Rating</span>
+          </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </td>
+</tr>
+<tr>
+  <td style=\\"padding-top:14px;padding-bottom:14px;\\">
+    <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;border-collapse:collapse;\\">
+      <tr><td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding:4px 6px;border-bottom:1px solid #E4E4E4;\\">
+            <b>Plan</b>
+          </td>
+<td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding:4px 6px;border-bottom:1px solid #E4E4E4;\\">
+            <b>Price</b>
+          </td></tr>
+<tr><td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding:4px 6px;border-bottom:1px solid #E4E4E4;\\">
+            Starter
+          </td>
+<td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding:4px 6px;border-bottom:1px solid #E4E4E4;\\">
+            $9/mo
+          </td></tr>
+<tr><td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding:4px 6px;border-bottom:1px solid #E4E4E4;\\">
+            Pro
+          </td>
+<td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding:4px 6px;border-bottom:1px solid #E4E4E4;\\">
+            $29/mo
+          </td></tr>
+    </table>
+  </td>
+</tr>
+<tr>
+  <td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-top:14px;padding-bottom:14px;\\">
+    
+      Thank you for being a valued customer.
+    
+  </td>
+</tr>
+              <tr><td height=\\"16\\" width=\\"100%\\" style=\\"max-width:100%\\" class=\\"md-horizontal-space\\"></td></tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>"
+`;
