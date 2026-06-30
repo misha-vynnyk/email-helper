@@ -15,7 +15,7 @@ function parseHex(c: string): [number, number, number] | null {
     const [, h] = m6;
     return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
   }
-  const rgb = s.match(/^rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/);
+  const rgb = s.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*[\d.]+)?\s*\)$/);
   if (rgb) return [+rgb[1], +rgb[2], +rgb[3]];
   return null;
 }

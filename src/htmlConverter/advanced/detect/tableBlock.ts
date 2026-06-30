@@ -4,7 +4,8 @@
 
 import type { TableNode, CellNode, ComponentNode, Paragraph, Run } from "../ir/types";
 import { isDarkBg } from "../ir/color";
-import { tokens } from "../config/tokens";
+import { tokens as defaultTokens } from "../config/tokens";
+import type { Tokens } from "../config/tokens";
 
 // ── Cell content helpers ──────────────────────────────────────────────────────
 
@@ -39,7 +40,7 @@ function cellToChild(cell: CellNode): ComponentNode {
 
 // ── Single-cell classification ────────────────────────────────────────────────
 
-function classifySingleCell(cell: CellNode): ComponentNode | null {
+function classifySingleCell(cell: CellNode, tok: Tokens): ComponentNode | null {
   const bg = cell.bg;
 
   // No color or white → transparent, let classify.ts unwrap
@@ -56,7 +57,7 @@ function classifySingleCell(cell: CellNode): ComponentNode | null {
   // Light accent bg → callout with left border
   return {
     kind: "calloutLeft",
-    props: { runs: flattenRuns(cell), bg, accentColor: tokens.color.button },
+    props: { runs: flattenRuns(cell), bg, accentColor: tok.color.button },
   };
 }
 
@@ -72,7 +73,7 @@ function rowCells(cells: CellNode[]) {
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 
-export function classifyTable(node: TableNode): ComponentNode | null {
+export function classifyTable(node: TableNode, tok: Tokens = defaultTokens): ComponentNode | null {
   const { rows } = node;
   if (!rows.length) return null;
 
@@ -80,9 +81,9 @@ export function classifyTable(node: TableNode): ComponentNode | null {
     r.cells.reduce((s, c) => s + (c.colspan ?? 1), 0)
   ));
 
-  // Single-row, single-cell
-  if (rows.length === 1 && ncols === 1) {
-    return classifySingleCell(rows[0].cells[0]);
+  // Single-row, single-cell (check physical cell count, not colspan-expanded ncols)
+  if (rows.length === 1 && rows[0].cells.length === 1) {
+    return classifySingleCell(rows[0].cells[0], tok);
   }
 
   // Single-row, multi-cell → statsGrid

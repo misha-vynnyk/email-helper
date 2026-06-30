@@ -48,8 +48,10 @@ function italicLinks(htmlContent: string): string {
       return text; // just whitespace — safe to drop
     }
 
+    const hasItalic = /font-style:\s*italic/i.test(inner);
+    const linkContent = hasItalic ? `<em>${coreText}</em>` : coreText;
     const placeholder = `\x02LINK${savedLinks.length}\x03`;
-    savedLinks.push(`<a href="${PLACEHOLDER_URL}" style="font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: ${config.colors.link};">${coreText}</a>`);
+    savedLinks.push(`<a href="${PLACEHOLDER_URL}" style="font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: ${config.colors.link};">${linkContent}</a>`);
     return `${leadingSpaces}${placeholder}${trailingSpaces}`;
   });
 

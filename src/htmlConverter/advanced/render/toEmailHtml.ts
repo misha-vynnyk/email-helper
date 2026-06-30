@@ -26,11 +26,16 @@ function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+function isSafeHref(href: string): boolean {
+  const lower = href.trimStart().toLowerCase();
+  return !lower.startsWith("javascript:") && !lower.startsWith("data:") && !lower.startsWith("vbscript:");
+}
+
 export function renderRuns(runs: Run[], tok: Tokens = defaultTokens, baseColor?: string): string {
   const { bold: B, italic: I, underline: U, colorWrap: S } = tok.tags;
   return runs.map(run => {
     let html = esc(run.text);
-    if (run.href) {
+    if (run.href && isSafeHref(run.href)) {
       html = `<a href="${esc(run.href)}" target="_blank" style="color:${tok.color.link};text-decoration:underline;">${html}</a>`;
     } else if (run.underline) {
       html = `<${U}>${html}</${U}>`;
