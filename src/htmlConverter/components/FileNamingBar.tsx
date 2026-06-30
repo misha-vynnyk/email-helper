@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Plus, Minus, CheckSquare, Square } from "lucide-react";
-import type { StorageProfile } from "../hooks/useHtmlConverterLogic";
+import type { StorageProfile, ConverterMode } from "../hooks/useHtmlConverterLogic";
 
 interface FileNamingBarProps {
   fileName: string;
@@ -13,6 +13,8 @@ interface FileNamingBarProps {
   setStorageProfile: (val: StorageProfile) => void;
   exportType: "html" | "mjml" | "both";
   setExportType: (val: "html" | "mjml" | "both") => void;
+  converterMode: ConverterMode;
+  setConverterMode: (val: ConverterMode) => void;
 }
 
 const PROFILES: { value: StorageProfile; label: string }[] = [
@@ -32,6 +34,8 @@ export function FileNamingBar({
   setStorageProfile,
   exportType,
   setExportType,
+  converterMode,
+  setConverterMode,
 }: FileNamingBarProps) {
   const { t } = useTranslation();
 
@@ -91,8 +95,25 @@ export function FileNamingBar({
         ))}
       </div>
 
-      {/* Export type selector */}
+      {/* Converter mode: Simple / Advanced */}
       <div className='flex items-center bg-card rounded-full border border-border/50 shadow-soft p-1 gap-1'>
+        {(["simple", "advanced"] as ConverterMode[]).map((mode) => (
+          <button
+            key={mode}
+            onClick={() => setConverterMode(mode)}
+            className={`px-4 py-2 rounded-full text-sm font-bold transition-all duration-200 ${
+              converterMode === mode
+                ? "bg-primary text-primary-foreground shadow-sm scale-[1.04]"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+          >
+            {mode === "simple" ? "Simple" : "Advanced"}
+          </button>
+        ))}
+      </div>
+
+      {/* Export type selector (disabled in Advanced — no MJML output yet) */}
+      <div className={`flex items-center bg-card rounded-full border border-border/50 shadow-soft p-1 gap-1 ${converterMode === "advanced" ? "opacity-40 pointer-events-none" : ""}`}>
         {[
           { value: "both", label: "Both" },
           { value: "html", label: "HTML only" },

@@ -14,6 +14,7 @@ export const STORAGE_KEYS = {
   EXPORT_TYPE: "html-converter-export-type",
   UPLOAD_MODE: "html-converter-upload-mode",
   UPLOAD_MODE_ELECTRON: "html-converter-upload-mode-electron",
+  CONVERTER_MODE: "html-converter-converter-mode",
 } as const;
 
 // Symbols

@@ -3,8 +3,12 @@ import { formatHtml, formatMjml } from "../../formatter";
 import { formatHtmlTTT, formatMjmlTTT } from "../../ttt/formatter";
 import { formatHtmlAlphaone, formatMjmlAlphaone } from "../../alphaone/formatter";
 import { replaceUrlsInContentByMap, replaceUrlsInContent, replaceAltsInContent } from "../../utils/contentReplacer";
-import type { StorageProfile } from "../useHtmlConverterLogic";
+import type { StorageProfile, ConverterMode } from "../useHtmlConverterLogic";
 import { getElectronAPI } from "@/hooks/useElectronAPI";
+import { convertAdvanced } from "../../advanced/index";
+import { profile as defaultProfile } from "../../advanced/profiles/default";
+import { profile as tttProfile }     from "../../advanced/profiles/ttt";
+import { profile as alphaoneProfile } from "../../advanced/profiles/alphaone";
 
 interface UseHtmlExportProps {
   editorRef: React.RefObject<HTMLDivElement>;
@@ -15,6 +19,8 @@ interface UseHtmlExportProps {
   addLog: (msg: string) => void;
   setHasOutput: (val: boolean) => void;
   storageProfile: StorageProfile;
+  converterMode: ConverterMode;
+  rawPastedHtmlRef: React.MutableRefObject<string | null>;
   downloadFolder?: string;
   setDownloadFolder?: (folder: string) => void;
 }
@@ -28,6 +34,8 @@ export function useHtmlExport({
   addLog,
   setHasOutput,
   storageProfile,
+  converterMode,
+  rawPastedHtmlRef,
   downloadFolder = "",
   setDownloadFolder,
 }: UseHtmlExportProps) {
@@ -98,6 +106,34 @@ export function useHtmlExport({
         return;
       }
 
+      // Advanced mode: convert raw pasted HTML (unmodified) via the new pipeline.
+      if (converterMode === "advanced") {
+        const rawHtml = rawPastedHtmlRef.current ?? editorContent;
+        const profileOverride =
+          storageProfile === "ttt"      ? tttProfile :
+          storageProfile === "alphaone" ? alphaoneProfile :
+          defaultProfile;
+        let result = convertAdvanced(rawHtml, profileOverride);
+
+        if (Object.keys(uploadedUrlMap).length > 0) {
+          const storageUrls = Object.values(uploadedUrlMap);
+          const regex = /(<img[^>]+src=["'])([^"']+)(["'][^>]*>)/gi;
+          const mapped = replaceUrlsInContentByMap(result, regex, uploadedUrlMap);
+          result = mapped.count > 0
+            ? mapped.replaced
+            : replaceUrlsInContent(result, regex, storageUrls).replaced;
+          result = replaceAltsInContent(result, uploadedAltMap).replaced;
+        }
+
+        if (outputHtmlRef.current) outputHtmlRef.current.value = result;
+        if (outputMjmlRef.current) outputMjmlRef.current.value = "";
+        setPreviewHtml(result);
+        setHasOutput(true);
+        triggerResetReplacement();
+        addLog(`✅ Advanced HTML конвертовано [${storageProfile.toUpperCase()}]`);
+        return;
+      }
+
       // Pick formatter based on active profile
       const formatFn = storageProfile === "ttt" ? formatHtmlTTT : storageProfile === "alphaone" ? formatHtmlAlphaone : formatHtml;
       let formattedContent = formatFn(editorContent);
@@ -124,9 +160,13 @@ export function useHtmlExport({
       const message = error instanceof Error ? error.message : "Невідома помилка";
       addLog(`❌ Помилка експорту HTML: ${message}`);
     }
-  }, [addLog, editorRef, outputHtmlRef, uploadedUrlMap, uploadedAltMap, setHasOutput, triggerResetReplacement, storageProfile]);
+  }, [addLog, editorRef, outputHtmlRef, uploadedUrlMap, uploadedAltMap, setHasOutput, triggerResetReplacement, storageProfile, converterMode, rawPastedHtmlRef]);
 
   const handleExportMJML = useCallback(() => {
+    if (converterMode === "advanced") {
+      addLog("ℹ️ MJML недоступний у режимі Advanced");
+      return;
+    }
     if (!editorRef.current) return;
     try {
       const editorContent = editorRef.current.innerHTML;
@@ -160,7 +200,7 @@ export function useHtmlExport({
       const message = error instanceof Error ? error.message : "Невідома помилка";
       addLog(`❌ Помилка експорту MJML: ${message}`);
     }
-  }, [addLog, editorRef, outputMjmlRef, uploadedUrlMap, uploadedAltMap, setHasOutput, triggerResetReplacement, storageProfile]);
+  }, [addLog, editorRef, outputMjmlRef, uploadedUrlMap, uploadedAltMap, setHasOutput, triggerResetReplacement, storageProfile, converterMode]);
 
   const downloadFile = useCallback(
     async (content: string, extension: string, fileName: string, approveNeeded: boolean) => {
