@@ -57,6 +57,12 @@ export interface Tokens {
     innerPadding: string;
     target: string;
   };
+  tags: {
+    bold:      string;  // "b" or "strong"
+    italic:    string;  // "em" or "i"
+    underline: string;  // "u"
+    colorWrap: string;  // "span" — wrapper for color-only runs
+  };
   accentBullet: string;
   classes: {
     primaryTable: string;
@@ -118,6 +124,7 @@ export const tokens: Tokens = {
     gridBorder: "1px solid #E4E4E4",
   },
   button: { radius: 10, height: 51, padding: "3px 5px", innerPadding: "9px 15px", target: "_blank" },
+  tags: { bold: "b", italic: "em", underline: "u", colorWrap: "span" },
   accentBullet: "&#9656; ",
   // CSS class names shared with the Simple converter stylesheet — do NOT rename
   classes: {
@@ -133,11 +140,12 @@ export const tokens: Tokens = {
 
 // Partial override accepted by convertAdvanced — each nested object is also partial.
 export type TokensOverride = {
-  color?:  Partial<Tokens["color"]>;
-  font?:   Partial<Tokens["font"]>;
-  layout?: Partial<Tokens["layout"]>;
-  button?: Partial<Tokens["button"]>;
-  classes?: Partial<Tokens["classes"]>;
+  color?:       Partial<Tokens["color"]>;
+  font?:        Partial<Tokens["font"]>;
+  layout?:      Partial<Tokens["layout"]>;
+  button?:      Partial<Tokens["button"]>;
+  tags?:        Partial<Tokens["tags"]>;
+  classes?:     Partial<Tokens["classes"]>;
   accentBullet?: string;
 };
 
@@ -147,6 +155,7 @@ export function mergeTokens(base: Tokens, override: TokensOverride): Tokens {
     font:         { ...base.font,    ...override.font },
     layout:       { ...base.layout,  ...override.layout },
     button:       { ...base.button,  ...override.button },
+    tags:         { ...base.tags,    ...override.tags },
     classes:      { ...base.classes, ...override.classes },
     accentBullet: override.accentBullet ?? base.accentBullet,
   } as Tokens;

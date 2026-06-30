@@ -27,22 +27,23 @@ function esc(s: string): string {
 }
 
 export function renderRuns(runs: Run[], tok: Tokens = defaultTokens, baseColor?: string): string {
+  const { bold: B, italic: I, underline: U, colorWrap: S } = tok.tags;
   return runs.map(run => {
     let html = esc(run.text);
     if (run.href) {
       html = `<a href="${esc(run.href)}" target="_blank" style="color:${tok.color.link};text-decoration:underline;">${html}</a>`;
     } else if (run.underline) {
-      html = `<u>${html}</u>`;
+      html = `<${U}>${html}</${U}>`;
     }
-    if (run.italic) html = `<em>${html}</em>`;
+    if (run.italic) html = `<${I}>${html}</${I}>`;
     const hasColor = Boolean(run.color) &&
       run.color!.toLowerCase() !== (baseColor ?? "").toLowerCase();
     if (run.bold && hasColor) {
-      html = `<b style="color:${run.color};">${html}</b>`;
+      html = `<${B} style="color:${run.color};">${html}</${B}>`;
     } else if (run.bold) {
-      html = `<b>${html}</b>`;
+      html = `<${B}>${html}</${B}>`;
     } else if (hasColor) {
-      html = `<span style="color:${run.color};">${html}</span>`;
+      html = `<${S} style="color:${run.color};">${html}</${S}>`;
     }
     return html;
   }).join("");
