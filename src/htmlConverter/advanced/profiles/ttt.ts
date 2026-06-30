@@ -1,10 +1,10 @@
 import type { TokensOverride } from "../config/tokens";
 
-// TTT (TerraTrans) profile — override brand colours here.
-// Values marked TODO: set when TTT brand guide is confirmed.
+// TTT (TerraTrans) profile — values taken from ttt/templates.ts.
 export const profile: TokensOverride = {
-  color: {
-    button: "#c10b27", // TODO: confirm TTT primary CTA colour
-    link:   "#c10b27", // TODO: confirm TTT link colour
+  layout: {
+    blockPadY:   15,  // TTT_PADDING = "15px"
+    sidePadding: 21,  // "padding-left: 21px; padding-right: 21px" in TTT scaffold
+    spacerPx:    15,  // height="15" in TTT fullStructure spacers
   },
 };

@@ -3,10 +3,75 @@
 // Profile overrides (TTT, Alfa, …) live in advanced/profiles/*.ts and extend this object.
 import { config } from "../../utils/config";
 
-export const tokens = {
+// Explicit interface keeps types wide (number, string) so profile overrides
+// don't clash with the literal types produced by `as const`.
+export interface Tokens {
+  color: {
+    rootBackground: string;
+    warning: string;
+    calloutBg: string;
+    tableBorder: string;
+    blackSnap: number;
+    whiteSnap: number;
+    neutralTol: number;
+    bgRedundant: number;
+    darkLuma: number;
+    link: string;
+    button: string;
+    white: string;
+    black: string;
+    placeholderHref: string;
+  };
+  font: {
+    stack: string;
+    lineHeight: number;
+    bodyPx: number;
+    headlinePx: number;
+    smallPx: number;
+    smallMaxPt: number;
+  };
+  layout: {
+    containerMaxWidth: number;
+    sidePadding: number;
+    blockPadY: number;
+    spacerPx: number;
+    gridMinWidth: number;
+    calloutAccentPx: number;
+    calloutPadX: number;
+    alertBandPadH: number;
+    alertBandPadV: number;
+    gridCellPadY: number;
+    gridCellPadX: number;
+    recordCellPadY: number;
+    recordCellPadX: number;
+    buttonSubtitlePadTop: number;
+    gridBorder: string;
+  };
+  button: {
+    radius: number;
+    height: number;
+    padding: string;
+    innerPadding: string;
+    target: string;
+  };
+  accentBullet: string;
+  classes: {
+    primaryTable: string;
+    verticalSpace: string;
+    innerTable: string;
+    spacer: string;
+    btnWrap: string;
+    imgBg: string;
+    inlineCell: string;
+  };
+}
+
+export const tokens: Tokens = {
   color: {
     rootBackground: "#ffffff",
     warning:        "#cc0000",
+    calloutBg:      "#f5f5f5",
+    tableBorder:    "#E4E4E4",
     // Colour-classification thresholds (used only by ir/color.ts — not rendered directly)
     blackSnap:  48,
     whiteSnap:  48,
@@ -30,12 +95,20 @@ export const tokens = {
     smallMaxPt: 9,    // GDocs pt ≤ this → "small" role, otherwise "body"
   },
   layout: {
-    containerMaxWidth: 600,
-    sidePadding:       20,
-    blockPadY:         14,   // top + bottom padding per block row (matches Simple)
-    spacerPx:          16,   // height of the spacer <td> between sections
-    gridMinWidth:      100,
-    calloutAccentPx:   10,
+    containerMaxWidth:    600,
+    sidePadding:           20,
+    blockPadY:             14,   // top + bottom padding per block row (matches Simple)
+    spacerPx:              16,   // height of the spacer <td> between sections
+    gridMinWidth:         100,
+    calloutAccentPx:       10,   // calloutLeft left-border width
+    calloutPadX:           10,   // callout left/right inner padding
+    alertBandPadH:         10,   // alertBand horizontal inner padding
+    alertBandPadV:          4,   // alertBand vertical inner padding
+    gridCellPadY:          10,   // statsGrid card cell padding top/bottom
+    gridCellPadX:           6,   // statsGrid card cell padding left/right
+    recordCellPadY:         4,   // recordRow cell padding top/bottom
+    recordCellPadX:         6,   // recordRow cell padding left/right
+    buttonSubtitlePadTop:   8,   // gap above buttonBand subtitle line
     gridBorder: "1px solid #E4E4E4",
   },
   button: { radius: 10, height: 51, padding: "3px 5px", innerPadding: "9px 15px", target: "_blank" },
@@ -50,9 +123,7 @@ export const tokens = {
     imgBg:         "img-bg-block",
     inlineCell:    "inline-block-element",
   },
-} as const;
-
-export type Tokens = typeof tokens;
+};
 
 // Partial override accepted by convertAdvanced — each nested object is also partial.
 export type TokensOverride = {

@@ -145,11 +145,13 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
       const textColor = isDarkBg(bg) ? tok.color.white : tok.color.black;
       const style = baseStyle({ color: textColor }, tok);
       const p = pad();
+      const ph = tok.layout.alertBandPadH;
+      const pv = tok.layout.alertBandPadV;
       return `<tr>
   <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
     <table align="center" border="0" bgcolor="${bg}" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;" role="presentation">
       <tr>
-        <td style="${style} padding-left:10px;padding-right:10px;padding-top:4px;padding-bottom:4px;">${innerHtml}</td>
+        <td style="${style} padding-left:${ph}px;padding-right:${ph}px;padding-top:${pv}px;padding-bottom:${pv}px;">${innerHtml}</td>
       </tr>
     </table>
   </td>
@@ -157,15 +159,16 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
     },
 
     calloutLeft(innerHtml: string, opts: CalloutOpts): string {
-      const { accentColor, bg = "#f5f5f5" } = opts;
+      const { accentColor, bg = tok.color.calloutBg } = opts;
       const style = baseStyle({}, tok);
       const p = pad();
+      const px = tok.layout.calloutPadX;
       const accent = tok.layout.calloutAccentPx;
       return `<tr>
   <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
     <table align="center" border="0" bgcolor="${bg}" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;border-left:${accent}px solid ${accentColor};" role="presentation">
       <tr>
-        <td align="left" style="${style} padding-left:10px;padding-right:10px;padding-top:${p}px;padding-bottom:${p}px;">${innerHtml}</td>
+        <td align="left" style="${style} padding-left:${px}px;padding-right:${px}px;padding-top:${p}px;padding-bottom:${p}px;">${innerHtml}</td>
       </tr>
     </table>
   </td>
@@ -173,14 +176,15 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
     },
 
     calloutBox(innerHtml: string, opts: CalloutOpts): string {
-      const { accentColor, bg = "#f5f5f5" } = opts;
+      const { accentColor, bg = tok.color.calloutBg } = opts;
       const style = baseStyle({}, tok);
       const p = pad();
+      const px = tok.layout.calloutPadX;
       return `<tr>
   <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
     <table align="center" border="0" bgcolor="${bg}" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;border:2px solid ${accentColor};" role="presentation">
       <tr>
-        <td align="left" style="${style} padding-left:10px;padding-right:10px;padding-top:${p}px;padding-bottom:${p}px;">${innerHtml}</td>
+        <td align="left" style="${style} padding-left:${px}px;padding-right:${px}px;padding-top:${p}px;padding-bottom:${p}px;">${innerHtml}</td>
       </tr>
     </table>
   </td>
@@ -191,7 +195,7 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
       const { innerHtml, href, bg, subtitleHtml } = opts;
       const p = pad();
       const subtitle = subtitleHtml
-        ? `\n<tr>\n  <td align="center" style="padding-top:8px;">${subtitleHtml}</td>\n</tr>`
+        ? `\n<tr>\n  <td align="center" style="padding-top:${tok.layout.buttonSubtitlePadTop}px;">${subtitleHtml}</td>\n</tr>`
         : "";
       return `<tr>
   <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
@@ -204,13 +208,15 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
       const { n } = opts;
       const pct = Math.floor(100 / n);
       const p = pad();
+      const cy = tok.layout.gridCellPadY;
+      const cx = tok.layout.gridCellPadX;
       const cellStyle = baseStyle({ align: "center", fontSize: tok.font.smallPx }, tok);
       const cellsHtml = cells.map(cellHtml =>
         `<td valign="top" align="center" class="${tok.classes.inlineCell}" width="${pct}%"
           style="display:inline-block;width:${pct}%;max-width:100%;min-width:${tok.layout.gridMinWidth}px;border:${tok.layout.gridBorder};">
           <table border="0" cellspacing="0" cellpadding="0" role="presentation" width="100%" style="width:100%;">
             <tr>
-              <td style="${cellStyle} padding:10px 6px;">${cellHtml}</td>
+              <td style="${cellStyle} padding:${cy}px ${cx}px;">${cellHtml}</td>
             </tr>
           </table>
         </td>`
@@ -246,7 +252,9 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
       const { rows } = opts;
       if (!rows.length) return "";
       const p = pad();
-      const borderColor = "#E4E4E4";
+      const ry = tok.layout.recordCellPadY;
+      const rx = tok.layout.recordCellPadX;
+      const border = tok.color.tableBorder;
 
       const rowsHtml = rows.map(row => {
         const firstBg = row.cells[0]?.bg ?? row.bg;
@@ -258,7 +266,7 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
           const textColor = bg && isDarkBg(bg) ? tok.color.white : rowTextColor;
           const style = baseStyle({ fontSize: tok.font.smallPx, color: textColor }, tok);
           const align = cell.align ?? "left";
-          return `<td align="${align}"${bgAttr} style="${style} padding:4px 6px;border-bottom:1px solid ${borderColor};">${cell.innerHtml}</td>`;
+          return `<td align="${align}"${bgAttr} style="${style} padding:${ry}px ${rx}px;border-bottom:1px solid ${border};">${cell.innerHtml}</td>`;
         }).join("\n");
 
         const rowBgAttr = row.bg ? ` bgcolor="${row.bg}"` : "";
