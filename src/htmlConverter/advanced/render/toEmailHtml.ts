@@ -35,20 +35,26 @@ export function renderRuns(runs: Run[], tok: Tokens = defaultTokens, baseColor?:
   const { bold: B, italic: I, underline: U, colorWrap: S } = tok.tags;
   return runs.map(run => {
     let html = esc(run.text);
+    let skipInlineFormatting = false;
     if (run.href && isSafeHref(run.href)) {
-      html = `<a href="${esc(run.href)}" target="_blank" style="color:${tok.color.link};text-decoration:underline;">${html}</a>`;
+      const linkColor = run.color ?? tok.color.link;
+      const weightStyle = run.bold ? "font-weight:bold;" : "";
+      html = `<a href="${esc(run.href)}" target="_blank" style="color:${linkColor};text-decoration:underline;${weightStyle}">${html}</a>`;
+      skipInlineFormatting = true;
     } else if (run.underline) {
       html = `<${U}>${html}</${U}>`;
     }
     if (run.italic) html = `<${I}>${html}</${I}>`;
-    const hasColor = Boolean(run.color) &&
-      run.color!.toLowerCase() !== (baseColor ?? "").toLowerCase();
-    if (run.bold && hasColor) {
-      html = `<${B} style="color:${run.color};">${html}</${B}>`;
-    } else if (run.bold) {
-      html = `<${B}>${html}</${B}>`;
-    } else if (hasColor) {
-      html = `<${S} style="color:${run.color};">${html}</${S}>`;
+    if (!skipInlineFormatting) {
+      const hasColor = Boolean(run.color) &&
+        run.color!.toLowerCase() !== (baseColor ?? "").toLowerCase();
+      if (run.bold && hasColor) {
+        html = `<${B} style="color:${run.color};">${html}</${B}>`;
+      } else if (run.bold) {
+        html = `<${B}>${html}</${B}>`;
+      } else if (hasColor) {
+        html = `<${S} style="color:${run.color};">${html}</${S}>`;
+      }
     }
     return html;
   }).join("");
@@ -58,7 +64,7 @@ export function renderLines(lines: Run[][], tok: Tokens = defaultTokens, baseCol
   return lines
     .filter(l => l.length > 0)
     .map(l => renderRuns(l, tok, baseColor))
-    .join("<br>\n");
+    .join("<br><br>\n");
 }
 
 // ── ComponentNode → HTML row ──────────────────────────────────────────────────

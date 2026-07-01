@@ -101,7 +101,7 @@ export function addOneBr(htmlContent: string): string {
 }
 
 export function replaceTripleBrWithSingle(htmlContent: string): string {
-  const BR = `<br>\n`;
+  const BR = `<br><br>\n`;
   htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*){3,}/gi, BR);
   return htmlContent;
 }
