@@ -293,6 +293,15 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
         }).join("\n");
 
         const rowBgAttr = row.bg ? ` bgcolor="${row.bg}"` : "";
+        if (row.cells.length > 1) {
+          return `<tr>
+  <td align="center" style="padding-right:${rx}px;padding-left:${rx}px;">
+    <table align="center" border="0" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;border-collapse:collapse;" role="presentation">
+      <tr${rowBgAttr}>${cellsHtml}</tr>
+    </table>
+  </td>
+</tr>`;
+        }
         return `<tr${rowBgAttr}>${cellsHtml}</tr>`;
       }).join("\n");
 

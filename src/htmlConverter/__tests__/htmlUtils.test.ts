@@ -90,9 +90,9 @@ describe("htmlConverter utils", () => {
   });
 
   describe("replaceTripleBrWithSingle", () => {
-    it("should replace triple breaks with single break", () => {
+    it("should replace triple breaks with double break", () => {
       const input = "Text<br><br><br>More Text";
-      const expected = "Text<br>\nMore Text";
+      const expected = "Text<br><br>\nMore Text";
       expect(replaceTripleBrWithSingle(input)).toBe(expected);
     });
 

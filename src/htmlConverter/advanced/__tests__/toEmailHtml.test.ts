@@ -67,6 +67,23 @@ describe("renderRuns", () => {
     expect(result).not.toContain("<a");
   });
 
+  it("href+bold: bold applied as font-weight inside <a>, no outer <b> wrapper", () => {
+    const runs: Run[] = [{ text: "click", href: "https://example.com", bold: true }];
+    const result = renderRuns(runs, tokens);
+    expect(result).toContain("<a href=");
+    expect(result).toContain("font-weight:bold");
+    // no <b> element wrapping the <a>
+    expect(result).not.toMatch(/<b[^>]*><a/);
+    expect(result).not.toMatch(/<\/a><\/b>/);
+  });
+
+  it("href with run.color uses run.color, not tok.color.link", () => {
+    const runs: Run[] = [{ text: "click", href: "https://example.com", color: "#cc0000" }];
+    const result = renderRuns(runs, tokens);
+    expect(result).toContain("color:#cc0000");
+    expect(result).toContain("<a href=");
+  });
+
   it("omits color tag when run.color matches baseColor", () => {
     const runs: Run[] = [{ text: "same", color: "#000000" }];
     const result = renderRuns(runs, tokens, "#000000");
@@ -96,20 +113,20 @@ describe("renderRuns", () => {
 // ── renderLines ───────────────────────────────────────────────────────────────
 
 describe("renderLines", () => {
-  it("joins lines with <br>", () => {
+  it("joins lines with double <br> for paragraph spacing", () => {
     const lines: Run[][] = [[{ text: "a" }], [{ text: "b" }]];
     const result = renderLines(lines, tokens);
-    expect(result).toContain("<br>");
+    expect(result).toContain("<br><br>");
     expect(result).toContain("a");
     expect(result).toContain("b");
   });
 
-  it("skips empty lines", () => {
+  it("skips empty lines — double <br> between remaining lines", () => {
     const lines: Run[][] = [[{ text: "a" }], [], [{ text: "b" }]];
     const result = renderLines(lines, tokens);
-    // empty line filtered, so only one <br> between a and b
+    // empty line filtered, so <br><br> (2 matches) between a and b
     const brCount = (result.match(/<br>/g) ?? []).length;
-    expect(brCount).toBe(1);
+    expect(brCount).toBe(2);
   });
 });
 
