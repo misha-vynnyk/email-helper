@@ -63,39 +63,29 @@ exports[`convertAdvanced — plain-text fixture snapshot — default profile 1`]
   <td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-top:14px;padding-bottom:14px;\\">
     
       Welcome to our monthly newsletter!
-    
-  <br><br>
+    <br><br>
 
-    
       This month we are sharing important updates about our products and services.
-    
-  <br><br>
-
-    <b>
+    <br><br>
+<b>
       Key highlight:
     </b>
     <span style=\\"color:#cc0000;\\">
       new pricing takes effect July 1.
-    </span>
-  <br><br>
-
-    <em>
+    </span><br><br>
+<em>
       Please review the attached documents carefully.
-    </em>
-  <br><br>
+    </em><br><br>
 
-    
       Visit us at
     
-    <span style=\\"color:#1155cc;\\"><u>
-      </u></span><a href=\\"https://example.com\\" target=\\"_blank\\" style=\\"color:#1155cc;text-decoration:underline;\\">our website</a><span style=\\"color:#1155cc;\\"><u>
-    </u></span>
+    <a href=\\"urlhere\\" target=\\"_blank\\" style=\\"color:#1155cc;text-decoration:underline;\\">
+      </a><a href=\\"https://example.com\\" target=\\"_blank\\" style=\\"color:#1155cc;text-decoration:underline;\\">our website</a><a href=\\"urlhere\\" target=\\"_blank\\" style=\\"color:#1155cc;text-decoration:underline;\\">
+    </a>
     
       for details.
-    
-  <br><br>
-
-    <span style=\\"color:#666666;\\">
+    <br><br>
+<span style=\\"color:#666666;\\">
       Small print: terms and conditions apply.
     </span>
   </td>
@@ -158,10 +148,8 @@ exports[`convertAdvanced — tables fixture snapshot — default profile 1`] = `
           <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;\\">
             <tr>
               <td style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000; padding:10px 6px;\\">
-            <b>12,500</b>
-          <br><br>
-
-            <span style=\\"color:#666666;\\">Active users</span>
+            <b>12,500</b><br><br>
+<span style=\\"color:#666666;\\">Active users</span>
           </td>
             </tr>
           </table>
@@ -171,10 +159,8 @@ exports[`convertAdvanced — tables fixture snapshot — default profile 1`] = `
           <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;\\">
             <tr>
               <td style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000; padding:10px 6px;\\">
-            <b>98.7%</b>
-          <br><br>
-
-            <span style=\\"color:#666666;\\">Uptime</span>
+            <b>98.7%</b><br><br>
+<span style=\\"color:#666666;\\">Uptime</span>
           </td>
             </tr>
           </table>
@@ -184,10 +170,8 @@ exports[`convertAdvanced — tables fixture snapshot — default profile 1`] = `
           <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;\\">
             <tr>
               <td style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000; padding:10px 6px;\\">
-            <b>4.9 ★</b>
-          <br><br>
-
-            <span style=\\"color:#666666;\\">Rating</span>
+            <b>4.9 ★</b><br><br>
+<span style=\\"color:#666666;\\">Rating</span>
           </td>
             </tr>
           </table>
