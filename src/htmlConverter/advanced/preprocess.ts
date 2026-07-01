@@ -34,6 +34,9 @@ export function mergeSimilarBlockTags(html: string): string {
 export function preprocess(html: string): string {
   html = resolveOneBrSymbol(html);
   html = normalizeSymbols(html);
-  html = mergeSimilarBlockTags(html);
+  // Note: mergeSimilarBlockTags is intentionally NOT called here.
+  // The advanced pipeline's classify.ts pushMerged already merges adjacent paragraphs
+  // while tracking paragraph boundaries (paraBreaks) for correct <br> vs <br><br> spacing.
+  // Merging at the string level would erase those boundaries.
   return html;
 }

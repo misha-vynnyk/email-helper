@@ -12,7 +12,19 @@ function pushMerged(result: ComponentNode[], comp: ComponentNode): void {
   if (comp.kind === "paragraph" && last?.kind === "paragraph" &&
       last.props["size"] === comp.props["size"] &&
       last.props["align"] === comp.props["align"]) {
-    (last.props["lines"] as Run[][]).push(...(comp.props["lines"] as Run[][]));
+    const lastLines = last.props["lines"] as Run[][];
+    const newLines = comp.props["lines"] as Run[][];
+    if (newLines.length > 0) {
+      const breakIdx = lastLines.length;
+      // Track paragraph boundary so renderLines can use <br><br> here
+      if (!last.props["paraBreaks"]) last.props["paraBreaks"] = new Set<number>();
+      const breaks = last.props["paraBreaks"] as Set<number>;
+      breaks.add(breakIdx);
+      // Carry over any paraBreaks from comp (offset by breakIdx)
+      const compBreaks = comp.props["paraBreaks"] as Set<number> | undefined;
+      if (compBreaks) for (const idx of compBreaks) breaks.add(idx + breakIdx);
+      lastLines.push(...newLines);
+    }
     return;
   }
 

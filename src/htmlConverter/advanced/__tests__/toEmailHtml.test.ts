@@ -121,20 +121,31 @@ describe("renderRuns", () => {
 // ── renderLines ───────────────────────────────────────────────────────────────
 
 describe("renderLines", () => {
-  it("joins lines with double <br> for paragraph spacing", () => {
+  it("joins lines within a paragraph with single <br>", () => {
+    // Within-paragraph <br> (no paraBreaks) → single <br>
     const lines: Run[][] = [[{ text: "a" }], [{ text: "b" }]];
     const result = renderLines(lines, tokens);
-    expect(result).toContain("<br><br>");
-    expect(result).toContain("a");
-    expect(result).toContain("b");
+    expect(result).toBe("a<br>\nb");
   });
 
-  it("skips empty lines — double <br> between remaining lines", () => {
+  it("uses <br><br> at paragraph boundaries (paraBreaks set)", () => {
+    // Second line starts a new paragraph (index 1 in paraBreaks)
+    const lines: Run[][] = [[{ text: "a" }], [{ text: "b" }]];
+    const result = renderLines(lines, tokens, undefined, new Set([1]));
+    expect(result).toBe("a<br><br>\nb");
+  });
+
+  it("mixes single and double <br> based on paraBreaks", () => {
+    // lines[0]='a', lines[1]='b' (within para), lines[2]='c' (new para)
+    const lines: Run[][] = [[{ text: "a" }], [{ text: "b" }], [{ text: "c" }]];
+    const result = renderLines(lines, tokens, undefined, new Set([2]));
+    expect(result).toBe("a<br>\nb<br><br>\nc");
+  });
+
+  it("skips empty lines", () => {
     const lines: Run[][] = [[{ text: "a" }], [], [{ text: "b" }]];
     const result = renderLines(lines, tokens);
-    // empty line filtered, so <br><br> (2 matches) between a and b
-    const brCount = (result.match(/<br>/g) ?? []).length;
-    expect(brCount).toBe(2);
+    expect(result).toBe("a<br>\nb");
   });
 });
 

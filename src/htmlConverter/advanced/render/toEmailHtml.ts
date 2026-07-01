@@ -62,11 +62,23 @@ export function renderRuns(runs: Run[], tok: Tokens = defaultTokens, baseColor?:
   }).join("");
 }
 
-export function renderLines(lines: Run[][], tok: Tokens = defaultTokens, baseColor?: string): string {
-  return lines
-    .filter(l => l.length > 0)
-    .map(l => renderRuns(l, tok, baseColor))
-    .join("<br><br>\n");
+export function renderLines(
+  lines: Run[][],
+  tok: Tokens = defaultTokens,
+  baseColor?: string,
+  paraBreaks?: Set<number>,
+): string {
+  const result: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    if (l.length === 0) continue;
+    if (result.length > 0) {
+      // Paragraph boundary → double break; within-paragraph <br> → single break
+      result.push(paraBreaks?.has(i) ? "<br><br>\n" : "<br>\n");
+    }
+    result.push(renderRuns(l, tok, baseColor));
+  }
+  return result.join("");
 }
 
 // ── ComponentNode → HTML row ──────────────────────────────────────────────────
@@ -81,7 +93,12 @@ export function renderNode(
   switch (node.kind) {
     case "paragraph": {
       const opts: ParagraphOpts = {
-        innerHtml: renderLines(p["lines"] as Run[][], tok, tok.color.black),
+        innerHtml: renderLines(
+          p["lines"] as Run[][],
+          tok,
+          tok.color.black,
+          p["paraBreaks"] as Set<number> | undefined,
+        ),
         align: (p["align"] as ParagraphOpts["align"]) ?? "left",
         size: (p["size"] as ParagraphOpts["size"]) ?? "body",
       };

@@ -90,10 +90,12 @@ describe("preprocess", () => {
     expect(result).toContain("&#");
   });
 
-  it("merges adjacent identical paragraphs", () => {
+  it("does NOT merge adjacent paragraphs (handled by classify.ts pushMerged instead)", () => {
+    // mergeSimilarBlockTags is intentionally excluded from the pipeline;
+    // paragraph merging with paraBreaks tracking happens in classify.ts
     const input = '<p dir="ltr">A</p><p dir="ltr">B</p>';
     const result = preprocess(input);
-    expect((result.match(/<p /g) ?? []).length).toBe(1);
+    expect((result.match(/<p /g) ?? []).length).toBe(2);
   });
 
   it("does not alter plain HTML without special chars", () => {
