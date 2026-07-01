@@ -282,26 +282,22 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
       const rowsHtml = rows.map(row => {
         const firstBg = row.cells[0]?.bg ?? row.bg;
         const rowTextColor = firstBg && isDarkBg(firstBg) ? tok.color.white : tok.color.black;
+        const ncols = row.cells.length;
+        const colPct = ncols > 1 ? Math.floor(100 / ncols) : 0;
 
-        const cellsHtml = row.cells.map(cell => {
+        const cellsHtml = row.cells.map((cell, i) => {
           const bg = cell.bg ?? row.bg;
           const bgAttr = bg ? ` bgcolor="${bg}"` : "";
           const textColor = bg && isDarkBg(bg) ? tok.color.white : rowTextColor;
           const style = baseStyle({ fontSize: tok.font.smallPx, color: textColor }, tok);
           const align = cell.align ?? "left";
-          return `<td align="${align}"${bgAttr} style="${style} padding:${ry}px ${rx}px;border-bottom:${tok.layout.recordBorderPx}px solid ${border};">${cell.innerHtml}</td>`;
+          const widthAttr = ncols > 1
+            ? ` width="${i === ncols - 1 ? 100 - colPct * (ncols - 1) : colPct}%"`
+            : "";
+          return `<td align="${align}"${bgAttr}${widthAttr} style="${style} padding:${ry}px ${rx}px;border-bottom:${tok.layout.recordBorderPx}px solid ${border};">${cell.innerHtml}</td>`;
         }).join("\n");
 
         const rowBgAttr = row.bg ? ` bgcolor="${row.bg}"` : "";
-        if (row.cells.length > 1) {
-          return `<tr>
-  <td align="center" style="padding-right:${rx}px;padding-left:${rx}px;">
-    <table align="center" border="0" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;border-collapse:collapse;" role="presentation">
-      <tr${rowBgAttr}>${cellsHtml}</tr>
-    </table>
-  </td>
-</tr>`;
-        }
         return `<tr${rowBgAttr}>${cellsHtml}</tr>`;
       }).join("\n");
 
