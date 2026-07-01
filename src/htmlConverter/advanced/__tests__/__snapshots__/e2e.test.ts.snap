@@ -199,42 +199,24 @@ exports[`convertAdvanced — tables fixture snapshot — default profile 1`] = `
 <tr>
   <td style=\\"padding-top:14px;padding-bottom:14px;\\">
     <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;border-collapse:collapse;\\">
-      <tr>
-  <td align=\\"center\\" style=\\"padding-right:6px;padding-left:6px;\\">
-    <table align=\\"center\\" border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" width=\\"100%\\" style=\\"width:100%;max-width:100%;padding:0;margin:0;border-collapse:collapse;\\" role=\\"presentation\\">
-      <tr><td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding:4px 6px;border-bottom:1px solid #E4E4E4;\\">
+      <tr><td align=\\"left\\" width=\\"50%\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding:4px 6px;border-bottom:1px solid #E4E4E4;\\">
             <b>Plan</b>
           </td>
-<td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding:4px 6px;border-bottom:1px solid #E4E4E4;\\">
+<td align=\\"left\\" width=\\"50%\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding:4px 6px;border-bottom:1px solid #E4E4E4;\\">
             <b>Price</b>
           </td></tr>
-    </table>
-  </td>
-</tr>
-<tr>
-  <td align=\\"center\\" style=\\"padding-right:6px;padding-left:6px;\\">
-    <table align=\\"center\\" border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" width=\\"100%\\" style=\\"width:100%;max-width:100%;padding:0;margin:0;border-collapse:collapse;\\" role=\\"presentation\\">
-      <tr><td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding:4px 6px;border-bottom:1px solid #E4E4E4;\\">
+<tr><td align=\\"left\\" width=\\"50%\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding:4px 6px;border-bottom:1px solid #E4E4E4;\\">
             Starter
           </td>
-<td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding:4px 6px;border-bottom:1px solid #E4E4E4;\\">
+<td align=\\"left\\" width=\\"50%\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding:4px 6px;border-bottom:1px solid #E4E4E4;\\">
             $9/mo
           </td></tr>
-    </table>
-  </td>
-</tr>
-<tr>
-  <td align=\\"center\\" style=\\"padding-right:6px;padding-left:6px;\\">
-    <table align=\\"center\\" border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" width=\\"100%\\" style=\\"width:100%;max-width:100%;padding:0;margin:0;border-collapse:collapse;\\" role=\\"presentation\\">
-      <tr><td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding:4px 6px;border-bottom:1px solid #E4E4E4;\\">
+<tr><td align=\\"left\\" width=\\"50%\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding:4px 6px;border-bottom:1px solid #E4E4E4;\\">
             Pro
           </td>
-<td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding:4px 6px;border-bottom:1px solid #E4E4E4;\\">
+<td align=\\"left\\" width=\\"50%\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding:4px 6px;border-bottom:1px solid #E4E4E4;\\">
             $29/mo
           </td></tr>
-    </table>
-  </td>
-</tr>
     </table>
   </td>
 </tr>
