@@ -77,6 +77,14 @@ describe("renderRuns", () => {
     expect(result).not.toMatch(/<\/a><\/b>/);
   });
 
+  it("href+italic: <em> wraps text inside <a>, not outside", () => {
+    const runs: Run[] = [{ text: "click", href: "https://example.com", italic: true }];
+    const result = renderRuns(runs, tokens);
+    // <em> must be inside the <a>, not wrapping it
+    expect(result).toMatch(/<a[^>]+><em>click<\/em><\/a>/);
+    expect(result).not.toMatch(/<em><a/);
+  });
+
   it("href with run.color uses run.color, not tok.color.link", () => {
     const runs: Run[] = [{ text: "click", href: "https://example.com", color: "#cc0000" }];
     const result = renderRuns(runs, tokens);

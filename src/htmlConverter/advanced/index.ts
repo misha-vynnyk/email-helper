@@ -4,6 +4,7 @@
 import { tokens, mergeTokens } from "./config/tokens";
 import type { TokensOverride } from "./config/tokens";
 import { buildTemplates, templates as defaultTemplates } from "./config/templates";
+import { preprocess } from "./preprocess";
 import { normalize } from "./normalize";
 import { fromDom } from "./ir/fromDom";
 import { classify } from "./detect/classify";
@@ -14,7 +15,8 @@ export function convertAdvanced(rawHtml: string, override: TokensOverride = {}):
   const tok  = hasOverride ? mergeTokens(tokens, override) : tokens;
   const tmpl = hasOverride ? buildTemplates(tok)           : defaultTemplates;
 
-  const bodyEl      = normalize(rawHtml);
+  const html        = preprocess(rawHtml);
+  const bodyEl      = normalize(html);
   const structural  = fromDom(bodyEl);
   const components  = classify(structural);
   const rows        = renderAll(components, tmpl, tok);

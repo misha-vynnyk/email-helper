@@ -39,12 +39,14 @@ export function renderRuns(runs: Run[], tok: Tokens = defaultTokens, baseColor?:
     if (run.href && isSafeHref(run.href)) {
       const linkColor = run.color ?? tok.color.link;
       const weightStyle = run.bold ? "font-weight:bold;" : "";
-      html = `<a href="${esc(run.href)}" target="_blank" style="color:${linkColor};text-decoration:underline;${weightStyle}">${html}</a>`;
+      // Italic wraps the text inside <a>, consistent with the simple converter
+      const inner = run.italic ? `<${I}>${html}</${I}>` : html;
+      html = `<a href="${esc(run.href)}" target="_blank" style="color:${linkColor};text-decoration:underline;${weightStyle}">${inner}</a>`;
       skipInlineFormatting = true;
     } else if (run.underline) {
       html = `<${U}>${html}</${U}>`;
     }
-    if (run.italic) html = `<${I}>${html}</${I}>`;
+    if (!skipInlineFormatting && run.italic) html = `<${I}>${html}</${I}>`;
     if (!skipInlineFormatting) {
       const hasColor = Boolean(run.color) &&
         run.color!.toLowerCase() !== (baseColor ?? "").toLowerCase();

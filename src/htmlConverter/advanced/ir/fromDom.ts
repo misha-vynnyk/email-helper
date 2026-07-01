@@ -4,6 +4,8 @@ import type { StructuralNode, Paragraph, TableNode, RowNode, CellNode, Run } fro
 import { parseStyle, isBold, isItalic, isUnderline, getAlign, ptToSizeRole } from "./style";
 import { canonicalizeText, canonicalizeBg } from "./color";
 import { tokens } from "../config/tokens";
+import { isLinkColor } from "../../utils/colorUtils";
+import { PLACEHOLDER_URL } from "../../constants";
 
 // ── Inline run collection ─────────────────────────────────────────────────────
 
@@ -116,6 +118,11 @@ function collectRuns(el: Element | Node, ctx: Ctx): Run[] {
 
     if (tag === "A") {
       childCtx.href = child.getAttribute("href") ?? ctx.href;
+    }
+
+    // Span with link-color styling but no surrounding <a> → treat as placeholder link
+    if (tag === "SPAN" && rawColor && !childCtx.href && isLinkColor(rawColor)) {
+      childCtx.href = PLACEHOLDER_URL;
     }
 
     const sizeOverride = sizeFromStyle(style);
