@@ -14,9 +14,6 @@ const ALWAYS_STRIP = new Set([
 const STRIP_WHEN: Array<[string, string]> = [
   ["background-color", "transparent"],
   ["text-decoration", "none"],
-  ["font-style", "normal"],
-  ["font-weight", "normal"],
-  ["font-weight", "400"],
   ["border", "none"],
 ];
 
@@ -53,6 +50,27 @@ function cleanEl(el: Element): void {
   }
 }
 
+function cleanBrNoise(body: HTMLElement): void {
+  // Strip leading/trailing <br> from block elements (GDocs artifact: <p><br>text</p>).
+  // Without this, parseParagraph produces a leading empty line that shifts paraBreak indices.
+  body.querySelectorAll("p, h1, h2, h3, h4, h5, h6, li").forEach(el => {
+    while (el.firstChild?.nodeName === "BR") el.firstChild.remove();
+    while (el.lastChild?.nodeName === "BR") el.lastChild.remove();
+  });
+
+  // Unwrap <span> elements that contain only <br> tags (and optional whitespace text).
+  // e.g. <span><br></span> → <br>  so the parent block's boundary cleanup above can catch it.
+  body.querySelectorAll("span").forEach(span => {
+    const nodes = Array.from(span.childNodes);
+    if (nodes.length > 0 && nodes.every(
+      n => n.nodeName === "BR" ||
+           (n.nodeType === Node.TEXT_NODE && !(n.textContent?.trim()))
+    )) {
+      span.replaceWith(...Array.from(span.childNodes));
+    }
+  });
+}
+
 export function normalize(rawHtml: string): HTMLBodyElement {
   const doc = new DOMParser().parseFromString(`<body>${rawHtml}</body>`, "text/html");
   const body = doc.body;
@@ -68,6 +86,8 @@ export function normalize(rawHtml: string): HTMLBodyElement {
   body.querySelectorAll("span:not([style]):not([class])").forEach(span => {
     span.replaceWith(...Array.from(span.childNodes));
   });
+
+  cleanBrNoise(body);
 
   return body as HTMLBodyElement;
 }

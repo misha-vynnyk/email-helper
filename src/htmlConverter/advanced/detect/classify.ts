@@ -59,7 +59,7 @@ export function classify(nodes: StructuralNode[], tok: Tokens = defaultTokens): 
         }
       }
     } else if (node.type === "p") {
-      for (const comp of classifyFlow([node])) {
+      for (const comp of classifyFlow([node], tok)) {
         pushMerged(result, comp);
       }
     }

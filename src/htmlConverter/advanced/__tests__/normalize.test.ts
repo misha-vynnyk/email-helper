@@ -58,7 +58,7 @@ describe("normalize", () => {
     expect(p2.getAttribute("style") ?? "").toContain("background-color");
   });
 
-  it("strips font-weight:normal and :400 but preserves 700", () => {
+  it("preserves font-weight:normal, :400, and :700 — all three survive as spans", () => {
     const body = normalize(
       '<p>' +
       '<span style="font-weight: normal;">a</span>' +
@@ -66,11 +66,9 @@ describe("normalize", () => {
       '<span style="font-weight: 700;">c</span>' +
       '</p>',
     );
-    // The normal/400 spans lose their style → become bare spans → get unwrapped.
-    // Only the 700 span survives.
     const spans = Array.from(body.querySelectorAll("span"));
-    expect(spans).toHaveLength(1);
-    expect(spans[0].getAttribute("style")).toContain("font-weight");
+    expect(spans).toHaveLength(3);
+    expect(spans[2].getAttribute("style")).toContain("font-weight");
   });
 
   it("strips text-decoration:none but preserves underline", () => {
@@ -86,17 +84,16 @@ describe("normalize", () => {
     expect(spans[0].getAttribute("style")).toContain("underline");
   });
 
-  it("strips font-style:normal but preserves italic", () => {
+  it("preserves font-style:normal and :italic — both survive", () => {
     const body = normalize(
       '<p>' +
       '<span style="font-style: normal;">a</span>' +
       '<span style="font-style: italic;">b</span>' +
       '</p>',
     );
-    // normal → stripped → bare span removed; only italic span survives
     const spans = Array.from(body.querySelectorAll("span"));
-    expect(spans).toHaveLength(1);
-    expect(spans[0].getAttribute("style")).toContain("italic");
+    expect(spans).toHaveLength(2);
+    expect(spans[1].getAttribute("style")).toContain("italic");
   });
 
   // ── Preserved properties ───────────────────────────────────────────────────

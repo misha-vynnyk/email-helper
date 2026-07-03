@@ -4,11 +4,12 @@
 import { tokens, mergeTokens } from "./config/tokens";
 import type { TokensOverride } from "./config/tokens";
 import { buildTemplates, templates as defaultTemplates } from "./config/templates";
-import { preprocess } from "./preprocess";
+import { preprocess, normalizeSymbols } from "./preprocess";
 import { normalize } from "./normalize";
 import { fromDom } from "./ir/fromDom";
 import { classify } from "./detect/classify";
 import { renderAll } from "./render/toEmailHtml";
+import { cleanEmptyHtmlTags, replaceTripleBrWithSingle } from "../utils/htmlUtils";
 
 export function convertAdvanced(rawHtml: string, override: TokensOverride = {}): string {
   const hasOverride = Object.keys(override).length > 0;
@@ -21,5 +22,9 @@ export function convertAdvanced(rawHtml: string, override: TokensOverride = {}):
   const components  = classify(structural);
   const rows        = renderAll(components, tmpl, tok);
 
-  return tmpl.document(rows);
+  let result = tmpl.document(rows);
+  result = normalizeSymbols(result);
+  result = cleanEmptyHtmlTags(result);
+  result = replaceTripleBrWithSingle(result);
+  return result;
 }

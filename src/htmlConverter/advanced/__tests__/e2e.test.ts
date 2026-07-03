@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { convertAdvanced } from "../index";
+import { tokens } from "../config/tokens";
 import { profile as tttProfile } from "../profiles/ttt";
 import { profile as alphaoneProfile } from "../profiles/alphaone";
 
@@ -27,8 +28,8 @@ describe("convertAdvanced — structural invariants", () => {
   it("empty input produces scaffold with no content rows", () => {
     const html = convertAdvanced("");
     expect(html).toContain("<table");
-    // no text content from empty input
-    expect(html.replace(/<[^>]*>/g, "").trim()).toBe("");
+    // no text content from empty input (&#160; spacers don't count as content)
+    expect(html.replace(/<[^>]*>/g, "").replace(/&#160;/g, "").trim()).toBe("");
   });
 
   it("does not pass through unsafe javascript: hrefs", () => {
@@ -55,8 +56,8 @@ describe("convertAdvanced — plain-text fixture", () => {
     expect(html).toContain("#cc0000");
   });
 
-  it("renders the link as an <a> tag", () => {
-    expect(html).toContain('href="https://example.com"');
+  it("renders the link as an <a> tag with placeholder href", () => {
+    expect(html).toContain(`href="${tokens.color.placeholderHref}"`);
     expect(html).toContain("our website");
   });
 
@@ -105,7 +106,7 @@ describe("convertAdvanced — tables fixture", () => {
 
   it("contains recordRow data", () => {
     expect(html).toContain("Starter");
-    expect(html).toContain("$29/mo");
+    expect(html).toContain("&#36;29/mo");
   });
 
   it("snapshot — default profile", () => {
@@ -168,5 +169,124 @@ describe("convertAdvanced — profile overrides", () => {
     expect(defaultHtml).not.toBe(tttHtml);
     expect(defaultHtml).toContain("padding-left:20px");
     expect(tttHtml).toContain("padding-left:21px");
+  });
+});
+
+// ── GDocs 3-cell button pattern (spacer | h5-in-colored-cell | spacer) ───────
+
+describe("convertAdvanced — GDocs button-in-table pattern", () => {
+  // The user's real-world GDocs HTML: 3-cell row where side cells are empty spacers
+  // and the center cell has a blue bg + h5 (button marker)
+  const gdocsBtn = `<b style="font-weight:normal;" id="docs-internal-guid-cd8a99cc">
+    <div dir="ltr" style="margin-left:0pt;" align="left">
+      <table style="border:none;border-collapse:collapse;">
+        <colgroup><col width="132" /><col width="360" /><col width="132" /></colgroup>
+        <tbody>
+          <tr style="height:0pt">
+            <td style="border-right:solid #1a56db 0.5pt;vertical-align:top;padding:0pt 5.75pt 0pt 5.75pt;">
+              <br />
+            </td>
+            <td style="border:solid #1a56db 0.5pt;vertical-align:top;background-color:#1a56db;padding:11pt 10pt 11pt 10pt;">
+              <h5 dir="ltr" style="line-height:1.2;text-align:center;margin-top:12pt;margin-bottom:4pt;">
+                <span style="font-size:11pt;color:#666666;font-weight:400;">See The Full Briefing &#8594;</span>
+              </h5>
+            </td>
+            <td style="border-left:solid #1a56db 0.5pt;vertical-align:top;padding:0pt 5.75pt 0pt 5.75pt;">
+              <br />
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </b>`;
+
+  let html: string;
+  beforeAll(() => { html = convertAdvanced(gdocsBtn); });
+
+  it("renders as buttonBand (not statsGrid)", () => {
+    // statsGrid would put cells side-by-side; buttonBand is a centered link
+    expect(html).toContain("urlhere");
+    expect(html).toContain("See The Full Briefing");
+  });
+
+  it("button uses the cell's blue color (#1a56db), not default green", () => {
+    expect(html).toContain("#1a56db");
+    expect(html).not.toContain("#28b628");
+  });
+
+  it("button has no border-radius (matches GDocs document style)", () => {
+    expect(html).not.toContain("border-radius");
+  });
+
+  it("button text color is white (dark bg → white text)", () => {
+    // The <a> inside the button should have white text, not the grey from the span
+    expect(html).toContain(`color:${tokens.color.white}`);
+    expect(html).not.toContain("#666666");
+  });
+
+  it("href is placeholder urlhere", () => {
+    expect(html).toContain(`href="${tokens.color.placeholderHref}"`);
+  });
+});
+
+// ── Google Docs <b style=font-weight:normal> wrapper ─────────────────────────
+
+describe("convertAdvanced — Google Docs b-wrapper", () => {
+  it("h3 with font-weight:400 span inside GDocs b-wrapper is NOT bold", () => {
+    const input = `<b style="font-weight:normal;"><h3 dir="ltr"><span style="font-weight:400;font-style:italic;">Mode Mobile recently received.</span></h3></b>`;
+    const result = convertAdvanced(input);
+    expect(result).not.toContain('<b style="font-style:italic;">');
+    expect(result).toContain('<em>');
+  });
+});
+
+// ── convertAdvanced — override path ──────────────────────────────────────────
+
+describe("convertAdvanced — inline override", () => {
+  const raw = "<p>Hello world</p>";
+
+  it("empty override {} takes fast-path (identical to no override, mergeTokens not called)", () => {
+    // Object.keys({}).length === 0 → hasOverride=false → both use pre-built singletons
+    const withEmpty = convertAdvanced(raw, {});
+    const withNone  = convertAdvanced(raw);
+    expect(withEmpty).toBe(withNone);
+  });
+
+  it("inline color override changes placeholderHref in output", () => {
+    const result = convertAdvanced(
+      '<p><a href="https://example.com">link</a></p>',
+      { color: { placeholderHref: "CUSTOM_URL" } },
+    );
+    expect(result).toContain("CUSTOM_URL");
+    expect(result).not.toContain('"urlhere"');
+  });
+
+  it("inline font override changes bodyPx in output", () => {
+    const result = convertAdvanced(raw, { font: { bodyPx: 24 } });
+    expect(result).toContain("24px");
+    expect(result).not.toContain("18px");
+  });
+
+  it("inline layout override changes sidePadding in output", () => {
+    const result = convertAdvanced(raw, { layout: { sidePadding: 40 } });
+    expect(result).toContain("padding-left:40px");
+    expect(result).toContain("padding-right:40px");
+  });
+
+  it("inline tags override uses custom bold tag", () => {
+    const result = convertAdvanced(
+      '<p><b>bold text</b></p>',
+      { tags: { bold: "strong", italic: "em", underline: "u", colorWrap: "span", blockWrap: "span" } },
+    );
+    expect(result).toContain("<strong>");
+    expect(result).not.toContain("<b>");
+  });
+
+  it("partial override only changes specified token — others remain default", () => {
+    const result = convertAdvanced(raw, { layout: { sidePadding: 30 } });
+    // Changed: sidePadding
+    expect(result).toContain("padding-left:30px");
+    // Unchanged: containerMaxWidth stays 600
+    expect(result).toContain("max-width:600px");
   });
 });

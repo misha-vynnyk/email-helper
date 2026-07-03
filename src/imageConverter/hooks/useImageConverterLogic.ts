@@ -4,7 +4,7 @@
  * Pattern: mirrors useHtmlConverterLogic from htmlConverter.
  */
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 
 import { useImageConverterSettings } from "./useImageConverterSettings";
@@ -46,6 +46,58 @@ export function useImageConverterLogic() {
     workerPool,
     USE_WORKERS,
   });
+
+  // Reset done/error files when conversion-affecting settings change
+  const prevConversionFingerprintRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const fingerprint = JSON.stringify([
+      settings.format,
+      settings.quality,
+      settings.compressionMode,
+      settings.backgroundColor,
+      settings.resize,
+      settings.preserveFormat,
+      settings.autoQuality,
+      settings.preserveExif,
+      settings.processingMode,
+    ]);
+
+    if (prevConversionFingerprintRef.current === null) {
+      prevConversionFingerprintRef.current = fingerprint;
+      return;
+    }
+
+    if (fingerprint === prevConversionFingerprintRef.current) return;
+    prevConversionFingerprintRef.current = fingerprint;
+
+    const filesToReset = filesRef.current.filter(
+      (f) => f.status === "done" || f.status === "error"
+    );
+
+    if (filesToReset.length === 0) return;
+
+    setFiles((prev) =>
+      prev.map((f) => {
+        if (f.status !== "done" && f.status !== "error") return f;
+        if (f.convertedUrl) URL.revokeObjectURL(f.convertedUrl);
+        return {
+          ...f,
+          status: "pending" as const,
+          progress: 0,
+          convertedBlob: undefined,
+          convertedSize: undefined,
+          convertedUrl: undefined,
+          error: undefined,
+          eta: undefined,
+        };
+      })
+    );
+
+    if (settings.autoConvert) {
+      enqueueFiles(filesToReset.map((f) => f.id));
+    }
+  }, [settings, filesRef, setFiles, enqueueFiles]);
 
   // Wrap addFiles to auto-convert
   const addFiles = useCallback(

@@ -13,6 +13,7 @@ export interface Paragraph {
   type: "p";
   align?: "left" | "center" | "right";
   size: "body" | "small" | "headline";   // role, not px (§6)
+  headingLevel?: number;     // original H1–H6 tag level; used by classify to map to components
   accent?: boolean;          // bold accent line → template prepends ▸ (tokens.accentBullet)
   lines: Run[][];            // each line = array of runs; lines joined with <br>
 }

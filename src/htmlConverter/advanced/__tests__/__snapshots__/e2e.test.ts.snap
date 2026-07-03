@@ -8,10 +8,12 @@ exports[`convertAdvanced — button-dark fixture snapshot — default profile 1`
         <tr>
           <td class=\\"content-vertical-space\\" align=\\"center\\" style=\\"padding-left:20px;padding-right:20px;\\">
             <table class=\\"content-inner-table\\" border=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" cellpadding=\\"0\\" width=\\"100%\\" style=\\"width:100%;\\">
-              <tr><td height=\\"16\\" width=\\"100%\\" style=\\"max-width:100%\\" class=\\"md-horizontal-space\\"></td></tr>
+              <tr><td height=\\"16\\" width=\\"100%\\" style=\\"max-width:100%\\" class=\\"md-horizontal-space\\">&#160;</td></tr>
               <tr>
   <td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-top:14px;padding-bottom:14px;\\">
+    <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
     Ready to get started?
+  </span>
   </td>
 </tr>
 <tr>
@@ -21,11 +23,11 @@ exports[`convertAdvanced — button-dark fixture snapshot — default profile 1`
     <td class=\\"btn-edit-p\\" height=\\"51\\" align=\\"center\\"
         style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:bold;line-height:1.5;text-align:center;color:#ffffff; padding:3px 5px;background-color:#28b628;border-radius:10px;\\" bgcolor=\\"#28b628\\">
       <a href=\\"https://example.com/signup\\" target=\\"_blank\\"
-         style=\\"font-weight:bold;text-decoration:none;color:#ffffff;padding:9px 15px;display:block;font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:bold;line-height:1.5;text-align:center;color:#ffffff;;background-color:#28b628;border-radius:10px;\\">
+         style=\\"text-decoration:none;color:#ffffff;padding:9px 15px;display:block;font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:bold;line-height:1.5;text-align:center;color:#ffffff;;background-color:#28b628;border-radius:10px;\\">
         
-            <b>
-              </b><a href=\\"https://example.com/signup\\" target=\\"_blank\\" style=\\"color:#ffffff;text-decoration:underline;font-weight:bold;\\">Create your account</a><b>
-            </b>
+            
+              <b>Create your account</b>
+            
           
       </a>
     </td>
@@ -35,12 +37,14 @@ exports[`convertAdvanced — button-dark fixture snapshot — default profile 1`
 </tr>
 <tr>
   <td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-top:14px;padding-bottom:14px;\\">
-    <span style=\\"color:#666666;\\">
-      No credit card required. Cancel any time.
-    </span>
+    <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+    
+      <span style=\\"color:#666666;\\">No credit card required. Cancel any time.</span>
+    
+  </span>
   </td>
 </tr>
-              <tr><td height=\\"16\\" width=\\"100%\\" style=\\"max-width:100%\\" class=\\"md-horizontal-space\\"></td></tr>
+              <tr><td height=\\"16\\" width=\\"100%\\" style=\\"max-width:100%\\" class=\\"md-horizontal-space\\">&#160;</td></tr>
             </table>
           </td>
         </tr>
@@ -58,9 +62,10 @@ exports[`convertAdvanced — plain-text fixture snapshot — default profile 1`]
         <tr>
           <td class=\\"content-vertical-space\\" align=\\"center\\" style=\\"padding-left:20px;padding-right:20px;\\">
             <table class=\\"content-inner-table\\" border=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" cellpadding=\\"0\\" width=\\"100%\\" style=\\"width:100%;\\">
-              <tr><td height=\\"16\\" width=\\"100%\\" style=\\"max-width:100%\\" class=\\"md-horizontal-space\\"></td></tr>
+              <tr><td height=\\"16\\" width=\\"100%\\" style=\\"max-width:100%\\" class=\\"md-horizontal-space\\">&#160;</td></tr>
               <tr>
   <td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-top:14px;padding-bottom:14px;\\">
+    <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
     
       Welcome to our monthly newsletter!
     
@@ -71,36 +76,37 @@ exports[`convertAdvanced — plain-text fixture snapshot — default profile 1`]
     
   <br><br>
 
-    <b>
-      Key highlight:
-    </b>
-    <span style=\\"color:#cc0000;\\">
-      new pricing takes effect July 1.
-    </span>
+    
+      <b>Key highlight:</b>
+    
+    
+      <span style=\\"color:#cc0000;\\">new pricing takes effect July 1.</span>
+    
   <br><br>
 
-    <em>
-      Please review the attached documents carefully.
-    </em>
+    
+      <em>Please review the attached documents carefully.</em>
+    
   <br><br>
 
     
       Visit us at
     
-    <a href=\\"urlhere\\" target=\\"_blank\\" style=\\"color:#1155cc;text-decoration:underline;\\">
-      </a><a href=\\"https://example.com\\" target=\\"_blank\\" style=\\"color:#1155cc;text-decoration:underline;\\">our website</a><a href=\\"urlhere\\" target=\\"_blank\\" style=\\"color:#1155cc;text-decoration:underline;\\">
-    </a>
+    
+      <a href=\\"urlhere\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration:underline;font-weight:700;color:#1155cc;\\">our website</a>
+    
     
       for details.
     
   <br><br>
 
-    <span style=\\"color:#666666;\\">
-      Small print: terms and conditions apply.
-    </span>
+    
+      <span style=\\"color:#666666;\\">Small print: terms and conditions apply.</span>
+    
+  </span>
   </td>
 </tr>
-              <tr><td height=\\"16\\" width=\\"100%\\" style=\\"max-width:100%\\" class=\\"md-horizontal-space\\"></td></tr>
+              <tr><td height=\\"16\\" width=\\"100%\\" style=\\"max-width:100%\\" class=\\"md-horizontal-space\\">&#160;</td></tr>
             </table>
           </td>
         </tr>
@@ -118,12 +124,14 @@ exports[`convertAdvanced — tables fixture snapshot — default profile 1`] = `
         <tr>
           <td class=\\"content-vertical-space\\" align=\\"center\\" style=\\"padding-left:20px;padding-right:20px;\\">
             <table class=\\"content-inner-table\\" border=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" cellpadding=\\"0\\" width=\\"100%\\" style=\\"width:100%;\\">
-              <tr><td height=\\"16\\" width=\\"100%\\" style=\\"max-width:100%\\" class=\\"md-horizontal-space\\"></td></tr>
+              <tr><td height=\\"16\\" width=\\"100%\\" style=\\"max-width:100%\\" class=\\"md-horizontal-space\\">&#160;</td></tr>
               <tr>
   <td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-top:14px;padding-bottom:14px;\\">
+    <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
     
       Below are some table examples.
     
+  </span>
   </td>
 </tr>
 <tr>
@@ -184,7 +192,7 @@ exports[`convertAdvanced — tables fixture snapshot — default profile 1`] = `
           <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;\\">
             <tr>
               <td style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000; padding:10px 6px;\\">
-            <b>4.9 ★</b>
+            <b>4.9 &#9733;</b>
           <br>
 
             <span style=\\"color:#666666;\\">Rating</span>
@@ -209,25 +217,27 @@ exports[`convertAdvanced — tables fixture snapshot — default profile 1`] = `
             Starter
           </td>
 <td align=\\"left\\" width=\\"50%\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding:4px 6px;border-bottom:1px solid #E4E4E4;\\">
-            $9/mo
+            &#36;9/mo
           </td></tr>
 <tr><td align=\\"left\\" width=\\"50%\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding:4px 6px;border-bottom:1px solid #E4E4E4;\\">
             Pro
           </td>
 <td align=\\"left\\" width=\\"50%\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding:4px 6px;border-bottom:1px solid #E4E4E4;\\">
-            $29/mo
+            &#36;29/mo
           </td></tr>
     </table>
   </td>
 </tr>
 <tr>
   <td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-top:14px;padding-bottom:14px;\\">
+    <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
     
       Thank you for being a valued customer.
     
+  </span>
   </td>
 </tr>
-              <tr><td height=\\"16\\" width=\\"100%\\" style=\\"max-width:100%\\" class=\\"md-horizontal-space\\"></td></tr>
+              <tr><td height=\\"16\\" width=\\"100%\\" style=\\"max-width:100%\\" class=\\"md-horizontal-space\\">&#160;</td></tr>
             </table>
           </td>
         </tr>

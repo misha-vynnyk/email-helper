@@ -1,4 +1,5 @@
 import { isDarkBg, canonicalizeText, canonicalizeBg, isBgRedundant } from "../ir/color";
+import { tokens } from "../config/tokens";
 
 describe("ir/color", () => {
   // ── isDarkBg ───────────────────────────────────────────────────────────────
@@ -120,5 +121,120 @@ describe("ir/color", () => {
     it("returns false for transparent input", () => {
       expect(isBgRedundant("transparent", "#ffffff")).toBe(false);
     });
+  });
+});
+
+// ── parseHex edge cases (tested via public functions) ─────────────────────────
+
+describe("ir/color — parseHex edge cases", () => {
+  // 3-char hex (lowercase)
+  it("isDarkBg accepts 3-char lowercase hex", () => {
+    expect(isDarkBg("#000")).toBe(true);
+    expect(isDarkBg("#fff")).toBe(false);
+  });
+
+  // Uppercase hex — parseHex lowercases input before matching
+  it("isDarkBg accepts uppercase 6-char hex", () => {
+    expect(isDarkBg("#000000")).toBe(true);
+    expect(isDarkBg("#FFFFFF")).toBe(false);
+  });
+
+  it("isDarkBg accepts mixed-case hex", () => {
+    expect(isDarkBg("#0A1628")).toBe(true);
+    expect(isDarkBg("#F5F5F5")).toBe(false);
+  });
+
+  // Invalid hex → returns false (not a dark bg)
+  it("isDarkBg returns false for invalid hex #xyz", () => {
+    expect(isDarkBg("#xyz")).toBe(false);
+  });
+
+  it("isDarkBg returns false for 4-char hex (not a valid format)", () => {
+    expect(isDarkBg("#1234")).toBe(false);
+  });
+
+  // rgb() with spaces around values
+  it("isDarkBg handles rgb() with spaces around values", () => {
+    expect(isDarkBg("rgb( 0 , 0 , 0 )")).toBe(true);
+    expect(isDarkBg("rgb( 255 , 255 , 255 )")).toBe(false);
+  });
+
+  // rgba() — alpha channel is ignored entirely (parseHex extracts only rgb channels)
+  it("isDarkBg ignores alpha — rgba(0,0,0,0.0) is treated as rgb(0,0,0) = dark", () => {
+    // Fully-transparent black is still treated as dark because alpha is discarded
+    expect(isDarkBg("rgba(0, 0, 0, 0.0)")).toBe(true);
+    expect(isDarkBg("rgba(255, 255, 255, 1.0)")).toBe(false);
+  });
+
+  // canonicalizeText with invalid color string
+  it("canonicalizeText returns null for invalid color string", () => {
+    expect(canonicalizeText("not-a-color", "#ffffff")).toBeNull();
+  });
+
+  it("canonicalizeText returns null for hex with invalid chars", () => {
+    expect(canonicalizeText("#zzzzzz", "#ffffff")).toBeNull();
+  });
+
+  // canonicalizeBg with invalid string
+  it("canonicalizeBg returns null for invalid color string", () => {
+    expect(canonicalizeBg("not-a-color")).toBeNull();
+  });
+
+  // isBgRedundant with two transparents
+  it("isBgRedundant returns false when both inputs are transparent", () => {
+    expect(isBgRedundant("transparent", "transparent")).toBe(false);
+  });
+});
+
+// ── canonicalizeText — vivid colors preserved even on dark bg ─────────────────
+
+describe("ir/color — canonicalizeText vivid color preservation", () => {
+  it("vivid red is preserved on white bg (not snapped to black)", () => {
+    // #cc0000 is not neutral — color channel spread is large
+    expect(canonicalizeText("#cc0000", "#ffffff")).toBe("#cc0000");
+  });
+
+  it("vivid blue is preserved on dark bg (not snapped to white)", () => {
+    // #0055ff is not a near-neutral on inverted — not snapped to white
+    const result = canonicalizeText("#0055ff", "#000000");
+    expect(result).not.toBe("#ffffff");
+    expect(result).toBe("#0055ff");
+  });
+
+  it("near-black text (#111111) on white bg snaps to #000000", () => {
+    // dist([17,17,17]) ≈ 29.4 which is <= blackSnap (48) — should snap
+    expect(canonicalizeText("#111111", "#ffffff")).toBe("#000000");
+  });
+
+  it("near-white text (#eeeeee) on dark bg snaps to #ffffff", () => {
+    // dist([255-238, ...]) = dist([17,17,17]) ≈ 29.4 <= whiteSnap (48)
+    expect(canonicalizeText("#eeeeee", "#000000")).toBe("#ffffff");
+  });
+});
+
+// ── isDarkBg — luminance boundary ─────────────────────────────────────────────
+
+describe("ir/color — isDarkBg luminance boundary", () => {
+  it("#808080 (rgb 128,128,128) is considered light — luminance ≈ 0.502 ≥ darkLuma 0.5", () => {
+    // (0.299+0.587+0.114)*128/255 ≈ 0.502 — just above 0.5 threshold → not dark
+    expect(isDarkBg("#808080")).toBe(false);
+  });
+
+  it("dark green (#006400) is dark", () => {
+    // luminance = 0.299*0 + 0.587*100/255 + 0.114*0 ≈ 0.23
+    expect(isDarkBg("#006400")).toBe(true);
+  });
+
+  it("yellow (#ffff00) is light", () => {
+    expect(isDarkBg("#ffff00")).toBe(false);
+  });
+
+  it("medium blue (#0000cd) is dark", () => {
+    // luminance = 0.114 * 205/255 ≈ 0.092
+    expect(isDarkBg("#0000cd")).toBe(true);
+  });
+
+  it("default tok.color.rootBackground (#ffffff) is light", () => {
+    expect(isDarkBg(tokens.color.rootBackground)).toBe(false);
   });
 });

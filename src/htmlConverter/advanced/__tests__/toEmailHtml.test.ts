@@ -39,12 +39,14 @@ describe("renderRuns", () => {
     expect(result).toContain(`<${tokens.tags.underline}>`);
   });
 
-  it("renders href as <a> tag with tok.color.link", () => {
+  it("renders href as <a> with placeholder href + full link style", () => {
     const runs: Run[] = [{ text: "click", href: "https://example.com" }];
     const result = renderRuns(runs, tokens);
-    expect(result).toContain("<a href=");
-    expect(result).toContain("https://example.com");
+    expect(result).toContain(`href="${tokens.color.placeholderHref}"`);
     expect(result).toContain(tokens.color.link);
+    expect(result).toContain(`font-weight:${tokens.font.linkWeight}`);
+    expect(result).toContain(`text-decoration:${tokens.font.linkDecoration}`);
+    expect(result).toContain(tokens.font.stack);
   });
 
   // Fix #7: unsafe URIs must not produce <a> tags
@@ -67,12 +69,44 @@ describe("renderRuns", () => {
     expect(result).not.toContain("<a");
   });
 
-  it("href+bold: bold applied as font-weight inside <a>, no outer <b> wrapper", () => {
+  it("blocks JAVASCRIPT: uppercase href", () => {
+    const runs: Run[] = [{ text: "evil", href: "JAVASCRIPT:alert(1)" }];
+    const result = renderRuns(runs, tokens);
+    expect(result).not.toContain("<a");
+    expect(result).toContain("evil");
+  });
+
+  it("blocks javascript: with leading whitespace", () => {
+    const runs: Run[] = [{ text: "evil", href: "   javascript:alert(1)" }];
+    const result = renderRuns(runs, tokens);
+    expect(result).not.toContain("<a");
+  });
+
+  it("empty href is treated as no href (no <a> rendered)", () => {
+    const runs: Run[] = [{ text: "link", href: "" }];
+    const result = renderRuns(runs, tokens);
+    // run.href is falsy — skips the href branch entirely
+    expect(result).not.toContain("<a");
+    expect(result).toBe("link");
+  });
+
+  it("allows fragment-only href (#section)", () => {
+    const runs: Run[] = [{ text: "jump", href: "#section" }];
+    const result = renderRuns(runs, tokens);
+    expect(result).toContain("<a");
+  });
+
+  it("blocks DATA: uppercase href", () => {
+    const runs: Run[] = [{ text: "evil", href: "DATA:text/html,<h1>xss</h1>" }];
+    const result = renderRuns(runs, tokens);
+    expect(result).not.toContain("<a");
+  });
+
+  it("href+bold: all links get font-weight from tokens, no outer <b> wrapper", () => {
     const runs: Run[] = [{ text: "click", href: "https://example.com", bold: true }];
     const result = renderRuns(runs, tokens);
     expect(result).toContain("<a href=");
-    expect(result).toContain("font-weight:bold");
-    // no <b> element wrapping the <a>
+    expect(result).toContain(`font-weight:${tokens.font.linkWeight}`);
     expect(result).not.toMatch(/<b[^>]*><a/);
     expect(result).not.toMatch(/<\/a><\/b>/);
   });
@@ -85,11 +119,11 @@ describe("renderRuns", () => {
     expect(result).not.toMatch(/<em><a/);
   });
 
-  it("href with run.color uses run.color, not tok.color.link", () => {
+  it("href with run.color uses run.color as link color, not tok.color.link", () => {
     const runs: Run[] = [{ text: "click", href: "https://example.com", color: "#cc0000" }];
     const result = renderRuns(runs, tokens);
     expect(result).toContain("color:#cc0000");
-    expect(result).toContain("<a href=");
+    expect(result).toContain(`href="${tokens.color.placeholderHref}"`);
   });
 
   it("omits color tag when run.color matches baseColor", () => {
@@ -109,6 +143,28 @@ describe("renderRuns", () => {
     const runs: Run[] = [{ text: "colored bold", bold: true, color: "#cc0000" }];
     const result = renderRuns(runs, tokens, "#000000");
     expect(result).toMatch(/<b style="color:#cc0000;">/);
+  });
+
+  it("bold+italic → single <b style=font-style:italic>, no nesting", () => {
+    const runs: Run[] = [{ text: "bi", bold: true, italic: true }];
+    const result = renderRuns(runs, tokens);
+    expect(result).toContain(`<b style="font-style:italic;">`);
+    expect(result).not.toContain(`<em>`);
+  });
+
+  it("bold+italic+underline → single <b style=font-style:italic;text-decoration:underline>", () => {
+    const runs: Run[] = [{ text: "biu", bold: true, italic: true, underline: true }];
+    const result = renderRuns(runs, tokens);
+    expect(result).toContain(`<b style="font-style:italic;text-decoration:underline;">`);
+    expect(result).not.toContain(`<em>`);
+    expect(result).not.toContain(`<u>`);
+  });
+
+  it("italic+underline → single <em style=text-decoration:underline>, no nesting", () => {
+    const runs: Run[] = [{ text: "iu", italic: true, underline: true }];
+    const result = renderRuns(runs, tokens);
+    expect(result).toContain(`<em style="text-decoration:underline;">`);
+    expect(result).not.toContain(`<u>`);
   });
 
   it("respects custom tags from tok", () => {
@@ -152,8 +208,8 @@ describe("renderLines", () => {
 // ── renderNode — paragraph ────────────────────────────────────────────────────
 
 describe("renderNode — paragraph", () => {
-  function makeParagraph(size: "body" | "small" | "headline", align: "left" | "center" = "left"): ComponentNode {
-    return { kind: "paragraph", props: { lines: [[{ text: "text" }]], size, align } };
+  function makeParagraph(size: "body" | "small" | "headline", align: "left" | "center" = "left", extra: Record<string, unknown> = {}): ComponentNode {
+    return { kind: "paragraph", props: { lines: [[{ text: "text" }]], size, align, ...extra } };
   }
 
   it("body size uses tok.font.bodyPx", () => {
@@ -174,6 +230,31 @@ describe("renderNode — paragraph", () => {
   it("center align is reflected in output", () => {
     const result = renderNode(makeParagraph("body", "center"), tmpl, tokens);
     expect(result).toContain("center");
+  });
+
+  // h1 marker: headline must be bold (matches simple converter behavior)
+  it("headline paragraph renders as bold", () => {
+    const result = renderNode(makeParagraph("headline"), tmpl, tokens);
+    expect(result).toContain("font-weight:bold");
+  });
+
+  // body/small paragraphs must NOT be bold
+  it("body paragraph is not bold", () => {
+    const result = renderNode(makeParagraph("body"), tmpl, tokens);
+    expect(result).not.toContain("font-weight:bold");
+  });
+
+  // h4 marker: quote variant adds horizontal padding
+  it("quote variant adds quotePadX horizontal padding", () => {
+    const result = renderNode(makeParagraph("body", "left", { variant: "quote" }), tmpl, tokens);
+    expect(result).toContain(`padding-left:${tokens.layout.quotePadX}px`);
+    expect(result).toContain(`padding-right:${tokens.layout.quotePadX}px`);
+  });
+
+  // plain paragraph must NOT have quote padding
+  it("plain paragraph has no extra horizontal padding", () => {
+    const result = renderNode(makeParagraph("body"), tmpl, tokens);
+    expect(result).not.toContain(`padding-left:${tokens.layout.quotePadX}px`);
   });
 });
 
@@ -231,5 +312,145 @@ describe("renderNode — alertBand", () => {
     const node: ComponentNode = { kind: "alertBand", props: { runs: [{ text: "hi" }], bg: "#ffeeee" } };
     const result = renderNode(node, tmpl, tokens);
     expect(result).toContain(tokens.color.black);
+  });
+});
+
+// ── renderNode — divider ───────────────────────────────────────────────────────
+
+describe("renderNode — divider", () => {
+  it("renders a horizontal rule with the given color", () => {
+    const node: ComponentNode = { kind: "divider", props: { color: "#cccccc" } };
+    const result = renderNode(node, tmpl, tokens);
+    expect(result).toContain("#cccccc");
+    expect(result).toContain("border-top");
+  });
+
+  it("divider height matches tok.layout.dividerPx", () => {
+    const node: ComponentNode = { kind: "divider", props: { color: "#000000" } };
+    const result = renderNode(node, tmpl, tokens);
+    expect(result).toContain(`${tokens.layout.dividerPx}px solid`);
+  });
+});
+
+// ── renderNode — spacer ───────────────────────────────────────────────────────
+
+describe("renderNode — spacer", () => {
+  it("renders a spacer row with the given heightPx", () => {
+    const node: ComponentNode = { kind: "spacer", props: { heightPx: 32 } };
+    const result = renderNode(node, tmpl, tokens);
+    expect(result).toContain('height="32"');
+  });
+
+  it("heightPx=0 falls back to default — `| 0` makes 0 indistinguishable from missing", () => {
+    // `((heightPx | 0) || spacerPx)` coerces both undefined and 0 to falsy 0
+    const node: ComponentNode = { kind: "spacer", props: { heightPx: 0 } };
+    const result = renderNode(node, tmpl, tokens);
+    expect(result).toContain(`height="${tokens.layout.spacerPx}"`);
+  });
+
+  it("falls back to tok.layout.spacerPx when heightPx is absent", () => {
+    const node: ComponentNode = { kind: "spacer", props: {} };
+    const result = renderNode(node, tmpl, tokens);
+    expect(result).toContain(`height="${tokens.layout.spacerPx}"`);
+  });
+});
+
+// ── renderNode — calloutBox ───────────────────────────────────────────────────
+
+describe("renderNode — calloutBox", () => {
+  it("renders calloutBox with full border (not just left border)", () => {
+    const node: ComponentNode = {
+      kind: "calloutBox",
+      props: { runs: [{ text: "note" }], accentColor: "#28b628" },
+    };
+    const result = renderNode(node, tmpl, tokens);
+    expect(result).toContain("note");
+    expect(result).toContain("#28b628");
+    // calloutBox uses full border (border:), calloutLeft uses border-left:
+    expect(result).toContain("border:");
+    expect(result).not.toMatch(/border-left:[^;]+solid/);
+  });
+
+  it("calloutLeft uses border-left (not full border)", () => {
+    const node: ComponentNode = {
+      kind: "calloutLeft",
+      props: { runs: [{ text: "tip" }], accentColor: "#ff9900" },
+    };
+    const result = renderNode(node, tmpl, tokens);
+    expect(result).toContain("border-left:");
+  });
+});
+
+// ── renderNode — buttonBand ───────────────────────────────────────────────────
+
+describe("renderNode — buttonBand", () => {
+  it("renders button text and placeholder href", () => {
+    const node: ComponentNode = {
+      kind: "buttonBand",
+      props: {
+        runs: [{ text: "Click me" }],
+        href: "https://example.com",
+        bg: "#28b628",
+      },
+    };
+    const result = renderNode(node, tmpl, tokens);
+    expect(result).toContain("Click me");
+    expect(result).toContain("https://example.com");
+  });
+
+  it("uses dark bg → white text color for button runs", () => {
+    const node: ComponentNode = {
+      kind: "buttonBand",
+      props: { runs: [{ text: "Go" }], href: "http://x.com", bg: "#000000" },
+    };
+    const result = renderNode(node, tmpl, tokens);
+    expect(result).toContain(tokens.color.white);
+  });
+
+  it("uses label fallback when runs is absent (p['runs'] ?? p['label'])", () => {
+    const node: ComponentNode = {
+      kind: "buttonBand",
+      props: { label: [{ text: "Fallback" }], href: "http://x.com", bg: "#000000" },
+    };
+    const result = renderNode(node, tmpl, tokens);
+    expect(result).toContain("Fallback");
+  });
+
+  it("renderNode does not forward subtitleHtml from props (subtitle tested at template level)", () => {
+    const node: ComponentNode = {
+      kind: "buttonBand",
+      props: {
+        runs: [{ text: "Buy now" }],
+        href: "https://example.com",
+        bg: "#28b628",
+        subtitleHtml: "<em>Note</em>",
+      },
+    };
+    const result = renderNode(node, tmpl, tokens);
+    // renderNode does not read subtitleHtml from props — subtitle is a template-level concern
+    expect(result).not.toContain(`padding-top:${tokens.layout.buttonSubtitlePadTop}px`);
+  });
+});
+
+// ── renderNode — unknown kind returns empty string ────────────────────────────
+
+describe("renderNode — unknown kind", () => {
+  it("returns empty string for unhandled component kind", () => {
+    const node = { kind: "header" as ComponentNode["kind"], props: {} };
+    const result = renderNode(node, tmpl, tokens);
+    expect(result).toBe("");
+  });
+});
+
+// ── renderLines — edge cases ──────────────────────────────────────────────────
+
+describe("renderLines — edge cases", () => {
+  it("returns empty string for empty lines array", () => {
+    expect(renderLines([], tokens)).toBe("");
+  });
+
+  it("returns empty string when all lines are empty", () => {
+    const lines: Run[][] = [[], [], []];
+    expect(renderLines(lines, tokens)).toBe("");
   });
 });
