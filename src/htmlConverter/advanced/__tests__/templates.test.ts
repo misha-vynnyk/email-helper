@@ -1,4 +1,4 @@
-import { buildTemplates } from "../config/templates";
+import { buildTemplates, baseStyle, blockRow } from "../config/templates";
 import { tokens, mergeTokens } from "../config/tokens";
 import { profile as tttProfile } from "../profiles/ttt";
 import { profile as alphaoneProfile } from "../profiles/alphaone";
@@ -58,7 +58,8 @@ describe("buildTemplates — escHref in buttonTableHtml", () => {
       bg: "#000000",
     });
     expect(html).toContain("&amp;");
-    expect(html).not.toMatch(/href="[^"]*&[^a][^m]/);
+    // No raw unescaped & should appear in the href attribute value
+    expect(html).not.toMatch(/href="[^"]*&(?!amp;|lt;|gt;|quot;|#)/);
   });
 
   it("escapes double-quote in href", () => {
@@ -133,5 +134,199 @@ describe("buildTemplates — statsGrid gridBorder", () => {
     const tok = mergeTokens(tokens, { color: { tableBorder: "#aabbcc" } });
     const html = buildTemplates(tok).statsGrid(["a", "b"], { n: 2 });
     expect(html).toContain("#aabbcc");
+  });
+});
+
+// ── calloutBox ────────────────────────────────────────────────────────────────
+
+describe("buildTemplates — calloutBox", () => {
+  it("uses full border (border: N px solid color), not just border-left", () => {
+    const html = tmpl.calloutBox("content", { accentColor: "#ff9900" });
+    expect(html).toContain("content");
+    expect(html).toMatch(/border:\d+px solid #ff9900/);
+    expect(html).not.toMatch(/border-left:/);
+  });
+
+  it("uses calloutBoxBorderPx from tokens", () => {
+    const html = tmpl.calloutBox("x", { accentColor: "#ff9900" });
+    expect(html).toContain(`${tokens.layout.calloutBoxBorderPx}px solid`);
+  });
+
+  it("uses default calloutBg when bg not specified", () => {
+    const html = tmpl.calloutBox("x", { accentColor: "#aabbcc" });
+    expect(html).toContain(tokens.color.calloutBg);
+  });
+
+  it("uses custom bg when provided", () => {
+    const html = tmpl.calloutBox("x", { accentColor: "#aabbcc", bg: "#fff3cd" });
+    expect(html).toContain("#fff3cd");
+    expect(html).not.toContain(tokens.color.calloutBg);
+  });
+
+  it("calloutLeft uses border-left, not full border", () => {
+    const html = tmpl.calloutLeft("x", { accentColor: "#ff9900" });
+    expect(html).toMatch(/border-left:\d+px solid/);
+    expect(html).not.toMatch(/border:\d+px solid/);
+  });
+});
+
+// ── divider template ──────────────────────────────────────────────────────────
+
+describe("buildTemplates — divider", () => {
+  it("renders a table row with border-top matching the given color", () => {
+    const html = tmpl.divider({ color: "#cccccc" });
+    expect(html).toContain("border-top:");
+    expect(html).toContain("#cccccc");
+  });
+
+  it("uses tok.layout.dividerPx for border width", () => {
+    const html = tmpl.divider({ color: "#000000" });
+    expect(html).toContain(`${tokens.layout.dividerPx}px solid`);
+  });
+
+  it("custom dividerPx is reflected", () => {
+    const tok = mergeTokens(tokens, { layout: { dividerPx: 3 } });
+    const html = buildTemplates(tok).divider({ color: "#333333" });
+    expect(html).toContain("3px solid");
+  });
+
+  it("uses tok.layout.blockPadY for outer padding", () => {
+    const html = tmpl.divider({ color: "#000000" });
+    expect(html).toContain(`padding-top:${tokens.layout.blockPadY}px`);
+    expect(html).toContain(`padding-bottom:${tokens.layout.blockPadY}px`);
+  });
+});
+
+// ── spacer template ───────────────────────────────────────────────────────────
+
+describe("buildTemplates — spacer", () => {
+  it("renders a <tr> with the given heightPx", () => {
+    const html = tmpl.spacer(24);
+    expect(html).toContain('height="24"');
+  });
+
+  it("uses tok.classes.spacer as class name", () => {
+    const html = tmpl.spacer(16);
+    expect(html).toContain(tokens.classes.spacer);
+  });
+
+  it("contains non-breaking space to keep cell height in email clients", () => {
+    const html = tmpl.spacer(16);
+    expect(html).toContain("&#160;");
+  });
+});
+
+// ── buttonBand with subtitle ──────────────────────────────────────────────────
+
+describe("buildTemplates — buttonBand subtitle", () => {
+  it("renders subtitleHtml below the button when provided", () => {
+    const html = tmpl.buttonBand({
+      innerHtml: "Click",
+      href: "https://example.com",
+      bg: "#28b628",
+      subtitleHtml: "<em>Note</em>",
+    });
+    expect(html).toContain("Click");
+    expect(html).toContain("<em>Note</em>");
+    expect(html).toContain(`padding-top:${tokens.layout.buttonSubtitlePadTop}px`);
+  });
+
+  it("does not render subtitle row when subtitleHtml is absent", () => {
+    const html = tmpl.buttonBand({
+      innerHtml: "Click",
+      href: "https://example.com",
+      bg: "#28b628",
+    });
+    expect(html).not.toContain(`padding-top:${tokens.layout.buttonSubtitlePadTop}px`);
+  });
+
+  it("radiusOverride=0 removes border-radius from button", () => {
+    const html = tmpl.buttonBand({
+      innerHtml: "Flat",
+      href: "https://example.com",
+      bg: "#0000ff",
+      radius: 0,
+    });
+    expect(html).not.toContain("border-radius");
+  });
+
+  it("radiusOverride value overrides tok.button.radius", () => {
+    const html = tmpl.buttonBand({
+      innerHtml: "Round",
+      href: "https://example.com",
+      bg: "#0000ff",
+      radius: 20,
+    });
+    expect(html).toContain("border-radius:20px");
+  });
+});
+
+// ── baseStyle ─────────────────────────────────────────────────────────────────
+
+describe("baseStyle", () => {
+  it("includes font-family from tokens", () => {
+    expect(baseStyle({}, tokens)).toContain(`font-family:${tokens.font.stack}`);
+  });
+
+  it("defaults to bodyPx font-size", () => {
+    expect(baseStyle({}, tokens)).toContain(`font-size:${tokens.font.bodyPx}px`);
+  });
+
+  it("uses provided fontSize", () => {
+    expect(baseStyle({ fontSize: 24 }, tokens)).toContain("font-size:24px");
+  });
+
+  it("defaults to text-align:left", () => {
+    expect(baseStyle({}, tokens)).toContain("text-align:left");
+  });
+
+  it("uses provided align", () => {
+    expect(baseStyle({ align: "center" }, tokens)).toContain("text-align:center");
+  });
+
+  it("defaults to font-weight:normal", () => {
+    expect(baseStyle({}, tokens)).toContain("font-weight:normal");
+  });
+
+  it("uses provided fontWeight", () => {
+    expect(baseStyle({ fontWeight: "bold" }, tokens)).toContain("font-weight:bold");
+  });
+
+  it("appends extraStyle at the end", () => {
+    const result = baseStyle({ extraStyle: "padding-left:10px;" }, tokens);
+    expect(result).toContain("padding-left:10px;");
+  });
+});
+
+// ── blockRow ──────────────────────────────────────────────────────────────────
+
+describe("blockRow", () => {
+  it("wraps innerHtml in a <tr><td> structure", () => {
+    const html = blockRow("CONTENT", {}, tokens);
+    expect(html).toContain("<tr>");
+    expect(html).toContain("<td");
+    expect(html).toContain("CONTENT");
+  });
+
+  it("uses tok.layout.blockPadY as default padY", () => {
+    const html = blockRow("x", {}, tokens);
+    expect(html).toContain(`padding-top:${tokens.layout.blockPadY}px`);
+    expect(html).toContain(`padding-bottom:${tokens.layout.blockPadY}px`);
+  });
+
+  it("uses custom padY when provided", () => {
+    const html = blockRow("x", { padY: 30 }, tokens);
+    expect(html).toContain("padding-top:30px");
+    expect(html).toContain("padding-bottom:30px");
+  });
+
+  it("uses tok.tags.bold wrapper when fontWeight=bold", () => {
+    const html = blockRow("x", { fontWeight: "bold" }, tokens);
+    expect(html).toContain(`<${tokens.tags.bold}`);
+  });
+
+  it("uses tok.tags.blockWrap wrapper when fontWeight is not bold", () => {
+    const html = blockRow("x", { fontWeight: "normal" }, tokens);
+    expect(html).toContain(`<${tokens.tags.blockWrap}`);
   });
 });

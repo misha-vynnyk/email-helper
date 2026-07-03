@@ -27,6 +27,18 @@ function findHref(cell: CellNode): string | null {
   return null;
 }
 
+/** True if the cell contains an h5 paragraph (the "Кнопка" marker). */
+function hasButtonMarker(cell: CellNode): boolean {
+  return cell.children.some(
+    n => n.type === "p" && (n as Paragraph).headingLevel === 5
+  );
+}
+
+/** True if the cell has at least one non-empty run (ignores <br>-only cells). */
+function hasMeaningfulContent(cell: CellNode): boolean {
+  return flattenRuns(cell).some(r => r.text.trim() !== "");
+}
+
 function cellToChild(cell: CellNode): ComponentNode {
   const lines = cell.children
     .filter((n): n is Paragraph => n.type === "p")
@@ -43,8 +55,18 @@ function cellToChild(cell: CellNode): ComponentNode {
 function classifySingleCell(cell: CellNode, tok: Tokens): ComponentNode | null {
   const bg = cell.bg;
 
-  // No color or white → transparent, let classify.ts unwrap
-  if (!bg || bg === "#ffffff") return null;
+  // No color or matches root background → transparent, let classify.ts unwrap
+  if (!bg || bg === tok.color.rootBackground) return null;
+
+  // h5 marker inside a colored cell → button using cell's bg color and no border-radius
+  // (GDocs uses a colored td around an h5 to mark a button; radius comes from the cell,
+  //  which never has border-radius in GDocs → use 0 to match the source document)
+  if (hasButtonMarker(cell)) {
+    return {
+      kind: "buttonBand",
+      props: { runs: flattenRuns(cell), href: tok.color.placeholderHref, bg, radius: 0 },
+    };
+  }
 
   if (isDarkBg(bg)) {
     const href = findHref(cell);
@@ -86,12 +108,24 @@ export function classifyTable(node: TableNode, tok: Tokens = defaultTokens): Com
     return classifySingleCell(rows[0].cells[0], tok);
   }
 
-  // Single-row, multi-cell → statsGrid
+  // Single-row, multi-cell
   if (rows.length === 1 && ncols >= 2) {
+    const cells = rows[0].cells;
+
+    // GDocs button pattern: [empty-spacer] [colored-cell-with-h5] [empty-spacer]
+    // When only 1 cell has meaningful content, classify that cell directly instead of
+    // treating the whole row as a stats grid.
+    const meaningfulCells = cells.filter(hasMeaningfulContent);
+    if (meaningfulCells.length === 1) {
+      const comp = classifySingleCell(meaningfulCells[0], tok);
+      if (comp) return comp;
+      // null → transparent cell, fall through to statsGrid
+    }
+
     return {
       kind: "statsGrid",
-      props: { n: rows[0].cells.length },
-      children: rows[0].cells.map(cellToChild),
+      props: { n: cells.length },
+      children: cells.map(cellToChild),
     };
   }
 

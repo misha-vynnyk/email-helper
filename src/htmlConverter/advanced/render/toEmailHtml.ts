@@ -31,34 +31,55 @@ function isSafeHref(href: string): boolean {
   return !lower.startsWith("javascript:") && !lower.startsWith("data:") && !lower.startsWith("vbscript:");
 }
 
+// Strip leading/trailing whitespace from inside inline tags and place it outside.
+// e.g. <b> text </b> → <space><b>text</b><space>
+// This avoids whitespace artifacts from HTML-indented source documents.
+function wrapInline(tag: string, inner: string, style?: string): string {
+  const leading = inner.match(/^[\s\n]+/)?.[0] ?? "";
+  const trailing = inner.match(/[\s\n]+$/)?.[0] ?? "";
+  const core = inner.slice(leading.length, inner.length - trailing.length);
+  if (!core) return inner; // whitespace-only run — don't wrap
+  const openTag = style ? `<${tag} style="${style};">` : `<${tag}>`;
+  return `${leading}${openTag}${core}</${tag}>${trailing}`;
+}
+
 export function renderRuns(runs: Run[], tok: Tokens = defaultTokens, baseColor?: string): string {
   const { bold: B, italic: I, underline: U, colorWrap: S } = tok.tags;
   return runs.map(run => {
     let html = esc(run.text);
-    let skipInlineFormatting = false;
+
     if (run.href && isSafeHref(run.href)) {
       const linkColor = run.color ?? tok.color.link;
-      const weightStyle = run.bold ? "font-weight:bold;" : "";
-      // Italic wraps the text inside <a>, consistent with the simple converter
+      // Match simple converter link format: placeholder href, full style with font-family + bold
       const inner = run.italic ? `<${I}>${html}</${I}>` : html;
-      html = `<a href="${esc(run.href)}" target="_blank" style="color:${linkColor};text-decoration:underline;${weightStyle}">${inner}</a>`;
-      skipInlineFormatting = true;
+      return `<a href="${tok.color.placeholderHref}" style="font-family:${tok.font.stack};text-decoration:${tok.font.linkDecoration};font-weight:${tok.font.linkWeight};color:${linkColor};">${inner}</a>`;
+    }
+
+    const hasColor = Boolean(run.color) &&
+      run.color!.toLowerCase() !== (baseColor ?? "").toLowerCase();
+
+    if (!run.bold && !run.italic && !run.underline && !hasColor) return html;
+
+    // Combine all formatting into one tag to avoid nesting (e.g. bold+italic → <b style="font-style:italic;">)
+    const styleParts: string[] = [];
+    let tag: string;
+
+    if (run.bold) {
+      tag = B;
+      if (run.italic)    styleParts.push("font-style:italic");
+      if (run.underline) styleParts.push("text-decoration:underline");
+    } else if (run.italic) {
+      tag = I;
+      if (run.underline) styleParts.push("text-decoration:underline");
     } else if (run.underline) {
-      html = `<${U}>${html}</${U}>`;
+      tag = U;
+    } else {
+      tag = S;
     }
-    if (!skipInlineFormatting && run.italic) html = `<${I}>${html}</${I}>`;
-    if (!skipInlineFormatting) {
-      const hasColor = Boolean(run.color) &&
-        run.color!.toLowerCase() !== (baseColor ?? "").toLowerCase();
-      if (run.bold && hasColor) {
-        html = `<${B} style="color:${run.color};">${html}</${B}>`;
-      } else if (run.bold) {
-        html = `<${B}>${html}</${B}>`;
-      } else if (hasColor) {
-        html = `<${S} style="color:${run.color};">${html}</${S}>`;
-      }
-    }
-    return html;
+
+    if (hasColor) styleParts.push(`color:${run.color}`);
+
+    return wrapInline(tag, html, styleParts.length ? styleParts.join(";") : undefined);
   }).join("");
 }
 
@@ -101,6 +122,7 @@ export function renderNode(
         ),
         align: (p["align"] as ParagraphOpts["align"]) ?? "left",
         size: (p["size"] as ParagraphOpts["size"]) ?? "body",
+        variant: p["variant"] as ParagraphOpts["variant"],
       };
       return tmpl.paragraph(opts);
     }
@@ -119,10 +141,14 @@ export function renderNode(
       const runs = (p["runs"] ?? p["label"]) as Run[];
       const bg = p["bg"] as string;
       const textColor = isDarkBg(bg) ? tok.color.white : tok.color.black;
+      // Strip per-run color and href: button template controls text color/link,
+      // and nested <a> inside a button link would produce invalid HTML.
+      const buttonRuns = runs.map(r => ({ ...r, color: undefined, href: undefined }));
       const opts: ButtonBandOpts = {
-        innerHtml: renderRuns(runs, tok, textColor),
+        innerHtml: renderRuns(buttonRuns, tok, textColor),
         href: (p["href"] as string) ?? tok.color.placeholderHref,
         bg,
+        radius: p["radius"] as number | undefined,
       };
       return tmpl.buttonBand(opts);
     }

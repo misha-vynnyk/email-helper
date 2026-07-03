@@ -1,11 +1,10 @@
 // Phase 3: DOM → StructuralNode tree (dumb DOM map, no house-logic).
 
 import type { StructuralNode, Paragraph, TableNode, RowNode, CellNode, Run } from "./types";
-import { parseStyle, isBold, isItalic, isUnderline, getAlign, ptToSizeRole } from "./style";
+import { parseStyle, isBold, isExplicitNonBold, isItalic, isExplicitNonItalic, isUnderline, isExplicitNonUnderline, getAlign, ptToSizeRole } from "./style";
 import { canonicalizeText, canonicalizeBg } from "./color";
 import { tokens } from "../config/tokens";
 import { isLinkColor } from "../../utils/colorUtils";
-import { PLACEHOLDER_URL } from "../../constants";
 
 // ── Inline run collection ─────────────────────────────────────────────────────
 
@@ -92,7 +91,13 @@ function collectRuns(el: Element | Node, ctx: Ctx): Run[] {
   for (const node of Array.from(el.childNodes)) {
     if (node.nodeType === Node.TEXT_NODE) {
       const text = (node.textContent ?? "").replace(/ /g, " ");
-      if (text) runs.push(makeRun(text, ctx));
+      if (text) {
+        // Whitespace-only text inside a link-colored span gets ctx.href (PLACEHOLDER_URL),
+        // but whitespace is not actual link text — strip href so we don't emit <a> tags
+        // containing only newlines/spaces that confuse adjacent-link cleanup passes.
+        const runCtx = text.trim() ? ctx : { ...ctx, href: undefined };
+        runs.push(makeRun(text, runCtx));
+      }
       continue;
     }
     if (node.nodeType !== Node.ELEMENT_NODE) continue;
@@ -107,9 +112,16 @@ function collectRuns(el: Element | Node, ctx: Ctx): Run[] {
     const style = parseStyle(child.getAttribute("style") ?? "");
     const childCtx: Ctx = { ...ctx };
 
-    if (tag === "B" || tag === "STRONG" || isBold(style)) childCtx.bold = true;
-    if (tag === "EM" || tag === "I" || isItalic(style)) childCtx.italic = true;
-    if (tag === "U" || isUnderline(style)) childCtx.underline = true;
+    // Inline style always wins over tag semantics:
+    // <b style="font-weight:normal"> is Google Docs' wrapper — must NOT set bold.
+    if (isExplicitNonBold(style))        childCtx.bold = false;
+    else if (isBold(style) || tag === "B" || tag === "STRONG") childCtx.bold = true;
+
+    if (isExplicitNonItalic(style))      childCtx.italic = false;
+    else if (isItalic(style) || tag === "EM" || tag === "I")   childCtx.italic = true;
+
+    if (isExplicitNonUnderline(style))   childCtx.underline = false;
+    else if (isUnderline(style) || tag === "U")                childCtx.underline = true;
 
     const rawColor = style["color"];
     if (rawColor) {
@@ -122,7 +134,7 @@ function collectRuns(el: Element | Node, ctx: Ctx): Run[] {
 
     // Span with link-color styling but no surrounding <a> → treat as placeholder link
     if (tag === "SPAN" && rawColor && !childCtx.href && isLinkColor(rawColor)) {
-      childCtx.href = PLACEHOLDER_URL;
+      childCtx.href = tokens.color.placeholderHref;
     }
 
     const sizeOverride = sizeFromStyle(style);
@@ -140,16 +152,25 @@ function parseParagraph(el: Element, bg: string): Paragraph | null {
   const tag = el.tagName.toUpperCase();
   const style = parseStyle(el.getAttribute("style") ?? "");
   const align = getAlign(style);
-  const isHeading = /^H[1-6]$/.test(tag);
+  const headingMatch = tag.match(/^H([1-6])$/);
+  const isHeading = Boolean(headingMatch);
+  const headingLevel = headingMatch ? parseInt(headingMatch[1]) : undefined;
   const size = isHeading ? sizeFromTag(tag) : "body";
 
-  const ctx: Ctx = { bold: isHeading, italic: false, underline: false, size, bg };
+  // Headings do NOT start bold — bold comes only from explicit <b>/<strong> tags or
+  // font-weight:700 spans. GDocs HTML always encodes weight explicitly; and Chrome's
+  // DOM serializer drops font-weight:400 (initial value) before we can detect it, so
+  // relying on "cancel heading bold via font-weight:400 span" is unreliable in-browser.
+  const ctx: Ctx = { bold: false, italic: false, underline: false, size, bg };
   const rawRuns = collectRuns(el, ctx);
   const merged = mergeRuns(rawRuns);
   const lines = splitIntoLines(merged);
 
+  // Strip leading empty lines so paraBreaks indices aren't offset by residual <br> at block start
+  while (lines.length > 1 && lines[0].length === 0) lines.shift();
+
   if (!lines.some(l => l.length > 0)) return null;
-  return { type: "p", align, size, lines };
+  return { type: "p", align, size, headingLevel, lines };
 }
 
 // ── Table ────────────────────────────────────────────────────────────────────

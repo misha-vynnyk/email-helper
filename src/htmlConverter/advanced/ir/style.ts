@@ -27,12 +27,32 @@ export function isBold(style: Record<string, string>): boolean {
   return !isNaN(n) && n >= 600;
 }
 
+// Returns true when font-weight is explicitly set to a non-bold value (e.g. 400 / normal).
+// Used to un-inherit bold from a heading parent when a child span overrides it.
+export function isExplicitNonBold(style: Record<string, string>): boolean {
+  const fw = style["font-weight"];
+  if (!fw) return false;
+  if (fw === "normal") return true;
+  const n = parseInt(fw);
+  return !isNaN(n) && n < 600;
+}
+
 export function isItalic(style: Record<string, string>): boolean {
   return style["font-style"] === "italic";
 }
 
+// Returns true when font-style is explicitly set to normal (cancels inherited italic).
+export function isExplicitNonItalic(style: Record<string, string>): boolean {
+  return style["font-style"] === "normal";
+}
+
 export function isUnderline(style: Record<string, string>): boolean {
   return (style["text-decoration"] ?? "").includes("underline");
+}
+
+// Returns true when text-decoration is explicitly set to none (cancels inherited underline).
+export function isExplicitNonUnderline(style: Record<string, string>): boolean {
+  return style["text-decoration"] === "none";
 }
 
 export function getAlign(style: Record<string, string>): "left" | "center" | "right" | undefined {

@@ -84,10 +84,12 @@ describe("preprocess", () => {
     expect(result).toContain("<br>");
   });
 
-  it("encodes emoji", () => {
+  it("does NOT encode emoji (normalizeSymbols runs after DOM round-trip in index.ts)", () => {
+    // normalizeSymbols was moved out of preprocess() because DOMParser decodes
+    // HTML entities back to raw characters, making the encoding a no-op.
+    // It is now applied to the final rendered HTML string in index.ts instead.
     const result = preprocess("<p>Hi 😊</p>");
-    expect(result).not.toContain("😊");
-    expect(result).toContain("&#");
+    expect(result).toContain("😊");
   });
 
   it("does NOT merge adjacent paragraphs (handled by classify.ts pushMerged instead)", () => {

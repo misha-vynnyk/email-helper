@@ -11,7 +11,7 @@ export default {
     "^.+\\.(ts|tsx)$": [
       "ts-jest",
       {
-        useESM: true,
+        tsconfig: "tsconfig.test.json",
       },
     ],
   },
@@ -25,10 +25,4 @@ export default {
   coverageDirectory: "coverage",
   coverageReporters: ["text", "lcov", "html"],
   testTimeout: 10000,
-  extensionsToTreatAsEsm: [".ts", ".tsx"],
-  globals: {
-    "ts-jest": {
-      useESM: true,
-    },
-  },
 };

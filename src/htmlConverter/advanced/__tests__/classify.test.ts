@@ -1,4 +1,5 @@
 import { classify } from "../detect/classify";
+import { tokens } from "../config/tokens";
 import type { StructuralNode, Paragraph, TableNode, CellNode } from "../ir/types";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -106,6 +107,74 @@ describe("classify — table unwrapping", () => {
     const result = classify([table]);
     expect(result).toHaveLength(1);
     expect(result[0].kind).toBe("statsGrid");
+  });
+});
+
+// ── Heading markers (h1/h4/h5/h6) ────────────────────────────────────────────
+
+describe("classify — heading markers", () => {
+  function makeHeading(level: number, text: string): Paragraph {
+    const size = (level === 1 || level === 2) ? "headline" : (level === 5 || level === 6) ? "small" : "body";
+    return { type: "p", size, headingLevel: level, lines: [[{ text }]] };
+  }
+
+  it("h5 → buttonBand component", () => {
+    const result = classify([makeHeading(5, "Click me")]);
+    expect(result).toHaveLength(1);
+    expect(result[0].kind).toBe("buttonBand");
+    expect(result[0].props["bg"]).toBe(tokens.color.button);
+  });
+
+  it("h5 button runs contain the text", () => {
+    const result = classify([makeHeading(5, "Buy now")]);
+    const runs = result[0].props["runs"] as Array<{ text: string }>;
+    expect(runs.map(r => r.text).join("")).toContain("Buy now");
+  });
+
+  it("h5 button uses placeholder href when no href in runs", () => {
+    const result = classify([makeHeading(5, "Click")]);
+    expect(result[0].props["href"]).toBe(tokens.color.placeholderHref);
+  });
+
+  it("h5 button always uses placeholder href regardless of run href", () => {
+    const para: Paragraph = {
+      type: "p", size: "small", headingLevel: 5,
+      lines: [[{ text: "Go", href: "https://example.com" }]],
+    };
+    const result = classify([para]);
+    expect(result[0].props["href"]).toBe(tokens.color.placeholderHref);
+  });
+
+  it("h4 → paragraph with variant=quote", () => {
+    const result = classify([makeHeading(4, "Quote text")]);
+    expect(result).toHaveLength(1);
+    expect(result[0].kind).toBe("paragraph");
+    expect(result[0].props["variant"]).toBe("quote");
+  });
+
+  it("h1 → paragraph with size=headline (no buttonBand)", () => {
+    const result = classify([makeHeading(1, "Headline")]);
+    expect(result).toHaveLength(1);
+    expect(result[0].kind).toBe("paragraph");
+    expect(result[0].props["size"]).toBe("headline");
+  });
+
+  it("h6 → paragraph with size=small", () => {
+    const result = classify([makeHeading(6, "Footer text")]);
+    expect(result).toHaveLength(1);
+    expect(result[0].kind).toBe("paragraph");
+    expect(result[0].props["size"]).toBe("small");
+  });
+
+  it("h4 paragraphs are NOT merged with adjacent body paragraphs", () => {
+    const nodes: StructuralNode[] = [
+      makePara("before"),
+      makeHeading(4, "quote"),
+      makePara("after"),
+    ];
+    const result = classify(nodes);
+    expect(result).toHaveLength(3);
+    expect(result[1].props["variant"]).toBe("quote");
   });
 });
 

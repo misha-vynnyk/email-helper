@@ -29,6 +29,8 @@ export interface Tokens {
     headlinePx: number;
     smallPx: number;
     smallMaxPt: number;
+    linkWeight: number;
+    linkDecoration: string;
   };
   layout: {
     containerMaxWidth: number;
@@ -36,6 +38,7 @@ export interface Tokens {
     blockPadY: number;
     spacerPx: number;
     gridMinWidth: number;
+    quotePadX: number;
     calloutAccentPx: number;
     calloutPadX: number;
     calloutBoxBorderPx: number;
@@ -55,12 +58,14 @@ export interface Tokens {
     padding: string;
     innerPadding: string;
     target: string;
+    textDecoration: string;  // text-decoration on the <a> link inside a button
   };
   tags: {
-    bold:      string;  // "b" or "strong"
+    bold:      string;  // "b" or "strong" — inline bold runs AND bold block wrapper (headline)
     italic:    string;  // "em" or "i"
     underline: string;  // "u"
     colorWrap: string;  // "span" — wrapper for color-only runs
+    blockWrap: string;  // "span" or "div" — inner wrapper for normal text block rows
   };
   accentBullet: string;
   classes: {
@@ -95,12 +100,14 @@ export const tokens: Tokens = {
   },
   font: {
     // Pulled from shared config — one place to update for all converters and profiles
-    stack:      config.fontFamily,  // "'Roboto', Arial, Helvetica, sans-serif"
-    lineHeight: 1.5,
-    bodyPx:     18,   // matches Simple converter default paragraph size
-    headlinePx: 22,   // matches Simple converter h1 / centerHeadline size
-    smallPx:    12,   // matches Simple converter h6 / smallText size
-    smallMaxPt: 9,    // GDocs pt ≤ this → "small" role, otherwise "body"
+    stack:          config.fontFamily,  // "'Roboto', Arial, Helvetica, sans-serif"
+    lineHeight:     1.5,
+    bodyPx:         18,   // matches Simple converter default paragraph size
+    headlinePx:     22,   // matches Simple converter h1 / centerHeadline size
+    smallPx:        12,   // matches Simple converter h6 / smallText size
+    smallMaxPt:     9,    // GDocs pt ≤ this → "small" role, otherwise "body"
+    linkWeight:     700,
+    linkDecoration: "underline",
   },
   layout: {
     containerMaxWidth:    600,
@@ -108,6 +115,7 @@ export const tokens: Tokens = {
     blockPadY:             14,   // top + bottom padding per block row (matches Simple)
     spacerPx:              16,   // height of the spacer <td> between sections
     gridMinWidth:         100,
+    quotePadX:             20,   // h4 quote paragraph left/right indent (matches Simple converter)
     calloutAccentPx:       10,   // calloutLeft left-border width
     calloutPadX:           10,   // callout left/right inner padding
     calloutBoxBorderPx:     2,   // calloutBox full-border width
@@ -121,8 +129,8 @@ export const tokens: Tokens = {
     recordBorderPx:         1,   // recordRow cell border-bottom width
     buttonSubtitlePadTop:   8,   // gap above buttonBand subtitle line
   },
-  button: { radius: 10, height: 51, padding: "3px 5px", innerPadding: "9px 15px", target: "_blank" },
-  tags: { bold: "b", italic: "em", underline: "u", colorWrap: "span" },
+  button: { radius: 10, height: 51, padding: "3px 5px", innerPadding: "9px 15px", target: "_blank", textDecoration: "none" },
+  tags: { bold: "b", italic: "em", underline: "u", colorWrap: "span", blockWrap: "span" },
   accentBullet: "&#9656; ",
   // CSS class names shared with the Simple converter stylesheet — do NOT rename
   classes: {
