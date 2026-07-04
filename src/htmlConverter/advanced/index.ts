@@ -1,15 +1,15 @@
 // Advanced HTML Converter — full pipeline.
 // See ADVANCED_HTML_CONVERTER.md §10 for phase descriptions.
 
-import { tokens, mergeTokens } from "./config/tokens";
-import type { TokensOverride } from "./config/tokens";
-import { buildTemplates, templates as defaultTemplates } from "./config/templates";
-import { preprocess, normalizeSymbols } from "./preprocess";
-import { normalize } from "./normalize";
-import { fromDom } from "./ir/fromDom";
-import { classify } from "./detect/classify";
-import { renderAll } from "./render/toEmailHtml";
 import { cleanEmptyHtmlTags, replaceTripleBrWithSingle } from "../utils/htmlUtils";
+import { buildTemplates, templates as defaultTemplates } from "./config/templates";
+import type { TokensOverride } from "./config/tokens";
+import { mergeTokens,tokens } from "./config/tokens";
+import { classify } from "./detect/classify";
+import { fromDom } from "./ir/fromDom";
+import { normalize } from "./normalize";
+import { normalizeSymbols,preprocess } from "./preprocess";
+import { renderAll } from "./render/toEmailHtml";
 
 export function convertAdvanced(rawHtml: string, override: TokensOverride = {}): string {
   const hasOverride = Object.keys(override).length > 0;

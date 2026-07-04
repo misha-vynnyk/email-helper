@@ -3,7 +3,7 @@
  * Caches converted images to avoid repeated conversions
  */
 
-import { openDB, DBSchema, IDBPDatabase } from 'idb';
+import { DBSchema, IDBPDatabase,openDB } from 'idb';
 
 interface CacheEntry {
   key: string;

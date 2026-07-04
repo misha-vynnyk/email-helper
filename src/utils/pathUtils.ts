@@ -20,7 +20,7 @@ export function normalizePath(inputPath: string): string {
     try {
       const url = new URL(normalized);
       normalized = decodeURIComponent(url.pathname);
-    } catch (e) {
+    } catch {
       console.warn("Failed to parse file:// URL:", normalized);
       // Fall through to regular processing
     }

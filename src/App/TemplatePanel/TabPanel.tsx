@@ -3,8 +3,8 @@
  * Wrapper for lazy-mounted tab content with proper visibility handling
  */
 
-import React from "react";
 import { Box, Fade } from "@mui/material";
+import React from "react";
 
 interface TabPanelProps {
   children: React.ReactNode;

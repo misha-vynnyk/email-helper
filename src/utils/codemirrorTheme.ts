@@ -1,7 +1,8 @@
 import { drawSelection } from "@codemirror/view";
 import { EditorView } from "@codemirror/view";
-import { alpha } from "@mui/material/styles";
 import type { Theme } from "@mui/material/styles";
+import { alpha } from "@mui/material/styles";
+
 import { ThemeMode, ThemeStyle } from "../theme";
 import { getComponentStyles } from "../theme/componentStyles";
 

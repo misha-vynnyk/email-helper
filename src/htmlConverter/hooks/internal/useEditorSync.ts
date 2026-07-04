@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useEffect,useRef, useState } from "react";
 
 const IMAGE_DETECT_DEBOUNCE_MS = 250;
 
@@ -27,7 +27,8 @@ export function useEditorSync({
   clearMemoryRef.current = clearMemory;
 
   useEffect(() => {
-    if (editorRef.current) {
+    const editorEl = editorRef.current;
+    if (editorEl) {
       const scheduleImageSync = () => {
         if (imageDetectTimerRef.current) {
           window.clearTimeout(imageDetectTimerRef.current);
@@ -116,21 +117,19 @@ export function useEditorSync({
         scheduleImageSync();
       };
 
-      editorRef.current.addEventListener("paste", handlePaste as EventListener);
-      editorRef.current.addEventListener("input", handleInput);
+      editorEl.addEventListener("paste", handlePaste as EventListener);
+      editorEl.addEventListener("input", handleInput);
 
       return () => {
-        if (editorRef.current) {
-          editorRef.current.removeEventListener("paste", handlePaste as EventListener);
-          editorRef.current.removeEventListener("input", handleInput);
-        }
+        editorEl.removeEventListener("paste", handlePaste as EventListener);
+        editorEl.removeEventListener("input", handleInput);
         if (imageDetectTimerRef.current) {
           window.clearTimeout(imageDetectTimerRef.current);
           imageDetectTimerRef.current = null;
         }
       };
     }
-  }, [editorRef, showImageProcessorRef, setShowImageProcessor, setTriggerExtract]);
+  }, [editorRef, showImageProcessorRef, setShowImageProcessor, setTriggerExtract, rawPastedHtmlRef]);
 
   const clearInputHtml = () => setInputHtml("");
 

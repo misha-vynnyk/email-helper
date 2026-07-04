@@ -2,7 +2,7 @@
  * Custom hook to track container dimensions using ResizeObserver
  */
 
-import { useEffect, useRef, useState, RefObject } from "react";
+import { RefObject,useEffect, useRef, useState } from "react";
 
 interface Dimensions {
   width: number;

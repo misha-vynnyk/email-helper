@@ -3,12 +3,12 @@
  * Allows users to configure preview dimensions and scale
  */
 
-import { Plus as AddIcon, X as CloseIcon, Settings as SettingsIcon } from "lucide-react";
+import { Plus as AddIcon, Settings as SettingsIcon,X as CloseIcon } from "lucide-react";
 import { useState } from "react";
-import Modal from "./Modal";
 
 import { logger } from "../../utils/logger";
 import { STORAGE_KEYS } from "../../utils/storageKeys";
+import Modal from "./Modal";
 
 export interface PreviewConfig {
   cardWidth: number;

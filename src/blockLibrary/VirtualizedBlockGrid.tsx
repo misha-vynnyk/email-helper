@@ -4,9 +4,9 @@
  * Uses react-window v2 API
  */
 
-import { useMemo } from "react";
-import type { CSSProperties, ReactElement } from "react";
 import { Box, useMediaQuery, useTheme } from "@mui/material";
+import type { CSSProperties, ReactElement } from "react";
+import { useMemo } from "react";
 
 import { VirtualList } from "../components/VirtualList";
 import { useContainerDimensions } from "../hooks";

@@ -1,16 +1,16 @@
+import { Download, Trash2 } from "lucide-react";
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Download, Trash2 } from "lucide-react";
 
-import ImageProcessor from "./ImageProcessor";
-import UploadHistory from "./components/UploadHistory";
-import { Header } from "./components/Header";
-import { FileNamingBar } from "./components/FileNamingBar";
+import { CheatsheetPanel } from "./components/CheatsheetPanel";
 import { DiagnosticsPanel } from "./components/DiagnosticsPanel";
 import { ExportPanel } from "./components/ExportPanel";
-import { CheatsheetPanel } from "./components/CheatsheetPanel";
-import { useHtmlConverterLogic } from "./hooks/useHtmlConverterLogic";
+import { FileNamingBar } from "./components/FileNamingBar";
+import { Header } from "./components/Header";
+import UploadHistory from "./components/UploadHistory";
 import { useAiLogger } from "./hooks/useAiLogger";
+import { useHtmlConverterLogic } from "./hooks/useHtmlConverterLogic";
+import ImageProcessor from "./ImageProcessor";
 
 export default function HtmlConverterPanel() {
   const { t } = useTranslation();

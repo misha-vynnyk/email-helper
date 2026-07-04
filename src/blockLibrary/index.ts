@@ -6,24 +6,23 @@
 export { default as BlockLibrary } from "./BlockLibrary";
 
 // Types (from main types)
-export type { EmailBlock, BlockCategory } from "../types/block";
+export type { BlockCategory,EmailBlock } from "../types/block";
 
 // Utils
 export {
-  loadPredefinedBlocks,
-  loadCustomBlocks,
-  saveCustomBlocks,
   addCustomBlock,
-  updateCustomBlock,
-  removeCustomBlock,
-  searchBlocks,
   getCategories,
+  loadCustomBlocks,
+  loadPredefinedBlocks,
+  removeCustomBlock,
+  saveCustomBlocks,
+  searchBlocks,
+  updateCustomBlock,
 } from "./blockLoader";
-
 export {
-  getStorageLocations,
   addStorageLocation,
+  getDefaultLocation,
+  getStorageLocations,
   removeStorageLocation,
   setDefaultLocation,
-  getDefaultLocation,
 } from "./blockStorageConfig";

@@ -2,9 +2,9 @@
  * Efficient Single-Pass Post-processing Pipeline
  */
 
-import { cleanOcrText, normalizeOcrLine, cleanupAltCandidate, truncateAlt, isAllCapsLike, isTitleCaseLike } from "./cleanup";
-import { postFixBannerText, spellCorrectBannerText } from "./bannerSpell";
 import { ALLOWED_SHORT_ALL_CAPS, COMMON_3_LETTER_WORDS, FILENAME_STOP_WORDS } from "../constants";
+import { postFixBannerText, spellCorrectBannerText } from "./bannerSpell";
+import { cleanOcrText, cleanupAltCandidate, isAllCapsLike, isTitleCaseLike,normalizeOcrLine, truncateAlt } from "./cleanup";
 
 type LineType = "junk" | "cta" | "content" | "year";
 

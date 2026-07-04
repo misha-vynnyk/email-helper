@@ -12,7 +12,7 @@ export interface ApiResponse<T> {
 export interface ApiError {
   error: string;
   code?: string;
-  details?: any;
+  details?: unknown;
   timestamp?: number;
 }
 

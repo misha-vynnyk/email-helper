@@ -1,7 +1,7 @@
 import { getApiBase } from "../../../config/api";
 import { OcrAnalyzeResult } from "./analyzer";
-import { cleanupAltCandidate, formatCtaAsAction, truncateAlt } from "./postprocess/cleanup";
 import { FILENAME_STOP_WORDS } from "./constants";
+import { cleanupAltCandidate, formatCtaAsAction, truncateAlt } from "./postprocess/cleanup";
 
 /**
  * Polish AI-generated alt text to follow accessibility best practices:

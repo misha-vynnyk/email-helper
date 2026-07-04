@@ -3,8 +3,9 @@
  * Props-based. Tailwind styling.
  */
 
-import { Gauge, Sparkles, Minimize2, ShieldCheck, CheckCircle2 } from "lucide-react";
-import { ConversionSettings, CompressionMode } from "../types";
+import { CheckCircle2,Gauge, LucideIcon, Minimize2, ShieldCheck, Sparkles } from "lucide-react";
+
+import { CompressionMode,ConversionSettings } from "../types";
 
 interface CompressionModeSelectorProps {
   settings: ConversionSettings;
@@ -15,7 +16,7 @@ interface CompressionModeSelectorProps {
 
 
 export default function CompressionModeSelector({ settings, updateSettings }: CompressionModeSelectorProps) {
-  const compressionModes: { id: CompressionMode; label: string; icon: any; desc: string }[] = [
+  const compressionModes: { id: CompressionMode; label: string; icon: LucideIcon; desc: string }[] = [
     { id: "balanced", label: "Balanced", icon: Gauge, desc: "Size vs Quality" },
     { id: "maximum-quality", label: "Premium", icon: Sparkles, desc: "Ultra Fidelity" },
     { id: "maximum-compression", label: "Compact", icon: Minimize2, desc: "Max Savings" },

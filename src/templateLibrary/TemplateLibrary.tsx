@@ -3,9 +3,8 @@
  * Main UI for browsing and managing HTML email templates from file system
  */
 
+import { Ban as BlockIcon, FolderOpen as FolderOpenIcon, Plus as AddIcon, RefreshCw as RefreshIcon, Search as SearchIcon, SearchX as SearchOffIcon, Settings as SettingsIcon,X as ClearIcon } from "lucide-react";
 import React, { useEffect, useState } from "react";
-
-import { Plus as AddIcon, Ban as BlockIcon, X as ClearIcon, FolderOpen as FolderOpenIcon, RefreshCw as RefreshIcon, Search as SearchIcon, SearchX as SearchOffIcon, Settings as SettingsIcon } from "lucide-react";
 
 import { TemplateCategory } from "../types/template";
 import PreviewSettings, { loadPreviewConfig, PreviewConfig } from "./components/PreviewSettings";

@@ -1,10 +1,10 @@
 // Phase 3: DOM → StructuralNode tree (dumb DOM map, no house-logic).
 
-import type { StructuralNode, Paragraph, TableNode, RowNode, CellNode, Run } from "./types";
-import { parseStyle, isBold, isExplicitNonBold, isItalic, isExplicitNonItalic, isUnderline, isExplicitNonUnderline, getAlign, ptToSizeRole } from "./style";
-import { canonicalizeText, canonicalizeBg } from "./color";
-import { tokens } from "../config/tokens";
 import { isLinkColor } from "../../utils/colorUtils";
+import { tokens } from "../config/tokens";
+import { canonicalizeBg,canonicalizeText } from "./color";
+import { getAlign, isBold, isExplicitNonBold, isExplicitNonItalic, isExplicitNonUnderline, isItalic, isUnderline, parseStyle, ptToSizeRole } from "./style";
+import type { CellNode, Paragraph, RowNode, Run,StructuralNode, TableNode } from "./types";
 
 // ── Inline run collection ─────────────────────────────────────────────────────
 
@@ -90,7 +90,7 @@ function collectRuns(el: Element | Node, ctx: Ctx): Run[] {
 
   for (const node of Array.from(el.childNodes)) {
     if (node.nodeType === Node.TEXT_NODE) {
-      const text = (node.textContent ?? "").replace(/ /g, " ");
+      const text = (node.textContent ?? "").replace(/\u00A0/g, " ");
       if (text) {
         // Whitespace-only text inside a link-colored span gets ctx.href (PLACEHOLDER_URL),
         // but whitespace is not actual link text — strip href so we don't emit <a> tags

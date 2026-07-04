@@ -1,5 +1,6 @@
+import { BarChart3, CheckCircle, Clock, Mail, Users } from "lucide-react";
+
 import { EmailCampaign } from "./mockData";
-import { Mail, Clock, CheckCircle, BarChart3, Users } from "lucide-react";
 
 export const ModernDashboardCampaigns = ({ campaigns }: { campaigns: EmailCampaign[] }) => {
   return (

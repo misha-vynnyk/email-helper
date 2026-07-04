@@ -3,25 +3,22 @@
  * Displays a single template card with preview and actions
  */
 
+import { html } from "@codemirror/lang-html";
+import { useTheme } from "@mui/material";
+import CodeMirror from "@uiw/react-codemirror";
+import { Copy as CopyIcon,X as CloseIcon } from "lucide-react";
 import React, { useContext, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
-import { html } from "@codemirror/lang-html";
-import CodeMirror from "@uiw/react-codemirror";
-import { X as CloseIcon, Copy as CopyIcon } from "lucide-react";
-
-import { useTheme } from "@mui/material";
 import { EmailSenderContext } from "../../emailSender/EmailSenderContext";
 import { useThemeMode } from "../../theme";
 import { EmailTemplate, TEMPLATE_CATEGORIES, TemplateCategory } from "../../types/template";
 import { createCodeMirrorTheme } from "../../utils/codemirrorTheme";
 import { preloadImages } from "../../utils/imageUrlReplacer";
-
 import { getTemplateContent, removeTemplate, syncTemplate, updateTemplate } from "../utils/templateApi";
 import { templateContentCache } from "../utils/templateContentCache";
-import { PreviewConfig } from "./PreviewSettings";
-
 import Modal from "./Modal";
+import { PreviewConfig } from "./PreviewSettings";
 import TemplateCard from "./TemplateCard";
 import TemplatePreviewDialog from "./TemplatePreviewDialog";
 
@@ -116,6 +113,7 @@ function TemplateItem({ template, previewConfig, onDelete, onUpdate, onLoadTempl
         loadContent();
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load only when visibility changes; previewHtml/loading/loadContent are read as guards and would cause repeated reloads if tracked since this effect sets them itself
   }, [isVisible]);
 
   useEffect(() => {
@@ -137,6 +135,7 @@ function TemplateItem({ template, previewConfig, onDelete, onUpdate, onLoadTempl
         }
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load only when the preview dialog opens; previewHtml/loading/allTemplates/currentIndex/loadContent are read as guards, not triggers
   }, [previewDialogOpen]);
 
   useEffect(() => {
@@ -165,6 +164,7 @@ function TemplateItem({ template, previewConfig, onDelete, onUpdate, onLoadTempl
         loadContent();
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load only when the template/open state changes; previewHtml/allTemplates/currentIndex/loadContent are read as guards, not triggers
   }, [template.id, isOpen]);
 
   useEffect(() => {
@@ -191,12 +191,14 @@ function TemplateItem({ template, previewConfig, onDelete, onUpdate, onLoadTempl
         setCodeContent(previewHtml);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- load only when the code dialog opens or template changes; previewHtml is read as a cache-hit guard, not a trigger
   }, [codeDialogOpen, template.id]);
 
   useEffect(() => {
     if (previewHtml && isVisible) {
       setRenderKey((prev) => prev + 1);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- force re-render only when the hidden-sections config changes; previewHtml/isVisible are read as guards, not triggers
   }, [previewConfig.hiddenSections]);
 
   const loadContent = async () => {
@@ -224,7 +226,7 @@ function TemplateItem({ template, previewConfig, onDelete, onUpdate, onLoadTempl
         setPreviewHtml(content);
         setLoading(false);
         return;
-      } catch (error) {}
+      } catch {}
     }
 
     if (!previewHtml) {

@@ -4,9 +4,8 @@
  * Maps template categories to lucide-react icons for visual representation
  */
 
+import { Briefcase as BusinessIcon, FolderTree as CategoryIcon, Mail as EmailIcon, Megaphone as CampaignIcon, Receipt as ReceiptIcon } from "lucide-react";
 import React from "react";
-
-import { Briefcase as BusinessIcon, Megaphone as CampaignIcon, FolderTree as CategoryIcon, Mail as EmailIcon, Receipt as ReceiptIcon } from "lucide-react";
 
 import { TemplateCategory } from "../../types/template";
 

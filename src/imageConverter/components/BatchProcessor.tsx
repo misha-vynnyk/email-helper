@@ -3,9 +3,10 @@
  * Props-based (no context). Tailwind styling.
  */
 
-import { Download, Trash2, Play } from "lucide-react";
-import { ConversionSettings, ImageFile } from "../types";
+import { Download, Play,Trash2 } from "lucide-react";
+
 import { useImageStats } from "../hooks/useImageStats";
+import { ConversionSettings, ImageFile } from "../types";
 import { formatFileSize } from "../utils/clientConverter";
 
 interface BatchProcessorProps {

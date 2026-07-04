@@ -2,10 +2,10 @@
  * Main HTML/MJML formatting logic
  */
 
-import { htmlTemplates, mjmlTemplates } from "./templates";
-import * as utils from "../utils/htmlUtils";
-import * as colorUtils from "../utils/colorUtils";
 import { PLACEHOLDER_URL } from "../constants";
+import * as colorUtils from "../utils/colorUtils";
+import * as utils from "../utils/htmlUtils";
+import { htmlTemplates, mjmlTemplates } from "./templates";
 
 const ALPHAONE_FONT = "Verdana, Geneva, Tahoma, sans-serif";
 const ALPHAONE_LINK_COLOR = "#0404e4";
@@ -86,6 +86,7 @@ function italicLinks(htmlContent: string): string {
     return match;
   });
 
+  // eslint-disable-next-line no-control-regex -- \x02/\x03 are deliberate sentinel bytes marking saved-link placeholders
   htmlContent = htmlContent.replace(/\x02LINK(\d+)\x03/g, (_, i) => savedLinks[+i] ?? "");
 
   return htmlContent;

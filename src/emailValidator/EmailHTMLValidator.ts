@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger";
 import { AutofixEngine } from "./AutofixEngine";
 import {
   EMAIL_DEFAULTS,
@@ -14,7 +15,6 @@ import {
 } from "./types";
 import { ValidationEngine } from "./ValidationEngine";
 import { EMAIL_VALIDATION_RULES } from "./validationRules";
-import { logger } from "../utils/logger";
 
 export class EmailHTMLValidator {
   private config: EmailValidatorConfig;
@@ -99,7 +99,7 @@ export class EmailHTMLValidator {
         try {
           (global as { gc: () => void }).gc();
           logger.debug("EmailHTMLValidator", LOGGING_CONSTANTS.GARBAGE_COLLECTION_PREFIX);
-        } catch (error) {
+        } catch {
           // Ignore GC errors
         }
       }

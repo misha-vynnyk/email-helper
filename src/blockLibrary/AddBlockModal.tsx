@@ -3,8 +3,6 @@
  * Modal for adding custom email blocks
  */
 
-import React, { useMemo, useState } from "react";
-
 import { Add as AddIcon, Close as CloseIcon } from "@mui/icons-material";
 import {
   Alert,
@@ -27,16 +25,16 @@ import {
   Typography,
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
+import React, { useMemo, useState } from "react";
 
-import { BlockCategory, EmailBlock } from "../types/block";
 import { useThemeMode } from "../theme";
 import { getComponentStyles } from "../theme/componentStyles";
-
+import { BlockCategory, EmailBlock } from "../types/block";
+import { logger } from "../utils/logger";
 import { blockFileApi } from "./blockFileApi";
 import { addCustomBlock } from "./blockLoader";
 import { getStorageLocations } from "./blockStorageConfig";
 import { VALIDATION } from "./constants";
-import { logger } from "../utils/logger";
 
 interface AddBlockModalProps {
   open: boolean;

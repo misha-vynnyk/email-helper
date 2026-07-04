@@ -1,11 +1,10 @@
-import { Plus as AddIcon, ArrowLeft as ArrowBackIcon, ArrowRight as ArrowForwardIcon, Minus as RemoveIcon, RefreshCcw as RestartAltIcon } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import { ArrowLeft as ArrowBackIcon, ArrowRight as ArrowForwardIcon, Minus as RemoveIcon, Plus as AddIcon, RefreshCcw as RestartAltIcon } from "lucide-react";
+import React, { useCallback, useEffect, useState } from "react";
 
 import { EmailTemplate } from "../../types/template";
 import { filterMarkedSections, keepOnlyMarkedSections } from "../utils/htmlSectionFilter";
-import { PreviewConfig } from "./PreviewSettings";
-
 import Modal from "./Modal";
+import { PreviewConfig } from "./PreviewSettings";
 import ResizablePreview from "./ResizablePreview";
 import ResponsiveToolbar from "./ResponsiveToolbar";
 
@@ -84,10 +83,13 @@ export default function TemplatePreviewDialog({ open, onClose, template, preview
     }
   }, [previewHtml, open, loading, savedScrollPositionProp, previewConfig.saveScrollPosition]);
 
-  const handleNavigation = (direction: "prev" | "next") => {
-    const currentScrollPos = previewConfig.saveScrollPosition ? scrollContainerRef.current?.scrollTop || 0 : 0;
-    onNavigate?.(direction, currentScrollPos);
-  };
+  const handleNavigation = useCallback(
+    (direction: "prev" | "next") => {
+      const currentScrollPos = previewConfig.saveScrollPosition ? scrollContainerRef.current?.scrollTop || 0 : 0;
+      onNavigate?.(direction, currentScrollPos);
+    },
+    [previewConfig.saveScrollPosition, onNavigate]
+  );
 
   // Keyboard shortcut listeners
   useEffect(() => {
@@ -137,7 +139,7 @@ export default function TemplatePreviewDialog({ open, onClose, template, preview
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("wheel", handleWheel);
     };
-  }, [open, onNavigate, previewConfig.saveScrollPosition]);
+  }, [open, onNavigate, previewConfig.saveScrollPosition, handleNavigation]);
 
   const sanitizePreviewHtml = (html: string): string => {
     if (!html) return html;

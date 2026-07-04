@@ -1,4 +1,5 @@
-import { renderHook, act } from "@testing-library/react";
+import { act,renderHook } from "@testing-library/react";
+
 import { useHtmlConverterLogic } from "../hooks/useHtmlConverterLogic";
 import { DEFAULT_UI_SETTINGS } from "../hooks/useHtmlConverterSettings";
 

@@ -4,6 +4,7 @@
  */
 
 import { Zap } from "lucide-react";
+
 import { ConversionSettings } from "../types";
 
 interface AutoConvertToggleProps {

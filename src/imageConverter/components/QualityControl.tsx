@@ -3,7 +3,8 @@
  * Props-based. Tailwind styling.
  */
 
-import { Sparkles, SlidersHorizontal, Lock } from "lucide-react";
+import { Lock,SlidersHorizontal, Sparkles } from "lucide-react";
+
 import { CompressionMode } from "../types";
 
 interface QualityControlProps {

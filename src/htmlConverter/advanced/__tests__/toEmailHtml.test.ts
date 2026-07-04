@@ -1,7 +1,7 @@
-import { renderRuns, renderLines, renderNode } from "../render/toEmailHtml";
-import { tokens, mergeTokens } from "../config/tokens";
 import { buildTemplates } from "../config/templates";
-import type { Run, ComponentNode } from "../ir/types";
+import { mergeTokens,tokens } from "../config/tokens";
+import type { ComponentNode,Run } from "../ir/types";
+import { renderLines, renderNode,renderRuns } from "../render/toEmailHtml";
 
 const tmpl = buildTemplates(tokens);
 

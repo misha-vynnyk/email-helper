@@ -1,14 +1,16 @@
 import { useCallback, useRef, useState } from "react";
-import { formatHtml, formatMjml } from "../../formatter";
-import { formatHtmlTTT, formatMjmlTTT } from "../../ttt/formatter";
-import { formatHtmlAlphaone, formatMjmlAlphaone } from "../../alphaone/formatter";
-import { replaceUrlsInContentByMap, replaceUrlsInContent, replaceAltsInContent } from "../../utils/contentReplacer";
-import type { StorageProfile, ConverterMode } from "../useHtmlConverterLogic";
+
 import { getElectronAPI } from "@/hooks/useElectronAPI";
+
 import { convertAdvanced } from "../../advanced/index";
+import { profile as alphaoneProfile } from "../../advanced/profiles/alphaone";
 import { profile as defaultProfile } from "../../advanced/profiles/default";
 import { profile as tttProfile }     from "../../advanced/profiles/ttt";
-import { profile as alphaoneProfile } from "../../advanced/profiles/alphaone";
+import { formatHtmlAlphaone, formatMjmlAlphaone } from "../../alphaone/formatter";
+import { formatHtml, formatMjml } from "../../formatter";
+import { formatHtmlTTT, formatMjmlTTT } from "../../ttt/formatter";
+import { replaceAltsInContent,replaceUrlsInContent, replaceUrlsInContentByMap } from "../../utils/contentReplacer";
+import type { ConverterMode,StorageProfile } from "../useHtmlConverterLogic";
 
 interface UseHtmlExportProps {
   editorRef: React.RefObject<HTMLDivElement>;
@@ -160,7 +162,7 @@ export function useHtmlExport({
       const message = error instanceof Error ? error.message : "Невідома помилка";
       addLog(`❌ Помилка експорту HTML: ${message}`);
     }
-  }, [addLog, editorRef, outputHtmlRef, uploadedUrlMap, uploadedAltMap, setHasOutput, triggerResetReplacement, storageProfile, converterMode, rawPastedHtmlRef]);
+  }, [addLog, editorRef, outputHtmlRef, outputMjmlRef, uploadedUrlMap, uploadedAltMap, setHasOutput, triggerResetReplacement, storageProfile, converterMode, rawPastedHtmlRef]);
 
   const handleExportMJML = useCallback(() => {
     if (converterMode === "advanced") {

@@ -3,10 +3,9 @@
  * Chrome DevTools-style resizable preview with ruler
  */
 
+import { alpha, Box, useTheme } from "@mui/material";
 import { motion } from "framer-motion";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-
-import { alpha, Box, useTheme } from "@mui/material";
 
 interface ResizablePreviewProps {
   children: React.ReactNode;

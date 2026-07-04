@@ -1,5 +1,3 @@
-import React from "react";
-
 import {
   AccountCircle,
   Email,
@@ -22,6 +20,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import React from "react";
 
 import { StyledPaper } from "../theme";
 import { useEmailSender } from "./EmailSenderContext";

@@ -1,4 +1,4 @@
-import { Play as ProcessIcon, Upload as UploadIcon, Replace as ReplaceIcon } from "lucide-react";
+import { Play as ProcessIcon, Replace as ReplaceIcon,Upload as UploadIcon } from "lucide-react";
 
 interface ImageProcessorActionsProps {
   pendingCount: number;

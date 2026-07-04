@@ -1,4 +1,4 @@
-import { tokens, mergeTokens } from "../config/tokens";
+import { mergeTokens,tokens } from "../config/tokens";
 
 describe("mergeTokens", () => {
   it("returns original token values when override is empty", () => {

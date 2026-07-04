@@ -60,6 +60,7 @@ Object.defineProperty(window, "matchMedia", {
 });
 
 // Mock ResizeObserver
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- installing a jsdom-missing global for tests
 (globalThis as any).ResizeObserver = jest.fn().mockImplementation(() => ({
   observe: jest.fn(),
   unobserve: jest.fn(),
@@ -67,6 +68,7 @@ Object.defineProperty(window, "matchMedia", {
 }));
 
 // Mock IntersectionObserver
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- installing a jsdom-missing global for tests
 (globalThis as any).IntersectionObserver = jest.fn().mockImplementation(() => ({
   observe: jest.fn(),
   unobserve: jest.fn(),
@@ -74,6 +76,7 @@ Object.defineProperty(window, "matchMedia", {
 }));
 
 // Mock fetch for W3C validator tests
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- installing a jsdom-missing global for tests
 (globalThis as any).fetch = jest.fn();
 
 // Mock console methods to reduce noise in tests

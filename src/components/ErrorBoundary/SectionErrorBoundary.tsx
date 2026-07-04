@@ -1,7 +1,6 @@
-import React, { Component, ErrorInfo, ReactNode } from "react";
-
 import { Refresh as RefreshIcon } from "@mui/icons-material";
 import { Alert, Box, Button, Typography } from "@mui/material";
+import React, { Component, ErrorInfo, ReactNode } from "react";
 
 interface Props {
   children: ReactNode;

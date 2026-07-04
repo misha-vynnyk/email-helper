@@ -3,17 +3,17 @@
  * Props-based (no context). Tailwind styling.
  */
 
+import { ChevronDown, ChevronRight,Settings } from "lucide-react";
 import { useState } from "react";
-import { Settings, ChevronDown, ChevronRight } from "lucide-react";
 
 import { ConversionSettings, ImageFile } from "../types";
-import FormatTabsSelector from "./FormatTabsSelector";
-import CompressionModeSelector from "./CompressionModeSelector";
-import QualityControl from "./QualityControl";
 import AdvancedSettingsSection from "./AdvancedSettingsSection";
-import EstimatedSizeIndicator from "./EstimatedSizeIndicator";
 import AutoConvertToggle from "./AutoConvertToggle";
+import CompressionModeSelector from "./CompressionModeSelector";
+import EstimatedSizeIndicator from "./EstimatedSizeIndicator";
+import FormatTabsSelector from "./FormatTabsSelector";
 import ProcessingModeToggle from "./ProcessingModeToggle";
+import QualityControl from "./QualityControl";
 
 interface SettingsSidebarProps {
   files: ImageFile[];

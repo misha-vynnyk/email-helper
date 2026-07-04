@@ -3,8 +3,8 @@
  * Provides unified HTTP methods with error handling and logging
  */
 
-import { logger } from '../utils/logger';
 import { getApiBase, isApiAvailable } from '../config/api';
+import { logger } from '../utils/logger';
 
 class ApiClient {
   async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
@@ -43,7 +43,7 @@ class ApiClient {
     return this.request<T>(endpoint, { ...options, method: 'GET' });
   }
 
-  post<T>(endpoint: string, data?: any, options?: RequestInit): Promise<T> {
+  post<T>(endpoint: string, data?: unknown, options?: RequestInit): Promise<T> {
     return this.request<T>(endpoint, {
       ...options,
       method: 'POST',
@@ -51,7 +51,7 @@ class ApiClient {
     });
   }
 
-  put<T>(endpoint: string, data?: any, options?: RequestInit): Promise<T> {
+  put<T>(endpoint: string, data?: unknown, options?: RequestInit): Promise<T> {
     return this.request<T>(endpoint, {
       ...options,
       method: 'PUT',

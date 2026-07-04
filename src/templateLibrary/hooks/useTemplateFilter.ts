@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+
 import { EmailTemplate, TemplateCategory } from "../../types/template";
 
 export type SortOption = "name-asc" | "name-desc" | "date-newest" | "date-oldest" | "category";

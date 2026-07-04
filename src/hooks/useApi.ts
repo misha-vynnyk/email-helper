@@ -3,7 +3,7 @@
  * Generic hook for API data fetching with loading and error states
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback,useEffect, useState } from "react";
 
 import { logger } from "../utils/logger";
 
@@ -45,6 +45,7 @@ export function useApi<T>(apiFunction: () => Promise<T>, options: UseApiOptions<
     if (autoFetch) {
       fetch();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally fetch once on mount / when autoFetch flips; `fetch` is excluded since callers may pass unmemoized apiFunction/onSuccess/onError, which would otherwise re-trigger fetch on every render
   }, [autoFetch]);
 
   const refetch = useCallback(() => {

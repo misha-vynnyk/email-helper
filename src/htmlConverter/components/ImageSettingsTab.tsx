@@ -1,9 +1,4 @@
-import React, { Dispatch, SetStateAction, useState, useEffect, useCallback } from "react";
-import { getApiBase } from "@/config/api";
-import { STORAGE_KEYS } from "../constants";
-import type { UiSettings } from "../hooks/useHtmlConverterSettings";
-import type { ImageAnalysisSettings } from "../types";
-import { OCR_PRESETS } from "../utils/ocrPresets";
+import React, { Dispatch, SetStateAction, useCallback,useEffect, useState } from "react";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -11,6 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import { getApiBase } from "@/config/api";
+
+import { STORAGE_KEYS } from "../constants";
+import type { UiSettings } from "../hooks/useHtmlConverterSettings";
+import type { ImageAnalysisSettings } from "../types";
+import { OCR_PRESETS } from "../utils/ocrPresets";
 
 type ImageSettingsTabProps = {
   ui: UiSettings;

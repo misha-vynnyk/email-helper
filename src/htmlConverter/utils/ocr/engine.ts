@@ -47,15 +47,18 @@ export class OcrEngine {
     if (this.workerInit) return await this.workerInit;
 
     this.workerInit = (async () => {
+      /* eslint-disable @typescript-eslint/no-explicit-any -- tesseract.js's CJS/ESM export shape varies by bundler, hence the mod.default?.x fallback */
       const mod: any = await import("tesseract.js");
       const createWorker: any = mod.createWorker || mod.default?.createWorker;
       const OEM: any = mod.OEM || mod.default?.OEM;
+      /* eslint-enable @typescript-eslint/no-explicit-any */
       if (typeof createWorker !== "function") {
         throw new Error("tesseract.js createWorker() not found");
       }
 
       const oem = OEM?.LSTM_ONLY ?? undefined;
       const w = await createWorker("eng", oem, {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- tesseract.js progress message shape isn't exported from its types
         logger: (m: any) => {
           if (signal.aborted) return;
           if (m && typeof m.progress === "number") {

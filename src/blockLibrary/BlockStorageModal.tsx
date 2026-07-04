@@ -3,8 +3,6 @@
  * Manage storage locations for new blocks with add/remove capabilities
  */
 
-import { useMemo, useState } from "react";
-
 import {
   Add as AddIcon,
   Close as CloseIcon,
@@ -33,7 +31,10 @@ import {
   Typography,
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
+import { useMemo, useState } from "react";
 
+import { useThemeMode } from "../theme";
+import { getComponentStyles } from "../theme/componentStyles";
 import {
   addStorageLocation,
   getStorageLocations,
@@ -42,8 +43,6 @@ import {
   StorageLocation,
   toggleLocationVisibility,
 } from "./blockStorageConfig";
-import { useThemeMode } from "../theme";
-import { getComponentStyles } from "../theme/componentStyles";
 
 interface BlockStorageModalProps {
   open: boolean;

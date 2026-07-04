@@ -3,8 +3,6 @@
  * Visual icons for each block category
  */
 
-import React from "react";
-
 import {
   Article as ArticleIcon,
   GridOn as GridOnIcon,
@@ -14,6 +12,7 @@ import {
   VerticalAlignBottom as VerticalAlignBottomIcon,
   ViewAgenda as ViewAgendaIcon,
 } from "@mui/icons-material";
+import React from "react";
 
 export const CATEGORY_ICONS: Record<string, React.ReactElement> = {
   Structure: <GridOnIcon fontSize='small' />,

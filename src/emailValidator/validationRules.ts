@@ -56,7 +56,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
             });
           }
         });
-      } catch (error) {
+      } catch {
         // Fallback regex checking
         const forbiddenTags = _config.forbiddenTags || FORBIDDEN_TAGS;
         if (Array.isArray(forbiddenTags)) {
@@ -106,7 +106,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
             });
           }
         });
-      } catch (error) {
+      } catch {
         // Fallback to original check method
         return EMAIL_VALIDATION_RULES["forbidden-tags"].check(html, _config);
       }
@@ -277,7 +277,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
           RegexCache.get('(<img[^>]*?)([a-zA-Z0-9_.-]+")([a-zA-Z]+=)'),
           "$1$2 $3"
         );
-      } catch (error) {
+      } catch {
         // Return original on error
       }
 
@@ -356,7 +356,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
             });
           }
         });
-      } catch (error) {
+      } catch {
         // Silently fail
       }
       return results;
@@ -403,7 +403,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
 
         // Execute all operations in batch
         return batcher.execute(html);
-      } catch (error) {
+      } catch {
         // Return original on error
         return html;
       }
@@ -531,7 +531,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
             });
           }
         });
-      } catch (error) {
+      } catch {
         results.push({
           rule: "table-attributes",
           severity: "warning",
@@ -651,7 +651,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
             });
           }
         });
-      } catch (error) {
+      } catch {
         // Fallback to original check method
         return EMAIL_VALIDATION_RULES["table-attributes"].check(html);
       }
@@ -745,7 +745,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
           // Ensure proper self-closing format
           return `<img${newAttrs} />`;
         });
-      } catch (error) {
+      } catch {
         // Return original on error
       }
       return fixedHtml;
@@ -822,7 +822,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
             });
           }
         }
-      } catch (error) {
+      } catch {
         // Silently fail
       }
       return results;
@@ -894,7 +894,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
 
           return `<a${newAttrs}>`;
         });
-      } catch (error) {
+      } catch {
         // Return original on error
       }
       return fixedHtml;
@@ -938,7 +938,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
             });
           }
         });
-      } catch (error) {
+      } catch {
         // Silently fail
       }
       return results;
@@ -977,7 +977,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
         batcher.add(RegexCache.get("\\s+>", "g"), ">").add(RegexCache.get("\\s{2,}", "g"), " ");
 
         return batcher.execute(html);
-      } catch (error) {
+      } catch {
         // Return original on error
         return html;
       }
@@ -1013,7 +1013,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
             );
           });
         }
-      } catch (error) {
+      } catch {
         // Silently fail
       }
       return results;
@@ -1038,7 +1038,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
             )
           );
         });
-      } catch (error) {
+      } catch {
         // Fallback to regex check
         return EMAIL_VALIDATION_RULES["heading-tags"].check(html);
       }
@@ -1057,7 +1057,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
         );
 
         return AutofixUtils.replaceTagsWithSpans(html, headingReplacements);
-      } catch (error) {
+      } catch {
         // Return original on error
         return html;
       }
@@ -1091,7 +1091,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
             )
           );
         });
-      } catch (error) {
+      } catch {
         // Silently fail
       }
       return results;
@@ -1115,7 +1115,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
             });
           }
         });
-      } catch (error) {
+      } catch {
         // Fallback to regex check
         return EMAIL_VALIDATION_RULES["paragraph-tags"].check(html);
       }
@@ -1129,7 +1129,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
         // Replace paragraphs with spans
         fixedHtml = fixedHtml.replace(RegexCache.get("<p([^>]*)>"), "<span$1>");
         fixedHtml = fixedHtml.replace(RegexCache.get("</p>"), "</span>");
-      } catch (error) {
+      } catch {
         // Return original on error
       }
       return fixedHtml;
@@ -1195,7 +1195,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
             }
           });
         }
-      } catch (error) {
+      } catch {
         // Silently fail
       }
       return results;
@@ -1237,7 +1237,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
             });
           }
         });
-      } catch (error) {
+      } catch {
         // Fallback to regex check
         return EMAIL_VALIDATION_RULES["block-element-tags"].check(html, _config);
       }
@@ -1278,7 +1278,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
             });
           }
         }
-      } catch (error) {
+      } catch {
         // Return original on error
       }
       return fixedHtml;
@@ -1365,7 +1365,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
             }
           });
         }
-      } catch (error) {
+      } catch {
         // Silently fail
       }
       return results;
@@ -1418,7 +1418,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
             });
           }
         });
-      } catch (error) {
+      } catch {
         // Fallback to regex check
         return EMAIL_VALIDATION_RULES["dangerous-tags"].check(html, _config);
       }
@@ -1462,7 +1462,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
             fixedHtml = fixedHtml.replace(selfClosingRegex, "");
           });
         }
-      } catch (error) {
+      } catch {
         // Return original on error
       }
       return fixedHtml;
@@ -1493,7 +1493,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
             category: "best-practice",
           });
         }
-      } catch (error) {
+      } catch {
         // Silently fail
       }
       return results;
@@ -1537,7 +1537,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
             break;
           }
         }
-      } catch (error) {
+      } catch {
         // Return original on error
       }
       return fixedHtml;
@@ -1573,7 +1573,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
             category: "structure",
           });
         }
-      } catch (error) {
+      } catch {
         // Silently fail
       }
       return results;
@@ -1620,7 +1620,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
           ),
           "$1"
         );
-      } catch (error) {
+      } catch {
         // Return original on error
       }
       return fixedHtml;
@@ -1651,7 +1651,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
             category: "best-practice",
           });
         }
-      } catch (error) {
+      } catch {
         // Silently fail
       }
       return results;
@@ -1664,7 +1664,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
         // Remove empty and whitespace-only span tags
         fixedHtml = fixedHtml.replace(RegexCache.get("<span[^>]*>\\s*<\\/span>"), "");
         fixedHtml = fixedHtml.replace(RegexCache.get("<span[^>]*>[\\s\\t\\n\\r]*<\\/span>"), "");
-      } catch (error) {
+      } catch {
         // Return original on error
       }
       return fixedHtml;
@@ -1707,7 +1707,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
             category: "structure",
           });
         }
-      } catch (error) {
+      } catch {
         // Silently fail
       }
       return results;
@@ -1730,7 +1730,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
           .add(RegexCache.get('(<img[^>]*?)([a-zA-Z0-9_.-]+")([a-zA-Z]+=)'), "$1$2 $3");
 
         fixedHtml = batcher.execute(fixedHtml);
-      } catch (error) {
+      } catch {
         // Return original on error
       }
       return fixedHtml;
@@ -1812,7 +1812,7 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
           // Ensure proper self-closing format
           return `<img${newAttrs} />`;
         });
-      } catch (error) {
+      } catch {
         // Return original on error
       }
       return fixedHtml;

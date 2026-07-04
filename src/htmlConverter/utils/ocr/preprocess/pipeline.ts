@@ -5,7 +5,7 @@
 import type { GrayscaleMode } from "./grayscale";
 import { toGrayscale } from "./grayscale";
 import { applySharpen } from "./sharpen";
-import { boxBlur3x3, applyContrastAndThreshold, computeOtsuThreshold } from "./threshold";
+import { applyContrastAndThreshold, boxBlur3x3, computeOtsuThreshold } from "./threshold";
 
 /**
  * Preprocess a canvas for OCR with various enhancement options

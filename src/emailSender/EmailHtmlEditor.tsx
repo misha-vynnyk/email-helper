@@ -1,15 +1,13 @@
-import React from "react";
-
 import { html } from "@codemirror/lang-html";
 import { Clear, Code, Send } from "@mui/icons-material";
-import { alpha, Alert, Box, Button, Stack, TextField, Typography, useTheme } from "@mui/material";
+import { Alert, alpha, Box, Button, Stack, TextField, Typography, useTheme } from "@mui/material";
 import CodeMirror from "@uiw/react-codemirror";
+import React from "react";
 
 import EmailValidationPanel from "../emailValidator/EmailValidationPanel";
 import { StyledPaper, useThemeMode } from "../theme";
 import { getComponentStyles } from "../theme/componentStyles";
 import { createCodeMirrorTheme } from "../utils/codemirrorTheme";
-
 import { useEmailSender } from "./EmailSenderContext";
 
 const EmailHtmlEditor: React.FC = () => {

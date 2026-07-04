@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ImageAnalysisSettings } from "../types";
-import { createOcrAnalyzer, type OcrAnalyzeResult, type OcrAnalyzer } from "../utils/imageAnalysis";
+import { createOcrAnalyzer, type OcrAnalyzer,type OcrAnalyzeResult } from "../utils/imageAnalysis";
 import type { ImageAiAnalysis } from "../utils/ocrUiTypes";
 
 export type OcrFile = { id: string; name: string; path?: string };
@@ -96,8 +96,8 @@ export function useOcrAnalysis({ enabled, settings, files }: UseOcrAnalysisArgs)
         });
 
         return result;
-      } catch (err: any) {
-        if (err?.name === "AbortError") {
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") {
           setAiState(file.id, { status: "idle", progress: undefined });
           return null;
         }

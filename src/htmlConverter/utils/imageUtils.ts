@@ -3,7 +3,7 @@
  */
 
 import { IMAGE_EXCLUSION_ALT_REGEX } from "../constants";
-import type { ProcessedImage, ImageFormat } from "../types";
+import type { ImageFormat,ProcessedImage } from "../types";
 
 /** Exclude from extraction: img with alt containing "Signature" (e.g. sign-i, sign-i-e) */
 export function isSignatureImageAlt(alt: string | null): boolean {
@@ -63,7 +63,7 @@ export const detectTransparency = async (src: string): Promise<boolean> => {
         }
 
         resolve(false);
-      } catch (error) {
+      } catch {
         // If error (e.g., CORS), assume no transparency
         resolve(false);
       }

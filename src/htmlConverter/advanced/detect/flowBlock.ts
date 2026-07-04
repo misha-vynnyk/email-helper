@@ -1,8 +1,8 @@
 // Phase 4: classify <p>/<h*> StructuralNodes into paragraph ComponentNodes.
 
-import type { StructuralNode, ComponentNode, Run } from "../ir/types";
-import { tokens as defaultTokens } from "../config/tokens";
 import type { Tokens } from "../config/tokens";
+import { tokens as defaultTokens } from "../config/tokens";
+import type { ComponentNode, Run,StructuralNode } from "../ir/types";
 
 export function classifyFlow(nodes: StructuralNode[], tok: Tokens = defaultTokens): ComponentNode[] {
   const result: ComponentNode[] = [];

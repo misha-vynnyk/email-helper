@@ -3,12 +3,12 @@
  * Allows users to manage allowed directories for template import
  */
 
-import { X as CloseIcon, Trash2 as DeleteIcon, FolderOpen as FolderOpenIcon } from "lucide-react";
+import { FolderOpen as FolderOpenIcon,Trash2 as DeleteIcon, X as CloseIcon } from "lucide-react";
 import { useEffect, useState } from "react";
-import Modal from "./Modal";
 
-import { addAllowedRoot, getAllowedRoots, removeAllowedRoot } from "../utils/templateApi";
 import { useElectronAPI } from "../../hooks/useElectronAPI";
+import { addAllowedRoot, getAllowedRoots, removeAllowedRoot } from "../utils/templateApi";
+import Modal from "./Modal";
 
 interface DirectoryManagementModalProps {
   open: boolean;

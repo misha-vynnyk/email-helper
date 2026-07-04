@@ -1,12 +1,14 @@
+import { X } from "lucide-react";
 import React, { Dispatch, SetStateAction } from "react";
-import type { ImageAnalysisSettings } from "../types";
-import type { UiSettings } from "../hooks/useHtmlConverterSettings";
-import type { UploadMode } from "../hooks/useHtmlConverterLogic";
-import { UiSettingsTab } from "./UiSettingsTab";
-import { ImageSettingsTab } from "./ImageSettingsTab";
+
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { X } from "lucide-react";
+
+import type { UploadMode } from "../hooks/useHtmlConverterLogic";
+import type { UiSettings } from "../hooks/useHtmlConverterSettings";
+import type { ImageAnalysisSettings } from "../types";
+import { ImageSettingsTab } from "./ImageSettingsTab";
+import { UiSettingsTab } from "./UiSettingsTab";
 
 type SettingsPopoverProps = {
   open: boolean;

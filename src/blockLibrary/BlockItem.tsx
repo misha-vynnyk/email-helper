@@ -3,8 +3,6 @@
  * Displays a single block card with preview and actions
  */
 
-import React, { useEffect, useMemo, useState } from "react";
-
 import {
   Add as AddIcon,
   Code as CodeIcon,
@@ -37,13 +35,12 @@ import {
   useTheme,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
+import React, { useEffect, useMemo, useState } from "react";
 
 import { useThemeMode } from "../theme";
 import { getComponentStyles } from "../theme/componentStyles";
-
-import { logger } from "../utils/logger";
 import { EmailBlock } from "../types/block";
-
+import { logger } from "../utils/logger";
 import { blockFileApi } from "./blockFileApi";
 import { updateCustomBlock } from "./blockLoader";
 import { getCategoryIcon } from "./categoryIcons";

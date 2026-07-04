@@ -51,7 +51,7 @@ export const ValidationChecks = {
       // Для простої перевірки існування використовуємо test() без global флага
       const testFlags = flags.replace("g", "");
       return RegexCache.get(pattern, testFlags).test(html);
-    } catch (error) {
+    } catch {
       return false;
     }
   },
@@ -75,7 +75,7 @@ export const ValidationChecks = {
       for (const m of html.matchAll(regex)) {
         matches.push(m as unknown as RegExpExecArray);
       }
-    } catch (error) {
+    } catch {
       // Return empty array on error
     }
     return matches;
@@ -205,7 +205,7 @@ export const AutofixUtils = {
         );
         fixedHtml = fixedHtml.replace(RegexCache.get(closingPattern, "gi"), "</span>");
       });
-    } catch (error) {
+    } catch {
       // Return original on error
     }
     return fixedHtml;
@@ -231,7 +231,7 @@ export const AutofixUtils = {
           fixedHtml = fixedHtml.replace(RegexCache.get(closingPattern), "</td></tr></table>");
         });
       }
-    } catch (error) {
+    } catch {
       // Return original on error
     }
     return fixedHtml;
@@ -257,7 +257,7 @@ export const AutofixUtils = {
           fixedHtml = fixedHtml.replace(RegexCache.get(selfClosingPattern), "");
         });
       }
-    } catch (error) {
+    } catch {
       // Return original on error
     }
     return fixedHtml;
@@ -292,7 +292,7 @@ export const AutofixUtils = {
 
       // Don't wrap single text spans in tables
       fixedHtml = fixedHtml.replace(RegexCache.get(REGEX_PATTERNS.TABLE_SINGLE_SPAN_WRAPPER), "$1");
-    } catch (error) {
+    } catch {
       // Return original on error
     }
     return fixedHtml;
@@ -337,7 +337,7 @@ export const AutofixUtils = {
         );
         iterations++;
       } while (prevHtml !== fixedHtml && iterations < maxIterations);
-    } catch (error) {
+    } catch {
       // Return original on error
     }
     return fixedHtml;
@@ -353,7 +353,7 @@ export const AutofixUtils = {
     try {
       fixedHtml = fixedHtml.replace(RegexCache.get(REGEX_PATTERNS.EMPTY_SPAN), "");
       fixedHtml = fixedHtml.replace(RegexCache.get(REGEX_PATTERNS.EMPTY_SPAN_WHITESPACE), "");
-    } catch (error) {
+    } catch {
       // Return original on error
     }
     return fixedHtml;

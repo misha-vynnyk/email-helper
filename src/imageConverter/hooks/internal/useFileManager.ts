@@ -6,10 +6,10 @@
 
 import { useCallback, useRef, useState } from "react";
 
+import { MAX_FILE_SIZE_CLIENT, MAX_FILE_SIZE_SERVER } from "../../constants";
 import { ConversionSettings, ImageFile } from "../../types";
 import { detectImageFormat, getExtensionForFormat } from "../../utils/imageFormatDetector";
 import { validateImageFiles } from "../../utils/validators";
-import { MAX_FILE_SIZE_CLIENT, MAX_FILE_SIZE_SERVER } from "../../constants";
 
 export function useFileManager(settings: ConversionSettings) {
   const [files, setFiles] = useState<ImageFile[]>([]);

@@ -177,7 +177,7 @@ export function extractMarkedSectionWithStyles(html: string, sectionPrefix: stri
     'i'
   );
   
-  let blockMatch = extRegex.exec(html);
+  const blockMatch = extRegex.exec(html);
   let extractedContent = '';
   
   if (blockMatch) {

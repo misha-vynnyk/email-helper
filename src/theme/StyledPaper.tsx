@@ -1,8 +1,8 @@
+import { Paper, type PaperProps } from "@mui/material";
 import type { ReactElement } from "react";
 
-import { Paper, type PaperProps } from "@mui/material";
-import { useThemeMode } from "./ThemeContext";
 import { getComponentStyles } from "./componentStyles";
+import { useThemeMode } from "./ThemeContext";
 
 export type StyledPaperProps = PaperProps & {
   /**

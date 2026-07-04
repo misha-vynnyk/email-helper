@@ -3,8 +3,8 @@
  * Props-based. Tailwind styling.
  */
 
+import { Cloud, Cpu,Monitor } from "lucide-react";
 import { useEffect } from "react";
-import { Monitor, Cloud, Cpu } from "lucide-react";
 
 import { isApiAvailable } from "../../config/api";
 import { ConversionSettings, ProcessingMode } from "../types";

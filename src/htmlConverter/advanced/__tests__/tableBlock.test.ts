@@ -1,6 +1,6 @@
+import { mergeTokens,tokens } from "../config/tokens";
 import { classifyTable } from "../detect/tableBlock";
-import { tokens, mergeTokens } from "../config/tokens";
-import type { TableNode, CellNode, Paragraph } from "../ir/types";
+import type { CellNode, Paragraph,TableNode } from "../ir/types";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

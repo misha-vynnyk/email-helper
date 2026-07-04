@@ -3,7 +3,8 @@
  * Props-based (no context). Tailwind styling.
  */
 
-import { Check, Square, Trash2, Download, Play, X } from "lucide-react";
+import { Check, Download, Play, Square, Trash2, X } from "lucide-react";
+
 import { ImageFile } from "../types";
 
 interface BulkActionsProps {

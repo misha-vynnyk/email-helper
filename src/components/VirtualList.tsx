@@ -28,6 +28,7 @@ export function VirtualList<RowProps>({
   listKey,
   ...props
 }: VirtualListProps<RowProps>): ReactElement {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- react-window v2's List generics can't express this wrapper's props; isolated cast keeps callers type-safe
   const ListCompat = List as unknown as (p: any) => ReactElement;
   return <ListCompat key={listKey} {...props} />;
 }

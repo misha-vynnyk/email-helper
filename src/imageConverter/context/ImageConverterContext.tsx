@@ -1,5 +1,7 @@
 import React, { createContext, useCallback, useContext, useState } from "react";
 
+import { logger } from "../../utils/logger";
+import { STORAGE_KEYS } from "../../utils/storageKeys";
 import {
   DEFAULT_AUTO_CONVERT,
   DEFAULT_AUTO_QUALITY,
@@ -12,14 +14,12 @@ import {
   DEFAULT_QUALITY,
 } from "../constants";
 import { LIMITS, TIMING } from "../constants/limits";
-import { logger } from "../../utils/logger";
-import { STORAGE_KEYS } from "../../utils/storageKeys";
 import { ConversionResult, ConversionSettings, ImageFile } from "../types";
 import { convertImageClient } from "../utils/clientConverter";
 import { extractExif, insertExif } from "../utils/exifPreserver";
-import { detectImageFormat, getExtensionForFormat } from "../utils/imageFormatDetector";
 import { imageCache } from "../utils/imageCache";
 import { convertImageServer } from "../utils/imageConverterApi";
+import { detectImageFormat, getExtensionForFormat } from "../utils/imageFormatDetector";
 import { performanceMonitor } from "../utils/performanceMonitor";
 import { calculateOptimalQuality } from "../utils/qualityOptimizer";
 import { WorkerPool } from "../workers/workerPool";
@@ -423,7 +423,7 @@ export const ImageConverterProvider: React.FC<{ children: React.ReactNode }> = (
         }
       }
     },
-    [settings]
+    [settings, USE_WORKERS]
   );
 
   // Process conversion queue with parallel processing

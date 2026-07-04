@@ -1,6 +1,6 @@
+import { Copy } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Copy } from "lucide-react";
 
 interface DiagnosticsPanelProps {
   logs: string[];

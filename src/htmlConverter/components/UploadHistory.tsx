@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
-import { History as HistoryIcon, Copy as CopyIcon, Link as LinkIcon, CheckCircle as CheckIcon, ChevronDown as ExpandMoreIcon, ChevronUp as ExpandLessIcon, Trash2 as DeleteIcon, Folder as FolderIcon, Clock as TimeIcon, Image as ImageIcon, FileText as AltIcon, ChevronLeft, ChevronRight } from "lucide-react";
-import { copyToClipboard } from "../utils/clipboard";
+import { CheckCircle as CheckIcon, ChevronDown as ExpandMoreIcon, ChevronLeft, ChevronRight,ChevronUp as ExpandLessIcon, Clock as TimeIcon, Copy as CopyIcon, FileText as AltIcon, Folder as FolderIcon, History as HistoryIcon, Image as ImageIcon, Link as LinkIcon, Trash2 as DeleteIcon } from "lucide-react";
+import { useEffect,useState } from "react";
+
 import { UI_TIMINGS, UPLOAD_CONFIG } from "../constants";
-import { formatTimeRelative } from "../utils/formatters";
 import type { UploadSession } from "../types";
+import { copyToClipboard } from "../utils/clipboard";
+import { formatTimeRelative } from "../utils/formatters";
 
 interface UploadHistoryProps {
   sessions: UploadSession[];

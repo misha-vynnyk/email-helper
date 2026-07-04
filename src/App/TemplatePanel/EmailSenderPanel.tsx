@@ -1,6 +1,5 @@
-import React, { lazy, Suspense } from "react";
-
 import { Box, CircularProgress, Typography } from "@mui/material";
+import React, { lazy, Suspense } from "react";
 
 import { EmailSenderProvider } from "../../emailSender/EmailSenderContext";
 

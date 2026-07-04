@@ -3,12 +3,12 @@
  * Manage storage locations for template synchronization with add/remove capabilities
  */
 
-import { Plus as AddIcon, X as CloseIcon, Trash2 as DeleteIcon, FolderOpen, Star as StarIcon, Eye as VisibilityIcon, EyeOff as VisibilityOffIcon } from "lucide-react";
+import { Eye as VisibilityIcon, EyeOff as VisibilityOffIcon,FolderOpen, Plus as AddIcon, Star as StarIcon, Trash2 as DeleteIcon, X as CloseIcon } from "lucide-react";
 import { useState } from "react";
-import { getElectronAPI } from "../../hooks/useElectronAPI";
-import Modal from "./Modal";
 
+import { getElectronAPI } from "../../hooks/useElectronAPI";
 import { addTemplateStorageLocation, getTemplateStorageLocations, removeTemplateStorageLocation, setDefaultTemplateLocation, TemplateStorageLocation, toggleTemplateLocationVisibility } from "../utils/templateStorageConfig";
+import Modal from "./Modal";
 
 interface TemplateStorageModalProps {
   open: boolean;

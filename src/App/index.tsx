@@ -1,10 +1,9 @@
 import "react-toastify/dist/ReactToastify.css";
 
+import { Stack, useTheme } from "@mui/material";
 import { useState } from "react";
 import { ErrorBoundary, type FallbackProps } from "react-error-boundary";
 import { ToastContainer } from "react-toastify";
-
-import { Stack, useTheme } from "@mui/material";
 
 import { EmailSettingsMenu } from "../components/EmailSettingsMenu";
 import { RegistrationForm } from "../components/RegistrationForm";
@@ -12,7 +11,6 @@ import { SplashLoader } from "../components/SplashLoader";
 import { useSamplesDrawerOpen } from "../contexts/AppState";
 import { useRegistrationStatus } from "../hooks/useRegistrationStatus";
 import { useServerHealthCheck } from "../hooks/useServerHealthCheck";
-
 import SamplesDrawer, { SAMPLES_DRAWER_WIDTH } from "./SamplesDrawer";
 import TemplatePanel from "./TemplatePanel";
 

@@ -1,6 +1,6 @@
-import { classify } from "../detect/classify";
 import { tokens } from "../config/tokens";
-import type { StructuralNode, Paragraph, TableNode, CellNode } from "../ir/types";
+import { classify } from "../detect/classify";
+import type { CellNode,Paragraph, StructuralNode, TableNode } from "../ir/types";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
