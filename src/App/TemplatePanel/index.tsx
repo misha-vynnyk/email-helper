@@ -2,17 +2,25 @@ import { Box, CircularProgress, Fade, Stack } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import React from "react";
 
-import { BlockLibrary } from "../../blockLibrary";
 import { useSelectedMainTab } from "../../contexts/AppState";
 import { EmailSenderProvider } from "../../emailSender/EmailSenderContext";
-import { HtmlConverterPanel } from "../../htmlConverter";
-import { ImageConverterPanel } from "../../imageConverter";
-import { TemplateLibrary } from "../../templateLibrary";
 import { getComponentStyles, ThemeStyleSelector, ThemeToggle, useThemeMode } from "../../theme";
 import ToggleSamplesPanelButton from "../SamplesDrawer/ToggleSamplesPanelButton";
-import EmailSenderPanel from "./EmailSenderPanel";
 import MainTabsGroup from "./MainTabsGroup";
 import TabPanel from "./TabPanel";
+
+// Code-splitting: кожен таб — окремий чанк, завантажується при першому відкритті
+const EmailSenderPanel = React.lazy(() => import("./EmailSenderPanel"));
+const BlockLibrary = React.lazy(() => import("../../blockLibrary/BlockLibrary"));
+const TemplateLibrary = React.lazy(() => import("../../templateLibrary/TemplateLibrary"));
+const ImageConverterPanel = React.lazy(() => import("../../imageConverter/components/ImageConverterPanel"));
+const HtmlConverterPanel = React.lazy(() => import("../../htmlConverter/HtmlConverterPanel"));
+
+const tabLoadingFallback = (
+  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
+    <CircularProgress size={40} />
+  </Box>
+);
 
 export default function TemplatePanel() {
   const { mode, style } = useThemeMode();
@@ -104,27 +112,29 @@ export default function TemplatePanel() {
         </Fade>
 
         {/* Lazy mounting: рендеримо таб лише якщо він був відкритий хоча б раз */}
-        <TabPanel value='email' selectedValue={deferredTab} mounted={mountedTabs.has("email")}>
-          <EmailSenderPanel />
-        </TabPanel>
+        <React.Suspense fallback={tabLoadingFallback}>
+          <TabPanel value='email' selectedValue={deferredTab} mounted={mountedTabs.has("email")}>
+            <EmailSenderPanel />
+          </TabPanel>
 
-        <TabPanel value='blocks' selectedValue={deferredTab} mounted={mountedTabs.has("blocks")}>
-          <BlockLibrary />
-        </TabPanel>
+          <TabPanel value='blocks' selectedValue={deferredTab} mounted={mountedTabs.has("blocks")}>
+            <BlockLibrary />
+          </TabPanel>
 
-        <TabPanel value='templates' selectedValue={deferredTab} mounted={mountedTabs.has("templates")}>
-          <EmailSenderProvider>
-            <TemplateLibrary />
-          </EmailSenderProvider>
-        </TabPanel>
+          <TabPanel value='templates' selectedValue={deferredTab} mounted={mountedTabs.has("templates")}>
+            <EmailSenderProvider>
+              <TemplateLibrary />
+            </EmailSenderProvider>
+          </TabPanel>
 
-        <TabPanel value='images' selectedValue={deferredTab} mounted={mountedTabs.has("images")}>
-          <ImageConverterPanel />
-        </TabPanel>
+          <TabPanel value='images' selectedValue={deferredTab} mounted={mountedTabs.has("images")}>
+            <ImageConverterPanel />
+          </TabPanel>
 
-        <TabPanel value='converter' selectedValue={deferredTab} mounted={mountedTabs.has("converter")}>
-          <HtmlConverterPanel />
-        </TabPanel>
+          <TabPanel value='converter' selectedValue={deferredTab} mounted={mountedTabs.has("converter")}>
+            <HtmlConverterPanel />
+          </TabPanel>
+        </React.Suspense>
       </Box>
     </>
   );
