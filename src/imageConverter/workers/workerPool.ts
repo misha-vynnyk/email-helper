@@ -5,7 +5,6 @@
 
 import { logger } from '../../utils/logger';
 import { ConversionSettings } from '../types';
-
 // Import worker - Vite will handle this correctly in production
 // Using ?worker suffix tells Vite to bundle this as a worker
 import WorkerConstructor from './imageWorker.ts?worker';

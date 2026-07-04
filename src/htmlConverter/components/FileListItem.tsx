@@ -5,8 +5,9 @@
  * This is a "dumb" presentational component — all state lives in the parent.
  */
 
+import { AlertTriangle,GripVertical, X } from "lucide-react";
 import React from "react";
-import { GripVertical, X, AlertTriangle } from "lucide-react";
+
 import { normalizeCustomNameInput } from "../utils/imageAnalysis";
 import type { ImageAiAnalysis } from "../utils/ocrUiTypes";
 

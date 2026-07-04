@@ -47,22 +47,22 @@ class Logger {
     return `${timestamp}[${levelStr}] [${context}] ${message}`;
   }
 
-  debug(context: string, message: string, data?: any): void {
+  debug(context: string, message: string, data?: unknown): void {
     if (!this.shouldLog("debug")) return;
     console.debug(this.formatMessage("debug", context, message), data);
   }
 
-  info(context: string, message: string, data?: any): void {
+  info(context: string, message: string, data?: unknown): void {
     if (!this.shouldLog("info")) return;
     console.info(this.formatMessage("info", context, message), data);
   }
 
-  warn(context: string, message: string, data?: any): void {
+  warn(context: string, message: string, data?: unknown): void {
     if (!this.shouldLog("warn")) return;
     console.warn(this.formatMessage("warn", context, message), data);
   }
 
-  error(context: string, message: string, error?: any): void {
+  error(context: string, message: string, error?: unknown): void {
     if (!this.shouldLog("error")) return;
     console.error(this.formatMessage("error", context, message), error);
   }

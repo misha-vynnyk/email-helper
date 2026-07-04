@@ -1,9 +1,10 @@
-import { useState, Dispatch, SetStateAction } from "react";
 import { Code, Settings } from "lucide-react";
-import { SettingsPopover } from "./SettingsPopover";
+import { Dispatch, SetStateAction,useState } from "react";
+
+import type { UploadMode } from "../hooks/useHtmlConverterLogic";
 import type { UiSettings } from "../hooks/useHtmlConverterSettings";
 import type { ImageAnalysisSettings } from "../types";
-import type { UploadMode } from "../hooks/useHtmlConverterLogic";
+import { SettingsPopover } from "./SettingsPopover";
 
 interface HeaderProps {
   ui: UiSettings;

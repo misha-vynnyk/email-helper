@@ -16,8 +16,8 @@ const API_URL = import.meta.env.VITE_API_URL || "";
 // We detect Electron via the preload-injected flag and use the actual port
 // communicated by the main process (may differ from 3001 if that port was busy).
 export const getApiBase = (): string => {
-  if (typeof window !== "undefined" && (window as any).electronAPI?.isElectron) {
-    const port = (window as any).electronAPI?.serverPort ?? 3001;
+  if (typeof window !== "undefined" && window.electronAPI?.isElectron) {
+    const port = window.electronAPI?.serverPort ?? 3001;
     return `http://localhost:${port}`;
   }
   return "";
@@ -28,7 +28,7 @@ export const isApiAvailable = () => {
   // Always available in development (via proxy)
   if (import.meta.env.DEV) return true;
   // Always available in packaged Electron (embedded Express server)
-  if (typeof window !== "undefined" && (window as any).electronAPI?.isElectron) return true;
+  if (typeof window !== "undefined" && window.electronAPI?.isElectron) return true;
   return !!API_URL;
 };
 

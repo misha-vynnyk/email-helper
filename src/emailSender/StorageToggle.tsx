@@ -1,5 +1,3 @@
-import React from "react";
-
 import { Edit, SettingsApplications, Storage } from "@mui/icons-material";
 import {
   Alert,
@@ -9,6 +7,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import React from "react";
 
 import { StyledPaper } from "../theme";
 import { useEmailSender } from "./EmailSenderContext";

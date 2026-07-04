@@ -190,8 +190,8 @@ export function autoDetectRoiFracs(canvas: HTMLCanvasElement, edgeThreshold: num
       const i0 = idx(gx, gy);
       if (!active[i0] || seen[i0]) continue;
       // BFS cluster on grid
-      let qx: number[] = [gx];
-      let qy: number[] = [gy];
+      const qx: number[] = [gx];
+      const qy: number[] = [gy];
       seen[i0] = 1;
       let minX = gx,
         maxX = gx,

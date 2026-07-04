@@ -3,8 +3,8 @@
 
 import { SYMBOLS } from "../constants";
 import {
-  replaceAllEmojisAndSymbolsExcludingHTML,
   mergeSimilarTags,
+  replaceAllEmojisAndSymbolsExcludingHTML,
 } from "../utils/htmlUtils";
 
 const ONE_BR_RE = new RegExp(

@@ -1,7 +1,6 @@
-import React from "react";
-
-import { EmailOutlined, FolderOpen, Image as ImageIcon, ViewModule, TableChart as TableIcon } from "@mui/icons-material";
+import { EmailOutlined, FolderOpen, Image as ImageIcon, TableChart as TableIcon,ViewModule } from "@mui/icons-material";
 import { Tab, Tabs, Tooltip } from "@mui/material";
+import React from "react";
 
 import { setSelectedMainTab, useSelectedMainTab } from "../../contexts/AppState";
 

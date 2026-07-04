@@ -2,21 +2,21 @@
 // Converts Run[] → HTML before delegating to templates (avoids circular dep).
 // All functions accept optional (tmpl, tok) so profile overrides propagate.
 
-import type { ComponentNode, Run } from "../ir/types";
-import { isDarkBg } from "../ir/color";
 import {
-  templates as defaultTemplates,
-  buildTemplates,
-  type ParagraphOpts,
   type AlertBandOpts,
+  buildTemplates,
   type ButtonBandOpts,
   type CalloutOpts,
-  type GridOpts,
   type DividerOpts,
+  type GridOpts,
+  type ParagraphOpts,
   type RecordOpts,
+  templates as defaultTemplates,
 } from "../config/templates";
-import { tokens as defaultTokens } from "../config/tokens";
 import type { Tokens } from "../config/tokens";
+import { tokens as defaultTokens } from "../config/tokens";
+import { isDarkBg } from "../ir/color";
+import type { ComponentNode, Run } from "../ir/types";
 
 type Templates = ReturnType<typeof buildTemplates>;
 
@@ -46,7 +46,7 @@ function wrapInline(tag: string, inner: string, style?: string): string {
 export function renderRuns(runs: Run[], tok: Tokens = defaultTokens, baseColor?: string): string {
   const { bold: B, italic: I, underline: U, colorWrap: S } = tok.tags;
   return runs.map(run => {
-    let html = esc(run.text);
+    const html = esc(run.text);
 
     if (run.href && isSafeHref(run.href)) {
       const linkColor = run.color ?? tok.color.link;

@@ -4,11 +4,11 @@
  */
 
 // Re-export from api/types for convenience
-export type { ApiResponse, ApiError, PaginatedResponse } from "../api/types";
+export type { ApiError, ApiResponse, PaginatedResponse } from "../api/types";
 
 export interface ApiRequestConfig {
   headers?: Record<string, string>;
-  params?: Record<string, any>;
+  params?: Record<string, string | number | boolean>;
   timeout?: number;
 }
 

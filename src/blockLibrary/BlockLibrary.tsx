@@ -3,8 +3,6 @@
  * Main component for browsing and managing email blocks
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-
 import {
   Add as AddIcon,
   Refresh as RefreshIcon,
@@ -27,10 +25,13 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { EmailBlock } from "../types/block";
+import { useDebounce } from "../hooks/useDebounce";
 import { StyledCard } from "../theme";
-
+import { EmailBlock } from "../types/block";
+import { preloadBlocksImages } from "../utils/blockImagePreloader";
+import { logger } from "../utils/logger";
 import AddBlockModal from "./AddBlockModal";
 import { blockFileApi } from "./blockFileApi";
 import {
@@ -41,14 +42,11 @@ import {
   saveCustomBlocks,
   searchBlocks,
 } from "./blockLoader";
-import BlockStorageModal from "./BlockStorageModal";
-import VirtualizedBlockGrid from "./VirtualizedBlockGrid";
 import { getStorageLocations } from "./blockStorageConfig";
+import BlockStorageModal from "./BlockStorageModal";
 import { GRID, TIMEOUTS } from "./constants";
 import { formatErrorMessage } from "./errorHandling";
-import { useDebounce } from "../hooks/useDebounce";
-import { logger } from "../utils/logger";
-import { preloadBlocksImages } from "../utils/blockImagePreloader";
+import VirtualizedBlockGrid from "./VirtualizedBlockGrid";
 
 export default function BlockLibrary() {
   const [predefinedBlocks, setPredefinedBlocks] = useState<EmailBlock[]>([]);

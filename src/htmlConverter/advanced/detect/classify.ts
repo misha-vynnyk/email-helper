@@ -1,10 +1,10 @@
 // Phase 3: dispatch StructuralNode[] → ComponentNode[].
 
-import type { StructuralNode, TableNode, ComponentNode, Run } from "../ir/types";
-import { classifyTable } from "./tableBlock";
-import { classifyFlow } from "./flowBlock";
-import { tokens as defaultTokens } from "../config/tokens";
 import type { Tokens } from "../config/tokens";
+import { tokens as defaultTokens } from "../config/tokens";
+import type { ComponentNode, Run,StructuralNode, TableNode } from "../ir/types";
+import { classifyFlow } from "./flowBlock";
+import { classifyTable } from "./tableBlock";
 
 function pushMerged(result: ComponentNode[], comp: ComponentNode): void {
   const last = result[result.length - 1];

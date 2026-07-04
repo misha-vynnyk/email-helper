@@ -1,5 +1,3 @@
-import React, { Suspense, lazy, useEffect, useMemo, useState } from "react";
-
 import {
   Accessibility,
   AutoFixHigh,
@@ -20,7 +18,6 @@ import {
   Speed,
   Warning,
 } from "@mui/icons-material";
-import { alpha } from "@mui/material/styles";
 import {
   Accordion,
   AccordionDetails,
@@ -61,13 +58,15 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
+import React, { lazy, Suspense, useEffect, useMemo, useState } from "react";
 
 import { useThemeMode } from "../theme";
 import { getComponentStyles } from "../theme/componentStyles";
+import { logger } from "../utils/logger";
 import { EmailHTMLValidator } from "./EmailHTMLValidator";
 import { EmailValidationReport, ValidationResult, ValidationSeverity } from "./types";
 import { EMAIL_VALIDATION_RULES } from "./validationRules";
-import { logger } from "../utils/logger";
 
 const EmailValidationDevTools = import.meta.env.DEV
   ? lazy(() => import("./EmailValidationDevTools"))
@@ -612,7 +611,7 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
                     if (count <= 0) return base;
 
                     const main =
-                      ((theme.palette as any)[category.color]?.main as string | undefined) ??
+                      (theme.palette[category.color].main) ??
                       theme.palette.primary.main;
                     const overlay = alpha(main, theme.palette.mode === "dark" ? 0.18 : 0.06);
                     return `linear-gradient(0deg, ${overlay}, ${overlay}), ${base}`;
@@ -622,7 +621,7 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
                   border: (() => {
                     if (count <= 0) return componentStyles.card.border;
                     const main =
-                      ((theme.palette as any)[category.color]?.main as string | undefined) ??
+                      (theme.palette[category.color].main) ??
                       theme.palette.primary.main;
                     const ring = alpha(main, theme.palette.mode === "dark" ? 0.7 : 0.45);
                     return componentStyles.card.border === "none"
@@ -633,7 +632,7 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
                     if (count <= 0) return componentStyles.card.boxShadow;
                     if (componentStyles.card.border !== "none") return componentStyles.card.boxShadow;
                     const main =
-                      ((theme.palette as any)[category.color]?.main as string | undefined) ??
+                      (theme.palette[category.color].main) ??
                       theme.palette.primary.main;
                     const ring = alpha(main, theme.palette.mode === "dark" ? 0.7 : 0.45);
                     return `${componentStyles.card.boxShadow}, 0 0 0 1px ${ring}`;

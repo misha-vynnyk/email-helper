@@ -1,9 +1,10 @@
 import * as fs from "fs";
 import * as path from "path";
-import { convertAdvanced } from "../index";
+
 import { tokens } from "../config/tokens";
-import { profile as tttProfile } from "../profiles/ttt";
+import { convertAdvanced } from "../index";
 import { profile as alphaoneProfile } from "../profiles/alphaone";
+import { profile as tttProfile } from "../profiles/ttt";
 
 const FIXTURES = path.join(__dirname, "fixtures/raw");
 

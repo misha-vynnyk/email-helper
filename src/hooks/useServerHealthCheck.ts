@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+
 import { getApiBase, isApiAvailable } from "../config/api";
 import { logger } from "../utils/logger";
 
@@ -96,7 +97,7 @@ export const useServerHealthCheck = (): ServerHealthStatus => {
             throw new Error(`Server returned ${response.status}`);
           }
         }
-      } catch (error) {
+      } catch {
         if (isMounted) {
           retryCount++;
 

@@ -1,6 +1,7 @@
-import { ProcessedImage, ImageFormat, ImageFormatOverride } from "../types";
+import { Download,X } from "lucide-react";
+
+import { ImageFormat, ImageFormatOverride,ProcessedImage } from "../types";
 import { getImageFormat } from "../utils/imageUtils";
-import { X, Download } from "lucide-react";
 
 interface ImageItemProps {
   image: ProcessedImage;

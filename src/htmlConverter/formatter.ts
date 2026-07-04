@@ -2,11 +2,11 @@
  * Main HTML/MJML formatting logic
  */
 
-import { config } from "./utils/config";
-import { htmlTemplates, mjmlTemplates } from "./templates";
-import * as utils from "./utils/htmlUtils";
-import * as colorUtils from "./utils/colorUtils";
 import { PLACEHOLDER_URL } from "./constants";
+import { htmlTemplates, mjmlTemplates } from "./templates";
+import * as colorUtils from "./utils/colorUtils";
+import { config } from "./utils/config";
+import * as utils from "./utils/htmlUtils";
 
 function getInlineStyleValue(style: string, property: string): string | null {
   const targetProperty = property.trim().toLowerCase();
@@ -86,6 +86,7 @@ function italicLinks(htmlContent: string): string {
     return match;
   });
 
+  // eslint-disable-next-line no-control-regex -- \x02/\x03 are deliberate sentinel bytes marking saved-link placeholders
   htmlContent = htmlContent.replace(/\x02LINK(\d+)\x03/g, (_, i) => savedLinks[+i] ?? "");
 
   return htmlContent;

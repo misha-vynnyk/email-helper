@@ -1,3 +1,4 @@
+import { logger } from "../utils/logger";
 import { ASTCache, RegexCache } from "./cache";
 import {
   CACHE_SCORING_WEIGHTS,
@@ -15,7 +16,6 @@ import {
   ValidationRule,
 } from "./types";
 import { EMAIL_VALIDATION_RULES } from "./validationRules";
-import { logger } from "../utils/logger";
 
 /**
  * Handles HTML validation logic separately from autofix functionality

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+
 import { getElectronAPI } from "../../hooks/useElectronAPI";
 import { IMAGE_DEFAULTS, STORAGE_KEYS } from "../constants";
 import { useAppDiagnostics } from "./internal/useAppDiagnostics";
@@ -221,7 +222,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
       try {
         await navigator.clipboard.writeText(content);
         addLog(`✅ ${type} скопійовано в буфер`);
-      } catch (err) {
+      } catch {
         addLog("❌ Помилка копіювання");
       }
     },
@@ -241,7 +242,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
     (value: boolean) => {
       settings.setUi((prev) => ({ ...prev, approveNeededValue: value }));
     },
-    [settings.setUi]
+    [settings]
   );
 
   return {

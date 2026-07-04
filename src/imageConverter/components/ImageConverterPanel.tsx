@@ -5,9 +5,9 @@
  */
 
 import { useImageConverterLogic } from "../hooks/useImageConverterLogic";
+import BatchProcessor from "./BatchProcessor";
 import FileUploadZone from "./FileUploadZone";
 import SettingsSidebar from "./SettingsSidebar";
-import BatchProcessor from "./BatchProcessor";
 
 export default function ImageConverterPanel() {
   const { state, actions, settings } = useImageConverterLogic();

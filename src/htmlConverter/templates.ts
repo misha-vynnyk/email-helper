@@ -2,8 +2,8 @@
  * HTML and MJML templates for email generation
  */
 
-import { config } from "./utils/config";
 import { PLACEHOLDER_URL } from "./constants";
+import { config } from "./utils/config";
 
 // --- HTML Helpers ---
 

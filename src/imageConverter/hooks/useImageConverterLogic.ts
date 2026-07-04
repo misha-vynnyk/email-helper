@@ -6,11 +6,10 @@
 
 import { useCallback, useEffect, useRef } from "react";
 
-
-import { useImageConverterSettings } from "./useImageConverterSettings";
+import { useConversionQueue } from "./internal/useConversionQueue";
 import { useFileManager } from "./internal/useFileManager";
 import { useWorkerPool } from "./internal/useWorkerPool";
-import { useConversionQueue } from "./internal/useConversionQueue";
+import { useImageConverterSettings } from "./useImageConverterSettings";
 
 export function useImageConverterLogic() {
   // 1. Settings

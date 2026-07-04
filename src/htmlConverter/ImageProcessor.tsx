@@ -2,23 +2,23 @@
  * Refactored Compact Image Processor for HTML Converter
  * Extracts and processes images from HTML content
  */
-import React, { useState, useEffect } from "react";
-import { Check as CheckIcon, X as CloseIcon } from "lucide-react";
 import { saveAs } from "file-saver";
+import { Check as CheckIcon, X as CloseIcon } from "lucide-react";
+import React, { useEffect,useState } from "react";
 
+import { HistoryPrompt } from "./components/HistoryPrompt";
+import { ImageGrid } from "./components/ImageGrid";
+import { ImageProcessorActions } from "./components/ImageProcessorActions";
+import { ImageProcessorSettings } from "./components/ImageProcessorSettings";
+import { ImageProcessorStats } from "./components/ImageProcessorStats";
 import StorageUploadDialog from "./components/StorageUploadDialog";
-import { extractFolderName } from "./utils/formatters";
-import { getFileExtension, getImageFormat, isCrossOrigin } from "./utils/imageUtils";
-import type { ImageAnalysisSettings, ImageFormatOverride, UploadSession } from "./types";
 import type { UploadMode } from "./hooks/useHtmlConverterLogic";
 import { useImageConversion } from "./hooks/useImageConversion";
 import { useImageUploader } from "./hooks/useImageUploader";
 import { useOcrAnalysis } from "./hooks/useOcrAnalysis";
-import { ImageGrid } from "./components/ImageGrid";
-import { ImageProcessorSettings } from "./components/ImageProcessorSettings";
-import { ImageProcessorStats } from "./components/ImageProcessorStats";
-import { ImageProcessorActions } from "./components/ImageProcessorActions";
-import { HistoryPrompt } from "./components/HistoryPrompt";
+import type { ImageAnalysisSettings, ImageFormatOverride, UploadSession } from "./types";
+import { extractFolderName } from "./utils/formatters";
+import { getFileExtension, getImageFormat, isCrossOrigin } from "./utils/imageUtils";
 
 interface ImageProcessorProps {
   editorRef: React.RefObject<HTMLDivElement>;
@@ -76,7 +76,6 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
   } = useImageUploader({
     images,
     imagesSessionId: sessionId,
-    editorRef,
     storageProvider,
     format,
     onLog,
@@ -163,7 +162,7 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
     resetUploadState();
     resetOcrState();
     onVisibilityChange(false);
-    onLog && onLog("🗑️ Очищено");
+    onLog?.("🗑️ Очищено");
   };
 
   // Effects
@@ -278,7 +277,7 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
         onUpload={handleUploadToStorage}
         onCancel={() => {
           abortUploads();
-          onLog && onLog("⚠️ Завантаження скасовано користувачем");
+          onLog?.("⚠️ Завантаження скасовано користувачем");
         }}
         initialFolderName={initialFolderName}
         onHistoryAdd={onHistoryAdd}

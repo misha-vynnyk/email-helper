@@ -1,5 +1,6 @@
-import { Plus as AddIcon, Code as CodeIcon, Copy as CopyIcon, Trash2 as DeleteIcon, Edit2 as EditIcon, Send as SendIcon, RefreshCw as SyncIcon, Eye as Visibility } from "lucide-react";
+import { Code as CodeIcon, Copy as CopyIcon, Edit2 as EditIcon, Eye as Visibility,Plus as AddIcon, RefreshCw as SyncIcon, Send as SendIcon, Trash2 as DeleteIcon } from "lucide-react";
 import React from "react";
+
 import { EmailTemplate } from "../../types/template";
 import { filterMarkedSections, keepOnlyMarkedSections } from "../utils/htmlSectionFilter";
 import { getCategoryIcon } from "../utils/templateCategoryIcons";
@@ -25,7 +26,7 @@ interface TemplateCardProps {
   syncing: boolean;
   sending: boolean;
   areCredentialsValid: boolean;
-  sendEmailDirect: any;
+  sendEmailDirect: ((html: string, emailSubject: string) => Promise<void>) | null;
   cardRef: React.RefObject<HTMLDivElement>;
   renderKey: number;
   focusedBlock?: string;

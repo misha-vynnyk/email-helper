@@ -1,10 +1,9 @@
-import type { ReactElement } from "react";
-
 import { Card, type CardProps } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
+import type { ReactElement } from "react";
 
-import { useThemeMode } from "./ThemeContext";
 import { getComponentStyles } from "./componentStyles";
+import { useThemeMode } from "./ThemeContext";
 
 export type StyledCardProps = CardProps & {
   /**

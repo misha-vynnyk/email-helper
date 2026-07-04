@@ -1,4 +1,4 @@
-import { X as CloseIcon, AlertCircle as ErrorIcon, CheckCircle as SuccessIcon, Upload as UploadIcon } from "lucide-react";
+import { AlertCircle as ErrorIcon, CheckCircle as SuccessIcon, Upload as UploadIcon,X as CloseIcon } from "lucide-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import type { StorageProviderKey } from "../constants";
@@ -10,7 +10,7 @@ import { copyToClipboard } from "../utils/clipboard";
 import type { OcrAnalyzeResult } from "../utils/imageAnalysis";
 import type { ImageAiAnalysis } from "../utils/ocrUiTypes";
 import FileListItem from "./FileListItem";
-import { UploadResults, toShortPath } from "./UploadResults";
+import { toShortPath,UploadResults } from "./UploadResults";
 
 interface StorageUploadDialogProps {
   open: boolean;

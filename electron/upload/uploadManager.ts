@@ -1,7 +1,7 @@
-import { BrowserWindow, session, app } from "electron";
 import { execFileSync } from "child_process";
-import path from "path";
+import { app,BrowserWindow, session } from "electron";
 import fs from "fs";
+import path from "path";
 
 export interface UploadRequest {
   tempPath: string;
@@ -94,7 +94,8 @@ function loadUrlWithTimeout(
 
     win.webContents.once("did-finish-load", () => {
       cleanup();
-      isCancelled() ? reject(new Error(CANCEL_MSG)) : resolve();
+      if (isCancelled()) reject(new Error(CANCEL_MSG));
+      else resolve();
     });
 
     win.webContents.once("did-fail-load", (_e, code, desc) => {

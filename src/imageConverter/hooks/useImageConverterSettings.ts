@@ -4,8 +4,10 @@
  * Pattern: mirrors useHtmlConverterSettings from htmlConverter.
  */
 
-import { useState, useEffect } from "react";
+import { useEffect,useState } from "react";
 
+import { logger } from "../../utils/logger";
+import { STORAGE_KEYS } from "../../utils/storageKeys";
 import {
   DEFAULT_AUTO_CONVERT,
   DEFAULT_AUTO_QUALITY,
@@ -17,8 +19,6 @@ import {
   DEFAULT_PROCESSING_MODE,
   DEFAULT_QUALITY,
 } from "../constants";
-import { logger } from "../../utils/logger";
-import { STORAGE_KEYS } from "../../utils/storageKeys";
 import { ConversionSettings } from "../types";
 
 const DEFAULT_SETTINGS: ConversionSettings = {

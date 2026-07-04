@@ -1,7 +1,6 @@
+import { Alert, Button, Snackbar, Tooltip } from "@mui/material";
 import type { ReactElement } from "react";
 import { useCallback, useState } from "react";
-
-import { Alert, Button, Snackbar, Tooltip } from "@mui/material";
 
 import { logger } from "../utils/logger";
 

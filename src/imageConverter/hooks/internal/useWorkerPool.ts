@@ -6,8 +6,8 @@
 
 import { useEffect, useRef } from "react";
 
-import { LIMITS } from "../../constants/limits";
 import { logger } from "../../../utils/logger";
+import { LIMITS } from "../../constants/limits";
 import { WorkerPool } from "../../workers/workerPool";
 
 export function useWorkerPool() {

@@ -1,5 +1,6 @@
+import { Check,CheckCircle, Copy, Image as ImageIcon, Link2 } from "lucide-react";
 import React from "react";
-import { CheckCircle, Image as ImageIcon, Link2, Copy, Check } from "lucide-react";
+
 import type { UploadResult } from "../types";
 
 function toShortPath(url: string): string {

@@ -3,14 +3,14 @@
  * Manages theme mode (light/dark) state and provides it to the app
  */
 
-import React, { createContext, useContext, useMemo, useEffect } from "react";
-import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
 import { CssBaseline } from "@mui/material";
+import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
+import React, { createContext, useContext, useEffect,useMemo } from "react";
 
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { STORAGE_KEYS } from "../utils/storageKeys";
-import { ThemeMode, ThemeStyle } from "./tokens";
 import { createAppTheme } from "./theme";
+import { ThemeMode, ThemeStyle } from "./tokens";
 
 interface ThemeContextValue {
   mode: ThemeMode;
@@ -44,6 +44,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
       const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
       setMode(prefersDark ? "dark" : "light");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount only; setMode comes from useLocalStorage and is a new reference every render, so including it would re-run this on every render
   }, []);
 
   // Sync mode with Tailwind's dark mode via data-theme or class

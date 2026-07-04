@@ -3,7 +3,8 @@
  * Props-based. Tailwind styling.
  */
 
-import { Maximize2, Camera, Palette, Film } from "lucide-react";
+import { Camera, Film,Maximize2, Palette } from "lucide-react";
+
 import { ConversionSettings, ResizeMode } from "../types";
 
 interface AdvancedSettingsSectionProps {

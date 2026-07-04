@@ -2,8 +2,8 @@
  * UI filtering and suggestion extraction utilities
  */
 
-import { cleanOcrText, normalizeOcrLine, cleanupAltCandidate, truncateAlt, isAllCapsLike, isTitleCaseLike } from "./cleanup";
 import { ALLOWED_SHORT_ALL_CAPS, COMMON_3_LETTER_WORDS } from "../constants";
+import { cleanOcrText, cleanupAltCandidate, isAllCapsLike, isTitleCaseLike,normalizeOcrLine, truncateAlt } from "./cleanup";
 
 /**
  * Filter OCR text for UI display by removing noise and junk

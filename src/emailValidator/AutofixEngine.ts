@@ -1,7 +1,7 @@
+import { logger } from "../utils/logger";
 import { ERROR_MESSAGES, PERFORMANCE_CONSTANTS, TIME_CONSTANTS } from "./EMAIL_CONSTANTS";
 import { EmailValidatorConfig, ValidationRule, ValidationSeverity } from "./types";
 import { EMAIL_VALIDATION_RULES } from "./validationRules";
-import { logger } from "../utils/logger";
 
 /**
  * Handles HTML autofix logic separately from validation functionality
@@ -389,7 +389,7 @@ export class AutofixEngine {
       if (html.includes("<//") || html.includes("//>")) return false;
 
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   }

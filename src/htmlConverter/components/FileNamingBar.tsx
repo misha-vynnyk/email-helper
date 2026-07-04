@@ -1,6 +1,7 @@
+import { CheckSquare, Minus, Plus, Square } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Plus, Minus, CheckSquare, Square } from "lucide-react";
-import type { StorageProfile, ConverterMode } from "../hooks/useHtmlConverterLogic";
+
+import type { ConverterMode,StorageProfile } from "../hooks/useHtmlConverterLogic";
 
 interface FileNamingBarProps {
   fileName: string;
@@ -114,14 +115,16 @@ export function FileNamingBar({
 
       {/* Export type selector (disabled in Advanced — no MJML output yet) */}
       <div className={`flex items-center bg-card rounded-full border border-border/50 shadow-soft p-1 gap-1 ${converterMode === "advanced" ? "opacity-40 pointer-events-none" : ""}`}>
-        {[
-          { value: "both", label: "Both" },
-          { value: "html", label: "HTML only" },
-          { value: "mjml", label: "MJML only" },
-        ].map(({ value, label }) => (
+        {(
+          [
+            { value: "both", label: "Both" },
+            { value: "html", label: "HTML only" },
+            { value: "mjml", label: "MJML only" },
+          ] as const
+        ).map(({ value, label }) => (
           <button
             key={value}
-            onClick={() => setExportType(value as any)}
+            onClick={() => setExportType(value)}
             className={`px-4 py-2 rounded-full text-sm font-bold transition-all duration-200 ${
               exportType === value
                 ? "bg-primary text-primary-foreground shadow-sm scale-[1.04]"

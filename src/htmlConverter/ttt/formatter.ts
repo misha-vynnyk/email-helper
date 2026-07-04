@@ -28,7 +28,7 @@ function getInlineStyleValue(style: string, property: string): string | null {
 
 function italicLinks(htmlContent: string): string {
   const savedLinks: string[] = [];
-  htmlContent = htmlContent.replace(/\<a\s[^\>]*href=(["'])(https?:\/\/[^"']+)\1[^\>]*\>([\s\S]*?)\<\/a\>/gi, (_match, _q, _href, inner) => {
+  htmlContent = htmlContent.replace(/<a\s[^>]*href=(["'])(https?:\/\/[^"']+)\1[^>]*>([\s\S]*?)<\/a>/gi, (_match, _q, _href, inner) => {
     const text = inner.replace(/<[^>]+>/g, "");
     const leadingSpaceMatch = text.match(/^([\s\u00A0]*)/);
     const trailingSpaceMatch = text.match(/([\s\u00A0]*)$/);
@@ -68,6 +68,7 @@ function italicLinks(htmlContent: string): string {
     return match;
   });
 
+  // eslint-disable-next-line no-control-regex -- \x02/\x03 are deliberate sentinel bytes marking saved-link placeholders
   htmlContent = htmlContent.replace(/\x02LINK(\d+)\x03/g, (_, i) => savedLinks[+i] ?? "");
   return htmlContent;
 }

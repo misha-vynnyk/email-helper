@@ -1,7 +1,6 @@
-import React from "react";
-
+import { Email,Settings } from "@mui/icons-material";
 import { alpha, Box, Divider, Drawer, IconButton, Stack, Tooltip, Typography, useTheme } from "@mui/material";
-import { Settings, Email } from "@mui/icons-material";
+import React from "react";
 
 import { useSamplesDrawerOpen } from "../../contexts/AppState";
 import { useRegistrationStatus } from "../../hooks/useRegistrationStatus";

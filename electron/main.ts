@@ -1,9 +1,10 @@
-import { app, BrowserWindow, shell, ipcMain, dialog, Notification } from "electron";
-import path from "path";
-import fs from "fs/promises";
-import fsSync from "fs";
 import { execSync } from "child_process";
+import { app, BrowserWindow, dialog, ipcMain, Notification,shell } from "electron";
+import fsSync from "fs";
+import fs from "fs/promises";
 import type { Server } from "http";
+import path from "path";
+
 import { uploadFile } from "./upload/uploadManager";
 
 // ── Embedded Express server ───────────────────────────────────────────────────
@@ -56,7 +57,7 @@ async function startEmbeddedServer(): Promise<number> {
 
   // path resolves to <project-root>/server/index.js both in dev and packaged
   const serverPath = path.join(__dirname, "../../server/index.js");
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- dynamic runtime path, not statically importable
   const { startServer } = require(serverPath) as { startServer: (port: number) => Promise<Server> };
 
   const preferred = parseInt(process.env.PORT || "3001");
@@ -66,8 +67,8 @@ async function startEmbeddedServer(): Promise<number> {
       serverInstance = await startServer(port);
       console.log(`✅ Embedded server on port ${port}`);
       return port;
-    } catch (err: any) {
-      if (err.code === "EADDRINUSE") {
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === "EADDRINUSE") {
         console.log(`⚠️  Port ${port} in use, trying ${port + 1}...`);
         continue;
       }
@@ -122,8 +123,7 @@ function registerIpcHandlers(): void {
     const configPath = path.join(__dirname, "../../automation/config.json");
     let storageProviders: Record<string, unknown> = {};
     try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const raw = require("fs").readFileSync(configPath, "utf8");
+      const raw = fsSync.readFileSync(configPath, "utf8");
       const fullConfig = JSON.parse(raw);
       storageProviders = fullConfig.storageProviders ?? {};
       if (fullConfig.storage?.baseUrl) {

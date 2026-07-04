@@ -3,11 +3,14 @@
  * Offloads image conversion to a separate thread for better performance
  */
 
-import { ConversionSettings, ImageFormat } from "../types";
+import { encode as encodeAvif } from "@jsquash/avif";
+import type { EncodeOptions as AvifEncodeOptions } from "@jsquash/avif/meta";
 import { encode as encodeJpeg } from "@jsquash/jpeg";
 import { encode as encodePng } from "@jsquash/png";
 import { encode as encodeWebp } from "@jsquash/webp";
-import { encode as encodeAvif } from "@jsquash/avif";
+import type { EncodeOptions as WebpEncodeOptions } from "@jsquash/webp/meta";
+
+import { ConversionSettings, ImageFormat } from "../types";
 
 interface WorkerMessage {
   type: "convert";
@@ -138,10 +141,10 @@ async function convertImage(message: WorkerMessage): Promise<Blob> {
     case "jpeg":
       buffer = await encodeJpeg(imageData, { quality: settings.quality });
       break;
-    case "webp":
+    case "webp": {
       // For max compression, increase the "method" (effort) parameter (max 6, default 4)
       // For lossless, set lossless: 1
-      const webpOptions: any = { quality: settings.quality };
+      const webpOptions: Partial<WebpEncodeOptions> = { quality: settings.quality };
       if (settings.compressionMode === "lossless") {
         webpOptions.lossless = 1;
         webpOptions.quality = 100; // Force 100% quality for lossless
@@ -150,10 +153,11 @@ async function convertImage(message: WorkerMessage): Promise<Blob> {
       }
       buffer = await encodeWebp(imageData, webpOptions);
       break;
-    case "avif":
+    }
+    case "avif": {
       // avif lossless requires both quality and qualityAlpha to be 100
       // For max compression, decrease speed (0 = slowest/best, 10 = fastest, default 6)
-      const avifOptions: any = { quality: settings.quality };
+      const avifOptions: Omit<Partial<AvifEncodeOptions>, "bitDepth"> = { quality: settings.quality };
       if (settings.compressionMode === "lossless") {
         avifOptions.lossless = true;
         avifOptions.quality = 100;
@@ -163,6 +167,7 @@ async function convertImage(message: WorkerMessage): Promise<Blob> {
       }
       buffer = await encodeAvif(imageData, avifOptions);
       break;
+    }
     case "png":
       buffer = await encodePng(imageData);
       break;

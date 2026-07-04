@@ -8,7 +8,7 @@
 import { StorageConfigManager, StorageLocation } from "../../utils/storageConfigManager";
 import { STORAGE_KEYS } from "../../utils/storageKeys";
 
-export interface TemplateStorageLocation extends StorageLocation {}
+export type TemplateStorageLocation = StorageLocation;
 
 // Create singleton instance for template storage
 const templateStorageManager = new StorageConfigManager<TemplateStorageLocation>(STORAGE_KEYS.TEMPLATE_STORAGE_LOCATIONS, "TemplateStorage");

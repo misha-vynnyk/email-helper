@@ -3,10 +3,9 @@
  * Dropdown/menu to switch between component styles (default, floating, glassmorphism, neomorphic)
  */
 
-import React from "react";
-
 import { Style as StyleIcon } from "@mui/icons-material";
-import { IconButton, Menu, MenuItem, ListItemIcon, ListItemText, Tooltip } from "@mui/material";
+import { IconButton, ListItemIcon, ListItemText, Menu, MenuItem, Tooltip } from "@mui/material";
+import React from "react";
 
 import { useThemeMode } from "./ThemeContext";
 import { ThemeStyle } from "./tokens";

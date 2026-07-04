@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+
 import { EmailTemplate } from "../../types/template";
 import { preloadImages } from "../../utils/imageUrlReplacer";
 import { logger } from "../../utils/logger";

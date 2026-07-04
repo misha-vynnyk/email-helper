@@ -3,10 +3,10 @@
  */
 
 import type { ImageAnalysisSettings } from "../../types";
+import { AiBackendClient } from "./aiClient";
 // import { cleanOcrText } from "./postprocess/cleanup"; // Was used by qualityScore, which has been removed
 // import { spellCorrectBannerText, postFixBannerText } from "./postprocess/bannerSpell"; // Unused - kept for potential future use
 import { OcrEngine } from "./engine";
-import { AiBackendClient } from "./aiClient";
 
 export type OcrSkipReason = "lowTextLikelihood";
 

@@ -2,10 +2,10 @@
 // Precedence (1×1): buttonBand → alertBand → calloutLeft → unwrap (transparent)
 // Multi-cell:       statsGrid (1 row, N≥2) → recordRow (M rows, N≥2)
 
-import type { TableNode, CellNode, ComponentNode, Paragraph, Run } from "../ir/types";
-import { isDarkBg } from "../ir/color";
-import { tokens as defaultTokens } from "../config/tokens";
 import type { Tokens } from "../config/tokens";
+import { tokens as defaultTokens } from "../config/tokens";
+import { isDarkBg } from "../ir/color";
+import type { CellNode, ComponentNode, Paragraph, Run,TableNode } from "../ir/types";
 
 // ── Cell content helpers ──────────────────────────────────────────────────────
 

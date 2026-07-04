@@ -4,11 +4,12 @@
  */
 
 import { TrendingDown, TrendingUp } from "lucide-react";
+
 import { ConversionSettings } from "../types";
 import {
+  calculateCompressionRatio,
   estimateOutputSize,
   formatFileSize,
-  calculateCompressionRatio,
 } from "../utils/estimatedSizeCalculator";
 
 interface EstimatedSizeIndicatorProps {

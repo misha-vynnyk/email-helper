@@ -1,11 +1,12 @@
-import { useState, useCallback, useRef } from "react";
+import { useCallback, useRef,useState } from "react";
+
 import { getApiBase, isApiAvailable } from "../../config/api";
-import { UPLOAD_CONFIG, STORAGE_URL_PREFIX, STORAGE_PROVIDERS_CONFIG } from "../constants";
-import { copyToClipboard } from "../utils/clipboard";
-import { getImageFormat, getFileExtension, isCrossOrigin } from "../utils/imageUtils";
-import { ProcessedImage, ImageFormat, UploadResult, UploadSession } from "../types";
-import type { UploadMode } from "./useHtmlConverterLogic";
 import { getElectronAPI } from "../../hooks/useElectronAPI";
+import { STORAGE_PROVIDERS_CONFIG,STORAGE_URL_PREFIX, UPLOAD_CONFIG } from "../constants";
+import { ImageFormat, ProcessedImage, UploadResult, UploadSession } from "../types";
+import { copyToClipboard } from "../utils/clipboard";
+import { getFileExtension, getImageFormat, isCrossOrigin } from "../utils/imageUtils";
+import type { UploadMode } from "./useHtmlConverterLogic";
 
 function findImageInHistory(folderName: string, filename: string, baseName: string, index: number, uploadHistory: UploadSession[]) {
   let existingUrl: string | null = null;
@@ -32,7 +33,6 @@ function findImageInHistory(folderName: string, filename: string, baseName: stri
 interface UseImageUploaderProps {
   images: ProcessedImage[];
   imagesSessionId: number;
-  editorRef: React.RefObject<HTMLDivElement>;
   storageProvider: string;
   format: ImageFormat;
   onLog?: (message: string) => void;
@@ -44,7 +44,7 @@ interface UseImageUploaderProps {
   uploadMode?: UploadMode;
 }
 
-export function useImageUploader({ images, imagesSessionId, editorRef, storageProvider, format, onLog, onUploadedUrlsChange, onReplaceUrls, onUploadedAltsChange, showSnackbar, uploadHistory, uploadMode = "playwright" }: UseImageUploaderProps) {
+export function useImageUploader({ images, imagesSessionId, storageProvider, format, onLog, onUploadedUrlsChange, onReplaceUrls, onUploadedAltsChange, showSnackbar, uploadHistory, uploadMode = "playwright" }: UseImageUploaderProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [lastUploadedUrls, setLastUploadedUrls] = useState<Record<string, string>>({});
   const [lastUploadedSessionId, setLastUploadedSessionId] = useState<number | null>(null);
@@ -314,7 +314,7 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
         uploadAbortControllerRef.current = null;
       }
     },
-    [images, imagesSessionId, isUploading, storageProvider, format, onLog, editorRef, onUploadedUrlsChange, onUploadedAltsChange, uploadHistory, uploadMode]
+    [images, imagesSessionId, isUploading, storageProvider, format, onLog, onUploadedUrlsChange, onUploadedAltsChange, uploadHistory, uploadMode]
   );
 
   const handleReplaceInOutput = useCallback(() => {
@@ -348,7 +348,7 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
 
   const handleTakeFromHistoryLocally = useCallback(
     async (folderName: string) => {
-      let completed = images.filter((img) => (img.status === "done" && img.convertedBlob) || (img.status === "pending" && isCrossOrigin(img.src)));
+      const completed = images.filter((img) => (img.status === "done" && img.convertedBlob) || (img.status === "pending" && isCrossOrigin(img.src)));
       if (completed.length === 0 || !uploadHistory) return;
 
       const sessionIdAtStart = imagesSessionId;
@@ -416,7 +416,7 @@ export function useImageUploader({ images, imagesSessionId, editorRef, storagePr
         showSnackbar("❌ Дані в історії для цих файлів відсутні", "error");
       }
     },
-    [images, imagesSessionId, format, onLog, editorRef, onUploadedUrlsChange, onUploadedAltsChange, uploadHistory]
+    [images, imagesSessionId, format, onLog, onUploadedUrlsChange, onUploadedAltsChange, uploadHistory, onReplaceUrls, showSnackbar]
   );
 
   return {

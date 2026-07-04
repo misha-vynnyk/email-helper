@@ -9,8 +9,8 @@
  *  - Outer table uses `content-wrapper` class with 21px horizontal padding
  */
 
-import { config } from "../utils/config";
 import { STORAGE_PROVIDERS_CONFIG } from "../constants";
+import { config } from "../utils/config";
 
 export const TTT_PLACEHOLDER_URL = "urlhere";
 

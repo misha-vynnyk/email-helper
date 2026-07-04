@@ -1,4 +1,5 @@
 import { alpha, createTheme, lighten, Theme } from "@mui/material/styles";
+
 import { brandColors, getPaletteColors, getSemanticColors, ThemeMode, typography as typographyTokens } from "./tokens";
 
 // Legacy brand colors (для зворотної сумісності)

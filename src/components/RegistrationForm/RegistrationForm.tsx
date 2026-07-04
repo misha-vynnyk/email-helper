@@ -1,6 +1,3 @@
-import React, { useMemo, useState } from "react";
-import { toast } from "react-toastify";
-
 import {
   CheckCircle,
   Email,
@@ -33,6 +30,8 @@ import {
   Typography,
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
+import React, { useMemo, useState } from "react";
+import { toast } from "react-toastify";
 
 import { triggerRegistrationStatusUpdate } from "../../hooks/useRegistrationStatus";
 import { StyledCard, useThemeMode } from "../../theme";

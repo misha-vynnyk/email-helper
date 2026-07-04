@@ -3,8 +3,6 @@
  * Chrome DevTools-style responsive viewport selector
  */
 
-import React from "react";
-
 import {
   Laptop as DesktopIcon,
   PhoneAndroid as MobileIcon,
@@ -12,6 +10,7 @@ import {
   Tablet as TabletIcon,
 } from "@mui/icons-material";
 import { Box, IconButton, MenuItem, Select, TextField, Tooltip, Typography } from "@mui/material";
+import React from "react";
 
 export interface ViewportPreset {
   name: string;

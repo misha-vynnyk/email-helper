@@ -1,7 +1,7 @@
-import { buildTemplates, baseStyle, blockRow } from "../config/templates";
-import { tokens, mergeTokens } from "../config/tokens";
-import { profile as tttProfile } from "../profiles/ttt";
+import { baseStyle, blockRow,buildTemplates } from "../config/templates";
+import { mergeTokens,tokens } from "../config/tokens";
 import { profile as alphaoneProfile } from "../profiles/alphaone";
+import { profile as tttProfile } from "../profiles/ttt";
 
 const tmpl = buildTemplates(tokens);
 

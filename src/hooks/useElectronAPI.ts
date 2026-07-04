@@ -14,6 +14,7 @@ export interface ElectronUploadResult {
 
 interface ElectronAPI {
   isElectron: boolean;
+  serverPort: number;
   getAppVersion: () => Promise<string>;
   openFolderDialog: () => Promise<string | null>;
   openFileDialog: (filters?: { name: string; extensions: string[] }[]) => Promise<string | null>;

@@ -3,8 +3,9 @@
  * Extracts and re-embeds EXIF data during image conversion
  */
 
-import { logger } from '../../utils/logger';
 import piexif from 'piexifjs';
+
+import { logger } from '../../utils/logger';
 
 export interface ExifData {
   data: string | null; // Base64 encoded EXIF data

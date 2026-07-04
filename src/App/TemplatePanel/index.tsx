@@ -1,7 +1,6 @@
-import React from "react";
-
 import { Box, CircularProgress, Fade, Stack } from "@mui/material";
 import { alpha } from "@mui/material/styles";
+import React from "react";
 
 import { BlockLibrary } from "../../blockLibrary";
 import { useSelectedMainTab } from "../../contexts/AppState";
@@ -10,9 +9,7 @@ import { HtmlConverterPanel } from "../../htmlConverter";
 import { ImageConverterPanel } from "../../imageConverter";
 import { TemplateLibrary } from "../../templateLibrary";
 import { getComponentStyles, ThemeStyleSelector, ThemeToggle, useThemeMode } from "../../theme";
-
 import ToggleSamplesPanelButton from "../SamplesDrawer/ToggleSamplesPanelButton";
-
 import EmailSenderPanel from "./EmailSenderPanel";
 import MainTabsGroup from "./MainTabsGroup";
 import TabPanel from "./TabPanel";

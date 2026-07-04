@@ -1,7 +1,7 @@
 // Cache classes for email validation to avoid circular dependencies
 
-import { CACHE_SCORING_WEIGHTS, EMAIL_DEFAULTS, PERFORMANCE_CONSTANTS } from "./EMAIL_CONSTANTS";
 import { logger } from "../utils/logger";
+import { CACHE_SCORING_WEIGHTS, EMAIL_DEFAULTS, PERFORMANCE_CONSTANTS } from "./EMAIL_CONSTANTS";
 
 /**
  * Enhanced RegexCache with better memory management

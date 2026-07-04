@@ -1,5 +1,5 @@
-import { isDarkBg, canonicalizeText, canonicalizeBg, isBgRedundant } from "../ir/color";
 import { tokens } from "../config/tokens";
+import { canonicalizeBg, canonicalizeText, isBgRedundant,isDarkBg } from "../ir/color";
 
 describe("ir/color", () => {
   // ── isDarkBg ───────────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
+import { RotateCcw,ZoomIn, ZoomOut } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
 
 const PRESETS = [375, 600, 800] as const;
 type Preset = (typeof PRESETS)[number];

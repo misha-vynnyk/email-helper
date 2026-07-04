@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+
 import { getApiBase } from "@/config/api";
+
 import { STORAGE_KEYS } from "../constants";
 import type { ImageAnalysisSettings } from "../types";
 

@@ -4,9 +4,9 @@
  */
 
 import { EmailBlock } from "../types/block";
-import { handleStorageError } from "./errorHandling";
-import { STORAGE_KEYS } from "../utils/storageKeys";
 import { logger } from "../utils/logger";
+import { STORAGE_KEYS } from "../utils/storageKeys";
+import { handleStorageError } from "./errorHandling";
 
 const CUSTOM_BLOCKS_KEY = STORAGE_KEYS.CUSTOM_BLOCKS;
 

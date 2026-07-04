@@ -1,11 +1,13 @@
-import React, { Dispatch, SetStateAction } from "react";
 import { FolderOpen } from "lucide-react";
-import type { UiSettings } from "../hooks/useHtmlConverterSettings";
-import type { UploadMode } from "../hooks/useHtmlConverterLogic";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
+import React, { Dispatch, SetStateAction } from "react";
+
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { useElectronAPI } from "@/hooks/useElectronAPI";
+
+import type { UploadMode } from "../hooks/useHtmlConverterLogic";
+import type { UiSettings } from "../hooks/useHtmlConverterSettings";
 
 type UiSettingsTabProps = {
   ui: UiSettings;

@@ -6,14 +6,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { LIMITS, TIMING } from "../../constants/limits";
 import { logger } from "../../../utils/logger";
+import { LIMITS, TIMING } from "../../constants/limits";
 import { ConversionResult, ConversionSettings, ImageFile } from "../../types";
 import { convertImageClient } from "../../utils/clientConverter";
 import { extractExif, insertExif } from "../../utils/exifPreserver";
-import { detectImageFormat } from "../../utils/imageFormatDetector";
 import { imageCache } from "../../utils/imageCache";
 import { convertImageServer } from "../../utils/imageConverterApi";
+import { detectImageFormat } from "../../utils/imageFormatDetector";
 import { performanceMonitor } from "../../utils/performanceMonitor";
 import { calculateOptimalQuality } from "../../utils/qualityOptimizer";
 import { WorkerPool } from "../../workers/workerPool";

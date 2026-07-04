@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { ArrowRightLeft,Copy, Download } from "lucide-react";
+import { useEffect,useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Copy, Download, ArrowRightLeft } from "lucide-react";
+
 import { EmailPreviewPane } from "./EmailPreviewPane";
 
 type Tab = "html" | "mjml" | "preview";
@@ -37,6 +38,7 @@ export function ExportPanel({
     // Не торкаємось "preview" — він доступний завжди
     if (exportType === "html" && rightTab === "mjml") setRightTab("html");
     if (exportType === "mjml" && rightTab === "html") setRightTab("mjml");
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- should react only to exportType changes, not to the rightTab changes this effect itself makes
   }, [exportType]);
 
   return (

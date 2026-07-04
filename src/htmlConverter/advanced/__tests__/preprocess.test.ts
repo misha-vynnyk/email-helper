@@ -1,4 +1,4 @@
-import { resolveOneBrSymbol, normalizeSymbols, mergeSimilarBlockTags, preprocess } from "../preprocess";
+import { mergeSimilarBlockTags, normalizeSymbols, preprocess,resolveOneBrSymbol } from "../preprocess";
 
 // ── resolveOneBrSymbol ────────────────────────────────────────────────────────
 

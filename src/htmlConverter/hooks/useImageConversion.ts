@@ -1,8 +1,9 @@
-import { useState, useCallback, useEffect, useRef } from "react";
-import { STORAGE_KEYS, IMAGE_DEFAULTS } from "../constants";
-import type { ProcessedImage, ImageFormat, ImageSettings } from "../types";
-import { isCrossOrigin, detectTransparency, getImageFormat, isSignatureImageAlt } from "../utils/imageUtils";
+import { useCallback, useEffect, useRef,useState } from "react";
+
 import { getApiBase, isApiAvailable } from "../../config/api";
+import { IMAGE_DEFAULTS,STORAGE_KEYS } from "../constants";
+import type { ImageFormat, ImageSettings,ProcessedImage } from "../types";
+import { detectTransparency, getImageFormat, isCrossOrigin, isSignatureImageAlt } from "../utils/imageUtils";
 
 export interface UseImageConversionProps {
   editorRef: React.RefObject<HTMLDivElement>;
@@ -17,7 +18,7 @@ function loadSettings(): ImageSettings {
     if (stored) {
       return JSON.parse(stored);
     }
-  } catch (error) {
+  } catch {
     // Silently fallback
   }
   return {
@@ -32,7 +33,7 @@ function loadSettings(): ImageSettings {
 function saveSettings(settings: ImageSettings) {
   try {
     localStorage.setItem(STORAGE_KEYS.IMAGE_SETTINGS, JSON.stringify(settings));
-  } catch (error) {
+  } catch {
     // Silently ignore
   }
 }
@@ -153,7 +154,7 @@ export function useImageConversion({ editorRef, onLog, onVisibilityChange, autoP
           }
         }
         // Fallback to client-side
-      } catch (error) {
+      } catch {
         // Fallback
       }
     }

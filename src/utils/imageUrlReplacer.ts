@@ -2,8 +2,8 @@
  * Утиліта для заміни URL зображень на кешовані версії в HTML
  */
 
-import { imageCacheService } from './imageCache';
 import { getApiBase } from '../config/api';
+import { imageCacheService } from './imageCache';
 
 // Конфігурація
 const CONFIG = {

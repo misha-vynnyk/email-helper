@@ -1,8 +1,9 @@
+import { LayoutGrid, List } from "lucide-react";
 import { useState } from "react";
+
+import { ClassicListCampaigns } from "./ClassicListCampaigns";
 import { MOCK_CAMPAIGNS } from "./mockData";
 import { ModernDashboardCampaigns } from "./ModernDashboardCampaigns";
-import { ClassicListCampaigns } from "./ClassicListCampaigns";
-import { LayoutGrid, List } from "lucide-react";
 
 type ThemeType = "modern" | "classic";
 

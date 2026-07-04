@@ -1,6 +1,6 @@
+import { logger } from "../utils/logger";
 import { PERFORMANCE_CONSTANTS } from "./EMAIL_CONSTANTS";
 import { HTMLNode } from "./types";
-import { logger } from "../utils/logger";
 
 export class SimpleHTMLParser {
   private html: string;
