@@ -58,13 +58,14 @@ async function startEmbeddedServer(): Promise<number> {
   // path resolves to <project-root>/server/index.js both in dev and packaged
   const serverPath = path.join(__dirname, "../../server/index.js");
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- dynamic runtime path, not statically importable
-  const { startServer } = require(serverPath) as { startServer: (port: number) => Promise<Server> };
+  const { startServer } = require(serverPath) as { startServer: (port: number, host?: string) => Promise<Server> };
 
   const preferred = parseInt(process.env.PORT || "3001");
 
   for (let port = preferred; port <= preferred + 9; port++) {
     try {
-      serverInstance = await startServer(port);
+      // Loopback-only: this embedded server backs our own renderer, not other machines on the LAN.
+      serverInstance = await startServer(port, "127.0.0.1");
       console.log(`✅ Embedded server on port ${port}`);
       return port;
     } catch (err) {
