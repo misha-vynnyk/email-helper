@@ -5,6 +5,7 @@ import { Eraser, FileCode2, Loader2, Send, Text, TriangleAlert } from "lucide-re
 import React from "react";
 
 import { cardClass, inputClass, Note, SectionHeader } from "../components/ui/primitives";
+import { EMAIL_VALIDATOR_ENABLED } from "../config/featureFlags";
 import EmailValidationPanel from "../emailValidator/EmailValidationPanel";
 import { cn } from "../lib/utils";
 import { useThemeMode } from "../theme";
@@ -41,7 +42,11 @@ const EmailHtmlEditor: React.FC = () => {
         <SectionHeader
           icon={<FileCode2 size={16} />}
           title='Email Template Editor'
-          subtitle='Compose & validate before sending'
+          subtitle={
+            EMAIL_VALIDATOR_ENABLED
+              ? "Compose & validate before sending"
+              : "Compose your email before sending"
+          }
         />
 
         {serverStatus === "offline" && (
@@ -62,12 +67,14 @@ const EmailHtmlEditor: React.FC = () => {
           <span className='text-[11px] text-muted-foreground'>A descriptive subject line for your email</span>
         </label>
 
-        {/* Email Validation Panel */}
-        <EmailValidationPanel
-          html={editorHtml}
-          onHtmlChange={setEditorHtml}
-          showCompactView={false}
-        />
+        {/* Email Validation Panel — hidden for release, see featureFlags.ts */}
+        {EMAIL_VALIDATOR_ENABLED && (
+          <EmailValidationPanel
+            html={editorHtml}
+            onHtmlChange={setEditorHtml}
+            showCompactView={false}
+          />
+        )}
 
         <div className='flex flex-col gap-1.5'>
           <span className='text-[10px] font-semibold text-muted-foreground uppercase tracking-wider'>HTML Content</span>
