@@ -1,19 +1,20 @@
 import { html } from "@codemirror/lang-html";
-import { Clear, Code, Send } from "@mui/icons-material";
-import { Alert, alpha, Box, Button, Stack, TextField, Typography, useTheme } from "@mui/material";
+import { useTheme } from "@mui/material";
 import CodeMirror from "@uiw/react-codemirror";
+import { Eraser, FileCode2, Loader2, Send, Text, TriangleAlert } from "lucide-react";
 import React from "react";
 
 import EmailValidationPanel from "../emailValidator/EmailValidationPanel";
-import { StyledPaper, useThemeMode } from "../theme";
-import { getComponentStyles } from "../theme/componentStyles";
+import { cn } from "../lib/utils";
+import { useThemeMode } from "../theme";
 import { createCodeMirrorTheme } from "../utils/codemirrorTheme";
 import { useEmailSender } from "./EmailSenderContext";
+import { cardClass, inputClass, Note, SectionHeader } from "./ui";
 
 const EmailHtmlEditor: React.FC = () => {
+  // MUI theme is kept only to build the shared CodeMirror theme (same as TemplateItem)
   const theme = useTheme();
   const { mode, style } = useThemeMode();
-  const componentStyles = React.useMemo(() => getComponentStyles(mode, style), [mode, style]);
   const codeMirrorTheme = createCodeMirrorTheme(theme, mode, style);
   const {
     editorHtml,
@@ -27,191 +28,104 @@ const EmailHtmlEditor: React.FC = () => {
     serverStatus,
   } = useEmailSender();
 
-  const handleSend = () => {
-    sendEmail();
-  };
-
   const handleClearEditor = () => {
     setEditorHtml("");
     // Subject залишаємо без змін
   };
 
-  const isDisabled =
-    loading || !isReadyToSend || !areCredentialsValid || serverStatus === "offline";
+  const isDisabled = loading || !isReadyToSend || !areCredentialsValid || serverStatus === "offline";
 
   return (
-    <Box sx={{ height: "100%", display: "flex", flexDirection: "column", p: 2 }}>
-      {/* Основна область з прокруткою */}
-
-      <Box sx={{ flexGrow: 1, overflow: "auto", pr: 1 }}>
-        <Box sx={{ mb: 3, display: "flex", alignItems: "center", gap: 1 }}>
-          <Code />
-          <Typography variant='h6'>Email Template Editor</Typography>
-        </Box>
+    <div className='flex flex-col gap-4'>
+      <div className={cn(cardClass, "p-4 md:p-5 flex flex-col gap-4")}>
+        <SectionHeader
+          icon={<FileCode2 size={16} />}
+          title='Email Template Editor'
+          subtitle='Compose & validate before sending'
+        />
 
         {serverStatus === "offline" && (
-          <Alert
-            severity='error'
-            sx={{ mb: 3 }}
-          >
-            Email server is offline. Please start the backend server.
-          </Alert>
+          <Note tone='error'>Email server is offline. Please start the backend server.</Note>
         )}
 
-        <Stack spacing={3}>
-          <TextField
-            label='Email Subject'
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-            fullWidth
-            placeholder='Enter email subject...'
-            helperText='A descriptive subject line for your email'
-            sx={{
-              "& .MuiOutlinedInput-root": {
-                backgroundColor: "background.paper",
-              },
-            }}
-          />
-
-          {/* Email Validation Panel */}
-          <Box>
-            <EmailValidationPanel
-              html={editorHtml}
-              onHtmlChange={setEditorHtml}
-              showCompactView={false}
+        <label className='flex flex-col gap-1.5'>
+          <span className='text-[10px] font-semibold text-muted-foreground uppercase tracking-wider'>Email Subject</span>
+          <div className='relative'>
+            <Text className='absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none' />
+            <input
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder='Enter email subject...'
+              className={cn(inputClass, "pl-9 pr-3")}
             />
-          </Box>
+          </div>
+          <span className='text-[11px] text-muted-foreground'>A descriptive subject line for your email</span>
+        </label>
 
-          <Box>
-            <Typography
-              variant='subtitle2'
-              sx={{ mb: 2, color: "text.secondary", fontWeight: 500 }}
-            >
-              HTML Content:
-            </Typography>
-            <StyledPaper
-              backgroundAlpha={0.85}
-              sx={{
-                overflow: "hidden",
-                border:
-                  componentStyles.card.border === "none" ? "1px solid" : componentStyles.card.border,
-                borderColor: componentStyles.card.border === "none" ? "divider" : undefined,
-                "& .cm-selectionLayer .cm-selectionBackground": {
-                  backgroundColor: `${alpha(theme.palette.primary.main, 0.25)} !important`,
-                },
-                "& .cm-selectionBackground": {
-                  backgroundColor: `${alpha(theme.palette.primary.main, 0.25)} !important`,
-                },
-                "& .cm-content ::selection": {
-                  backgroundColor: `${alpha(theme.palette.primary.main, 0.25)} !important`,
-                },
+        {/* Email Validation Panel */}
+        <EmailValidationPanel
+          html={editorHtml}
+          onHtmlChange={setEditorHtml}
+          showCompactView={false}
+        />
+
+        <div className='flex flex-col gap-1.5'>
+          <span className='text-[10px] font-semibold text-muted-foreground uppercase tracking-wider'>HTML Content</span>
+          <div className='rounded-xl border border-border overflow-hidden [&_.cm-editor]:!outline-none [&_.cm-selectionBackground]:!bg-primary/25 [&_.cm-content_::selection]:!bg-primary/25'>
+            <CodeMirror
+              value={editorHtml}
+              onChange={(value) => setEditorHtml(value)}
+              height='400px'
+              extensions={[html(), ...codeMirrorTheme]}
+              theme={undefined}
+              basicSetup={{
+                lineNumbers: true,
+                foldGutter: true,
+                dropCursor: true,
+                allowMultipleSelections: false,
+                indentOnInput: true,
+                bracketMatching: true,
+                closeBrackets: true,
+                autocompletion: true,
+                highlightSelectionMatches: true,
+                searchKeymap: true,
               }}
-            >
-              <CodeMirror
-                value={editorHtml}
-                onChange={(value) => setEditorHtml(value)}
-                height='400px'
-                extensions={[html(), ...codeMirrorTheme]}
-                theme={undefined}
-                basicSetup={{
-                  lineNumbers: true,
-                  foldGutter: true,
-                  dropCursor: true,
-                  allowMultipleSelections: false,
-                  indentOnInput: true,
-                  bracketMatching: true,
-                  closeBrackets: true,
-                  autocompletion: true,
-                  highlightSelectionMatches: true,
-                  searchKeymap: true,
-                }}
-              />
-            </StyledPaper>
-          </Box>
-        </Stack>
-      </Box>
+            />
+          </div>
+        </div>
+      </div>
 
-      {/* Sticky панель з усіма кнопками */}
-      <StyledPaper
-        backgroundAlpha={0.9}
-        sx={{
-          position: "sticky",
-          bottom: 0,
-          p: 2,
-          mx: -2,
-          mt: 2,
-          zIndex: 10,
-          // look like a bar, not a floating card
-          borderRadius: 0,
-          borderLeft: "none",
-          borderRight: "none",
-          borderBottom: "none",
-        }}
-      >
-        <Box
-          sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}
+      {/* Sticky action bar */}
+      <div className='sticky bottom-3 z-10 flex items-center justify-between gap-3 p-3 bg-card/90 backdrop-blur-xl border border-border/50 rounded-2xl shadow-lg'>
+        <button
+          type='button'
+          onClick={handleClearEditor}
+          className='flex items-center gap-2 px-4 py-2.5 rounded-full border border-amber-500/40 text-amber-600 dark:text-amber-400 text-sm font-bold hover:bg-amber-500/10 active:scale-95 transition-all'
         >
-          {/* Ліва частина - кнопка очищення */}
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <Button
-              variant='outlined'
-              startIcon={<Clear />}
-              onClick={handleClearEditor}
-              size='medium'
-              color='warning'
-              sx={{
-                borderColor: "warning.main",
-                color: "warning.main",
-                "&:hover": {
-                  borderColor: "warning.dark",
-                  backgroundColor: "warning.50",
-                },
-              }}
-            >
-              Clear Editor
-            </Button>
-          </Box>
+          <Eraser className='w-4 h-4' />
+          Clear Editor
+        </button>
 
-          {/* Права частина - статус та кнопка відправки */}
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            {!areCredentialsValid && (
-              <Alert
-                severity='warning'
-                sx={{ py: 0.5, px: 2, fontSize: "0.875rem" }}
-              >
-                Configure credentials first
-              </Alert>
-            )}
+        <div className='flex items-center gap-3 min-w-0'>
+          {!areCredentialsValid && (
+            <div className='hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 text-amber-800 dark:text-amber-200 text-xs font-semibold'>
+              <TriangleAlert className='w-3.5 h-3.5 shrink-0' />
+              Configure credentials first
+            </div>
+          )}
 
-            <Button
-              variant='contained'
-              startIcon={<Send />}
-              onClick={handleSend}
-              disabled={isDisabled}
-              size='large'
-              sx={{
-                minWidth: 160,
-                height: 48,
-                fontSize: "1rem",
-                fontWeight: 600,
-                bgcolor: isDisabled ? undefined : "success.main",
-                "&:hover": {
-                  bgcolor: isDisabled ? undefined : "success.dark",
-                  transform: "translateY(-1px)",
-                  boxShadow: theme.shadows[4],
-                },
-                "&:disabled": {
-                  opacity: 0.6,
-                },
-                transition: "all 0.2s ease-in-out",
-              }}
-            >
-              {loading ? "Sending..." : "Send Email"}
-            </Button>
-          </Box>
-        </Box>
-      </StyledPaper>
-    </Box>
+          <button
+            type='button'
+            onClick={sendEmail}
+            disabled={isDisabled}
+            className='flex items-center justify-center gap-2 min-w-[160px] h-12 px-6 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold shadow-lg shadow-emerald-600/20 hover:-translate-y-0.5 active:scale-95 transition-all disabled:opacity-50 disabled:pointer-events-none'
+          >
+            {loading ? <Loader2 className='w-4 h-4 animate-spin' /> : <Send className='w-4 h-4' />}
+            {loading ? "Sending..." : "Send Email"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };
 
