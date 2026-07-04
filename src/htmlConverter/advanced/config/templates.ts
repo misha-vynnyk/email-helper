@@ -51,21 +51,6 @@ export interface RecordOpts {
   }>;
 }
 
-// Phase 4 stubs
-export interface HeaderOpts {
-  brandRuns: Run[];
-  authorRuns?: Run[];
-}
-export interface WarningOpts {
-  runs: Run[];
-}
-export interface AuthorOpts {
-  imgSrc: string;
-  imgAlt?: string;
-  imgHref?: string;
-  textRuns: Run[];
-}
-
 // ── Exported helpers — accept tok for profile-aware use ───────────────────────
 
 export function baseStyle(
@@ -314,20 +299,6 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
     </table>
   </td>
 </tr>`;
-    },
-
-    // ── Phase 4 stubs ───────────────────────────────────────────────────────
-
-    header(_opts: HeaderOpts): string {
-      throw new Error("TODO Phase 4: header");
-    },
-
-    authorBlock(_opts: AuthorOpts): string {
-      throw new Error("TODO Phase 4: authorBlock");
-    },
-
-    warningLine(_opts: WarningOpts): string {
-      throw new Error("TODO Phase 4: warningLine");
     },
   };
 }
