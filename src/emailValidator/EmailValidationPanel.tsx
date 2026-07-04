@@ -1,68 +1,27 @@
 import {
   Accessibility,
-  AutoFixHigh,
-  BugReport,
-  Build,
-  CheckCircle,
-  Computer,
-  Email,
-  Error,
-  ExpandLess,
-  ExpandMore,
-  FilterList,
+  Bug,
+  CheckCircle2,
+  ChevronDown,
+  CircleAlert,
+  Gauge,
   Info,
-  PhoneAndroid,
+  ListFilter,
+  Mail,
+  Monitor,
   Search,
-  Security,
   Settings,
-  Speed,
-  Warning,
-} from "@mui/icons-material";
-import {
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
-  Alert,
-  Badge,
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Chip,
-  Collapse,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Divider,
-  FormControl,
-  FormControlLabel,
-  FormGroup,
-  Grid,
-  IconButton,
-  InputAdornment,
-  InputLabel,
-  LinearProgress,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  MenuItem,
-  Paper,
-  Select,
-  Switch,
-  Tab,
-  Tabs,
-  TextField,
-  Tooltip,
-  Typography,
-  useTheme,
-} from "@mui/material";
-import { alpha } from "@mui/material/styles";
+  ShieldCheck,
+  Smartphone,
+  TriangleAlert,
+  Wand2,
+  Wrench,
+  X,
+} from "lucide-react";
 import React, { lazy, Suspense, useEffect, useMemo, useState } from "react";
 
-import { useThemeMode } from "../theme";
-import { getComponentStyles } from "../theme/componentStyles";
+import { Note } from "../components/ui/primitives";
+import { cn } from "../lib/utils";
 import { logger } from "../utils/logger";
 import { EmailHTMLValidator } from "./EmailHTMLValidator";
 import { EmailValidationReport, ValidationResult, ValidationSeverity } from "./types";
@@ -71,6 +30,192 @@ import { EMAIL_VALIDATION_RULES } from "./validationRules";
 const EmailValidationDevTools = import.meta.env.DEV
   ? lazy(() => import("./EmailValidationDevTools"))
   : null;
+
+/* ------------------------------------------------------------------ */
+/* Tone system (Tailwind classes per severity/category color)          */
+/* ------------------------------------------------------------------ */
+
+type Tone = "red" | "amber" | "sky" | "emerald" | "violet" | "primary";
+
+const TONES: Record<
+  Tone,
+  { text: string; bgSoft: string; border: string; solid: string; bar: string }
+> = {
+  red: {
+    text: "text-red-600 dark:text-red-400",
+    bgSoft: "bg-red-500/10",
+    border: "border-red-500/40",
+    solid: "bg-red-600 hover:bg-red-500 text-white",
+    bar: "bg-red-500",
+  },
+  amber: {
+    text: "text-amber-600 dark:text-amber-400",
+    bgSoft: "bg-amber-500/10",
+    border: "border-amber-500/40",
+    solid: "bg-amber-600 hover:bg-amber-500 text-white",
+    bar: "bg-amber-500",
+  },
+  sky: {
+    text: "text-sky-600 dark:text-sky-400",
+    bgSoft: "bg-sky-500/10",
+    border: "border-sky-500/40",
+    solid: "bg-sky-600 hover:bg-sky-500 text-white",
+    bar: "bg-sky-500",
+  },
+  emerald: {
+    text: "text-emerald-600 dark:text-emerald-400",
+    bgSoft: "bg-emerald-500/10",
+    border: "border-emerald-500/40",
+    solid: "bg-emerald-600 hover:bg-emerald-500 text-white",
+    bar: "bg-emerald-500",
+  },
+  violet: {
+    text: "text-violet-600 dark:text-violet-400",
+    bgSoft: "bg-violet-500/10",
+    border: "border-violet-500/40",
+    solid: "bg-violet-600 hover:bg-violet-500 text-white",
+    bar: "bg-violet-500",
+  },
+  primary: {
+    text: "text-primary",
+    bgSoft: "bg-primary/10",
+    border: "border-primary/40",
+    solid: "bg-primary hover:bg-primary/90 text-primary-foreground",
+    bar: "bg-primary",
+  },
+};
+
+const SEVERITY_TONE: Record<ValidationSeverity, Tone> = {
+  error: "red",
+  warning: "amber",
+  info: "sky",
+};
+
+const SEVERITY_ICONS: Record<ValidationSeverity, typeof Info> = {
+  error: CircleAlert,
+  warning: TriangleAlert,
+  info: Info,
+};
+
+const CATEGORY_META: Record<string, { label: string; tone: Tone; Icon: typeof Info }> = {
+  structure: { label: "Structure", tone: "primary", Icon: Wrench },
+  accessibility: { label: "Accessibility", tone: "violet", Icon: Accessibility },
+  compatibility: { label: "Compatibility", tone: "sky", Icon: Monitor },
+  performance: { label: "Performance", tone: "amber", Icon: Gauge },
+  "best-practice": { label: "Best Practice", tone: "emerald", Icon: ShieldCheck },
+};
+
+const getCategoryMeta = (category: string) =>
+  CATEGORY_META[category] ?? { label: category, tone: "sky" as Tone, Icon: Info };
+
+const scoreTone = (score: number): Tone => (score >= 80 ? "emerald" : score >= 60 ? "amber" : "red");
+
+/* ------------------------------------------------------------------ */
+/* Small building blocks                                               */
+/* ------------------------------------------------------------------ */
+
+function Pill({
+  tone,
+  children,
+  className,
+  outlined = false,
+}: {
+  tone: Tone;
+  children: React.ReactNode;
+  className?: string;
+  outlined?: boolean;
+}) {
+  const t = TONES[tone];
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap",
+        outlined ? cn("border bg-transparent", t.border, t.text) : cn(t.bgSoft, t.text),
+        className
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+function FixButton({
+  tone,
+  onClick,
+  disabled,
+  isFixing,
+  label,
+  className,
+}: {
+  tone: Tone;
+  onClick: (e: React.MouseEvent) => void;
+  disabled: boolean;
+  isFixing: boolean;
+  label: string;
+  className?: string;
+}) {
+  return (
+    <button
+      type='button'
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold shadow-sm active:scale-95 transition-all disabled:opacity-50 disabled:pointer-events-none",
+        TONES[tone].solid,
+        className
+      )}
+    >
+      <Wand2 className='w-3.5 h-3.5 shrink-0' />
+      {isFixing ? "Fixing..." : label}
+    </button>
+  );
+}
+
+function Toggle({ checked, onChange }: { checked: boolean; onChange: (checked: boolean) => void }) {
+  return (
+    <button
+      type='button'
+      role='switch'
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className={cn(
+        "relative w-9 h-5 rounded-full transition-colors shrink-0 mt-1",
+        checked ? "bg-primary" : "bg-muted-foreground/30"
+      )}
+    >
+      <span
+        className={cn(
+          "absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform",
+          checked && "translate-x-4"
+        )}
+      />
+    </button>
+  );
+}
+
+const selectClass =
+  "h-9 w-full rounded-xl border border-border bg-background px-2.5 text-xs text-foreground outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20";
+
+function TabHeading({ tone, Icon, children }: { tone: Tone; Icon: typeof Info; children: React.ReactNode }) {
+  const t = TONES[tone];
+  return (
+    <h3
+      className={cn(
+        "flex items-center gap-2 p-3 rounded-xl border text-sm font-bold",
+        t.bgSoft,
+        t.border,
+        t.text
+      )}
+    >
+      <Icon className='w-4 h-4 shrink-0' />
+      {children}
+    </h3>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Main panel                                                          */
+/* ------------------------------------------------------------------ */
 
 interface EmailValidationPanelProps {
   html: string;
@@ -85,21 +230,6 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
   validator: propValidator,
   showCompactView = false,
 }) => {
-  const theme = useTheme();
-  const { mode, style } = useThemeMode();
-  const componentStyles = useMemo(() => getComponentStyles(mode, style), [mode, style]);
-  const surfaceSx = useMemo(
-    () => ({
-      borderRadius: `${componentStyles.card.borderRadius}px`,
-      background: componentStyles.card.background || alpha(theme.palette.background.paper, 0.8),
-      backdropFilter: componentStyles.card.backdropFilter,
-      WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
-      border: componentStyles.card.border,
-      boxShadow: componentStyles.card.boxShadow,
-    }),
-    [componentStyles, theme.palette.background.paper]
-  );
-
   const [validationReport, setValidationReport] = useState<EmailValidationReport | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -269,70 +399,6 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
     }
   };
 
-  const getSeverityIcon = (severity: ValidationSeverity) => {
-    switch (severity) {
-      case "error":
-        return <Error color='error' />;
-      case "warning":
-        return <Warning color='warning' />;
-      case "info":
-        return <Info color='info' />;
-      default:
-        return <Info />;
-    }
-  };
-
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case "structure":
-        return <Build color='primary' />;
-      case "accessibility":
-        return <Accessibility color='secondary' />;
-      case "compatibility":
-        return <Computer color='info' />;
-      case "performance":
-        return <Speed color='warning' />;
-      case "best-practice":
-        return <Security color='success' />;
-      default:
-        return <Info />;
-    }
-  };
-
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case "structure":
-        return "primary";
-      case "accessibility":
-        return "secondary";
-      case "compatibility":
-        return "info";
-      case "performance":
-        return "warning";
-      case "best-practice":
-        return "success";
-      default:
-        return "default";
-    }
-  };
-
-  const getCategoryLabel = (category: string) => {
-    switch (category) {
-      case "structure":
-        return "Structure";
-      case "accessibility":
-        return "Accessibility";
-      case "compatibility":
-        return "Compatibility";
-      case "performance":
-        return "Performance";
-      case "best-practice":
-        return "Best Practice";
-      default:
-        return category;
-    }
-  };
-
   // Filter and search results
   const filteredResults = useMemo(() => {
     if (!validationReport) return { errors: [], warnings: [], suggestions: [] };
@@ -379,483 +445,157 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
     severity: ValidationSeverity
   ) => {
     if (!results || results.length === 0) return null;
-
-    const severityColor =
-      severity === "error" ? "error" : severity === "warning" ? "warning" : "info";
-    const severityPalette =
-      severityColor === "error"
-        ? theme.palette.error
-        : severityColor === "warning"
-          ? theme.palette.warning
-          : theme.palette.info;
-    const severityRing = alpha(severityPalette.main, theme.palette.mode === "dark" ? 0.6 : 0.35);
-    const accordionBorder =
-      componentStyles.card.border === "none" ? "none" : `1px solid ${severityRing}`;
-    const accordionBoxShadow =
-      componentStyles.card.border === "none"
-        ? `${componentStyles.card.boxShadow}, 0 0 0 1px ${severityRing}`
-        : componentStyles.card.boxShadow;
-
     return (
-      <Accordion
-        defaultExpanded={severity === "error"}
-        sx={{
-          mb: 2,
-          "&:before": { display: "none" },
-          borderRadius: `${componentStyles.card.borderRadius}px`,
-          background: componentStyles.card.background || alpha(theme.palette.background.paper, 0.8),
-          backdropFilter: componentStyles.card.backdropFilter,
-          WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
-          border: accordionBorder,
-          boxShadow: accordionBoxShadow,
-        }}
-      >
-        <AccordionSummary
-          expandIcon={<ExpandMore />}
-          sx={{
-            backgroundColor: alpha(severityPalette.main, theme.palette.mode === "dark" ? 0.22 : 0.08),
-            borderRadius: `${componentStyles.card.borderRadius}px ${componentStyles.card.borderRadius}px 0 0`,
-          }}
-        >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2, width: "100%" }}>
-            {getSeverityIcon(severity)}
-            <Typography
-              variant='subtitle1'
-              component='div'
-              fontWeight='bold'
-            >
-              {title} ({results.length})
-            </Typography>
-            <Box sx={{ flexGrow: 1 }} />
-            {results.some((r) => r.autoFixAvailable) && onHtmlChange && (
-              <Button
-                size='small'
-                variant='contained'
-                startIcon={<AutoFixHigh />}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleFixAllIssues(severity);
-                }}
-                disabled={isValidating || isFixing}
-                color={severityColor}
-                sx={{ minWidth: "auto" }}
-              >
-                {isFixing
-                  ? "Fixing..."
-                  : `Fix All (${results.filter((r) => r.autoFixAvailable).length})`}
-              </Button>
-            )}
-          </Box>
-        </AccordionSummary>
-        <AccordionDetails sx={{ p: 0 }}>
-          <List
-            dense
-            sx={{ p: 0 }}
-          >
-            {results.map((result, index) => (
-              <ListItem
-                key={`${result.rule}-${index}`}
-                sx={{
-                  px: 2,
-                  py: 1,
-                  borderBottom: index < results.length - 1 ? "1px solid" : "none",
-                  borderBottomColor: "divider",
-                  "&:last-child": { borderBottom: "none" },
-                }}
-              >
-                <ListItemIcon sx={{ minWidth: 36 }}>
-                  {getSeverityIcon(result.severity)}
-                </ListItemIcon>
-                <ListItemText
-                  primary={
-                    <Typography
-                      variant='body2'
-                      component='div'
-                      fontWeight='medium'
-                    >
-                      {result.message}
-                    </Typography>
-                  }
-                  secondary={
-                    <Box sx={{ mt: 1 }}>
-                      {result.line && (
-                        <Typography
-                          variant='caption'
-                          component='div'
-                          color='text.secondary'
-                          sx={{ mb: 0.5 }}
-                        >
-                          📍 Line {result.line}
-                          {result.column && `, Column ${result.column}`}
-                        </Typography>
-                      )}
-                      {result.suggestion && (
-                        <Typography
-                          variant='caption'
-                          component='div'
-                          display='block'
-                          sx={{
-                            mt: 0.5,
-                            fontStyle: "italic",
-                            backgroundColor: "action.hover",
-                            p: 1,
-                            borderRadius: 1,
-                            border: "1px solid",
-                            borderColor: "divider",
-                          }}
-                        >
-                          💡 {result.suggestion}
-                        </Typography>
-                      )}
-                      {result.category && (
-                        <Chip
-                          size='small'
-                          icon={getCategoryIcon(result.category)}
-                          label={getCategoryLabel(result.category)}
-                          color={
-                            getCategoryColor(result.category) as
-                              | "primary"
-                              | "secondary"
-                              | "info"
-                              | "warning"
-                              | "success"
-                              | "default"
-                          }
-                          variant='outlined'
-                          sx={{ mt: 1, mr: 1 }}
-                        />
-                      )}
-                      <Chip
-                        size='small'
-                        label={result.rule}
-                        variant='outlined'
-                        sx={{ mt: 1, fontSize: "0.7rem" }}
-                      />
-                    </Box>
-                  }
-                  primaryTypographyProps={{ component: "div" }}
-                  secondaryTypographyProps={{ component: "div" }}
-                />
-                {result.autoFixAvailable && onHtmlChange && (
-                  <Tooltip title='Fix this issue'>
-                    <IconButton
-                      size='small'
-                      onClick={() => handleSingleIssueFix(result.rule)}
-                      sx={{ ml: 1 }}
-                      color='primary'
-                    >
-                      <AutoFixHigh fontSize='small' />
-                    </IconButton>
-                  </Tooltip>
-                )}
-              </ListItem>
-            ))}
-          </List>
-        </AccordionDetails>
-      </Accordion>
+      <IssueGroup
+        key={severity}
+        title={title}
+        severity={severity}
+        results={results}
+        canFix={!!onHtmlChange}
+        busy={isValidating || isFixing}
+        isFixing={isFixing}
+        onFixAll={() => handleFixAllIssues(severity)}
+        onFixSingle={handleSingleIssueFix}
+      />
     );
   };
 
   const renderCategorySummary = () => {
     if (!validationReport) return null;
 
-    const categories = [
-      { key: "structure", label: "Structure", icon: <Build />, color: "primary" as const },
-      {
-        key: "accessibility",
-        label: "Accessibility",
-        icon: <Accessibility />,
-        color: "secondary" as const,
-      },
-      { key: "compatibility", label: "Compatibility", icon: <Computer />, color: "info" as const },
-      { key: "performance", label: "Performance", icon: <Speed />, color: "warning" as const },
-      {
-        key: "best-practice",
-        label: "Best Practice",
-        icon: <Security />,
-        color: "success" as const,
-      },
-    ];
-
     return (
-      <Grid
-        container
-        spacing={2}
-        sx={{ mb: 3 }}
-      >
-        {categories.map((category) => {
-          const count =
-            validationReport.categories[category.key as keyof typeof validationReport.categories];
+      <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4'>
+        {Object.keys(CATEGORY_META).map((key) => {
+          const { label, tone, Icon } = CATEGORY_META[key];
+          const t = TONES[tone];
+          const count = validationReport.categories[key as keyof typeof validationReport.categories];
           const hasAutoFix =
             count > 0 &&
-            validator
-              .getRulesByCategory(category.key)
-              .some((rule) => EMAIL_VALIDATION_RULES[rule]?.autofix);
+            validator.getRulesByCategory(key).some((rule) => EMAIL_VALIDATION_RULES[rule]?.autofix);
 
           return (
-            <Grid
-              item
-              xs={12}
-              sm={6}
-              md={4}
-              key={category.key}
+            <div
+              key={key}
+              role='button'
+              tabIndex={0}
+              onClick={() => setFilterCategory(key)}
+              onKeyDown={(e) => e.key === "Enter" && setFilterCategory(key)}
+              className={cn(
+                "p-3 rounded-2xl border bg-card cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-md",
+                count > 0 ? cn(t.border, t.bgSoft) : "border-border/50"
+              )}
             >
-              <Card
-                variant='outlined'
-                onClick={() => setFilterCategory(category.key)}
-                sx={{
-                  borderRadius: `${componentStyles.card.borderRadius}px`,
-                  background: (() => {
-                    const base =
-                      componentStyles.card.background || alpha(theme.palette.background.paper, 0.8);
-                    if (count <= 0) return base;
+              <div className={cn("flex items-center gap-2 mb-2 text-sm font-bold", count > 0 ? t.text : "text-foreground")}>
+                <Icon className='w-4 h-4 shrink-0' />
+                {label}
+              </div>
 
-                    const main =
-                      (theme.palette[category.color].main) ??
-                      theme.palette.primary.main;
-                    const overlay = alpha(main, theme.palette.mode === "dark" ? 0.18 : 0.06);
-                    return `linear-gradient(0deg, ${overlay}, ${overlay}), ${base}`;
-                  })(),
-                  backdropFilter: componentStyles.card.backdropFilter,
-                  WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
-                  border: (() => {
-                    if (count <= 0) return componentStyles.card.border;
-                    const main =
-                      (theme.palette[category.color].main) ??
-                      theme.palette.primary.main;
-                    const ring = alpha(main, theme.palette.mode === "dark" ? 0.7 : 0.45);
-                    return componentStyles.card.border === "none"
-                      ? componentStyles.card.border
-                      : `1px solid ${ring}`;
-                  })(),
-                  boxShadow: (() => {
-                    if (count <= 0) return componentStyles.card.boxShadow;
-                    if (componentStyles.card.border !== "none") return componentStyles.card.boxShadow;
-                    const main =
-                      (theme.palette[category.color].main) ??
-                      theme.palette.primary.main;
-                    const ring = alpha(main, theme.palette.mode === "dark" ? 0.7 : 0.45);
-                    return `${componentStyles.card.boxShadow}, 0 0 0 1px ${ring}`;
-                  })(),
-                  transition: (theme) =>
-                    theme.transitions.create(["transform", "box-shadow", "border"], {
-                      duration: theme.transitions.duration.short,
-                    }),
-                  cursor: "pointer",
-                  "&:hover": {
-                    transform: componentStyles.card.hover?.transform || "translateY(-4px)",
-                    boxShadow: componentStyles.card.hover?.boxShadow || ((theme) => theme.shadows[4]),
-                    border: componentStyles.card.hover?.border || undefined,
-                  },
-                }}
-              >
-                <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-                    <Box sx={{ color: `${category.color}.main` }}>{category.icon}</Box>
-                    <Typography
-                      variant='body2'
-                      component='div'
-                      fontWeight='bold'
-                    >
-                      {category.label}
-                    </Typography>
-                  </Box>
+              <div className='flex items-center justify-between gap-2'>
+                {count === 0 ? (
+                  <Pill tone='emerald'>Perfect</Pill>
+                ) : (
+                  <Pill tone={tone} outlined>
+                    {count} issues
+                  </Pill>
+                )}
 
-                  <Box
-                    sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
-                  >
-                    <Badge
-                      badgeContent={count}
-                      color={category.color}
-                    >
-                      <Chip
-                        size='small'
-                        label={count === 0 ? "Perfect" : `${count} issues`}
-                        color={count === 0 ? "success" : category.color}
-                        variant={count === 0 ? "filled" : "outlined"}
-                      />
-                    </Badge>
-
-                    {hasAutoFix && onHtmlChange && count > 0 && (
-                      <Button
-                        size='small'
-                        variant='contained'
-                        startIcon={<AutoFixHigh />}
-                        onClick={() => handleFixCategory(category.key)}
-                        disabled={isValidating || isFixing}
-                        color={category.color}
-                        sx={{
-                          borderRadius: 2,
-                          textTransform: "none",
-                          fontWeight: 500,
-                          boxShadow: (theme) => theme.shadows[1],
-                          "&:hover": {
-                            boxShadow: (theme) => theme.shadows[3],
-                          },
-                        }}
-                      >
-                        {isFixing ? "Fixing..." : `Fix All (${count})`}
-                      </Button>
-                    )}
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
+                {hasAutoFix && onHtmlChange && count > 0 && (
+                  <FixButton
+                    tone={tone}
+                    onClick={() => handleFixCategory(key)}
+                    disabled={isValidating || isFixing}
+                    isFixing={isFixing}
+                    label={`Fix All (${count})`}
+                  />
+                )}
+              </div>
+            </div>
           );
         })}
-      </Grid>
+      </div>
     );
   };
 
   const renderFilters = () => {
     if (!validationReport) return null;
 
+    const shownCount =
+      filteredResults.errors.length +
+      filteredResults.warnings.length +
+      filteredResults.suggestions.length;
+    const hasActiveFilters = filterSeverity !== "all" || filterCategory !== "all" || !!searchQuery.trim();
+
     return (
-      <Box
-        sx={{
-          mb: 3,
-          p: 3,
-          ...surfaceSx,
-        }}
-      >
-        <Typography
-          variant='subtitle2'
-          component='div'
-          sx={{
-            mb: 2,
-            fontWeight: "bold",
-            display: "flex",
-            alignItems: "center",
-            gap: 1,
-            color: "text.primary",
-          }}
-        >
-          <FilterList fontSize='small' />
+      <div className='p-4 mb-4 rounded-2xl border border-border/50 bg-card flex flex-col gap-3'>
+        <div className='flex items-center gap-2 text-sm font-bold text-foreground'>
+          <ListFilter className='w-4 h-4' />
           Filters & Search
-        </Typography>
+        </div>
 
-        <Grid
-          container
-          spacing={2}
-          alignItems='center'
-        >
-          <Grid
-            item
-            xs={12}
-            sm={6}
-            md={3}
-          >
-            <FormControl
-              fullWidth
-              size='small'
+        <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2'>
+          <label className='flex flex-col gap-1'>
+            <span className='text-[10px] font-semibold text-muted-foreground uppercase tracking-wider'>Severity</span>
+            <select
+              value={filterSeverity}
+              onChange={(e) => setFilterSeverity(e.target.value as ValidationSeverity | "all")}
+              className={selectClass}
             >
-              <InputLabel>Severity</InputLabel>
-              <Select
-                value={filterSeverity}
-                label='Severity'
-                onChange={(e) => setFilterSeverity(e.target.value as ValidationSeverity | "all")}
-              >
-                <MenuItem value='all'>All Severities</MenuItem>
-                <MenuItem value='error'>Errors</MenuItem>
-                <MenuItem value='warning'>Warnings</MenuItem>
-                <MenuItem value='info'>Suggestions</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
+              <option value='all'>All Severities</option>
+              <option value='error'>Errors</option>
+              <option value='warning'>Warnings</option>
+              <option value='info'>Suggestions</option>
+            </select>
+          </label>
 
-          <Grid
-            item
-            xs={12}
-            sm={6}
-            md={3}
-          >
-            <FormControl
-              fullWidth
-              size='small'
+          <label className='flex flex-col gap-1'>
+            <span className='text-[10px] font-semibold text-muted-foreground uppercase tracking-wider'>Category</span>
+            <select
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
+              className={selectClass}
             >
-              <InputLabel>Category</InputLabel>
-              <Select
-                value={filterCategory}
-                label='Category'
-                onChange={(e) => setFilterCategory(e.target.value)}
-              >
-                <MenuItem value='all'>All Categories</MenuItem>
-                <MenuItem value='structure'>Structure</MenuItem>
-                <MenuItem value='accessibility'>Accessibility</MenuItem>
-                <MenuItem value='compatibility'>Compatibility</MenuItem>
-                <MenuItem value='performance'>Performance</MenuItem>
-                <MenuItem value='best-practice'>Best Practice</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
+              <option value='all'>All Categories</option>
+              <option value='structure'>Structure</option>
+              <option value='accessibility'>Accessibility</option>
+              <option value='compatibility'>Compatibility</option>
+              <option value='performance'>Performance</option>
+              <option value='best-practice'>Best Practice</option>
+            </select>
+          </label>
 
-          <Grid
-            item
-            xs={12}
-            sm={12}
-            md={6}
-          >
-            <TextField
-              fullWidth
-              size='small'
-              placeholder='Search in messages, suggestions, or rules...'
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position='start'>
-                    <Search fontSize='small' />
-                  </InputAdornment>
-                ),
-              }}
-            />
-          </Grid>
-        </Grid>
+          <label className='flex flex-col gap-1 sm:col-span-2'>
+            <span className='text-[10px] font-semibold text-muted-foreground uppercase tracking-wider'>Search</span>
+            <div className='relative'>
+              <Search className='absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none' />
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder='Search in messages, suggestions, or rules...'
+                className={cn(selectClass, "pl-8")}
+              />
+            </div>
+          </label>
+        </div>
 
-        <Box
-          sx={{
-            mt: 2,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            p: 1,
-            backgroundColor: "background.paper",
-            borderRadius: 1,
-            border: "1px solid",
-            borderColor: "divider",
-          }}
-        >
-          <Typography
-            variant='caption'
-            color='text.secondary'
-          >
-            Showing{" "}
-            {filteredResults.errors.length +
-              filteredResults.warnings.length +
-              filteredResults.suggestions.length}{" "}
-            of {validationReport.totalIssues} issues
-          </Typography>
-          {(filterSeverity !== "all" || filterCategory !== "all" || searchQuery.trim()) && (
-            <Button
-              size='small'
-              variant='outlined'
-              color='secondary'
+        <div className='flex items-center justify-between gap-2 px-3 py-2 rounded-xl border border-border/50 bg-background'>
+          <span className='text-[11px] text-muted-foreground'>
+            Showing {shownCount} of {validationReport.totalIssues} issues
+          </span>
+          {hasActiveFilters && (
+            <button
+              type='button'
               onClick={() => {
                 setFilterSeverity("all");
                 setFilterCategory("all");
                 setSearchQuery("");
               }}
-              sx={{
-                borderRadius: 2,
-                textTransform: "none",
-                fontWeight: 500,
-              }}
+              className='text-[11px] font-bold text-muted-foreground hover:text-foreground px-2.5 py-1 rounded-full border border-border hover:bg-muted transition-colors'
             >
               Clear Filters
-            </Button>
+            </button>
           )}
-        </Box>
-      </Box>
+        </div>
+      </div>
     );
   };
 
@@ -868,73 +608,39 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
       const compatibility = validator.getCompatibilityReport(html);
 
       return (
-        <Box sx={{ mt: 2 }}>
-          <Typography
-            variant='subtitle2'
-            component='div'
-            sx={{ mb: 1, fontWeight: "bold" }}
-          >
-            Email Client Compatibility
-          </Typography>
+        <div className='mt-3 flex flex-col gap-2'>
+          <h4 className='text-xs font-bold text-foreground'>Email Client Compatibility</h4>
 
           {Object.entries(compatibility).map(([client, report]) => (
-            <Box
-              key={client}
-              sx={{ mb: 1 }}
-            >
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                {client === "outlook" && <Computer fontSize='small' />}
-                {client === "gmail" && <Email fontSize='small' />}
-                {client === "mobile" && <PhoneAndroid fontSize='small' />}
+            <div key={client}>
+              <div className='flex items-center gap-2'>
+                {client === "outlook" && <Monitor className='w-4 h-4 text-muted-foreground' />}
+                {client === "gmail" && <Mail className='w-4 h-4 text-muted-foreground' />}
+                {client === "mobile" && <Smartphone className='w-4 h-4 text-muted-foreground' />}
 
-                <Typography
-                  variant='body2'
-                  component='div'
-                  sx={{ textTransform: "capitalize", flexGrow: 1 }}
-                >
-                  {client}
-                </Typography>
+                <span className='flex-1 text-sm text-foreground capitalize'>{client}</span>
 
-                <Chip
-                  size='small'
-                  label={report.compatible ? "Compatible" : "Issues"}
-                  color={report.compatible ? "success" : "warning"}
-                  variant='outlined'
-                />
-              </Box>
+                <Pill tone={report.compatible ? "emerald" : "amber"} outlined>
+                  {report.compatible ? "Compatible" : "Issues"}
+                </Pill>
+              </div>
 
               {!report.compatible && report.issues && report.issues.length > 0 && (
-                <Box sx={{ ml: 3, mt: 0.5 }}>
+                <ul className='ml-6 mt-1 flex flex-col gap-0.5'>
                   {report.issues.map((issue, index) => (
-                    <Typography
-                      key={index}
-                      variant='caption'
-                      component='div'
-                      color='warning.main'
-                      display='block'
-                    >
+                    <li key={index} className='text-[11px] text-amber-600 dark:text-amber-400'>
                       • {issue}
-                    </Typography>
+                    </li>
                   ))}
-                </Box>
+                </ul>
               )}
-            </Box>
+            </div>
           ))}
-        </Box>
+        </div>
       );
     } catch (error) {
       logger.error("EmailValidationPanel", "Error generating compatibility report", error);
-      return (
-        <Box sx={{ mt: 2 }}>
-          <Typography
-            variant='subtitle2'
-            component='div'
-            color='error'
-          >
-            Error generating compatibility report
-          </Typography>
-        </Box>
-      );
+      return <p className='mt-3 text-xs font-bold text-red-600 dark:text-red-400'>Error generating compatibility report</p>;
     }
   };
 
@@ -944,135 +650,84 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
 
   if (showCompactView) {
     return (
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+      <div className='flex items-center gap-2'>
         {isValidating ? (
-          <Chip
-            size='small'
-            label='Validating...'
-            color='info'
-          />
+          <Pill tone='sky'>Validating...</Pill>
         ) : isFixing ? (
-          <Chip
-            size='small'
-            label='Fixing...'
-            color='warning'
-          />
+          <Pill tone='amber'>Fixing...</Pill>
         ) : validationReport?.isValid ? (
-          <Chip
-            size='small'
-            icon={<CheckCircle />}
-            label='Email Safe'
-            color='success'
-          />
+          <Pill tone='emerald'>
+            <CheckCircle2 className='w-3.5 h-3.5' />
+            Email Safe
+          </Pill>
         ) : (
-          <Chip
-            size='small'
-            icon={<Error />}
-            label={`${validationReport?.totalIssues || 0} Issues`}
-            color='error'
-          />
+          <Pill tone='red'>
+            <CircleAlert className='w-3.5 h-3.5' />
+            {validationReport?.totalIssues || 0} Issues
+          </Pill>
         )}
 
         {validationReport && (
-          <IconButton
-            size='small'
+          <button
+            type='button'
             onClick={() => setShowDetails(!showDetails)}
+            className='p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors'
           >
-            {showDetails ? <ExpandLess /> : <ExpandMore />}
-          </IconButton>
+            <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", showDetails && "rotate-180")} />
+          </button>
         )}
-      </Box>
+      </div>
     );
   }
 
   return (
-    <Paper sx={{ p: 2, mb: 2, ...surfaceSx }}>
-      {/* CSS Animations */}
-      <style>
-        {`
-          @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-
-          @keyframes slideIn {
-            from { transform: translateX(20px); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-          }
-
-          .tab-content {
-            animation: slideIn 0.3s ease-out;
-          }
-        `}
-      </style>
+    <div className='p-4 rounded-2xl border border-border/50 bg-card shadow-soft'>
       {/* Header with Score */}
-      <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          {isValidating ? (
-            <Chip
-              icon={<BugReport />}
-              label='Validating...'
-              color='info'
-            />
-          ) : validationReport?.isValid ? (
-            <Chip
-              icon={<CheckCircle />}
-              label='Email Safe'
-              color='success'
-            />
-          ) : (
-            <Chip
-              icon={<Error />}
-              label={`${validationReport?.errors?.length || 0} Errors`}
-              color='error'
-            />
-          )}
+      <div className='flex flex-wrap items-center gap-2'>
+        {isValidating ? (
+          <Pill tone='sky'>
+            <Bug className='w-3.5 h-3.5' />
+            Validating...
+          </Pill>
+        ) : validationReport?.isValid ? (
+          <Pill tone='emerald'>
+            <CheckCircle2 className='w-3.5 h-3.5' />
+            Email Safe
+          </Pill>
+        ) : (
+          <Pill tone='red'>
+            <CircleAlert className='w-3.5 h-3.5' />
+            {validationReport?.errors?.length || 0} Errors
+          </Pill>
+        )}
 
-          {validationReport &&
-            validationReport.warnings &&
-            validationReport.warnings.length > 0 && (
-              <Chip
-                icon={<Warning />}
-                label={`${validationReport.warnings.length} Warnings`}
-                color='warning'
-              />
-            )}
-        </Box>
+        {validationReport && validationReport.warnings && validationReport.warnings.length > 0 && (
+          <Pill tone='amber'>
+            <TriangleAlert className='w-3.5 h-3.5' />
+            {validationReport.warnings.length} Warnings
+          </Pill>
+        )}
 
-        <Box sx={{ flexGrow: 1 }} />
+        <div className='flex-1' />
 
         {/* Validation Score */}
         {validationReport && (
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Typography
-              variant='body2'
-              color='text.secondary'
-            >
-              Score:
-            </Typography>
-            <Chip
-              label={`${validationReport.score}/100`}
-              color={
-                validationReport.score >= 80
-                  ? "success"
-                  : validationReport.score >= 60
-                    ? "warning"
-                    : "error"
-              }
-              variant='outlined'
-              size='small'
-            />
-          </Box>
+          <div className='flex items-center gap-1.5'>
+            <span className='text-xs text-muted-foreground'>Score:</span>
+            <Pill tone={scoreTone(validationReport.score)} outlined>
+              {validationReport.score}/100
+            </Pill>
+          </div>
         )}
 
-        <Tooltip title='Validation Settings'>
-          <IconButton
-            size='small'
-            onClick={() => setShowSettings(true)}
-          >
-            <Settings />
-          </IconButton>
-        </Tooltip>
+        <button
+          type='button'
+          title='Validation Settings'
+          onClick={() => setShowSettings(true)}
+          className='p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors'
+        >
+          <Settings className='w-4 h-4' />
+        </button>
 
         {/* DEV-only: isolated dev tools (lazy-loaded) */}
         {EmailValidationDevTools && onHtmlChange && (
@@ -1082,624 +737,239 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
         )}
 
         {validationReport?.autoFixAvailable && onHtmlChange && (
-          <Tooltip title='Auto-fix All Issues'>
-            <Button
-              size='small'
-              variant='contained'
-              startIcon={<AutoFixHigh />}
-              onClick={handleAutoFix}
-              disabled={isValidating || isFixing}
-              color='primary'
-              sx={{
-                borderRadius: 2,
-                textTransform: "none",
-                fontWeight: 500,
-                boxShadow: (theme) => theme.shadows[2],
-                "&:hover": {
-                  boxShadow: (theme) => theme.shadows[4],
-                },
-              }}
-            >
-              {isFixing ? "Fixing..." : `Auto-fix All (${validationReport.totalIssues})`}
-            </Button>
-          </Tooltip>
+          <FixButton
+            tone='primary'
+            onClick={handleAutoFix}
+            disabled={isValidating || isFixing}
+            isFixing={isFixing}
+            label={`Auto-fix All (${validationReport.totalIssues})`}
+          />
         )}
 
-        <Button
-          size='small'
+        <button
+          type='button'
           onClick={() => setShowDetails(!showDetails)}
-          endIcon={showDetails ? <ExpandLess /> : <ExpandMore />}
-          variant='outlined'
-          sx={{
-            borderRadius: 2,
-            textTransform: "none",
-            fontWeight: 500,
-            borderColor: "divider",
-            color: "text.secondary",
-            "&:hover": {
-              borderColor: "text.primary",
-              backgroundColor: "action.hover",
-            },
-          }}
+          className='flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors'
         >
           Details
-        </Button>
-      </Box>
+          <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", showDetails && "rotate-180")} />
+        </button>
+      </div>
 
       {/* Progress Bar */}
       {validationReport && (
-        <Box sx={{ mb: 2 }}>
-          <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
-            <Typography
-              variant='caption'
-              color='text.secondary'
-            >
-              Validation Progress
-            </Typography>
-            <Typography
-              variant='caption'
-              color='text.secondary'
-            >
-              {validationReport.score}%
-            </Typography>
-          </Box>
-          <LinearProgress
-            variant='determinate'
-            value={validationReport.score}
-            color={
-              validationReport.score >= 80
-                ? "success"
-                : validationReport.score >= 60
-                  ? "warning"
-                  : "error"
-            }
-            sx={{ height: 6, borderRadius: 3 }}
-          />
-        </Box>
+        <div className='mt-3'>
+          <div className='flex justify-between mb-1'>
+            <span className='text-[11px] text-muted-foreground'>Validation Progress</span>
+            <span className='text-[11px] text-muted-foreground'>{validationReport.score}%</span>
+          </div>
+          <div className='h-1.5 rounded-full bg-muted overflow-hidden'>
+            <div
+              className={cn("h-full rounded-full transition-all duration-300", TONES[scoreTone(validationReport.score)].bar)}
+              style={{ width: `${validationReport.score}%` }}
+            />
+          </div>
+        </div>
       )}
 
       {/* Details */}
-      <Collapse in={showDetails}>
-        <Divider sx={{ mb: 2 }} />
+      {showDetails && (
+        <div className='mt-4 pt-4 border-t border-border/50 animate-in fade-in slide-in-from-top-1 duration-200'>
+          {/* Category Summary */}
+          {validationReport && renderCategorySummary()}
 
-        {/* Category Summary */}
-        {validationReport && renderCategorySummary()}
+          {/* Tabs */}
+          <div className='grid grid-cols-2 sm:grid-cols-4 gap-1 p-1 mb-4 rounded-full border border-border/50 bg-background'>
+            {[
+              { label: "Issues", Icon: Bug, badge: validationReport?.totalIssues || 0 },
+              { label: "Compatibility", Icon: Monitor, badge: 0 },
+              { label: "Performance", Icon: Gauge, badge: 0 },
+              { label: "Settings", Icon: Settings, badge: 0 },
+            ].map(({ label, Icon, badge }, index) => (
+              <button
+                key={label}
+                type='button'
+                onClick={() => setSelectedTab(index)}
+                className={cn(
+                  "flex items-center justify-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold transition-all duration-200",
+                  selectedTab === index
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                )}
+              >
+                <Icon className='w-3.5 h-3.5 shrink-0' />
+                {label}
+                {badge > 0 && (
+                  <span
+                    className={cn(
+                      "flex items-center justify-center min-w-4 h-4 px-1 rounded-full text-[9px]",
+                      selectedTab === index ? "bg-primary-foreground/20 text-primary-foreground" : "bg-red-500 text-white"
+                    )}
+                  >
+                    {badge > 99 ? "99+" : badge}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
 
-        <Box
-          sx={{
-            mb: 2,
-            borderBottom: "1px solid",
-            borderBottomColor: "divider",
-            background: componentStyles.card.background || alpha(theme.palette.background.paper, 0.7),
-            backdropFilter: componentStyles.card.backdropFilter,
-            WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
-            borderRadius: "8px 8px 0 0",
-            p: 1,
-          }}
-        >
-          <Tabs
-            value={selectedTab}
-            onChange={(_, value) => setSelectedTab(value)}
-            sx={{
-              "& .MuiTab-root": {
-                minHeight: 48,
-                textTransform: "none",
-                fontWeight: 500,
-                fontSize: "0.875rem",
-                transition: "all 0.2s ease-in-out",
-                borderRadius: "8px 8px 0 0",
-                margin: "0 4px",
-                color: "text.secondary",
-              },
-              "& .Mui-selected": {
-                fontWeight: 600,
-                color: "primary.main",
-                backgroundColor: (theme) =>
-                  alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.24 : 0.08),
-              },
-              "& .MuiTabs-indicator": {
-                height: 4,
-                borderRadius: "4px 4px 0 0",
-                backgroundColor: "primary.main",
-                boxShadow: (theme) => theme.shadows[2],
-              },
-              "& .MuiTab-root:hover": {
-                backgroundColor: (theme) =>
-                  alpha(theme.palette.primary.main, theme.palette.mode === "dark" ? 0.16 : 0.04),
-                transform: "translateY(-1px)",
-              },
-            }}
-            variant='fullWidth'
-            textColor='primary'
-            indicatorColor='primary'
-          >
-            <Tab
-              label={
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <BugReport fontSize='small' />
-                  Issues
-                  {validationReport && validationReport.totalIssues > 0 && (
-                    <Badge
-                      badgeContent={validationReport.totalIssues}
-                      color='error'
-                      sx={{ ml: 1 }}
-                      max={99}
-                    />
+          {/* Tab Content */}
+          <div className='min-h-[200px] animate-in fade-in slide-in-from-right-2 duration-300' key={selectedTab}>
+            {selectedTab === 0 && validationReport && (
+              <div>
+                <TabHeading tone='red' Icon={Bug}>
+                  Issues & Validation Results
+                </TabHeading>
+
+                <div className='mt-4'>
+                  {/* Filters */}
+                  {renderFilters()}
+
+                  {/* Results */}
+                  {filteredResults.errors.length === 0 &&
+                  filteredResults.warnings.length === 0 &&
+                  filteredResults.suggestions.length === 0 ? (
+                    <Note tone='info'>No issues match the current filters. Try adjusting your search criteria.</Note>
+                  ) : (
+                    <>
+                      {renderValidationResults(filteredResults.errors, "Errors", "error")}
+                      {renderValidationResults(filteredResults.warnings, "Warnings", "warning")}
+                      {renderValidationResults(filteredResults.suggestions, "Suggestions", "info")}
+                    </>
                   )}
-                </Box>
-              }
-            />
-            <Tab
-              label={
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <Computer fontSize='small' />
-                  Compatibility
-                </Box>
-              }
-            />
-            <Tab
-              label={
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <Speed fontSize='small' />
-                  Performance
-                </Box>
-              }
-            />
-            <Tab
-              label={
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <Settings fontSize='small' />
-                  Settings
-                </Box>
-              }
-            />
-          </Tabs>
-        </Box>
 
-        {/* Tab Content */}
-        <Box
-          className='tab-content'
-          sx={{
-            minHeight: 200,
-            position: "relative",
-            p: 2,
-            background: componentStyles.card.background || alpha(theme.palette.background.paper, 0.8),
-            backdropFilter: componentStyles.card.backdropFilter,
-            WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
-            borderRadius: `0 0 ${componentStyles.card.borderRadius}px ${componentStyles.card.borderRadius}px`,
-            border: componentStyles.card.border,
-            boxShadow: componentStyles.card.boxShadow,
-            borderTop: "none",
-          }}
-        >
-          {selectedTab === 0 && validationReport && (
-            <Box>
-              <Typography
-                variant='h6'
-                component='div'
-                sx={{
-                  mb: 2,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1,
-                  p: 2,
-                  backgroundColor: (theme) =>
-                    alpha(theme.palette.error.main, theme.palette.mode === "dark" ? 0.22 : 0.08),
-                  borderRadius: 2,
-                  border: "1px solid",
-                  borderColor: (theme) =>
-                    alpha(theme.palette.error.main, theme.palette.mode === "dark" ? 0.6 : 0.35),
-                  color: "error.main",
-                  fontWeight: 600,
-                  boxShadow: (theme) => theme.shadows[1],
-                }}
-              >
-                <BugReport color='error' />
-                Issues & Validation Results
-              </Typography>
+                  {validationReport.totalIssues === 0 && (
+                    <Note tone='success'>🎉 Your HTML is email-safe! No issues found.</Note>
+                  )}
+                </div>
+              </div>
+            )}
 
-              {/* Filters */}
-              {renderFilters()}
+            {selectedTab === 1 && (
+              <div>
+                <TabHeading tone='sky' Icon={Monitor}>
+                  Email Client Compatibility
+                </TabHeading>
 
-              {/* Results */}
-              {filteredResults.errors.length === 0 &&
-              filteredResults.warnings.length === 0 &&
-              filteredResults.suggestions.length === 0 ? (
-                <Alert
-                  severity='info'
-                  sx={{ borderRadius: 2 }}
-                >
-                  No issues match the current filters. Try adjusting your search criteria.
-                </Alert>
-              ) : (
-                <>
-                  {renderValidationResults(filteredResults.errors, "Errors", "error")}
-                  {renderValidationResults(filteredResults.warnings, "Warnings", "warning")}
-                  {renderValidationResults(filteredResults.suggestions, "Suggestions", "info")}
-                </>
-              )}
+                {renderCompatibilityReport()}
 
-              {validationReport.totalIssues === 0 && (
-                <Alert
-                  severity='success'
-                  sx={{ borderRadius: 2 }}
-                >
-                  🎉 Your HTML is email-safe! No issues found.
-                </Alert>
-              )}
-            </Box>
-          )}
+                {/* Additional compatibility info */}
+                <Note tone='info' className='mt-4'>
+                  <strong>💡 Compatibility Tips</strong>
+                  <ul className='mt-1 flex flex-col gap-0.5'>
+                    <li>
+                      • <strong>Outlook:</strong> Use table-based layout, avoid flexbox/grid
+                    </li>
+                    <li>
+                      • <strong>Gmail:</strong> Inline styles work best, external CSS may be stripped
+                    </li>
+                    <li>
+                      • <strong>Mobile:</strong> Use responsive design with max-width
+                    </li>
+                  </ul>
+                </Note>
+              </div>
+            )}
 
-          {selectedTab === 1 && (
-            <Box>
-              <Typography
-                variant='h6'
-                component='div'
-                sx={{
-                  mb: 2,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1,
-                  p: 2,
-                  backgroundColor: (theme) =>
-                    alpha(theme.palette.info.main, theme.palette.mode === "dark" ? 0.22 : 0.08),
-                  borderRadius: 2,
-                  border: "1px solid",
-                  borderColor: (theme) =>
-                    alpha(theme.palette.info.main, theme.palette.mode === "dark" ? 0.6 : 0.35),
-                  color: "info.main",
-                }}
-              >
-                <Computer color='info' />
-                Email Client Compatibility
-              </Typography>
-              {renderCompatibilityReport()}
+            {selectedTab === 2 && (
+              <div>
+                <TabHeading tone='amber' Icon={Gauge}>
+                  Performance Analysis
+                </TabHeading>
 
-              {/* Additional compatibility info */}
-              <Box
-                sx={{
-                  mt: 3,
-                  p: 2,
-                  backgroundColor: (theme) =>
-                    alpha(theme.palette.info.main, theme.palette.mode === "dark" ? 0.18 : 0.08),
-                  borderRadius: 2,
-                  border: "1px solid",
-                  borderColor: (theme) =>
-                    alpha(theme.palette.info.main, theme.palette.mode === "dark" ? 0.6 : 0.35),
-                }}
-              >
-                <Typography
-                  variant='subtitle2'
-                  component='div'
-                  sx={{ mb: 1, fontWeight: "bold" }}
-                >
-                  💡 Compatibility Tips
-                </Typography>
-                <Typography
-                  variant='body2'
-                  component='div'
-                  sx={{ mb: 1 }}
-                >
-                  • <strong>Outlook:</strong> Use table-based layout, avoid flexbox/grid
-                </Typography>
-                <Typography
-                  variant='body2'
-                  component='div'
-                  sx={{ mb: 1 }}
-                >
-                  • <strong>Gmail:</strong> Inline styles work best, external CSS may be stripped
-                </Typography>
-                <Typography
-                  variant='body2'
-                  component='div'
-                  sx={{ mb: 1 }}
-                >
-                  • <strong>Mobile:</strong> Use responsive design with max-width
-                </Typography>
-              </Box>
-            </Box>
-          )}
-
-          {selectedTab === 2 && (
-            <Box>
-              <Typography
-                variant='h6'
-                component='div'
-                sx={{
-                  mb: 2,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1,
-                  p: 2,
-                  backgroundColor: (theme) =>
-                    alpha(theme.palette.warning.main, theme.palette.mode === "dark" ? 0.22 : 0.08),
-                  borderRadius: 2,
-                  border: "1px solid",
-                  borderColor: (theme) =>
-                    alpha(theme.palette.warning.main, theme.palette.mode === "dark" ? 0.6 : 0.35),
-                  color: "warning.main",
-                  fontWeight: 600,
-                  boxShadow: (theme) => theme.shadows[1],
-                }}
-              >
-                <Speed color='warning' />
-                Performance Analysis
-              </Typography>
-
-              {/* Performance metrics */}
-              {validationReport && (
-                <Grid
-                  container
-                  spacing={2}
-                  sx={{ mb: 3 }}
-                >
-                  <Grid
-                    item
-                    xs={12}
-                    sm={6}
-                  >
-                    <Card
-                      variant='outlined'
-                      sx={{ p: 2, ...surfaceSx }}
-                    >
-                      <Typography
-                        variant='subtitle2'
-                        component='div'
-                        sx={{ mb: 1, fontWeight: "bold" }}
-                      >
-                        📊 File Size
-                      </Typography>
-                      <Typography
-                        variant='h4'
-                        component='div'
-                        color={validationReport.score >= 80 ? "success.main" : "warning.main"}
-                      >
+                {/* Performance metrics */}
+                {validationReport && (
+                  <div className='grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4'>
+                    <div className='p-4 rounded-2xl border border-border/50 bg-card'>
+                      <h4 className='text-xs font-bold text-foreground mb-1'>📊 File Size</h4>
+                      <p className={cn("text-2xl font-black", TONES[validationReport.score >= 80 ? "emerald" : "amber"].text)}>
                         {(html.length / 1024).toFixed(1)} KB
-                      </Typography>
-                      <Typography
-                        variant='caption'
-                        component='div'
-                        color='text.secondary'
-                      >
-                        {validationReport.score >= 80
-                          ? "✅ Optimal size"
-                          : "⚠️ Consider optimization"}
-                      </Typography>
-                    </Card>
-                  </Grid>
+                      </p>
+                      <p className='text-[11px] text-muted-foreground mt-0.5'>
+                        {validationReport.score >= 80 ? "✅ Optimal size" : "⚠️ Consider optimization"}
+                      </p>
+                    </div>
 
-                  <Grid
-                    item
-                    xs={12}
-                    sm={6}
-                  >
-                    <Card
-                      variant='outlined'
-                      sx={{ p: 2, ...surfaceSx }}
-                    >
-                      <Typography
-                        variant='subtitle2'
-                        component='div'
-                        sx={{ mb: 1, fontWeight: "bold" }}
-                      >
-                        🎯 Validation Score
-                      </Typography>
-                      <Typography
-                        variant='h4'
-                        component='div'
-                        color={
-                          validationReport.score >= 80
-                            ? "success.main"
-                            : validationReport.score >= 60
-                              ? "warning.main"
-                              : "error.main"
-                        }
-                      >
+                    <div className='p-4 rounded-2xl border border-border/50 bg-card'>
+                      <h4 className='text-xs font-bold text-foreground mb-1'>🎯 Validation Score</h4>
+                      <p className={cn("text-2xl font-black", TONES[scoreTone(validationReport.score)].text)}>
                         {validationReport.score}/100
-                      </Typography>
-                      <Typography
-                        variant='caption'
-                        component='div'
-                        color='text.secondary'
-                      >
+                      </p>
+                      <p className='text-[11px] text-muted-foreground mt-0.5'>
                         {validationReport.score >= 80
                           ? "Excellent"
                           : validationReport.score >= 60
                             ? "Good"
                             : "Needs improvement"}
-                      </Typography>
-                    </Card>
-                  </Grid>
-                </Grid>
-              )}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
-              {/* Performance recommendations */}
-              <Box
-                sx={{
-                  p: 2,
-                  backgroundColor: (theme) =>
-                    alpha(theme.palette.warning.main, theme.palette.mode === "dark" ? 0.18 : 0.08),
-                  borderRadius: 2,
-                  border: "1px solid",
-                  borderColor: (theme) =>
-                    alpha(theme.palette.warning.main, theme.palette.mode === "dark" ? 0.6 : 0.35),
-                }}
-              >
-                <Typography
-                  variant='subtitle2'
-                  component='div'
-                  sx={{ mb: 1, fontWeight: "bold" }}
-                >
-                  🚀 Performance Recommendations
-                </Typography>
-                <Typography
-                  variant='body2'
-                  component='div'
-                  sx={{ mb: 1 }}
-                >
-                  • Keep HTML size under 102KB for optimal email delivery
-                </Typography>
-                <Typography
-                  variant='body2'
-                  component='div'
-                  sx={{ mb: 1 }}
-                >
-                  • Use inline styles instead of external CSS
-                </Typography>
-                <Typography
-                  variant='body2'
-                  component='div'
-                  sx={{ mb: 1 }}
-                >
-                  • Optimize images and use appropriate dimensions
-                </Typography>
-                <Typography
-                  variant='body2'
-                  component='div'
-                  sx={{ mb: 1 }}
-                >
-                  • Minimize table nesting for better rendering
-                </Typography>
-              </Box>
-            </Box>
-          )}
+                {/* Performance recommendations */}
+                <Note tone='warning' className='mt-4'>
+                  <strong>🚀 Performance Recommendations</strong>
+                  <ul className='mt-1 flex flex-col gap-0.5'>
+                    <li>• Keep HTML size under 102KB for optimal email delivery</li>
+                    <li>• Use inline styles instead of external CSS</li>
+                    <li>• Optimize images and use appropriate dimensions</li>
+                    <li>• Minimize table nesting for better rendering</li>
+                  </ul>
+                </Note>
+              </div>
+            )}
 
-          {selectedTab === 3 && (
-            <Box>
-              <Typography
-                variant='h6'
-                component='div'
-                sx={{
-                  mb: 2,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1,
-                  p: 2,
-                  backgroundColor: (theme) =>
-                    alpha(theme.palette.success.main, theme.palette.mode === "dark" ? 0.22 : 0.08),
-                  borderRadius: 2,
-                  border: "1px solid",
-                  borderColor: (theme) =>
-                    alpha(theme.palette.success.main, theme.palette.mode === "dark" ? 0.6 : 0.35),
-                  color: "success.main",
-                  fontWeight: 600,
-                  boxShadow: (theme) => theme.shadows[1],
-                }}
-              >
-                <Settings color='primary' />
-                Validation Settings
-              </Typography>
+            {selectedTab === 3 && (
+              <div>
+                <TabHeading tone='emerald' Icon={Settings}>
+                  Validation Settings
+                </TabHeading>
 
-              {/* Quick settings */}
-              <Box sx={{ mb: 3 }}>
-                <Typography
-                  variant='subtitle2'
-                  component='div'
-                  sx={{ mb: 2, fontWeight: "bold" }}
-                >
-                  Quick Actions
-                </Typography>
-                <Grid
-                  container
-                  spacing={2}
-                >
-                  <Grid
-                    item
-                    xs={12}
-                    sm={6}
-                  >
-                    <Button
-                      fullWidth
-                      variant='contained'
-                      startIcon={<AutoFixHigh />}
+                {/* Quick settings */}
+                <div className='mt-4'>
+                  <h4 className='text-xs font-bold text-foreground mb-2'>Quick Actions</h4>
+                  <div className='grid grid-cols-1 sm:grid-cols-2 gap-2'>
+                    <button
+                      type='button'
                       onClick={() => setShowSettings(true)}
-                      sx={{
-                        mb: 1,
-                        borderRadius: 2,
-                        textTransform: "none",
-                        fontWeight: 500,
-                        boxShadow: (theme) => theme.shadows[2],
-                        "&:hover": {
-                          boxShadow: (theme) => theme.shadows[4],
-                        },
-                      }}
+                      className={cn(
+                        "flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold shadow-sm active:scale-95 transition-all",
+                        TONES.primary.solid
+                      )}
                     >
+                      <Wand2 className='w-4 h-4' />
                       Advanced Settings
-                    </Button>
-                  </Grid>
-                  <Grid
-                    item
-                    xs={12}
-                    sm={6}
-                  >
-                    <Button
-                      fullWidth
-                      variant='outlined'
-                      startIcon={<FilterList />}
+                    </button>
+                    <button
+                      type='button'
                       onClick={() => {
                         setFilterSeverity("all");
                         setFilterCategory("all");
                         setSearchQuery("");
                       }}
-                      sx={{
-                        borderRadius: 2,
-                        textTransform: "none",
-                        fontWeight: 500,
-                        borderColor: "divider",
-                        color: "text.secondary",
-                        "&:hover": {
-                          borderColor: "text.primary",
-                          backgroundColor: "action.hover",
-                        },
-                      }}
+                      className='flex items-center justify-center gap-2 px-4 py-2.5 rounded-full border border-border text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-muted active:scale-95 transition-all'
                     >
+                      <ListFilter className='w-4 h-4' />
                       Reset Filters
-                    </Button>
-                  </Grid>
-                </Grid>
-              </Box>
+                    </button>
+                  </div>
+                </div>
 
-              {/* Current configuration summary */}
-              <Box sx={{ p: 2, backgroundColor: "action.hover", borderRadius: 2 }}>
-                <Typography
-                  variant='subtitle2'
-                  component='div'
-                  sx={{ mb: 1, fontWeight: "bold" }}
-                >
-                  Current Configuration
-                </Typography>
-                <Typography
-                  variant='body2'
-                  component='div'
-                  sx={{ mb: 0.5 }}
-                >
-                  • Severity Filter: {filterSeverity === "all" ? "All" : filterSeverity}
-                </Typography>
-                <Typography
-                  variant='body2'
-                  component='div'
-                  sx={{ mb: 0.5 }}
-                >
-                  • Category Filter: {filterCategory === "all" ? "All" : filterCategory}
-                </Typography>
-                <Typography
-                  variant='body2'
-                  component='div'
-                  sx={{ mb: 0.5 }}
-                >
-                  • Search Query: {searchQuery || "None"}
-                </Typography>
-                <Typography
-                  variant='body2'
-                  component='div'
-                >
-                  • Total Rules: {Object.keys(EMAIL_VALIDATION_RULES).length}
-                </Typography>
-              </Box>
-            </Box>
-          )}
-        </Box>
-      </Collapse>
+                {/* Current configuration summary */}
+                <div className='mt-4 p-4 rounded-2xl bg-muted/50 border border-border/50'>
+                  <h4 className='text-xs font-bold text-foreground mb-2'>Current Configuration</h4>
+                  <ul className='flex flex-col gap-1 text-sm text-foreground'>
+                    <li>• Severity Filter: {filterSeverity === "all" ? "All" : filterSeverity}</li>
+                    <li>• Category Filter: {filterCategory === "all" ? "All" : filterCategory}</li>
+                    <li>• Search Query: {searchQuery || "None"}</li>
+                    <li>• Total Rules: {Object.keys(EMAIL_VALIDATION_RULES).length}</li>
+                  </ul>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Settings Dialog */}
       <ValidationSettingsDialog
@@ -1707,15 +977,146 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
         onClose={() => setShowSettings(false)}
         validator={validator}
       />
-    </Paper>
+    </div>
   );
 };
 
-// Settings Dialog Component
+/* ------------------------------------------------------------------ */
+/* Issue accordion group                                               */
+/* ------------------------------------------------------------------ */
+
+interface IssueGroupProps {
+  title: string;
+  severity: ValidationSeverity;
+  results: ValidationResult[];
+  canFix: boolean;
+  busy: boolean;
+  isFixing: boolean;
+  onFixAll: () => void;
+  onFixSingle: (ruleName: string) => void;
+}
+
+function IssueGroup({ title, severity, results, canFix, busy, isFixing, onFixAll, onFixSingle }: IssueGroupProps) {
+  const [open, setOpen] = useState(severity === "error");
+  const tone = SEVERITY_TONE[severity];
+  const t = TONES[tone];
+  const SeverityIcon = SEVERITY_ICONS[severity];
+  const fixableCount = results.filter((r) => r.autoFixAvailable).length;
+
+  return (
+    <div className={cn("mb-3 rounded-2xl border overflow-hidden bg-card", t.border)}>
+      <button
+        type='button'
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        className={cn("flex items-center gap-2.5 w-full px-4 py-3 text-left transition-colors", t.bgSoft)}
+      >
+        <SeverityIcon className={cn("w-4 h-4 shrink-0", t.text)} />
+        <span className={cn("text-sm font-bold", t.text)}>
+          {title} ({results.length})
+        </span>
+        <div className='flex-1' />
+        {fixableCount > 0 && canFix && (
+          <FixButton
+            tone={tone}
+            onClick={(e) => {
+              e.stopPropagation();
+              onFixAll();
+            }}
+            disabled={busy}
+            isFixing={isFixing}
+            label={`Fix All (${fixableCount})`}
+          />
+        )}
+        <ChevronDown className={cn("w-4 h-4 shrink-0 text-muted-foreground transition-transform duration-200", open && "rotate-180")} />
+      </button>
+
+      {open && (
+        <ul className='divide-y divide-border/50'>
+          {results.map((result, index) => {
+            const categoryMeta = result.category ? getCategoryMeta(result.category) : null;
+            return (
+              <li key={`${result.rule}-${index}`} className='flex items-start gap-2.5 px-4 py-3'>
+                <SeverityIcon className={cn("w-4 h-4 shrink-0 mt-0.5", TONES[SEVERITY_TONE[result.severity]].text)} />
+
+                <div className='flex-1 min-w-0'>
+                  <p className='text-sm font-medium text-foreground'>{result.message}</p>
+
+                  {result.line && (
+                    <p className='text-[11px] text-muted-foreground mt-1'>
+                      📍 Line {result.line}
+                      {result.column && `, Column ${result.column}`}
+                    </p>
+                  )}
+
+                  {result.suggestion && (
+                    <p className='mt-1.5 px-2.5 py-1.5 rounded-lg border border-border/50 bg-muted/50 text-[11px] italic text-muted-foreground'>
+                      💡 {result.suggestion}
+                    </p>
+                  )}
+
+                  <div className='flex flex-wrap items-center gap-1.5 mt-2'>
+                    {categoryMeta && (
+                      <Pill tone={categoryMeta.tone} outlined>
+                        <categoryMeta.Icon className='w-3 h-3' />
+                        {categoryMeta.label}
+                      </Pill>
+                    )}
+                    <span className='inline-flex items-center px-2 py-0.5 rounded-full border border-border text-[10px] font-mono text-muted-foreground'>
+                      {result.rule}
+                    </span>
+                  </div>
+                </div>
+
+                {result.autoFixAvailable && canFix && (
+                  <button
+                    type='button'
+                    title='Fix this issue'
+                    onClick={() => onFixSingle(result.rule)}
+                    className='p-2 rounded-full text-primary hover:bg-primary/10 transition-colors shrink-0'
+                  >
+                    <Wand2 className='w-4 h-4' />
+                  </button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Settings Dialog                                                     */
+/* ------------------------------------------------------------------ */
+
 interface ValidationSettingsDialogProps {
   open: boolean;
   onClose: () => void;
   validator: EmailHTMLValidator;
+}
+
+function SettingRow({
+  checked,
+  onChange,
+  title,
+  description,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  title: string;
+  description?: string;
+}) {
+  return (
+    <div className='flex items-start gap-3 p-1.5 rounded-xl hover:bg-muted/50 transition-colors'>
+      <Toggle checked={checked} onChange={onChange} />
+      <div className='flex-1 px-2.5 py-1.5 rounded-lg border border-border/50 bg-muted/40'>
+        <p className='text-sm font-medium text-foreground'>{title}</p>
+        {description && <p className='text-[11px] text-muted-foreground mt-0.5'>{description}</p>}
+      </div>
+    </div>
+  );
 }
 
 const ValidationSettingsDialog: React.FC<ValidationSettingsDialogProps> = ({
@@ -1723,12 +1124,18 @@ const ValidationSettingsDialog: React.FC<ValidationSettingsDialogProps> = ({
   onClose,
   validator,
 }) => {
-  const theme = useTheme();
-  const { mode, style } = useThemeMode();
-  const componentStyles = useMemo(() => getComponentStyles(mode, style), [mode, style]);
-
   const [config, setConfig] = useState(validator.getConfig());
   const availableRules = validator.getAvailableRules();
+
+  // Close on Escape
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, onClose]);
 
   const handleSave = () => {
     try {
@@ -1752,306 +1159,126 @@ const ValidationSettingsDialog: React.FC<ValidationSettingsDialogProps> = ({
     }));
   };
 
+  if (!open) return null;
+
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      maxWidth='md'
-      fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: `${componentStyles.card.borderRadius}px`,
-          background: componentStyles.card.background || alpha(theme.palette.background.paper, 0.9),
-          backdropFilter: componentStyles.card.backdropFilter,
-          WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
-          border: componentStyles.card.border,
-          boxShadow: componentStyles.card.boxShadow,
-        },
-      }}
-    >
-      <DialogTitle
-        sx={{
-          backgroundColor: "background.default",
-          borderBottom: "1px solid",
-          borderBottomColor: "divider",
-          fontWeight: 600,
-        }}
+    <div className='fixed inset-0 z-[1300] flex items-center justify-center p-4'>
+      <div className='absolute inset-0 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200' onClick={onClose} />
+
+      <div
+        role='dialog'
+        aria-modal='true'
+        aria-label='Validation Settings'
+        className='relative flex flex-col w-full max-w-2xl max-h-[85vh] rounded-2xl border border-border/50 bg-card shadow-xl animate-in fade-in zoom-in-95 duration-200'
       >
-        Validation Settings
-      </DialogTitle>
-      <DialogContent sx={{ p: 3 }}>
-        <Box sx={{ mb: 3 }}>
-          <Typography
-            variant='h6'
-            component='div'
-            sx={{
-              mb: 2,
-              p: 2,
-              backgroundColor: (theme) =>
-                alpha(theme.palette.info.main, theme.palette.mode === "dark" ? 0.22 : 0.08),
-              borderRadius: 2,
-              border: "1px solid",
-              borderColor: (theme) =>
-                alpha(theme.palette.info.main, theme.palette.mode === "dark" ? 0.6 : 0.35),
-              color: "info.main",
-              fontWeight: 600,
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-            }}
+        {/* Header */}
+        <div className='flex items-center justify-between px-5 py-4 border-b border-border/50'>
+          <h2 className='text-base font-bold text-foreground'>Validation Settings</h2>
+          <button
+            type='button'
+            aria-label='Close'
+            onClick={onClose}
+            className='p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors'
           >
-            <BugReport fontSize='small' />
-            Validation Rules
-          </Typography>
-          <FormGroup>
-            {Object.entries(availableRules).map(([ruleName, rule]) => (
-              <FormControlLabel
-                key={ruleName}
-                control={
-                  <Switch
-                    checked={config.rules[ruleName]?.enabled ?? rule.enabled}
-                    onChange={(e) => handleRuleToggle(ruleName, e.target.checked)}
-                    color='primary'
-                  />
-                }
-                label={
-                  <Box
-                    sx={{
-                      p: 1,
-                      backgroundColor: "action.hover",
-                      borderRadius: 1,
-                      border: "1px solid",
-                      borderColor: "divider",
-                      flex: 1,
-                    }}
-                  >
-                    <Typography
-                      variant='body2'
-                      component='div'
-                      sx={{ fontWeight: 500 }}
-                    >
-                      {rule.displayName}
-                    </Typography>
-                    <Typography
-                      variant='caption'
-                      component='div'
-                      color='text.secondary'
-                    >
-                      {rule.description}
-                    </Typography>
-                  </Box>
-                }
-                sx={{
-                  alignItems: "flex-start",
-                  mb: 1,
-                  p: 1,
-                  borderRadius: 1,
-                  "&:hover": {
-                    backgroundColor: "action.hover",
-                  },
+            <X className='w-4 h-4' />
+          </button>
+        </div>
+
+        {/* Scrollable content */}
+        <div className='flex-1 overflow-y-auto p-5 flex flex-col gap-5'>
+          <section>
+            <TabHeading tone='sky' Icon={Bug}>
+              Validation Rules
+            </TabHeading>
+            <div className='mt-3 flex flex-col gap-1'>
+              {Object.entries(availableRules).map(([ruleName, rule]) => (
+                <SettingRow
+                  key={ruleName}
+                  checked={config.rules[ruleName]?.enabled ?? rule.enabled}
+                  onChange={(enabled) => handleRuleToggle(ruleName, enabled)}
+                  title={rule.displayName}
+                  description={rule.description}
+                />
+              ))}
+            </div>
+          </section>
+
+          <section>
+            <TabHeading tone='amber' Icon={Monitor}>
+              Target Email Clients
+            </TabHeading>
+            <div className='mt-3 flex flex-col gap-1'>
+              {Object.entries(config.targetClients).map(([client, enabled]) => (
+                <SettingRow
+                  key={client}
+                  checked={enabled}
+                  onChange={(checked) =>
+                    setConfig((prev) => ({
+                      ...prev,
+                      targetClients: {
+                        ...prev.targetClients,
+                        [client]: checked,
+                      },
+                    }))
+                  }
+                  title={client.charAt(0).toUpperCase() + client.slice(1)}
+                />
+              ))}
+            </div>
+          </section>
+
+          <section className='p-4 rounded-2xl border border-violet-500/40 bg-violet-500/10'>
+            <h3 className='flex items-center gap-2 text-sm font-bold text-violet-600 dark:text-violet-400 mb-3'>
+              <Settings className='w-4 h-4' />
+              Advanced Options
+            </h3>
+
+            {/* HTML Size Limit */}
+            <label className='flex flex-col gap-1 mb-3'>
+              <span className='text-sm font-medium text-foreground'>Max HTML Size (KB)</span>
+              <input
+                type='number'
+                min={1}
+                max={1000}
+                value={Math.round(config.maxHtmlSize / 1024)}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value);
+                  if (!isNaN(value) && value > 0) {
+                    setConfig((prev) => ({ ...prev, maxHtmlSize: value * 1024 }));
+                  }
                 }}
+                className={cn(selectClass, "w-32")}
               />
-            ))}
-          </FormGroup>
-        </Box>
+              <span className='text-[11px] text-muted-foreground'>Current: {Math.round(config.maxHtmlSize / 1024)}KB</span>
+            </label>
 
-        <Box sx={{ mb: 3 }}>
-          <Typography
-            variant='h6'
-            component='div'
-            sx={{
-              mb: 2,
-              p: 2,
-              backgroundColor: (theme) =>
-                alpha(theme.palette.warning.main, theme.palette.mode === "dark" ? 0.22 : 0.08),
-              borderRadius: 2,
-              border: "1px solid",
-              borderColor: (theme) =>
-                alpha(theme.palette.warning.main, theme.palette.mode === "dark" ? 0.6 : 0.35),
-              color: "warning.main",
-              fontWeight: 600,
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-            }}
-          >
-            <Computer fontSize='small' />
-            Target Email Clients
-          </Typography>
-          <FormGroup>
-            {Object.entries(config.targetClients).map(([client, enabled]) => (
-              <FormControlLabel
-                key={client}
-                control={
-                  <Switch
-                    checked={enabled}
-                    onChange={(e) =>
-                      setConfig((prev) => ({
-                        ...prev,
-                        targetClients: {
-                          ...prev.targetClients,
-                          [client]: e.target.checked,
-                        },
-                      }))
-                    }
-                    color='primary'
-                  />
-                }
-                label={
-                  <Box
-                    sx={{
-                      p: 1,
-                      backgroundColor: "action.hover",
-                      borderRadius: 1,
-                      border: "1px solid",
-                      borderColor: "divider",
-                      flex: 1,
-                    }}
-                  >
-                    <Typography
-                      variant='body2'
-                      component='div'
-                      sx={{ fontWeight: 500 }}
-                    >
-                      {client.charAt(0).toUpperCase() + client.slice(1)}
-                    </Typography>
-                  </Box>
-                }
-                sx={{
-                  alignItems: "flex-start",
-                  mb: 1,
-                  p: 1,
-                  borderRadius: 1,
-                  "&:hover": {
-                    backgroundColor: "action.hover",
-                  },
-                }}
-              />
-            ))}
-          </FormGroup>
-        </Box>
-
-        <Box
-          sx={{
-            p: 2,
-            backgroundColor: (theme) =>
-              alpha(theme.palette.secondary.main, theme.palette.mode === "dark" ? 0.22 : 0.08),
-            borderRadius: 2,
-            border: "1px solid",
-            borderColor: (theme) =>
-              alpha(theme.palette.secondary.main, theme.palette.mode === "dark" ? 0.6 : 0.35),
-          }}
-        >
-          <Typography
-            variant='h6'
-            component='div'
-            sx={{
-              mb: 2,
-              color: "secondary.main",
-              fontWeight: 600,
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-            }}
-          >
-            <Settings fontSize='small' />
-            Advanced Options
-          </Typography>
-
-          {/* HTML Size Limit */}
-          <Box sx={{ mb: 2 }}>
-            <Typography
-              variant='body2'
-              component='div'
-              sx={{ mb: 1, fontWeight: 500 }}
-            >
-              Max HTML Size (KB)
-            </Typography>
-            <TextField
-              type='number'
-              size='small'
-              value={Math.round(config.maxHtmlSize / 1024)}
-              onChange={(e) => {
-                const value = parseInt(e.target.value);
-                if (!isNaN(value) && value > 0) {
-                  setConfig((prev) => ({ ...prev, maxHtmlSize: value * 1024 }));
-                }
-              }}
-              inputProps={{ min: 1, max: 1000 }}
-              sx={{ width: 120 }}
-              helperText={`Current: ${Math.round(config.maxHtmlSize / 1024)}KB`}
+            <SettingRow
+              checked={config.strictMode}
+              onChange={(checked) => setConfig((prev) => ({ ...prev, strictMode: checked }))}
+              title='Strict Mode (treat warnings as errors)'
             />
-          </Box>
+          </section>
+        </div>
 
-          <FormControlLabel
-            control={
-              <Switch
-                checked={config.strictMode}
-                onChange={(e) => setConfig((prev) => ({ ...prev, strictMode: e.target.checked }))}
-                color='secondary'
-              />
-            }
-            label={
-              <Box
-                sx={{
-                  p: 1,
-                  backgroundColor: "action.hover",
-                  borderRadius: 1,
-                  border: "1px solid",
-                  borderColor: "divider",
-                  flex: 1,
-                }}
-              >
-                <Typography
-                  variant='body2'
-                  component='div'
-                  sx={{ fontWeight: 500 }}
-                >
-                  Strict Mode (treat warnings as errors)
-                </Typography>
-              </Box>
-            }
-            sx={{
-              alignItems: "flex-start",
-              p: 1,
-              borderRadius: 1,
-              "&:hover": {
-                backgroundColor: "action.hover",
-              },
-            }}
-          />
-        </Box>
-      </DialogContent>
-      <DialogActions sx={{ p: 3, borderTop: "1px solid", borderTopColor: "divider" }}>
-        <Button
-          onClick={onClose}
-          sx={{
-            borderRadius: 2,
-            textTransform: "none",
-            fontWeight: 500,
-            px: 3,
-          }}
-        >
-          Cancel
-        </Button>
-        <Button
-          onClick={handleSave}
-          variant='contained'
-          sx={{
-            borderRadius: 2,
-            textTransform: "none",
-            fontWeight: 500,
-            px: 3,
-            boxShadow: (theme) => theme.shadows[2],
-            "&:hover": {
-              boxShadow: (theme) => theme.shadows[4],
-            },
-          }}
-        >
-          Save
-        </Button>
-      </DialogActions>
-    </Dialog>
+        {/* Footer */}
+        <div className='flex items-center justify-end gap-2 px-5 py-4 border-t border-border/50'>
+          <button
+            type='button'
+            onClick={onClose}
+            className='px-5 py-2 rounded-full text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors'
+          >
+            Cancel
+          </button>
+          <button
+            type='button'
+            onClick={handleSave}
+            className={cn("px-5 py-2 rounded-full text-sm font-bold shadow-sm active:scale-95 transition-all", TONES.primary.solid)}
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };
 

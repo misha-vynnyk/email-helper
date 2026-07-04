@@ -1,10 +1,10 @@
 import { AtSign, ChevronDown, Eye, EyeOff, KeyRound, ShieldCheck, UserRound } from "lucide-react";
 import React from "react";
 
+import { cardClass, inputClass, Note, SectionHeader } from "../components/ui/primitives";
 import { cn } from "../lib/utils";
 import { useEmailSender } from "./EmailSenderContext";
 import { StorageToggle } from "./StorageToggle";
-import { cardClass, inputClass, Note, SectionHeader } from "./ui";
 
 function Field({
   label,
