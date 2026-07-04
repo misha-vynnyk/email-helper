@@ -30,6 +30,26 @@ export interface EmailValidationReport {
   score: number; // 0-100 validation score
 }
 
+export type RuleConfig = Record<
+  string,
+  string | number | boolean | readonly string[] | Record<string, readonly string[]>
+>;
+
+/**
+ * Shared context for one validation/autofix run. The HTML is parsed with
+ * DOMParser exactly once per run; rules read and mutate the same Document.
+ */
+export interface RuleContext {
+  /** Source HTML for this run (after string-level preprocess in autofix mode). */
+  html: string;
+  /** Parsed document — the single source of truth for checks and fixes. */
+  doc: Document;
+  /** Per-rule config (from validator config or the rule's defaults). */
+  config?: RuleConfig;
+  /** Full validator config for global flags (requireAltText, maxTableNesting, …). */
+  validatorConfig: EmailValidatorConfig;
+}
+
 export interface ValidationRule {
   name: string;
   displayName: string;
@@ -38,44 +58,17 @@ export interface ValidationRule {
   enabled: boolean;
   configurable: boolean;
   category: "structure" | "accessibility" | "compatibility" | "performance" | "best-practice";
-  config?: Record<
-    string,
-    string | number | boolean | readonly string[] | Record<string, readonly string[]>
-  >;
-  check: (
-    html: string,
-    config?: Record<
-      string,
-      string | number | boolean | readonly string[] | Record<string, readonly string[]>
-    >
-  ) => ValidationResult[];
-  checkWithAST?: (
-    html: string,
-    ast: HTMLNode[],
-    config?: Record<
-      string,
-      string | number | boolean | readonly string[] | Record<string, readonly string[]>
-    >,
-    traversalContext?: TraversalContext
-  ) => ValidationResult[];
-  autofix?: (
-    html: string,
-    config?: Record<
-      string,
-      string | number | boolean | readonly string[] | Record<string, readonly string[]>
-    >
-  ) => string;
-}
-
-/**
- * Контекст для оптимізованого DOM traversal
- */
-export interface TraversalContext {
-  ast: HTMLNode[];
-  getTraversalResult: (operation: string, key: string) => HTMLNode[];
-  findNodesByTag: (tagName: string) => HTMLNode[];
-  findNodesByAttribute: (attrName: string, attrValue?: string) => HTMLNode[];
-  findNodesByCategory: (category: string) => HTMLNode[];
+  config?: RuleConfig;
+  /** Inspect the parsed document (and/or source string) and report issues. */
+  check: (ctx: RuleContext) => ValidationResult[];
+  /**
+   * String-level normalization applied before parsing in autofix mode, for
+   * defects the HTML parser would otherwise misinterpret (e.g. `</br>`,
+   * `s rc=`, duplicate style attributes). Must be stateless and idempotent.
+   */
+  preprocess?: (html: string) => string;
+  /** Mutate ctx.doc to fix issues. Return true when something changed. */
+  autofix?: (ctx: RuleContext) => boolean;
 }
 
 export interface EmailValidatorConfig {

@@ -1,19 +1,177 @@
-import { RegexCache, StringBatcher } from "./cache";
-import { COMMON_PATTERNS, EMAIL_DEFAULTS, PERFORMANCE_CONSTANTS } from "./EMAIL_CONSTANTS";
-import { findNodesByTagName, SimpleHTMLParser, traverseAST } from "./htmlParser";
-import { REGEX_PATTERNS } from "./regexPatterns";
-import {
-  EMAIL_SAFE_TAGS,
-  FORBIDDEN_TAGS,
-  HTMLNode,
-  REQUIRED_TABLE_ATTRIBUTES,
-  TraversalContext,
-  ValidationResult,
-  ValidationRule,
-} from "./types";
-import { AutofixUtils, HEADING_FONT_SIZES, ValidationChecks } from "./validationUtils";
+// Email validation rules, DOM-based.
+//
+// Every rule works against a Document parsed once per run (see RuleContext):
+//   - check(ctx)      inspects ctx.doc (or ctx.html for purely textual defects)
+//   - preprocess(html) fixes string-level defects the HTML parser would
+//                      misinterpret (runs before parsing, autofix mode only)
+//   - autofix(ctx)    mutates ctx.doc and reports whether anything changed
+//
+// The engines serialize the document back to HTML exactly once, after all
+// fixes. There is no regex state shared between runs and no whole-document
+// regex rewriting, so results are deterministic and fixes cannot corrupt
+// attribute values or text content.
 
-// Cache classes moved to cache.ts to avoid circular dependencies
+import { COMMON_PATTERNS, EMAIL_DEFAULTS } from "./EMAIL_CONSTANTS";
+import {
+  addStylePropIfMissing,
+  allElements,
+  isVisuallyEmpty,
+  maxTableNestingDepth,
+  mergeStyleStrings,
+  replaceElementTag,
+  sourceTagPosition,
+  styleHasProp,
+} from "./domUtils";
+import { FORBIDDEN_TAGS, RuleContext, ValidationResult, ValidationRule } from "./types";
+
+// ---------------------------------------------------------------------------
+// Shared helpers
+// ---------------------------------------------------------------------------
+
+const BLOCK_TAGS_DEFAULT = [
+  "div",
+  "section",
+  "article",
+  "nav",
+  "header",
+  "footer",
+  "main",
+  "aside",
+  "figure",
+  "figcaption",
+] as const;
+
+const DANGEROUS_TAGS_DEFAULT = [
+  "script",
+  "style",
+  "form",
+  "input",
+  "button",
+  "textarea",
+  "select",
+  "option",
+  "fieldset",
+  "legend",
+  "label",
+  "video",
+  "audio",
+  "canvas",
+  "svg",
+  "iframe",
+  "embed",
+  "object",
+  "base",
+  "col",
+  "area",
+] as const;
+
+// Attributes that email clients ignore or strip. Deliberately excludes `id`
+// (anchor links) and `aria-*` (accessibility) — removing those does harm.
+const UNSAFE_ATTRIBUTE_NAMES = [
+  "contenteditable",
+  "draggable",
+  "spellcheck",
+  "tabindex",
+  "accesskey",
+  "class",
+] as const;
+
+function isUnsafeAttribute(name: string): boolean {
+  const lower = name.toLowerCase();
+  return (
+    (lower.startsWith("on") && lower.length > 2) ||
+    lower.startsWith("data-") ||
+    (UNSAFE_ATTRIBUTE_NAMES as readonly string[]).includes(lower)
+  );
+}
+
+function tagsFromConfig(ctx: RuleContext, key: string, fallback: readonly string[]): string[] {
+  const value = ctx.config?.[key];
+  return Array.isArray(value) ? (value as string[]) : [...fallback];
+}
+
+/** Best-effort source positions for a list of elements, per tag occurrence order. */
+function positionsFor(ctx: RuleContext, elements: Element[]): Array<{ line?: number; column?: number }> {
+  const counters = new Map<string, number>();
+  return elements.map((el) => {
+    const tag = el.tagName.toLowerCase();
+    const occurrence = counters.get(tag) ?? 0;
+    counters.set(tag, occurrence + 1);
+    return sourceTagPosition(ctx.html, tag, occurrence);
+  });
+}
+
+function fixHeadings(ctx: RuleContext): boolean {
+  const headings = allElements(ctx.doc, "h1,h2,h3,h4,h5,h6");
+  for (const el of headings) {
+    const level = Number(el.tagName.charAt(1));
+    replaceElementTag(el, "span", {
+      "font-weight": "bold",
+      "font-size": `${getFontSizeForHeading(level)}px`,
+    });
+  }
+  return headings.length > 0;
+}
+
+function fixParagraphs(ctx: RuleContext): boolean {
+  const paragraphs = allElements(ctx.doc, "p");
+  for (const el of paragraphs) {
+    replaceElementTag(el, "span");
+  }
+  return paragraphs.length > 0;
+}
+
+function fixBlockElements(ctx: RuleContext): boolean {
+  const tags = tagsFromConfig(ctx, "blockTags", BLOCK_TAGS_DEFAULT);
+  if (tags.length === 0) return false;
+  const selector = tags.join(",");
+  const doc = ctx.doc;
+  let changed = false;
+  let guard = 0;
+
+  // Replace outermost-first; children stay in the document, so re-querying
+  // picks up nested block elements until none remain (or the table cap hits).
+  while (guard++ < 1000) {
+    const el = doc.body.querySelector(selector);
+    if (!el) break;
+    if (doc.querySelectorAll("table").length >= EMAIL_DEFAULTS.MAX_TABLES) break;
+
+    const table = doc.createElement("table");
+    table.setAttribute("cellpadding", "0");
+    table.setAttribute("cellspacing", "0");
+    table.setAttribute("border", "0");
+    const tr = doc.createElement("tr");
+    const td = doc.createElement("td");
+    td.setAttribute("valign", "top");
+    // The user's attributes (style, width, bgcolor, …) belong on the content
+    // cell, not on the wrapper table.
+    for (const attr of Array.from(el.attributes)) {
+      td.setAttribute(attr.name, attr.value);
+    }
+    while (el.firstChild) {
+      td.appendChild(el.firstChild);
+    }
+    tr.appendChild(td);
+    table.appendChild(tr);
+    el.replaceWith(table);
+    changed = true;
+  }
+  return changed;
+}
+
+function fixDangerousTags(ctx: RuleContext): boolean {
+  const tags = tagsFromConfig(ctx, "dangerousTags", DANGEROUS_TAGS_DEFAULT);
+  if (tags.length === 0) return false;
+  const elements = allElements(ctx.doc, tags.join(","));
+  for (const el of elements) {
+    el.remove();
+  }
+  return elements.length > 0;
+}
+
+// ---------------------------------------------------------------------------
+// Rules
+// ---------------------------------------------------------------------------
 
 export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
   "forbidden-tags": {
@@ -25,267 +183,34 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
     configurable: true,
     category: "structure",
     config: {
-      allowedTags: EMAIL_SAFE_TAGS,
       forbiddenTags: FORBIDDEN_TAGS,
     },
-    check: (html: string, _config = {}) => {
+    check: (ctx) => {
       const results: ValidationResult[] = [];
-      if (!html || typeof html !== "string") return results;
-
-      try {
-        const parser = new SimpleHTMLParser(html);
-        const ast = parser.parse();
-        const forbiddenTags = _config.forbiddenTags || FORBIDDEN_TAGS;
-
-        traverseAST(ast, (node) => {
-          if (
-            node.type === "element" &&
-            node.tagName &&
-            Array.isArray(forbiddenTags) &&
-            forbiddenTags.includes(node.tagName)
-          ) {
-            results.push({
-              rule: "forbidden-tags",
-              severity: "error",
-              message: `Tag "${node.tagName}" is not email-safe`,
-              line: node.line,
-              column: node.column,
-              suggestion: getTagReplacement(node.tagName),
-              autoFixAvailable: true,
-              category: "structure",
-            });
-          }
+      const tags = tagsFromConfig(ctx, "forbiddenTags", FORBIDDEN_TAGS);
+      if (tags.length === 0) return results;
+      const elements = allElements(ctx.doc, tags.join(","));
+      const positions = positionsFor(ctx, elements);
+      elements.forEach((el, i) => {
+        const tagName = el.tagName.toLowerCase();
+        results.push({
+          rule: "forbidden-tags",
+          severity: "error",
+          message: `Tag "${tagName}" is not email-safe`,
+          ...positions[i],
+          suggestion: getTagReplacement(tagName),
+          autoFixAvailable: true,
+          category: "structure",
         });
-      } catch {
-        // Fallback regex checking
-        const forbiddenTags = _config.forbiddenTags || FORBIDDEN_TAGS;
-        if (Array.isArray(forbiddenTags)) {
-          forbiddenTags.forEach((tag) => {
-            const regex = RegexCache.get(`<${tag}(?:\\s[^>]*)?>`, "gi");
-            const matches = html.match(regex);
-            if (matches) {
-              matches.forEach(() => {
-                results.push({
-                  rule: "forbidden-tags",
-                  severity: "error",
-                  message: `Tag "${tag}" is not email-safe`,
-                  suggestion: getTagReplacement(tag),
-                  autoFixAvailable: true,
-                  category: "structure",
-                });
-              });
-            }
-          });
-        }
-      }
+      });
       return results;
     },
-    checkWithAST: (html: string, ast: HTMLNode[], _config = {}) => {
-      const results: ValidationResult[] = [];
-      if (!html || typeof html !== "string" || !ast) return results;
-
-      try {
-        const forbiddenTags = _config.forbiddenTags || FORBIDDEN_TAGS;
-
-        traverseAST(ast, (node) => {
-          if (
-            node.type === "element" &&
-            node.tagName &&
-            Array.isArray(forbiddenTags) &&
-            forbiddenTags.includes(node.tagName)
-          ) {
-            results.push({
-              rule: "forbidden-tags",
-              severity: "error",
-              message: `Tag "${node.tagName}" is not email-safe`,
-              line: node.line,
-              column: node.column,
-              suggestion: getTagReplacement(node.tagName),
-              autoFixAvailable: true,
-              category: "structure",
-            });
-          }
-        });
-      } catch {
-        // Fallback to original check method
-        return EMAIL_VALIDATION_RULES["forbidden-tags"].check(html, _config);
-      }
-      return results;
-    },
-    autofix: (html: string) => {
-      if (!html || typeof html !== "string") return html;
-
-      let fixedHtml = html;
-      try {
-        // Replace headings with styled spans (INLINE ONLY for email safety)
-        for (let i = 1; i <= PERFORMANCE_CONSTANTS.MAX_HEADING_LEVELS; i++) {
-          const regex = RegexCache.get(`<h${i}([^>]*)>`);
-          const closeRegex = RegexCache.get(`</h${i}>`);
-          fixedHtml = fixedHtml.replace(
-            regex,
-            `<span$1 style="font-weight: bold; font-size: ${getFontSizeForHeading(i)}px;">`
-          );
-          fixedHtml = fixedHtml.replace(closeRegex, "</span>");
-        }
-
-        // Replace paragraphs with spans only (no br)
-        fixedHtml = fixedHtml.replace(RegexCache.get("<p([^>]*)>"), "<span$1>");
-        fixedHtml = fixedHtml.replace(RegexCache.get("</p>"), "</span>");
-
-        // Replace block elements with table structure - but limit nesting
-        const blockTags = [
-          "div",
-          "section",
-          "article",
-          "nav",
-          "header",
-          "footer",
-          "main",
-          "aside",
-          "figure",
-          "figcaption",
-        ];
-
-        // Count existing tables to prevent excessive nesting
-        const existingTables = (fixedHtml.match(/<table/g) || []).length;
-        const maxTables = EMAIL_DEFAULTS.MAX_TABLES; // Limit total tables to prevent excessive nesting
-
-        if (existingTables < maxTables) {
-          blockTags.forEach((tag) => {
-            const regex = RegexCache.get(`<${tag}((?:\\s[^>]*)?)>`);
-            const closeRegex = RegexCache.get(`</${tag}>`);
-            fixedHtml = fixedHtml.replace(
-              regex,
-              '<table cellpadding="0" cellspacing="0" border="0"$1><tr><td valign="top">'
-            );
-            fixedHtml = fixedHtml.replace(closeRegex, "</td></tr></table>");
-          });
-        }
-
-        // Remove dangerous/unsupported tags completely
-        const removeTags = [
-          "script",
-          "style",
-          "form",
-          "input",
-          "button",
-          "textarea",
-          "select",
-          "option",
-          "fieldset",
-          "legend",
-          "label",
-          "video",
-          "audio",
-          "canvas",
-          "svg",
-          "iframe",
-          "embed",
-          "object",
-          "base", // Doesn't work in most email clients
-          "col", // Doesn't work in most email clients
-          "area", // Doesn't work in most email clients
-        ];
-        removeTags.forEach((tag) => {
-          // Використовуємо більш ефективний паттерн без backtracking
-          const regex = RegexCache.get(`<${tag}(?:\\s[^>]*)?>(?:[\\s\\S]*?)</${tag}>`, "gi");
-          fixedHtml = fixedHtml.replace(regex, "");
-          const selfClosingRegex = RegexCache.get(`<${tag}(?:\\s[^>]*)?/>`, "gi");
-          fixedHtml = fixedHtml.replace(selfClosingRegex, "");
-        });
-
-        // Fix duplicate style attributes - limited iterations for safety
-        for (let i = 0; i < EMAIL_DEFAULTS.MAX_STYLE_MERGE_ITERATIONS; i++) {
-          const beforeFix = fixedHtml;
-          fixedHtml = fixedHtml.replace(
-            RegexCache.get('style="([^"]*?)"([^>]*?)style="([^"]*?)"'),
-            (match, style1, middle, style2) => {
-              void match;
-              // Split styles and merge, removing duplicates
-              const styles1 = style1.split(";").filter((s: string) => s.trim());
-              const styles2 = style2.split(";").filter((s: string) => s.trim());
-              const allStyles = [...styles1, ...styles2];
-
-              // Remove duplicates by property name
-              const uniqueStyles = [];
-              const seenProps = new Set();
-
-              for (const style of allStyles) {
-                const prop = style.split(":")[0]?.trim();
-                if (prop && !seenProps.has(prop)) {
-                  seenProps.add(prop);
-                  uniqueStyles.push(style.trim());
-                }
-              }
-
-              const combinedStyle = uniqueStyles.join("; ");
-              return `style="${combinedStyle}"${middle}`;
-            }
-          );
-
-          // Break if no changes made
-          if (beforeFix === fixedHtml) {
-            break;
-          }
-        }
-
-        // Clean up excessive table nesting - limited iterations for safety
-        for (let i = 0; i < EMAIL_DEFAULTS.MAX_AUTOFIX_ITERATIONS; i++) {
-          const beforeFix = fixedHtml;
-          fixedHtml = fixedHtml.replace(
-            RegexCache.get("<table([^>]*?)><tr><td([^>]*?)><table([^>]*?)><tr><td([^>]*?)>"),
-            "<table$1><tr><td$2>"
-          );
-          fixedHtml = fixedHtml.replace(
-            RegexCache.get("<\\/td><\\/tr><\\/table><\\/td><\\/tr><\\/table>"),
-            "</td></tr></table>"
-          );
-
-          // Break if no changes made
-          if (beforeFix === fixedHtml) {
-            break;
-          }
-        }
-
-        // Remove empty tables
-        fixedHtml = fixedHtml.replace(
-          RegexCache.get("<table[^>]*><tr><td[^>]*>\\s*<\\/td><\\/tr><\\/table>"),
-          ""
-        );
-
-        // Don't wrap single text spans in tables
-        fixedHtml = fixedHtml.replace(
-          RegexCache.get(
-            "<table[^>]*><tr><td[^>]*>(\\s*<span[^>]*>[^<]+<\\/span>\\s*)<\\/td><\\/tr><\\/table>"
-          ),
-          "$1"
-        );
-
-        // Remove empty and whitespace-only span tags
-        fixedHtml = fixedHtml.replace(RegexCache.get("<span[^>]*>\\s*<\\/span>"), "");
-        fixedHtml = fixedHtml.replace(RegexCache.get("<span[^>]*>[\\s\\t\\n\\r]*<\\/span>"), "");
-
-        // Fix broken img src attributes EARLY (like "s rc" -> "src")
-        fixedHtml = fixedHtml.replace(RegexCache.get("\\bs\\s+rc="), "src=");
-        fixedHtml = fixedHtml.replace(RegexCache.get("\\bS\\s+RC="), "src=");
-
-        // Fix missing spaces between img attributes early
-        fixedHtml = fixedHtml.replace(RegexCache.get('="([^"]*)"([a-zA-Z]+=)'), '="$1" $2');
-
-        // Fix specific malformed img attributes like src="test.jpg"alt="test"
-        fixedHtml = fixedHtml.replace(
-          RegexCache.get('(<img[^>]*?)([a-zA-Z0-9_.-]+")([a-zA-Z]+=)'),
-          "$1$2 $3"
-        );
-      } catch {
-        // Return original on error
-      }
-
-      // FINAL FIX: Ensure s rc is fixed no matter what (outside try-catch)
-      fixedHtml = fixedHtml.replace(RegexCache.get("\\bs\\s+rc="), "src=");
-      fixedHtml = fixedHtml.replace(RegexCache.get("\\bS\\s+RC="), "src=");
-
-      return fixedHtml;
+    autofix: (ctx) => {
+      const a = fixDangerousTags(ctx);
+      const b = fixHeadings(ctx);
+      const c = fixParagraphs(ctx);
+      const d = fixBlockElements(ctx);
+      return a || b || c || d;
     },
   },
 
@@ -297,117 +222,56 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
     enabled: true,
     configurable: false,
     category: "structure",
-    check: (html: string) => {
+    check: (ctx) => {
       const results: ValidationResult[] = [];
-      if (!html || typeof html !== "string") return results;
+      const html = ctx.html;
 
-      try {
-        // Check for wrong closing and self-closing br/hr tags
-        const emailOpenTags = ["br", "hr"];
-        emailOpenTags.forEach((tag) => {
-          // Check for wrong closing: <br></br>
-          const wrongClosingPattern = RegexCache.get(`<${tag}\\s*[^>]*><\\/${tag}>`);
-          const wrongMatches = html.match(wrongClosingPattern);
-          if (wrongMatches) {
-            wrongMatches.forEach(() => {
-              results.push({
-                rule: "email-safe-tags",
-                severity: "error",
-                message: `Tag "${tag}" should not have closing tag in emails`,
-                suggestion: `Replace <${tag}></${tag}> with <${tag}>`,
-                autoFixAvailable: true,
-                category: "structure",
-              });
-            });
-          }
+      for (const tag of ["br", "hr"]) {
+        for (const _m of html.matchAll(new RegExp(`<${tag}\\b[^>]*></${tag}>`, "gi"))) {
+          void _m;
+          results.push({
+            rule: "email-safe-tags",
+            severity: "error",
+            message: `Tag "${tag}" should not have closing tag in emails`,
+            suggestion: `Replace <${tag}></${tag}> with <${tag}>`,
+            autoFixAvailable: true,
+            category: "structure",
+          });
+        }
+        for (const _m of html.matchAll(new RegExp(`<${tag}\\b[^>]*/>`, "gi"))) {
+          void _m;
+          results.push({
+            rule: "email-safe-tags",
+            severity: "error",
+            message: `Tag "${tag}" should be open tag in emails, not self-closing`,
+            suggestion: `Replace <${tag}/> with <${tag}>`,
+            autoFixAvailable: true,
+            category: "structure",
+          });
+        }
+      }
 
-          // Check for self-closing: <br/> or <br />
-          const selfClosingPattern = RegexCache.get(`<${tag}\\s*[^>]*\\/>`);
-          const selfClosingMatches = html.match(selfClosingPattern);
-          if (selfClosingMatches) {
-            selfClosingMatches.forEach(() => {
-              results.push({
-                rule: "email-safe-tags",
-                severity: "error",
-                message: `Tag "${tag}" should be open tag in emails, not self-closing`,
-                suggestion: `Replace <${tag}/> with <${tag}>`,
-                autoFixAvailable: true,
-                category: "structure",
-              });
-            });
-          }
+      for (const _m of html.matchAll(/<img\b[^>]*><\/img>/gi)) {
+        void _m;
+        results.push({
+          rule: "email-safe-tags",
+          severity: "error",
+          message: 'Tag "img" should be self-closing',
+          suggestion: "Replace <img></img> with <img />",
+          autoFixAvailable: true,
+          category: "structure",
         });
-
-        // Check for images that should be self-closing
-        const emailSelfClosingTags = ["img"];
-        emailSelfClosingTags.forEach((tag) => {
-          const wrongClosingPattern = RegexCache.get(`<${tag}\\s*[^>]*><\\/${tag}>`);
-          const wrongMatches = html.match(wrongClosingPattern);
-          if (wrongMatches) {
-            wrongMatches.forEach(() => {
-              results.push({
-                rule: "email-safe-tags",
-                severity: "error",
-                message: `Tag "${tag}" should be self-closing`,
-                suggestion: `Replace <${tag}></${tag}> with <${tag} />`,
-                autoFixAvailable: true,
-                category: "structure",
-              });
-            });
-          }
-        });
-      } catch {
-        // Silently fail
       }
       return results;
     },
-    autofix: (html: string) => {
-      if (!html || typeof html !== "string") return html;
-
-      try {
-        // Use StringBatcher for batch operations
-        const batcher = new StringBatcher();
-
-        // Add all operations to batch
-        batcher
-          // Fix BR tags: make them open tags (not self-closing)
-          .add(RegexCache.get("<br\\s*[^>]*><\\/br>"), "<br>")
-          .add(RegexCache.get("<br\\s*[^>]*\\/>"), "<br>")
-          // Fix HR tags: make them open tags (not self-closing)
-          .add(RegexCache.get("<hr\\s*[^>]*><\\/hr>"), "<hr>")
-          .add(RegexCache.get("<hr\\s*[^>]*\\/>"), "<hr>")
-          // Fix IMG tags: make them properly self-closing
-          .add(RegexCache.get("<img\\s*([^>]*?)><\\/img>"), "<img $1 />")
-          // Clean up malformed tags
-          .add(RegexCache.get("<br\\/\\s*\\/>"), "<br>")
-          .add(RegexCache.get("<br\\s*\\/\\s*\\/>"), "<br>")
-          .add(RegexCache.get("<hr\\/\\s*\\/>"), "<hr>")
-          .add(RegexCache.get("<hr\\s*\\/\\s*\\/>"), "<hr>")
-          // Fix malformed img tags - more comprehensive
-          .add(RegexCache.get("(<img[^>]*?)\\s*\\/\\s*([^>]*?)>"), "$1$2 />")
-          .add(RegexCache.get("(<img[^>]*?)([^\"'])\\s*\\/\\s*([^>]*?)>"), "$1$2$3 />")
-          .add(RegexCache.get("<img([^>]*?)([^/])\\s*\\/\\s*\\/\\s*>"), "<img$1$2 />")
-          // Clean up multiple spaces in self-closing tags (only for img)
-          .add(RegexCache.get("(<img[^>]*?)\\s+\\/>", "g"), "$1 />")
-          // Fix missing spaces before attributes (remaining cases)
-          .add(RegexCache.get("(<img[^>]*?)([a-zA-Z])([a-zA-Z]+=)"), "$1$2 $3")
-          // Clean up malformed attribute spaces and quotes
-          .add(RegexCache.get("\\s+(style|alt|src|class|width|height)="), " $1=")
-          .add(RegexCache.get("=\\s*([^\"'\\s>]+)"), '="$1"')
-          // Remove extra spaces in tag content
-          .add(RegexCache.get("\\s+>", "gi"), ">")
-          .add(RegexCache.get("<\\s+", "gi"), "<")
-          // FINAL FIX: s rc -> src
-          .add(RegexCache.get("\\bs\\s+rc="), "src=")
-          .add(RegexCache.get("\\bS\\s+RC="), "src=");
-
-        // Execute all operations in batch
-        return batcher.execute(html);
-      } catch {
-        // Return original on error
-        return html;
-      }
-    },
+    // These are textual formatting defects. They must be fixed before parsing:
+    // the HTML parser turns `</br>` into a second <br>, which would double
+    // line breaks if we let it through.
+    preprocess: (html) =>
+      html
+        .replace(/<\/(br|hr)\s*>/gi, "")
+        .replace(/<(br|hr)\b[^>]*?\/>/gi, "<$1>")
+        .replace(/(<img\b[^>]*)>\s*<\/img>/gi, "$1>"),
   },
 
   "table-attributes": {
@@ -418,337 +282,105 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
     enabled: true,
     configurable: true,
     category: "structure",
-    config: {
-      requiredAttributes: REQUIRED_TABLE_ATTRIBUTES,
-    },
-    check: (html: string) => {
+    check: (ctx) => {
       const results: ValidationResult[] = [];
-      if (!html || typeof html !== "string") return results;
 
-      try {
-        const parser = new SimpleHTMLParser(html);
-        const ast = parser.parse();
-
-        // Check tables
-        const tables = findNodesByTagName(ast, "table");
-        tables.forEach((table) => {
-          const attrs = table.attributes || {};
-
-          if (!attrs.cellpadding || attrs.cellpadding !== "0") {
+      const tables = allElements(ctx.doc, "table");
+      const tablePositions = positionsFor(ctx, tables);
+      tables.forEach((table, i) => {
+        for (const attr of ["cellpadding", "cellspacing", "border"]) {
+          if (table.getAttribute(attr) !== "0") {
             results.push({
               rule: "table-attributes",
               severity: "error",
-              message: 'Table should have cellpadding="0"',
-              line: table.line,
-              column: table.column,
-              suggestion: 'Add cellpadding="0" to table tag',
+              message: `Table should have ${attr}="0"`,
+              ...tablePositions[i],
+              suggestion: `Add ${attr}="0" to table tag`,
               autoFixAvailable: true,
               category: "structure",
             });
           }
+        }
+      });
 
-          if (!attrs.cellspacing || attrs.cellspacing !== "0") {
-            results.push({
-              rule: "table-attributes",
-              severity: "error",
-              message: 'Table should have cellspacing="0"',
-              line: table.line,
-              column: table.column,
-              suggestion: 'Add cellspacing="0" to table tag',
-              autoFixAvailable: true,
-              category: "structure",
-            });
-          }
+      const images = allElements(ctx.doc, "img");
+      const imgPositions = positionsFor(ctx, images);
+      images.forEach((img, i) => {
+        if (!img.hasAttribute("width")) {
+          results.push({
+            rule: "table-attributes",
+            severity: "error",
+            message: "Image must have width attribute",
+            ...imgPositions[i],
+            suggestion: `Add width="${EMAIL_DEFAULTS.DEFAULT_IMAGE_WIDTH}" to img tag`,
+            autoFixAvailable: true,
+            category: "structure",
+          });
+        }
+        if (!img.hasAttribute("height")) {
+          results.push({
+            rule: "table-attributes",
+            severity: "error",
+            message: "Image must have height attribute",
+            ...imgPositions[i],
+            suggestion: `Add height="${EMAIL_DEFAULTS.DEFAULT_IMAGE_HEIGHT}" to img tag`,
+            autoFixAvailable: true,
+            category: "structure",
+          });
+        }
+        if (!styleHasProp(img, "display", "block")) {
+          results.push({
+            rule: "table-attributes",
+            severity: "error",
+            message: 'Image must have style="display:block"',
+            ...imgPositions[i],
+            suggestion: 'Add style="display:block" to img tag',
+            autoFixAvailable: true,
+            category: "structure",
+          });
+        }
+      });
 
-          if (!attrs.border || attrs.border !== "0") {
-            results.push({
-              rule: "table-attributes",
-              severity: "error",
-              message: 'Table should have border="0"',
-              line: table.line,
-              column: table.column,
-              suggestion: 'Add border="0" to table tag',
-              autoFixAvailable: true,
-              category: "structure",
-            });
-          }
-        });
-
-        // Check images for required attributes
-        const images = findNodesByTagName(ast, "img");
-        images.forEach((img) => {
-          const attrs = img.attributes || {};
-
-          if (!attrs.alt) {
-            results.push({
-              rule: "table-attributes",
-              severity: "error",
-              message: "Image must have alt attribute",
-              line: img.line,
-              column: img.column,
-              suggestion: 'Add alt="" to img tag',
-              autoFixAvailable: true,
-              category: "accessibility",
-            });
-          }
-
-          if (!attrs.width) {
-            results.push({
-              rule: "table-attributes",
-              severity: "error",
-              message: "Image must have width attribute",
-              line: img.line,
-              column: img.column,
-              suggestion: `Add width="${EMAIL_DEFAULTS.DEFAULT_IMAGE_WIDTH}" to img tag`,
-              autoFixAvailable: true,
-              category: "structure",
-            });
-          }
-
-          if (!attrs.height) {
-            results.push({
-              rule: "table-attributes",
-              severity: "error",
-              message: "Image must have height attribute",
-              line: img.line,
-              column: img.column,
-              suggestion: `Add height="${EMAIL_DEFAULTS.DEFAULT_IMAGE_HEIGHT}" to img tag`,
-              autoFixAvailable: true,
-              category: "structure",
-            });
-          }
-
-          if (!attrs.style || !attrs.style.includes("display:block")) {
-            results.push({
-              rule: "table-attributes",
-              severity: "error",
-              message: 'Image must have style="display:block"',
-              line: img.line,
-              column: img.column,
-              suggestion: 'Add style="display:block" to img tag',
-              autoFixAvailable: true,
-              category: "structure",
-            });
-          }
-        });
-      } catch {
-        results.push({
-          rule: "table-attributes",
-          severity: "warning",
-          message: "Unable to parse HTML for detailed checking",
-          suggestion: 'Check table attributes manually: cellpadding="0" cellspacing="0" border="0"',
-          autoFixAvailable: false,
-          category: "structure",
-        });
-      }
       return results;
     },
-    checkWithAST: (html: string, ast: HTMLNode[], _config, traversalContext?: TraversalContext) => {
-      const results: ValidationResult[] = [];
-      if (!html || typeof html !== "string" || !ast) return results;
+    autofix: (ctx) => {
+      let changed = false;
 
-      try {
-        // Використовуємо оптимізований traversal контекст
-        const tables =
-          traversalContext?.findNodesByTag("table") || findNodesByTagName(ast, "table");
-        tables.forEach((table) => {
-          const attrs = table.attributes || {};
-
-          if (!attrs.cellpadding || attrs.cellpadding !== "0") {
-            results.push({
-              rule: "table-attributes",
-              severity: "error",
-              message: 'Table should have cellpadding="0"',
-              line: table.line,
-              column: table.column,
-              suggestion: 'Add cellpadding="0" to table tag',
-              autoFixAvailable: true,
-              category: "structure",
-            });
+      for (const table of allElements(ctx.doc, "table")) {
+        for (const attr of ["cellpadding", "cellspacing", "border"]) {
+          if (table.getAttribute(attr) !== "0") {
+            table.setAttribute(attr, "0");
+            changed = true;
           }
-
-          if (!attrs.cellspacing || attrs.cellspacing !== "0") {
-            results.push({
-              rule: "table-attributes",
-              severity: "error",
-              message: 'Table should have cellspacing="0"',
-              line: table.line,
-              column: table.column,
-              suggestion: 'Add cellspacing="0" to table tag',
-              autoFixAvailable: true,
-              category: "structure",
-            });
-          }
-
-          if (!attrs.border || attrs.border !== "0") {
-            results.push({
-              rule: "table-attributes",
-              severity: "error",
-              message: 'Table should have border="0"',
-              line: table.line,
-              column: table.column,
-              suggestion: 'Add border="0" to table tag',
-              autoFixAvailable: true,
-              category: "structure",
-            });
-          }
-        });
-
-        // Check images for required attributes using optimized traversal
-        const images = traversalContext?.findNodesByTag("img") || findNodesByTagName(ast, "img");
-        images.forEach((img) => {
-          const attrs = img.attributes || {};
-
-          if (!attrs.alt) {
-            results.push({
-              rule: "table-attributes",
-              severity: "error",
-              message: "Image must have alt attribute",
-              line: img.line,
-              column: img.column,
-              suggestion: 'Add alt="" to img tag',
-              autoFixAvailable: true,
-              category: "accessibility",
-            });
-          }
-
-          if (!attrs.width) {
-            results.push({
-              rule: "table-attributes",
-              severity: "error",
-              message: "Image must have width attribute",
-              line: img.line,
-              column: img.column,
-              suggestion: `Add width="${EMAIL_DEFAULTS.DEFAULT_IMAGE_WIDTH}" to img tag`,
-              autoFixAvailable: true,
-              category: "structure",
-            });
-          }
-
-          if (!attrs.height) {
-            results.push({
-              rule: "table-attributes",
-              severity: "error",
-              message: "Image must have height attribute",
-              line: img.line,
-              column: img.column,
-              suggestion: `Add height="${EMAIL_DEFAULTS.DEFAULT_IMAGE_WIDTH}" to img tag`,
-              autoFixAvailable: true,
-              category: "structure",
-            });
-          }
-
-          if (!attrs.style || !attrs.style.includes("display:block")) {
-            results.push({
-              rule: "table-attributes",
-              severity: "error",
-              message: 'Image must have style="display:block"',
-              line: img.line,
-              column: img.column,
-              suggestion: 'Add style="display:block" to img tag',
-              autoFixAvailable: true,
-              category: "structure",
-            });
-          }
-        });
-      } catch {
-        // Fallback to original check method
-        return EMAIL_VALIDATION_RULES["table-attributes"].check(html);
+        }
       }
-      return results;
-    },
-    autofix: (html: string) => {
-      if (!html || typeof html !== "string") return html;
 
-      let fixedHtml = html;
-      try {
-        // Fix table attributes (avoid duplicates and fix wrong values)
-        fixedHtml = fixedHtml.replace(/<table([^>]*?)>/gi, (match, attrs) => {
-          void match;
-          let newAttrs = attrs;
-
-          // Fix existing wrong values
-          newAttrs = newAttrs.replace(/cellpadding="[^"]*"/gi, 'cellpadding="0"');
-          newAttrs = newAttrs.replace(/cellspacing="[^"]*"/gi, 'cellspacing="0"');
-          newAttrs = newAttrs.replace(/border="[^"]*"/gi, 'border="0"');
-
-          // Add missing attributes
-          if (!newAttrs.includes("cellpadding=")) newAttrs += ' cellpadding="0"';
-          if (!newAttrs.includes("cellspacing=")) newAttrs += ' cellspacing="0"';
-          if (!newAttrs.includes("border=")) newAttrs += ' border="0"';
-
-          return `<table${newAttrs}>`;
-        });
-
-        // Fix td attributes (avoid duplicates and fix wrong values)
-        fixedHtml = fixedHtml.replace(/<td([^>]*?)>/gi, (match, attrs) => {
-          void match;
-          let newAttrs = attrs;
-
-          // Fix existing wrong valign values
-          newAttrs = newAttrs.replace(/valign="(middle|bottom|baseline)"/gi, 'valign="top"');
-
-          // Add missing valign
-          if (!newAttrs.includes("valign=")) newAttrs += ' valign="top"';
-
-          return `<td${newAttrs}>`;
-        });
-
-        // Fix img attributes (comprehensive replacement)
-        fixedHtml = fixedHtml.replace(/<img([^>]*?)(\s*\/?\s*)>/gi, (match, attrs) => {
-          void match;
-          let newAttrs = attrs;
-
-          // Alt handling is done by image-alt-attributes rule - skip here to avoid conflicts
-
-          // Add width if missing (default from constants)
-          if (!newAttrs.includes("width="))
-            newAttrs += ` width="${EMAIL_DEFAULTS.DEFAULT_IMAGE_WIDTH}"`;
-
-          // Add height if missing (default from constants)
-          if (!newAttrs.includes("height="))
-            newAttrs += ` height="${EMAIL_DEFAULTS.DEFAULT_IMAGE_HEIGHT}"`;
-
-          // Fix percentage widths to max-width for email compatibility (only if not already max-width)
-          if (newAttrs.includes("width: 100%") && !newAttrs.includes("max-width:")) {
-            newAttrs = newAttrs.replace(
-              /style="([^"]*?)width:\s*100%([^"]*?)"/gi,
-              (styleMatch: string, before: string, after: string) => {
-                void styleMatch;
-                const beforeStyles = before.trim();
-                const afterStyles = after.trim();
-                const separator1 = beforeStyles && !beforeStyles.endsWith(";") ? "; " : "";
-                const separator2 = afterStyles && !afterStyles.startsWith(";") ? "; " : "";
-                return `style="${beforeStyles}${separator1}max-width:100%${separator2}${afterStyles}"`;
-              }
-            );
-          }
-
-          // Add or update style with display:block
-          if (!newAttrs.includes("style=")) {
-            newAttrs += ' style="display:block"';
-          } else {
-            // Add display:block if not present
-            if (!newAttrs.includes("display:block")) {
-              newAttrs = newAttrs.replace(
-                /style="([^"]*?)"/gi,
-                (styleMatch: string, styleContent: string) => {
-                  void styleMatch;
-                  const trimmed = styleContent.trim();
-                  const separator = trimmed && !trimmed.endsWith(";") ? "; " : "";
-                  return `style="${trimmed}${separator}display:block"`;
-                }
-              );
-            }
-          }
-
-          // Ensure proper self-closing format
-          return `<img${newAttrs} />`;
-        });
-      } catch {
-        // Return original on error
+      // Add valign only when missing — an explicit valign is the user's
+      // layout decision and must not be rewritten.
+      for (const td of allElements(ctx.doc, "td")) {
+        if (!td.hasAttribute("valign")) {
+          td.setAttribute("valign", "top");
+          changed = true;
+        }
       }
-      return fixedHtml;
+
+      for (const img of allElements(ctx.doc, "img")) {
+        if (!img.hasAttribute("width")) {
+          img.setAttribute("width", String(EMAIL_DEFAULTS.DEFAULT_IMAGE_WIDTH));
+          changed = true;
+        }
+        if (!img.hasAttribute("height")) {
+          img.setAttribute("height", String(EMAIL_DEFAULTS.DEFAULT_IMAGE_HEIGHT));
+          changed = true;
+        }
+        // styleHasProp normalizes whitespace, so an existing "display: block"
+        // is recognized and never duplicated.
+        if (addStylePropIfMissing(img, "display", "block")) {
+          changed = true;
+        }
+      }
+
+      return changed;
     },
   },
 
@@ -760,144 +392,88 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
     enabled: true,
     configurable: false,
     category: "structure",
-    check: (html: string) => {
+    check: (ctx) => {
       const results: ValidationResult[] = [];
-      if (!html || typeof html !== "string") return results;
+      const links = allElements(ctx.doc, "a");
+      const positions = positionsFor(ctx, links);
 
-      try {
-        // Check for empty href attributes
-        const emptyHrefPattern = /<a[^>]*href\s*=\s*["']?\s*["']?[^>]*>/gi;
-        for (const match of html.matchAll(emptyHrefPattern)) {
-          if (match[0].includes('href=""') || match[0].includes("href=''")) {
-            results.push({
-              rule: "email-safe-links",
-              severity: "error",
-              message: "Link has empty href attribute",
-              suggestion: "Remove empty links or provide valid href",
-              autoFixAvailable: true,
-              category: "structure",
-            });
-          }
+      links.forEach((a, i) => {
+        const href = a.getAttribute("href");
+        if (href === null || href.trim() === "") {
+          results.push({
+            rule: "email-safe-links",
+            severity: "error",
+            message: "Link has empty href attribute",
+            ...positions[i],
+            suggestion: "Remove empty links or provide valid href",
+            autoFixAvailable: true,
+            category: "structure",
+          });
         }
 
-        // Check for wrong target attributes
-        const wrongTargetPattern = /<a[^>]*target\s*=\s*["'](_self|_parent|_top)["'][^>]*>/gi;
-        for (const match of html.matchAll(wrongTargetPattern)) {
+        const target = a.getAttribute("target");
+        if (target && ["_self", "_parent", "_top"].includes(target)) {
           results.push({
             rule: "email-safe-links",
             severity: "warning",
-            message: `Link target "${match[1]}" doesn't work in most email clients`,
+            message: `Link target "${target}" doesn't work in most email clients`,
+            ...positions[i],
             suggestion: 'Use target="_blank" for all email links',
             autoFixAvailable: true,
             category: "compatibility",
           });
+        } else if (!target) {
+          results.push({
+            rule: "email-safe-links",
+            severity: "warning",
+            message: 'Link should have target="_blank" in emails',
+            ...positions[i],
+            suggestion: 'Add target="_blank" to all email links',
+            autoFixAvailable: true,
+            category: "best-practice",
+          });
         }
 
-        // Check for missing target="_blank"
-        const noTargetPattern = /<a[^>]*href\s*=\s*["'][^"']*["'][^>]*(?!target\s*=)[^>]*>/gi;
-        for (const match of html.matchAll(noTargetPattern)) {
-          if (!match[0].includes("target=")) {
-            results.push({
-              rule: "email-safe-links",
-              severity: "warning",
-              message: 'Link should have target="_blank" in emails',
-              suggestion: 'Add target="_blank" to all email links',
-              autoFixAvailable: true,
-              category: "best-practice",
-            });
-          }
+        if (!a.hasAttribute("style")) {
+          results.push({
+            rule: "email-safe-links",
+            severity: "warning",
+            message: "Link should have inline styles for email compatibility",
+            ...positions[i],
+            suggestion: `Add style="${EMAIL_DEFAULTS.DEFAULT_LINK_STYLES}" to links`,
+            autoFixAvailable: true,
+            category: "best-practice",
+          });
         }
+      });
 
-        // Check for missing styles in links
-        const noStylePattern = /<a[^>]*href\s*=\s*["'][^"']*["'][^>]*(?!style\s*=)[^>]*>/gi;
-        for (const match of html.matchAll(noStylePattern)) {
-          if (!match[0].includes("style=")) {
-            results.push({
-              rule: "email-safe-links",
-              severity: "warning",
-              message: "Link should have inline styles for email compatibility",
-              suggestion: 'Add style="color:#0000ff; text-decoration:none;" to links',
-              autoFixAvailable: true,
-              category: "best-practice",
-            });
-          }
-        }
-      } catch {
-        // Silently fail
-      }
       return results;
     },
-    autofix: (html: string) => {
-      if (!html || typeof html !== "string") return html;
+    autofix: (ctx) => {
+      let changed = false;
+      for (const a of allElements(ctx.doc, "a")) {
+        const href = a.getAttribute("href");
+        if (href === null || href.trim() === "") {
+          a.setAttribute("href", COMMON_PATTERNS.DEFAULT_HREF_VALUE);
+          changed = true;
+        }
 
-      let fixedHtml = html;
-      try {
-        // Fix empty href by setting default value "urlhere" (ONLY for <a> tags)
-        fixedHtml = fixedHtml.replace(
-          /<a\b([^>]*?)href\s*=\s*["']?\s*["']?([^>]*?)>/gi,
-          (match, before, after) => {
-            // Replace empty href with default value
-            if (
-              match.includes('href=""') ||
-              match.includes("href=''") ||
-              match.includes("href= ")
-            ) {
-              return `<a${before} href="${COMMON_PATTERNS.DEFAULT_HREF_VALUE}"${after}>`;
-            }
-            // Keep non-empty href attributes
-            return match;
+        const target = a.getAttribute("target");
+        if (!target || ["_self", "_parent", "_top"].includes(target)) {
+          if (target !== "_blank") {
+            a.setAttribute("target", "_blank");
+            changed = true;
           }
-        );
+        }
 
-        // Fix wrong target attributes to _blank (only within <a> tags)
-        fixedHtml = fixedHtml.replace(
-          /<a\b([^>]*?)target\s*=\s*["'](_self|_parent|_top)["']([^>]*?)>/gi,
-          '<a$1target="_blank"$3>'
-        );
-
-        // Enhanced link processing: add target="_blank" and styles (ONLY for <a> tags)
-        fixedHtml = fixedHtml.replace(/<a\b([^>]*)>/gi, (match, attrs) => {
-          void match;
-          let newAttrs = attrs;
-
-          // Fix malformed href attributes (missing = sign)
-          newAttrs = newAttrs.replace(/\s+href\s+([^"\s>]+)/gi, ' href="$1"');
-          newAttrs = newAttrs.replace(/\s+href\s+"([^"]*)"([^>]*)/gi, ' href="$1"$2');
-
-          // Add default href if completely missing
-          if (!newAttrs.includes("href=")) {
-            newAttrs += ` href="${COMMON_PATTERNS.DEFAULT_HREF_VALUE}"`;
-          }
-
-          // Add target="_blank" if missing
-          if (!newAttrs.includes("target=")) {
-            newAttrs += ' target="_blank"';
-          }
-
-          // Add default email-safe styles if missing
-          if (!newAttrs.includes("style=")) {
-            newAttrs += ' style="color:#0000ff; text-decoration:none;"';
-          } else {
-            // Enhance existing styles if needed
-            if (!newAttrs.includes("text-decoration:")) {
-              newAttrs = newAttrs.replace(
-                /style="([^"]*?)"/gi,
-                (styleMatch: string, styleContent: string) => {
-                  void styleMatch;
-                  const trimmed = styleContent.trim();
-                  const separator = trimmed && !trimmed.endsWith(";") ? "; " : "";
-                  return `style="${trimmed}${separator}text-decoration:none"`;
-                }
-              );
-            }
-          }
-
-          return `<a${newAttrs}>`;
-        });
-      } catch {
-        // Return original on error
+        if (!a.hasAttribute("style")) {
+          a.setAttribute("style", EMAIL_DEFAULTS.DEFAULT_LINK_STYLES);
+          changed = true;
+        } else if (addStylePropIfMissing(a, "text-decoration", "none")) {
+          changed = true;
+        }
       }
-      return fixedHtml;
+      return changed;
     },
   },
 
@@ -909,78 +485,38 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
     enabled: true,
     configurable: false,
     category: "compatibility",
-    check: (html: string) => {
+    check: (ctx) => {
       const results: ValidationResult[] = [];
-      if (!html || typeof html !== "string") return results;
-
-      try {
-        const unsafeAttrs = [
-          "id",
-          "class",
-          "onclick",
-          "onload",
-          "onmouseover",
-          "contenteditable",
-          "draggable",
-          "data-\\w+",
-        ];
-
-        unsafeAttrs.forEach((attr) => {
-          const pattern = RegexCache.get(`\\s${attr}\\s*=\\s*["'][^"']*["']`);
-          if (pattern.test(html)) {
+      const seen = new Set<string>();
+      for (const el of allElements(ctx.doc, "*")) {
+        for (const attr of Array.from(el.attributes)) {
+          const name = attr.name.toLowerCase();
+          if (isUnsafeAttribute(name) && !seen.has(name)) {
+            seen.add(name);
             results.push({
               rule: "email-unsafe-attributes",
               severity: "warning",
-              message: `Attribute "${attr}" may not work in email clients`,
+              message: `Attribute "${name}" may not work in email clients`,
               suggestion: "Remove or replace with inline styles",
               autoFixAvailable: true,
               category: "compatibility",
             });
           }
-        });
-      } catch {
-        // Silently fail
+        }
       }
       return results;
     },
-    autofix: (html: string) => {
-      if (!html || typeof html !== "string") return html;
-
-      try {
-        const batcher = new StringBatcher();
-
-        // Remove unsafe attributes
-        const unsafeAttrs = [
-          "id",
-          "class",
-          "onclick",
-          "onload",
-          "onmouseover",
-          "onmouseout",
-          "onfocus",
-          "onblur",
-          "contenteditable",
-          "draggable",
-          "spellcheck",
-          "tabindex",
-          "accesskey",
-          "data-[\\w-]+",
-          "aria-[\\w-]+", // data-* and aria-* attributes
-        ];
-
-        // Add attribute removal operations to batch
-        unsafeAttrs.forEach((attr) => {
-          batcher.add(RegexCache.get(`\\s${attr}\\s*=\\s*["'][^"']*["']`), "");
-        });
-
-        // Add cleanup operations
-        batcher.add(RegexCache.get("\\s+>", "g"), ">").add(RegexCache.get("\\s{2,}", "g"), " ");
-
-        return batcher.execute(html);
-      } catch {
-        // Return original on error
-        return html;
+    autofix: (ctx) => {
+      let changed = false;
+      for (const el of allElements(ctx.doc, "*")) {
+        for (const attr of Array.from(el.attributes)) {
+          if (isUnsafeAttribute(attr.name)) {
+            el.removeAttribute(attr.name);
+            changed = true;
+          }
+        }
       }
+      return changed;
     },
   },
 
@@ -992,76 +528,23 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
     enabled: true,
     configurable: false,
     category: "structure",
-    check: (html: string) => {
-      const results: ValidationResult[] = [];
-      if (!ValidationChecks.isValidHtml(html)) return results;
-
-      try {
-        for (let i = 1; i <= PERFORMANCE_CONSTANTS.MAX_HEADING_LEVELS; i++) {
-          const pattern = REGEX_PATTERNS.TAG_OPENING(`h${i}`);
-          const matches = ValidationChecks.findPatternMatches(html, pattern);
-
-          matches.forEach(() => {
-            results.push(
-              ValidationChecks.createValidationResult(
-                "heading-tags",
-                "error",
-                `Heading tag h${i} is not email-safe`,
-                `Replace h${i} with styled span`,
-                "structure"
-              )
-            );
-          });
-        }
-      } catch {
-        // Silently fail
-      }
-      return results;
+    check: (ctx) => {
+      const headings = allElements(ctx.doc, "h1,h2,h3,h4,h5,h6");
+      const positions = positionsFor(ctx, headings);
+      return headings.map((el, i) => {
+        const tag = el.tagName.toLowerCase();
+        return {
+          rule: "heading-tags",
+          severity: "error" as const,
+          message: `Heading tag ${tag} is not email-safe`,
+          ...positions[i],
+          suggestion: `Replace ${tag} with styled span`,
+          autoFixAvailable: true,
+          category: "structure" as const,
+        };
+      });
     },
-    checkWithAST: (html: string, ast: HTMLNode[]) => {
-      const results: ValidationResult[] = [];
-      if (!ValidationChecks.isValidHtml(html) || !ast) return results;
-
-      try {
-        const headingTags = ["h1", "h2", "h3", "h4", "h5", "h6"] as const;
-
-        ValidationChecks.checkForbiddenTagsAST(ast, headingTags, "heading-tags", (node) => {
-          results.push(
-            ValidationChecks.createValidationResult(
-              "heading-tags",
-              "error",
-              `Heading tag ${node.tagName} is not email-safe`,
-              `Replace ${node.tagName} with styled span`,
-              "structure",
-              node.line,
-              node.column
-            )
-          );
-        });
-      } catch {
-        // Fallback to regex check
-        return EMAIL_VALIDATION_RULES["heading-tags"].check(html);
-      }
-      return results;
-    },
-    autofix: (html: string) => {
-      if (!ValidationChecks.isValidHtml(html)) return html;
-
-      try {
-        // Use utility function to replace headings with styled spans
-        const headingReplacements = Object.fromEntries(
-          Object.entries(HEADING_FONT_SIZES).map(([tag, fontSize]) => [
-            tag,
-            { fontSize, fontWeight: "bold" },
-          ])
-        );
-
-        return AutofixUtils.replaceTagsWithSpans(html, headingReplacements);
-      } catch {
-        // Return original on error
-        return html;
-      }
-    },
+    autofix: fixHeadings,
   },
 
   "paragraph-tags": {
@@ -1072,68 +555,20 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
     enabled: true,
     configurable: false,
     category: "structure",
-    check: (html: string) => {
-      const results: ValidationResult[] = [];
-      if (!ValidationChecks.isValidHtml(html)) return results;
-
-      try {
-        const pattern = REGEX_PATTERNS.TAG_OPENING("p");
-        const matches = ValidationChecks.findPatternMatches(html, pattern);
-
-        matches.forEach(() => {
-          results.push(
-            ValidationChecks.createValidationResult(
-              "paragraph-tags",
-              "error",
-              "Paragraph tag is not email-safe",
-              "Replace p with span",
-              "structure"
-            )
-          );
-        });
-      } catch {
-        // Silently fail
-      }
-      return results;
+    check: (ctx) => {
+      const paragraphs = allElements(ctx.doc, "p");
+      const positions = positionsFor(ctx, paragraphs);
+      return paragraphs.map((_el, i) => ({
+        rule: "paragraph-tags",
+        severity: "error" as const,
+        message: "Paragraph tag is not email-safe",
+        ...positions[i],
+        suggestion: "Replace p with span",
+        autoFixAvailable: true,
+        category: "structure" as const,
+      }));
     },
-    checkWithAST: (html: string, ast: HTMLNode[]) => {
-      const results: ValidationResult[] = [];
-      if (!html || typeof html !== "string" || !ast) return results;
-
-      try {
-        traverseAST(ast, (node) => {
-          if (node.type === "element" && node.tagName === "p") {
-            results.push({
-              rule: "paragraph-tags",
-              severity: "error",
-              message: "Paragraph tag is not email-safe",
-              line: node.line,
-              column: node.column,
-              suggestion: "Replace p with span",
-              autoFixAvailable: true,
-              category: "structure",
-            });
-          }
-        });
-      } catch {
-        // Fallback to regex check
-        return EMAIL_VALIDATION_RULES["paragraph-tags"].check(html);
-      }
-      return results;
-    },
-    autofix: (html: string) => {
-      if (!html || typeof html !== "string") return html;
-
-      let fixedHtml = html;
-      try {
-        // Replace paragraphs with spans
-        fixedHtml = fixedHtml.replace(RegexCache.get("<p([^>]*)>"), "<span$1>");
-        fixedHtml = fixedHtml.replace(RegexCache.get("</p>"), "</span>");
-      } catch {
-        // Return original on error
-      }
-      return fixedHtml;
-    },
+    autofix: fixParagraphs,
   },
 
   "block-element-tags": {
@@ -1146,143 +581,27 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
     configurable: true,
     category: "structure",
     config: {
-      blockTags: [
-        "div",
-        "section",
-        "article",
-        "nav",
-        "header",
-        "footer",
-        "main",
-        "aside",
-        "figure",
-        "figcaption",
-      ],
+      blockTags: BLOCK_TAGS_DEFAULT,
     },
-    check: (html: string, _config = {}) => {
-      const results: ValidationResult[] = [];
-      if (!html || typeof html !== "string") return results;
-
-      try {
-        const blockTags = _config.blockTags || [
-          "div",
-          "section",
-          "article",
-          "nav",
-          "header",
-          "footer",
-          "main",
-          "aside",
-          "figure",
-          "figcaption",
-        ];
-
-        if (Array.isArray(blockTags)) {
-          blockTags.forEach((tag) => {
-            const regex = RegexCache.get(`<${tag}(?:\\s[^>]*)?>`, "gi");
-            const matches = html.match(regex);
-            if (matches) {
-              matches.forEach(() => {
-                results.push({
-                  rule: "block-element-tags",
-                  severity: "error",
-                  message: `Block element "${tag}" is not email-safe`,
-                  suggestion: `Replace ${tag} with table structure`,
-                  autoFixAvailable: true,
-                  category: "structure",
-                });
-              });
-            }
-          });
-        }
-      } catch {
-        // Silently fail
-      }
-      return results;
+    check: (ctx) => {
+      const tags = tagsFromConfig(ctx, "blockTags", BLOCK_TAGS_DEFAULT);
+      if (tags.length === 0) return [];
+      const elements = Array.from(ctx.doc.body.querySelectorAll(tags.join(",")));
+      const positions = positionsFor(ctx, elements);
+      return elements.map((el, i) => {
+        const tag = el.tagName.toLowerCase();
+        return {
+          rule: "block-element-tags",
+          severity: "error" as const,
+          message: `Block element "${tag}" is not email-safe`,
+          ...positions[i],
+          suggestion: `Replace ${tag} with table structure`,
+          autoFixAvailable: true,
+          category: "structure" as const,
+        };
+      });
     },
-    checkWithAST: (html: string, ast: HTMLNode[], _config = {}) => {
-      const results: ValidationResult[] = [];
-      if (!html || typeof html !== "string" || !ast) return results;
-
-      try {
-        const blockTags = _config.blockTags || [
-          "div",
-          "section",
-          "article",
-          "nav",
-          "header",
-          "footer",
-          "main",
-          "aside",
-          "figure",
-          "figcaption",
-        ];
-
-        traverseAST(ast, (node) => {
-          if (
-            node.type === "element" &&
-            node.tagName &&
-            Array.isArray(blockTags) &&
-            blockTags.includes(node.tagName)
-          ) {
-            results.push({
-              rule: "block-element-tags",
-              severity: "error",
-              message: `Block element "${node.tagName}" is not email-safe`,
-              line: node.line,
-              column: node.column,
-              suggestion: `Replace ${node.tagName} with table structure`,
-              autoFixAvailable: true,
-              category: "structure",
-            });
-          }
-        });
-      } catch {
-        // Fallback to regex check
-        return EMAIL_VALIDATION_RULES["block-element-tags"].check(html, _config);
-      }
-      return results;
-    },
-    autofix: (html: string, _config = {}) => {
-      if (!html || typeof html !== "string") return html;
-
-      let fixedHtml = html;
-      try {
-        const blockTags = _config.blockTags || [
-          "div",
-          "section",
-          "article",
-          "nav",
-          "header",
-          "footer",
-          "main",
-          "aside",
-          "figure",
-          "figcaption",
-        ];
-
-        if (Array.isArray(blockTags)) {
-          // Count existing tables to prevent excessive nesting
-          const existingTables = (fixedHtml.match(/<table/g) || []).length;
-          const maxTables = EMAIL_DEFAULTS.MAX_TABLES; // Limit total tables to prevent excessive nesting
-
-          if (existingTables < maxTables) {
-            blockTags.forEach((tag) => {
-              const regex = RegexCache.get(`<${tag}([^>]*)>`);
-              const closeRegex = RegexCache.get(`</${tag}>`);
-              fixedHtml = fixedHtml.replace(
-                regex,
-                '<table cellpadding="0" cellspacing="0" border="0"$1><tr><td valign="top">'
-              );
-              fixedHtml = fixedHtml.replace(closeRegex, "</td></tr></table>");
-            });
-          }
-        }
-      } catch {
-        // Return original on error
-      }
-      return fixedHtml;
-    },
+    autofix: fixBlockElements,
   },
 
   "dangerous-tags": {
@@ -1294,179 +613,27 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
     configurable: true,
     category: "structure",
     config: {
-      dangerousTags: [
-        "script",
-        "style",
-        "form",
-        "input",
-        "button",
-        "textarea",
-        "select",
-        "option",
-        "fieldset",
-        "legend",
-        "label",
-        "video",
-        "audio",
-        "canvas",
-        "svg",
-        "iframe",
-        "embed",
-        "object",
-        "base",
-        "col",
-        "area",
-      ],
+      dangerousTags: DANGEROUS_TAGS_DEFAULT,
     },
-    check: (html: string, _config = {}) => {
-      const results: ValidationResult[] = [];
-      if (!html || typeof html !== "string") return results;
-
-      try {
-        const dangerousTags = _config.dangerousTags || [
-          "script",
-          "style",
-          "form",
-          "input",
-          "button",
-          "textarea",
-          "select",
-          "option",
-          "fieldset",
-          "legend",
-          "label",
-          "video",
-          "audio",
-          "canvas",
-          "svg",
-          "iframe",
-          "embed",
-          "object",
-          "base",
-          "col",
-          "area",
-        ];
-
-        if (Array.isArray(dangerousTags)) {
-          dangerousTags.forEach((tag) => {
-            const regex = RegexCache.get(`<${tag}(?:\\s[^>]*)?>`, "gi");
-            const matches = html.match(regex);
-            if (matches) {
-              matches.forEach(() => {
-                results.push({
-                  rule: "dangerous-tags",
-                  severity: "error",
-                  message: `Dangerous tag "${tag}" should be removed`,
-                  suggestion: `Remove ${tag} tag completely`,
-                  autoFixAvailable: true,
-                  category: "structure",
-                });
-              });
-            }
-          });
-        }
-      } catch {
-        // Silently fail
-      }
-      return results;
+    check: (ctx) => {
+      const tags = tagsFromConfig(ctx, "dangerousTags", DANGEROUS_TAGS_DEFAULT);
+      if (tags.length === 0) return [];
+      const elements = allElements(ctx.doc, tags.join(","));
+      const positions = positionsFor(ctx, elements);
+      return elements.map((el, i) => {
+        const tag = el.tagName.toLowerCase();
+        return {
+          rule: "dangerous-tags",
+          severity: "error" as const,
+          message: `Dangerous tag "${tag}" should be removed`,
+          ...positions[i],
+          suggestion: `Remove ${tag} tag completely`,
+          autoFixAvailable: true,
+          category: "structure" as const,
+        };
+      });
     },
-    checkWithAST: (html: string, ast: HTMLNode[], _config = {}) => {
-      const results: ValidationResult[] = [];
-      if (!html || typeof html !== "string" || !ast) return results;
-
-      try {
-        const dangerousTags = _config.dangerousTags || [
-          "script",
-          "style",
-          "form",
-          "input",
-          "button",
-          "textarea",
-          "select",
-          "option",
-          "fieldset",
-          "legend",
-          "label",
-          "video",
-          "audio",
-          "canvas",
-          "svg",
-          "iframe",
-          "embed",
-          "object",
-          "base",
-          "col",
-          "area",
-        ];
-
-        traverseAST(ast, (node) => {
-          if (
-            node.type === "element" &&
-            node.tagName &&
-            Array.isArray(dangerousTags) &&
-            dangerousTags.includes(node.tagName)
-          ) {
-            results.push({
-              rule: "dangerous-tags",
-              severity: "error",
-              message: `Dangerous tag "${node.tagName}" should be removed`,
-              line: node.line,
-              column: node.column,
-              suggestion: `Remove ${node.tagName} tag completely`,
-              autoFixAvailable: true,
-              category: "structure",
-            });
-          }
-        });
-      } catch {
-        // Fallback to regex check
-        return EMAIL_VALIDATION_RULES["dangerous-tags"].check(html, _config);
-      }
-      return results;
-    },
-    autofix: (html: string, _config = {}) => {
-      if (!html || typeof html !== "string") return html;
-
-      let fixedHtml = html;
-      try {
-        const dangerousTags = _config.dangerousTags || [
-          "script",
-          "style",
-          "form",
-          "input",
-          "button",
-          "textarea",
-          "select",
-          "option",
-          "fieldset",
-          "legend",
-          "label",
-          "video",
-          "audio",
-          "canvas",
-          "svg",
-          "iframe",
-          "embed",
-          "object",
-          "base",
-          "col",
-          "area",
-        ];
-
-        if (Array.isArray(dangerousTags)) {
-          dangerousTags.forEach((tag) => {
-            // Оптимізовані паттерни без backtracking
-            const regex = RegexCache.get(`<${tag}(?:\\s[^>]*)?>(?:[\\s\\S]*?)</${tag}>`, "gi");
-            fixedHtml = fixedHtml.replace(regex, "");
-            const selfClosingRegex = RegexCache.get(`<${tag}(?:\\s[^>]*)?/>`, "gi");
-            fixedHtml = fixedHtml.replace(selfClosingRegex, "");
-          });
-        }
-      } catch {
-        // Return original on error
-      }
-      return fixedHtml;
-    },
+    autofix: fixDangerousTags,
   },
 
   "duplicate-styles": {
@@ -1477,70 +644,37 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
     enabled: true,
     configurable: false,
     category: "best-practice",
-    check: (html: string) => {
-      const results: ValidationResult[] = [];
-      if (!html || typeof html !== "string") return results;
-
-      try {
-        const duplicateStylePattern = RegexCache.get('style="([^"]*?)"([^>]*?)style="([^"]*?)"');
-        if (duplicateStylePattern.test(html)) {
-          results.push({
+    check: (ctx) => {
+      // Duplicate attributes cannot be represented in the DOM (the parser
+      // keeps the first one), so this defect is detected in the source text.
+      if (/<[a-zA-Z][^>]*?style\s*=\s*"[^"]*"[^>]*?style\s*=/i.test(ctx.html)) {
+        return [
+          {
             rule: "duplicate-styles",
             severity: "warning",
             message: "Duplicate style attributes found",
             suggestion: "Merge duplicate style attributes",
             autoFixAvailable: true,
             category: "best-practice",
-          });
-        }
-      } catch {
-        // Silently fail
+          },
+        ];
       }
-      return results;
+      return [];
     },
-    autofix: (html: string) => {
-      if (!html || typeof html !== "string") return html;
-
-      let fixedHtml = html;
-      try {
-        // Fix duplicate style attributes - limited iterations for safety
-        for (let i = 0; i < EMAIL_DEFAULTS.MAX_STYLE_MERGE_ITERATIONS; i++) {
-          const beforeFix = fixedHtml;
-          fixedHtml = fixedHtml.replace(
-            RegexCache.get('style="([^"]*?)"([^>]*?)style="([^"]*?)"'),
-            (match, style1, middle, style2) => {
-              void match;
-              // Split styles and merge, removing duplicates
-              const styles1 = style1.split(";").filter((s: string) => s.trim());
-              const styles2 = style2.split(";").filter((s: string) => s.trim());
-              const allStyles = [...styles1, ...styles2];
-
-              // Remove duplicates by property name (keep last)
-              const uniqueStyles = [];
-              const seenProps = new Set();
-
-              for (const style of allStyles.reverse()) {
-                const prop = style.split(":")[0]?.trim();
-                if (prop && !seenProps.has(prop)) {
-                  seenProps.add(prop);
-                  uniqueStyles.unshift(style.trim());
-                }
-              }
-
-              const combinedStyle = uniqueStyles.join("; ");
-              return `style="${combinedStyle}"${middle}`;
-            }
-          );
-
-          // Break if no changes made
-          if (beforeFix === fixedHtml) {
-            break;
-          }
-        }
-      } catch {
-        // Return original on error
+    // Must run before parsing: DOMParser silently drops the second style
+    // attribute, which would lose the user's declarations instead of merging.
+    preprocess: (html) => {
+      let out = html;
+      for (let i = 0; i < EMAIL_DEFAULTS.MAX_STYLE_MERGE_ITERATIONS; i++) {
+        const before = out;
+        out = out.replace(
+          /(<[a-zA-Z][^>]*?)style\s*=\s*"([^"]*)"([^>]*?)style\s*=\s*"([^"]*)"/g,
+          (_match, prefix, style1, middle, style2) =>
+            `${prefix}style="${mergeStyleStrings(style1, style2)}"${middle}`
+        );
+        if (out === before) break;
       }
-      return fixedHtml;
+      return out;
     },
   },
 
@@ -1552,78 +686,43 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
     enabled: true,
     configurable: true,
     category: "structure",
-    config: {
-      maxIterations: EMAIL_DEFAULTS.MAX_AUTOFIX_ITERATIONS,
-    },
-    check: (html: string) => {
-      const results: ValidationResult[] = [];
-      if (!html || typeof html !== "string") return results;
-
-      try {
-        const nestedTablePattern = RegexCache.get(
-          "<table([^>]*?)><tr><td([^>]*?)><table([^>]*?)><tr><td([^>]*?)>"
-        );
-        if (nestedTablePattern.test(html)) {
-          results.push({
+    check: (ctx) => {
+      const maxNesting = ctx.validatorConfig.maxTableNesting || EMAIL_DEFAULTS.MAX_TABLE_NESTING;
+      const depth = maxTableNestingDepth(ctx.doc);
+      if (depth > maxNesting) {
+        return [
+          {
             rule: "table-nesting-cleanup",
             severity: "warning",
-            message: "Excessive table nesting detected",
+            message: `Excessive table nesting detected (depth ${depth}, max ${maxNesting})`,
             suggestion: "Reduce table nesting for better email compatibility",
             autoFixAvailable: true,
             category: "structure",
-          });
-        }
-      } catch {
-        // Silently fail
+          },
+        ];
       }
-      return results;
+      return [];
     },
-    autofix: (html: string, _config = {}) => {
-      if (!html || typeof html !== "string") return html;
+    autofix: (ctx) => {
+      const maxNesting = ctx.validatorConfig.maxTableNesting || EMAIL_DEFAULTS.MAX_TABLE_NESTING;
+      let changed = false;
 
-      let fixedHtml = html;
-      try {
-        const maxIterations = (
-          typeof _config.maxIterations === "number"
-            ? _config.maxIterations
-            : EMAIL_DEFAULTS.MAX_AUTOFIX_ITERATIONS
-        ) as number;
-
-        // Clean up excessive table nesting - limited iterations for safety
-        for (let i = 0; i < maxIterations; i++) {
-          const beforeFix = fixedHtml;
-          fixedHtml = fixedHtml.replace(
-            RegexCache.get("<table([^>]*?)><tr><td([^>]*?)><table([^>]*?)><tr><td([^>]*?)>"),
-            "<table$1><tr><td$2>"
-          );
-          fixedHtml = fixedHtml.replace(
-            RegexCache.get("<\\/td><\\/tr><\\/table><\\/td><\\/tr><\\/table>"),
-            "</td></tr></table>"
-          );
-
-          // Break if no changes made
-          if (beforeFix === fixedHtml) {
-            break;
-          }
-        }
-
-        // Remove empty tables
-        fixedHtml = fixedHtml.replace(
-          RegexCache.get("<table[^>]*><tr><td[^>]*>\\s*<\\/td><\\/tr><\\/table>"),
-          ""
-        );
-
-        // Don't wrap single text spans in tables
-        fixedHtml = fixedHtml.replace(
-          RegexCache.get(
-            "<table[^>]*><tr><td[^>]*>(\\s*<span[^>]*>[^<]+<\\/span>\\s*)<\\/td><\\/tr><\\/table>"
-          ),
-          "$1"
-        );
-      } catch {
-        // Return original on error
+      // Collapse redundant single-cell wrappers only while the nesting depth
+      // actually exceeds the limit — intentional nested layouts are kept.
+      let guard = 0;
+      while (maxTableNestingDepth(ctx.doc) > maxNesting && guard++ < 100) {
+        if (!collapseOneRedundantTable(ctx.doc)) break;
+        changed = true;
       }
-      return fixedHtml;
+
+      for (const table of allElements(ctx.doc, "table")) {
+        if (isVisuallyEmpty(table) && !table.querySelector("img")) {
+          table.remove();
+          changed = true;
+        }
+      }
+
+      return changed;
     },
   },
 
@@ -1635,39 +734,32 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
     enabled: true,
     configurable: false,
     category: "best-practice",
-    check: (html: string) => {
-      const results: ValidationResult[] = [];
-      if (!html || typeof html !== "string") return results;
-
-      try {
-        const emptySpanPattern = RegexCache.get("<span[^>]*>\\s*<\\/span>");
-        if (emptySpanPattern.test(html)) {
-          results.push({
+    check: (ctx) => {
+      const hasEmpty = allElements(ctx.doc, "span").some(isVisuallyEmpty);
+      if (hasEmpty) {
+        return [
+          {
             rule: "empty-elements-cleanup",
             severity: "info",
             message: "Empty elements found",
             suggestion: "Remove empty and whitespace-only elements",
             autoFixAvailable: true,
             category: "best-practice",
-          });
-        }
-      } catch {
-        // Silently fail
+          },
+        ];
       }
-      return results;
+      return [];
     },
-    autofix: (html: string) => {
-      if (!html || typeof html !== "string") return html;
-
-      let fixedHtml = html;
-      try {
-        // Remove empty and whitespace-only span tags
-        fixedHtml = fixedHtml.replace(RegexCache.get("<span[^>]*>\\s*<\\/span>"), "");
-        fixedHtml = fixedHtml.replace(RegexCache.get("<span[^>]*>[\\s\\t\\n\\r]*<\\/span>"), "");
-      } catch {
-        // Return original on error
+    autofix: (ctx) => {
+      let changed = false;
+      // Removing an empty span can make its parent span empty; iterate.
+      for (let i = 0; i < 10; i++) {
+        const empty = allElements(ctx.doc, "span").filter(isVisuallyEmpty);
+        if (empty.length === 0) break;
+        for (const el of empty) el.remove();
+        changed = true;
       }
-      return fixedHtml;
+      return changed;
     },
   },
 
@@ -1679,65 +771,37 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
     enabled: true,
     configurable: false,
     category: "structure",
-    check: (html: string) => {
+    check: (ctx) => {
       const results: ValidationResult[] = [];
-      if (!html || typeof html !== "string") return results;
-
-      try {
-        const malformedSrcPattern = RegexCache.get("\\bs\\s+rc=");
-        if (malformedSrcPattern.test(html)) {
-          results.push({
-            rule: "malformed-attributes",
-            severity: "error",
-            message: 'Malformed "s rc" attribute found',
-            suggestion: 'Fix "s rc" to "src"',
-            autoFixAvailable: true,
-            category: "structure",
-          });
-        }
-
-        const malformedSpacingPattern = RegexCache.get('="([^"]*)"([a-zA-Z]+=)');
-        if (malformedSpacingPattern.test(html)) {
-          results.push({
-            rule: "malformed-attributes",
-            severity: "error",
-            message: "Missing spaces between attributes",
-            suggestion: "Add spaces between attributes",
-            autoFixAvailable: true,
-            category: "structure",
-          });
-        }
-      } catch {
-        // Silently fail
+      if (/\bs\s+rc=/i.test(ctx.html)) {
+        results.push({
+          rule: "malformed-attributes",
+          severity: "error",
+          message: 'Malformed "s rc" attribute found',
+          suggestion: 'Fix "s rc" to "src"',
+          autoFixAvailable: true,
+          category: "structure",
+        });
+      }
+      if (/="[^"]*"[a-zA-Z-]+=/.test(ctx.html)) {
+        results.push({
+          rule: "malformed-attributes",
+          severity: "error",
+          message: "Missing spaces between attributes",
+          suggestion: "Add spaces between attributes",
+          autoFixAvailable: true,
+          category: "structure",
+        });
       }
       return results;
     },
-    autofix: (html: string) => {
-      if (!html || typeof html !== "string") return html;
-
-      let fixedHtml = html;
-      try {
-        // Use StringBatcher for batch operations
-        const batcher = new StringBatcher();
-
-        batcher
-          // Fix broken img src attributes (like "s rc" -> "src")
-          .add(RegexCache.get("\\bs\\s+rc="), "src=")
-          .add(RegexCache.get("\\bS\\s+RC="), "src=")
-          // Fix missing spaces between img attributes
-          .add(RegexCache.get('="([^"]*)"([a-zA-Z]+=)'), '="$1" $2')
-          // Fix specific malformed img attributes like src="test.jpg"alt="test"
-          .add(RegexCache.get('(<img[^>]*?)([a-zA-Z0-9_.-]+")([a-zA-Z]+=)'), "$1$2 $3");
-
-        fixedHtml = batcher.execute(fixedHtml);
-      } catch {
-        // Return original on error
-      }
-      return fixedHtml;
-    },
+    // "s rc=" must be repaired before parsing (the parser would keep a stray
+    // `s` attribute); missing inter-attribute spaces are handled by the
+    // parse/serialize round-trip itself.
+    preprocess: (html) => html.replace(/\bs\s+rc=/gi, "src="),
+    autofix: (ctx) => /="[^"]*"[a-zA-Z-]+=/.test(ctx.html),
   },
 
-  // Image alt attribute validation and fixes
   "image-alt-attributes": {
     name: "image-alt-attributes",
     displayName: "Image Alt Attributes",
@@ -1746,101 +810,117 @@ export const EMAIL_VALIDATION_RULES: Record<string, ValidationRule> = {
     enabled: true,
     configurable: false,
     category: "accessibility",
-    check: (html: string) => {
-      const results: ValidationResult[] = [];
+    check: (ctx) => {
+      if (ctx.validatorConfig.requireAltText === false) return [];
 
-      // Find images with missing or empty alt attributes
-      const imgMissingAlt = html.match(/<img(?![^>]*\salt\s*=\s*["'][^"']+["'])[^>]*>/gi);
-      if (imgMissingAlt) {
-        imgMissingAlt.forEach(() => {
+      const results: ValidationResult[] = [];
+      const images = allElements(ctx.doc, "img");
+      const positions = positionsFor(ctx, images);
+
+      images.forEach((img, i) => {
+        const alt = img.getAttribute("alt");
+        if (alt === null) {
           results.push({
             rule: "image-alt-attributes",
             severity: "error",
             message: "Image missing meaningful alt attribute for accessibility",
-            line: 0,
-            column: 0,
+            ...positions[i],
+            suggestion: "Add descriptive alt text to the image",
+            autoFixAvailable: true,
+            category: "accessibility",
           });
-        });
-      }
-
-      // Find images with empty alt attributes
-      const imgEmptyAlt = html.match(/<img[^>]*alt\s*=\s*["']?\s*["'][^>]*>/gi);
-      if (imgEmptyAlt) {
-        imgEmptyAlt.forEach(() => {
+        } else if (alt.trim() === "") {
           results.push({
             rule: "image-alt-attributes",
             severity: "warning",
             message: "Image has empty alt attribute - should be descriptive",
-            line: 0,
-            column: 0,
+            ...positions[i],
+            suggestion: "Describe the image content in the alt attribute",
+            autoFixAvailable: true,
+            category: "accessibility",
           });
-        });
-      }
+        }
+      });
 
       return results;
     },
-    autofix: (html: string) => {
-      if (!html || typeof html !== "string") return html;
+    autofix: (ctx) => {
+      let changed = false;
+      for (const img of allElements(ctx.doc, "img")) {
+        const alt = img.getAttribute("alt");
+        // Only fill in missing/empty alt — existing alt text is the user's
+        // work and is never overwritten.
+        if (alt !== null && alt.trim() !== "") continue;
 
-      let fixedHtml = html;
-      try {
-        // Single comprehensive img replacement to avoid multiple passes and conflicts
-        fixedHtml = fixedHtml.replace(/<img([^>]*?)(\s*\/?\s*)>/gi, (match, attrs) => {
-          void match;
-          let newAttrs = attrs;
-
-          // Extract src for alt text generation
-          const srcMatch = attrs.match(/src\s*=\s*["']([^"']+)["']/i);
-          let altText = EMAIL_DEFAULTS.DEFAULT_ALT_TEXT;
-
-          if (srcMatch) {
-            const filename = srcMatch[1].split("/").pop()?.split(".")[0];
-            if (filename) {
-              // Convert filename to readable text (remove underscores, capitalize)
-              altText = filename
-                .replace(/[_-]/g, " ")
-                .replace(/\b\w/g, (l: string) => l.toUpperCase());
-            }
-          }
-
-          // Remove any existing alt attributes to prevent duplication
-          newAttrs = newAttrs.replace(/\s*alt\s*=\s*["'][^"']*["']/gi, "");
-
-          // Add clean alt attribute
-          newAttrs += ` alt="${altText}"`;
-
-          // Ensure proper self-closing format
-          return `<img${newAttrs} />`;
-        });
-      } catch {
-        // Return original on error
+        let altText: string = EMAIL_DEFAULTS.DEFAULT_ALT_TEXT;
+        const src = img.getAttribute("src") ?? "";
+        const filename = src.split("/").pop()?.split(".")[0];
+        if (filename) {
+          altText = filename.replace(/[_-]+/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+        }
+        img.setAttribute("alt", altText);
+        changed = true;
       }
-      return fixedHtml;
+      return changed;
     },
   },
 };
 
-// Helper functions
+// ---------------------------------------------------------------------------
+// Collapse helper for table-nesting-cleanup
+// ---------------------------------------------------------------------------
+
+/**
+ * Find one redundant wrapper — a <td> whose only content is a single-row,
+ * single-cell <table> — and hoist the inner cell's children into the outer
+ * cell. Returns true when a collapse happened.
+ */
+function collapseOneRedundantTable(doc: Document): boolean {
+  for (const inner of Array.from(doc.querySelectorAll("table table"))) {
+    const outerTd = inner.parentElement;
+    if (!outerTd || outerTd.tagName !== "TD") continue;
+
+    const meaningfulSiblings = Array.from(outerTd.childNodes).filter(
+      (n) => !(n.nodeType === Node.TEXT_NODE && (n.textContent ?? "").trim() === "")
+    );
+    if (meaningfulSiblings.length !== 1 || meaningfulSiblings[0] !== inner) continue;
+
+    const rows = Array.from(inner.children)
+      .flatMap((child) => (child.tagName === "TBODY" ? Array.from(child.children) : [child]))
+      .filter((child) => child.tagName === "TR");
+    if (rows.length !== 1) continue;
+
+    const cells = Array.from(rows[0].children).filter((c) => c.tagName === "TD" || c.tagName === "TH");
+    if (cells.length !== 1) continue;
+
+    const innerTd = cells[0];
+    while (innerTd.firstChild) {
+      outerTd.appendChild(innerTd.firstChild);
+    }
+    inner.remove();
+    return true;
+  }
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// Suggestion helpers
+// ---------------------------------------------------------------------------
+
 function getTagReplacement(tagName: string): string {
+  const tableReplacement = "Use <table><tr><td>content</td></tr></table>";
   const replacements: Record<string, string> = {
-    div: "Use <table><tr><td>content</td></tr></table>",
+    div: tableReplacement,
     p: "Use <span>content</span>",
-    h1: `Use <span style="font-weight:bold; font-size:${EMAIL_DEFAULTS.HEADING_FONT_SIZES.h1}px;">content</span>`,
-    h2: `Use <span style="font-weight:bold; font-size:${EMAIL_DEFAULTS.HEADING_FONT_SIZES.h2}px;">content</span>`,
-    h3: `Use <span style="font-weight:bold; font-size:${EMAIL_DEFAULTS.HEADING_FONT_SIZES.h3}px;">content</span>`,
-    h4: `Use <span style="font-weight:bold; font-size:${EMAIL_DEFAULTS.HEADING_FONT_SIZES.h4}px;">content</span>`,
-    h5: `Use <span style="font-weight:bold; font-size:${EMAIL_DEFAULTS.HEADING_FONT_SIZES.h5}px;">content</span>`,
-    h6: `Use <span style="font-weight:bold; font-size:${EMAIL_DEFAULTS.HEADING_FONT_SIZES.h6}px;">content</span>`,
-    section: "Use <table><tr><td>content</td></tr></table>",
-    article: "Use <table><tr><td>content</td></tr></table>",
-    nav: "Use <table><tr><td>content</td></tr></table>",
-    header: "Use <table><tr><td>content</td></tr></table>",
-    footer: "Use <table><tr><td>content</td></tr></table>",
-    main: "Use <table><tr><td>content</td></tr></table>",
-    aside: "Use <table><tr><td>content</td></tr></table>",
-    figure: "Use <table><tr><td>content</td></tr></table>",
-    figcaption: "Use <table><tr><td>content</td></tr></table>",
-    // Dangerous tags - remove completely
+    section: tableReplacement,
+    article: tableReplacement,
+    nav: tableReplacement,
+    header: tableReplacement,
+    footer: tableReplacement,
+    main: tableReplacement,
+    aside: tableReplacement,
+    figure: tableReplacement,
+    figcaption: tableReplacement,
     script: "Remove - not supported in emails",
     style: "Use inline styles instead",
     form: "Remove - forms not supported in emails",
@@ -1860,10 +940,14 @@ function getTagReplacement(tagName: string): string {
     embed: "Remove - not supported in emails",
     object: "Remove - not supported in emails",
   };
+  for (let level = 1; level <= 6; level++) {
+    replacements[`h${level}`] =
+      `Use <span style="font-weight:bold; font-size:${getFontSizeForHeading(level)}px;">content</span>`;
+  }
   return replacements[tagName] || "Replace with email-safe alternative";
 }
 
-function getFontSizeForHeading(level: number): number {
+export function getFontSizeForHeading(level: number): number {
   return (
     EMAIL_DEFAULTS.HEADING_FONT_SIZES[
       `h${level}` as keyof typeof EMAIL_DEFAULTS.HEADING_FONT_SIZES

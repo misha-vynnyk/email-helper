@@ -21,7 +21,7 @@ export type {
   EmailValidationReport,
   EmailValidatorConfig,
   HTMLNode,
-  TraversalContext,
+  RuleContext,
   ValidationResult,
   ValidationRule,
   ValidationSeverity,
