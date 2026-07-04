@@ -1,137 +1,69 @@
-import { Edit, SettingsApplications, Storage } from "@mui/icons-material";
-import {
-  Alert,
-  Box,
-  ToggleButton,
-  ToggleButtonGroup,
-  Tooltip,
-  Typography,
-} from "@mui/material";
+import { FileCog, HardDrive, PenLine, Settings2 } from "lucide-react";
 import React from "react";
 
-import { StyledPaper } from "../theme";
+import { cn } from "../lib/utils";
 import { useEmailSender } from "./EmailSenderContext";
+import { cardClass, Note, NoteTone, SectionHeader } from "./ui";
+
+type StorageMode = "localStorage" | "env" | "state";
+
+const OPTIONS: { value: StorageMode; label: string; Icon: typeof HardDrive; hint: string }[] = [
+  { value: "localStorage", label: "LocalStorage", Icon: HardDrive, hint: "Save credentials in browser localStorage" },
+  { value: "env", label: ".env File", Icon: FileCog, hint: "Load credentials from environment variables" },
+  { value: "state", label: "Manual Entry", Icon: PenLine, hint: "Enter credentials manually (session only)" },
+];
+
+const DESCRIPTIONS: Record<StorageMode, { tone: NoteTone; text: string }> = {
+  localStorage: { tone: "info", text: "Credentials are automatically saved and loaded from browser localStorage" },
+  env: { tone: "warning", text: "Credentials are loaded from environment variables (.env file)" },
+  state: { tone: "success", text: "Credentials are entered manually and stored only in component state" },
+};
 
 export const StorageToggle: React.FC = () => {
   const { useStorageToggle, setUseStorageToggle } = useEmailSender();
-
-  const handleToggleChange = (
-    _: React.MouseEvent<HTMLElement>,
-    newValue: "localStorage" | "env" | "state" | null
-  ) => {
-    if (newValue !== null) {
-      setUseStorageToggle(newValue);
-    }
-  };
-
-  const getDescription = () => {
-    switch (useStorageToggle) {
-      case "localStorage":
-        return "Credentials are automatically saved and loaded from browser localStorage";
-      case "env":
-        return "Credentials are loaded from environment variables (.env file)";
-      case "state":
-        return "Credentials are entered manually and stored only in component state";
-      default:
-        return "";
-    }
-  };
-
-  const getAlertType = () => {
-    switch (useStorageToggle) {
-      case "localStorage":
-        return "info";
-      case "env":
-        return "warning";
-      case "state":
-        return "success";
-      default:
-        return "info";
-    }
-  };
+  const description = DESCRIPTIONS[useStorageToggle];
 
   return (
-    <StyledPaper sx={{ p: 2, mb: 2 }}>
-      <Typography
-        variant='subtitle1'
-        sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}
-      >
-        <SettingsApplications />
-        Credential Storage Method
-      </Typography>
+    <div className={cn(cardClass, "p-4 flex flex-col gap-3")}>
+      <SectionHeader
+        icon={<Settings2 size={16} />}
+        title='Credential Storage Method'
+        subtitle='Where SMTP credentials live'
+      />
 
-      <Box sx={{ mb: 2 }}>
-        <ToggleButtonGroup
-          value={useStorageToggle}
-          exclusive
-          onChange={handleToggleChange}
-          aria-label='storage method'
-          size='small'
-          fullWidth
-        >
-          <ToggleButton
-            value='localStorage'
-            aria-label='localStorage'
-          >
-            <Tooltip title='Save credentials in browser localStorage'>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <Storage fontSize='small' />
-                LocalStorage
-              </Box>
-            </Tooltip>
-          </ToggleButton>
+      <div role='group' aria-label='storage method' className='flex items-center bg-background rounded-full border border-border/50 shadow-inner p-1 gap-1'>
+        {OPTIONS.map(({ value, label, Icon, hint }) => {
+          const isActive = useStorageToggle === value;
+          return (
+            <button
+              key={value}
+              type='button'
+              title={hint}
+              aria-pressed={isActive}
+              onClick={() => setUseStorageToggle(value)}
+              className={cn(
+                "flex flex-1 items-center justify-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold transition-all duration-200 active:scale-95",
+                isActive ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              )}
+            >
+              <Icon className='w-3.5 h-3.5 shrink-0' />
+              <span className='truncate'>{label}</span>
+            </button>
+          );
+        })}
+      </div>
 
-          <ToggleButton
-            value='env'
-            aria-label='environment'
-          >
-            <Tooltip title='Load credentials from environment variables'>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <SettingsApplications fontSize='small' />
-                .env File
-              </Box>
-            </Tooltip>
-          </ToggleButton>
-
-          <ToggleButton
-            value='state'
-            aria-label='state'
-          >
-            <Tooltip title='Enter credentials manually (session only)'>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                <Edit fontSize='small' />
-                Manual Entry
-              </Box>
-            </Tooltip>
-          </ToggleButton>
-        </ToggleButtonGroup>
-      </Box>
-
-      <Alert
-        severity={getAlertType()}
-        sx={{ fontSize: "0.875rem" }}
-      >
-        {getDescription()}
-      </Alert>
+      <Note tone={description.tone}>{description.text}</Note>
 
       {useStorageToggle === "env" && (
-        <Alert
-          severity='warning'
-          sx={{ mt: 1, fontSize: "0.875rem" }}
-        >
-          <Typography variant='body2'>
-            <strong>Environment variables setup:</strong>
-            <br />
-            Create a <code>.env</code> file with:
-            <br />
-            <code>VITE_EMAIL_USER=your-email@gmail.com</code>
-            <br />
-            <code>VITE_DESTINATION_EMAIL_USER=recipient@example.com</code>
-            <br />
-            <code>VITE_EMAIL_PASS=your-app-password</code>
-          </Typography>
-        </Alert>
+        <Note tone='warning'>
+          <strong>Environment variables setup:</strong> create a{" "}
+          <code className='font-mono text-[11px]'>.env</code> file with:
+          <pre className='mt-1.5 rounded-lg bg-black/5 dark:bg-white/5 px-2.5 py-2 font-mono text-[11px] leading-relaxed overflow-x-auto'>
+            {"VITE_EMAIL_USER=your-email@gmail.com\nVITE_DESTINATION_EMAIL_USER=recipient@example.com\nVITE_EMAIL_PASS=your-app-password"}
+          </pre>
+        </Note>
       )}
-    </StyledPaper>
+    </div>
   );
 };
