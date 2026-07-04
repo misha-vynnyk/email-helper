@@ -6,7 +6,6 @@
 import { create } from "zustand";
 
 type AppState = {
-  document: unknown;
   selectedMainTab: "email" | "blocks" | "templates" | "images" | "converter";
   samplesDrawerOpen: boolean;
 };
@@ -25,14 +24,9 @@ const loadSelectedTab = (): AppState["selectedMainTab"] => {
 };
 
 const appStateStore = create<AppState>(() => ({
-  document: {},
   selectedMainTab: loadSelectedTab(),
   samplesDrawerOpen: false,
 }));
-
-export function useDocument() {
-  return appStateStore((s) => s.document);
-}
 
 export function useSelectedMainTab() {
   return appStateStore((s) => s.selectedMainTab);
