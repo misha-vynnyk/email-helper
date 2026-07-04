@@ -6,7 +6,7 @@
 import { CircleCheck, Info, OctagonAlert, TriangleAlert } from "lucide-react";
 import React from "react";
 
-import { cn } from "../lib/utils";
+import { cn } from "../../lib/utils";
 
 export type NoteTone = "info" | "warning" | "success" | "error";
 
