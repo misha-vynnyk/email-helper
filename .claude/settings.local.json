@@ -3,7 +3,27 @@
     "allow": [
       "Bash(ls \"/Users/mykhailo.vynnyk/Library/Application Support/\" | grep -i brave)",
       "Read(//Users/mykhailo.vynnyk/Library/Application Support/**)",
-      "Bash(grep -E \"\\(\\\\.tsx?|\\\\.js\\)$\")"
+      "Bash(grep -E \"\\(\\\\.tsx?|\\\\.js\\)$\")",
+      "Skill(code-review)",
+      "Skill(code-review:*)",
+      "Bash(node -e \"console.log\\(!!require\\('./package.json'\\).dependencies['lucide-react']\\)\")",
+      "Bash(node -e ' *)",
+      "Bash(node /private/tmp/claude-501/-Users-mykhailo-vynnyk-Documents-projects-email-helper/6cfd98da-d862-4e8e-ac5e-0a62cadc3d4c/scratchpad/drive-email-tab.js)",
+      "Bash(node -e \"const d={...require\\('./package.json'\\).dependencies}; console.log\\(Object.keys\\(d\\).filter\\(k=>k.includes\\('radix'\\)\\)\\)\")",
+      "Bash(git mv *)",
+      "Bash(sed -i '' 's|} from \"./ui\";|} from \"../components/ui/primitives\";|' src/emailSender/EmailCredentialsForm.tsx src/emailSender/StorageToggle.tsx src/emailSender/EmailHtmlEditor.tsx)",
+      "Bash(sed -i '' 's|import { cn } from \"../lib/utils\";|import { cn } from \"../../lib/utils\";|' src/components/ui/primitives.tsx)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(npx tsc *)",
+      "Bash(npx eslint *)",
+      "Bash(npm run *)",
+      "Bash(npm test *)",
+      "Bash(npx vite *)",
+      "Bash(node /private/tmp/claude-501/-Users-mykhailo-vynnyk-Documents-projects-email-helper/6cfd98da-d862-4e8e-ac5e-0a62cadc3d4c/scratchpad/drive-validation.js)",
+      "Bash(git add *)",
+      "Bash(git commit -m 'feat\\(emailValidator\\): redesign validation panel with Tailwind *)",
+      "Bash(npx jest *)",
+      "Bash(python3 -)"
     ]
   }
 }

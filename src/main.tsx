@@ -1,8 +1,9 @@
+import "./index.css";
+import "./i18n";
+
 import React from "react";
 import ReactDOM from "react-dom/client";
 
-import "./index.css";
-import "./i18n";
 import App from "./App";
 import { ThemeProvider } from "./theme/ThemeContext";
 
@@ -15,7 +16,7 @@ console.error = (...args) => {
   const message = args.join(" ");
   const firstArg = args[0];
 
-  // Перевіряємо чи це помилка GET запиту або завантаження ресурсу
+  // Check if it's a browser extension error or network error
   if (typeof firstArg === "string" && (firstArg.includes("GET chrome-extension://") || firstArg.includes("Failed to load resource") || firstArg.includes("net::ERR_FILE_NOT_FOUND") || firstArg.includes("net::ERR_CONNECTION_REFUSED") || firstArg.includes("chrome-extension://pejdijmoenmkgeppbflobdenhhabjlaj") || firstArg.includes("storage.5th-elementagency.com"))) {
     return; // Don't log browser extension network errors or image loading errors
   }
