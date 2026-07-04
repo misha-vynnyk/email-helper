@@ -5,6 +5,8 @@
 
 import { create } from "zustand";
 
+import { BLOCK_LIBRARY_ENABLED } from "../config/featureFlags";
+
 type AppState = {
   selectedMainTab: "email" | "blocks" | "templates" | "images" | "converter";
   samplesDrawerOpen: boolean;
@@ -15,6 +17,10 @@ const loadSelectedTab = (): AppState["selectedMainTab"] => {
   try {
     const saved = localStorage.getItem("app-selected-main-tab");
     if (saved && ["email", "blocks", "templates", "images", "converter"].includes(saved)) {
+      // A previously saved tab may point to a feature that is now hidden.
+      if (saved === "blocks" && !BLOCK_LIBRARY_ENABLED) {
+        return "email";
+      }
       return saved as AppState["selectedMainTab"];
     }
   } catch {

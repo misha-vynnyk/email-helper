@@ -2,6 +2,7 @@ import { Box, CircularProgress, Fade, Stack } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import React from "react";
 
+import { BLOCK_LIBRARY_ENABLED } from "../../config/featureFlags";
 import { useSelectedMainTab } from "../../contexts/AppState";
 import { EmailSenderProvider } from "../../emailSender/EmailSenderContext";
 import { getComponentStyles, ThemeStyleSelector, ThemeToggle, useThemeMode } from "../../theme";
@@ -117,9 +118,11 @@ export default function TemplatePanel() {
             <EmailSenderPanel />
           </TabPanel>
 
-          <TabPanel value='blocks' selectedValue={deferredTab} mounted={mountedTabs.has("blocks")}>
-            <BlockLibrary />
-          </TabPanel>
+          {BLOCK_LIBRARY_ENABLED && (
+            <TabPanel value='blocks' selectedValue={deferredTab} mounted={mountedTabs.has("blocks")}>
+              <BlockLibrary />
+            </TabPanel>
+          )}
 
           <TabPanel value='templates' selectedValue={deferredTab} mounted={mountedTabs.has("templates")}>
             <EmailSenderProvider>
