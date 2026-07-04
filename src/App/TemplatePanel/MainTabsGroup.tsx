@@ -2,6 +2,7 @@ import { EmailOutlined, FolderOpen, Image as ImageIcon, TableChart as TableIcon,
 import { Tab, Tabs, Tooltip } from "@mui/material";
 import React from "react";
 
+import { BLOCK_LIBRARY_ENABLED } from "../../config/featureFlags";
 import { setSelectedMainTab, useSelectedMainTab } from "../../contexts/AppState";
 
 export default function MainTabsGroup() {
@@ -28,14 +29,16 @@ export default function MainTabsGroup() {
           </Tooltip>
         }
       />
-      <Tab
-        value='blocks'
-        label={
-          <Tooltip title='Block Library'>
-            <ViewModule fontSize='small' />
-          </Tooltip>
-        }
-      />
+      {BLOCK_LIBRARY_ENABLED && (
+        <Tab
+          value='blocks'
+          label={
+            <Tooltip title='Block Library'>
+              <ViewModule fontSize='small' />
+            </Tooltip>
+          }
+        />
+      )}
       <Tab
         value='templates'
         label={
