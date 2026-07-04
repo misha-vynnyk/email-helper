@@ -93,13 +93,17 @@ export const PERFORMANCE_CONSTANTS = {
   MAX_RECENT_FIXES_TRACKED: 10,
 } as const;
 
-// Scoring and penalty constants
+// Scoring and penalty constants.
+// Penalties are graduated: repeated issues from the same rule cost less than
+// the first one, so a template with one systemic problem doesn't score 0/100.
 export const SCORING_CONSTANTS = {
   MAX_SCORE: 100,
   MAX_PENALTY: 100,
-  ERROR_PENALTY: 20,
-  WARNING_PENALTY: 10,
-  INFO_PENALTY: 5,
+  ERROR_PENALTY: 12,
+  WARNING_PENALTY: 4,
+  INFO_PENALTY: 1,
+  /** Multiplier applied to the 2nd, 3rd, … issue of the same rule. */
+  REPEAT_ISSUE_FACTOR: 0.25,
 } as const;
 
 // Cache scoring weights for intelligent cleanup

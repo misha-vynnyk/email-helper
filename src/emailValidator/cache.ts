@@ -55,7 +55,12 @@ export class RegexCache {
       }, EMAIL_DEFAULTS.CACHE_CLEANUP_INTERVAL_MS);
     }
 
-    return this.cache.get(key)!;
+    const regex = this.cache.get(key)!;
+    // The cached RegExp object is shared between callers. Global/sticky
+    // regexes keep lastIndex across .test()/.exec() calls, which made results
+    // depend on previous invocations — always hand it out reset.
+    regex.lastIndex = 0;
+    return regex;
   }
 
   /**

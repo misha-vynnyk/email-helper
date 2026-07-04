@@ -756,12 +756,12 @@ export const EmailValidationPanel: React.FC<EmailValidationPanelProps> = ({
         </button>
       </div>
 
-      {/* Progress Bar */}
+      {/* Quality score bar (not a progress indicator — validation is synchronous) */}
       {validationReport && (
         <div className='mt-3'>
           <div className='flex justify-between mb-1'>
-            <span className='text-[11px] text-muted-foreground'>Validation Progress</span>
-            <span className='text-[11px] text-muted-foreground'>{validationReport.score}%</span>
+            <span className='text-[11px] text-muted-foreground'>Quality Score</span>
+            <span className='text-[11px] text-muted-foreground'>{validationReport.score}/100</span>
           </div>
           <div className='h-1.5 rounded-full bg-muted overflow-hidden'>
             <div

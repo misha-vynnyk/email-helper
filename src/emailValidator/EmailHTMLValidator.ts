@@ -20,7 +20,6 @@ export class EmailHTMLValidator {
   private config: EmailValidatorConfig;
   private validationEngine: ValidationEngine;
   private autofixEngine: AutofixEngine;
-  private cleanupInterval?: NodeJS.Timeout;
   private isDisposed = false;
   private validationStats = {
     totalValidations: 0,
@@ -57,55 +56,10 @@ export class EmailHTMLValidator {
     // Enable all rules by default if not explicitly configured
     this.initializeDefaultRules();
 
-    // Initialize engines
+    // Initialize engines. The DOM-based engines hold no timers or global
+    // caches, so an undisposed validator instance cannot leak intervals.
     this.validationEngine = new ValidationEngine(this.config);
     this.autofixEngine = new AutofixEngine(this.config);
-
-    // Setup periodic cache cleanup with error handling
-    this.setupCleanupInterval();
-  }
-
-  /**
-   * Setup cleanup interval with error handling
-   */
-  private setupCleanupInterval(): void {
-    try {
-      this.cleanupInterval = setInterval(() => {
-        this.performPeriodicCleanup();
-      }, EMAIL_DEFAULTS.CACHE_CLEANUP_INTERVAL_MS);
-    } catch (error) {
-      logger.error("EmailHTMLValidator", "Failed to setup cleanup interval", error);
-    }
-  }
-
-  /**
-   * Perform periodic cleanup with error handling
-   */
-  private performPeriodicCleanup(): void {
-    try {
-      if (this.isDisposed) return;
-
-      // Perform cleanup on engines
-      const validationStats = this.validationEngine.getCacheStats();
-      const autofixStats = this.autofixEngine.getFixHistoryStats();
-
-      logger.debug("EmailHTMLValidator", LOGGING_CONSTANTS.CACHE_CLEANUP_PREFIX, {
-        validationCache: validationStats,
-        autofixHistory: autofixStats,
-      });
-
-      // Force garbage collection if available (Node.js only)
-      if (typeof global !== "undefined" && (global as { gc?: () => void }).gc) {
-        try {
-          (global as { gc: () => void }).gc();
-          logger.debug("EmailHTMLValidator", LOGGING_CONSTANTS.GARBAGE_COLLECTION_PREFIX);
-        } catch {
-          // Ignore GC errors
-        }
-      }
-    } catch (error) {
-      logger.error("EmailHTMLValidator", "Error during periodic cleanup", error);
-    }
   }
 
   /**
@@ -626,12 +580,6 @@ export class EmailHTMLValidator {
       // Dispose engines
       this.validationEngine.dispose();
       this.autofixEngine.dispose();
-
-      // Clear cleanup interval
-      if (this.cleanupInterval) {
-        clearInterval(this.cleanupInterval);
-        this.cleanupInterval = undefined;
-      }
 
       // Mark as disposed
       this.isDisposed = true;
