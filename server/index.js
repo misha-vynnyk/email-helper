@@ -113,15 +113,21 @@ app.use((req, res) => {
  * Starts the Express server on the given port.
  * Returns a Promise that resolves to the http.Server instance.
  * Used both for standalone mode and when embedded in Electron.
+ *
+ * `host` defaults to all interfaces (Node's default) so `npm run dev-host`
+ * keeps working for LAN testing from a phone/other device. The packaged
+ * Electron app passes "127.0.0.1" explicitly — its embedded server has no
+ * business being reachable from other machines on the network.
  */
-const startServer = (port) => {
+const startServer = (port, host) => {
   port = parseInt(port) || parseInt(process.env.PORT) || 3001;
   return new Promise((resolve, reject) => {
-    const server = app.listen(port, () => {
-      console.log(`🚀 Server running on port ${port}`);
+    const onListening = () => {
+      console.log(`🚀 Server running on port ${port}${host ? ` (${host})` : ""}`);
       console.log(`📝 Environment: ${process.env.NODE_ENV || "development"}`);
       resolve(server);
-    }).on("error", (err) => {
+    };
+    const server = (host ? app.listen(port, host, onListening) : app.listen(port, onListening)).on("error", (err) => {
       reject(err);
     });
   });
