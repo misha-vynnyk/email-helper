@@ -4,14 +4,13 @@
  */
 
 import { html } from "@codemirror/lang-html";
-import { useTheme } from "@mui/material";
 import CodeMirror from "@uiw/react-codemirror";
 import { Copy as CopyIcon,X as CloseIcon } from "lucide-react";
 import React, { useContext, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { EmailSenderContext } from "../../emailSender/EmailSenderContext";
-import { useThemeMode } from "../../theme";
+import { useThemeMode } from "../../theme/ThemeContext";
 import { EmailTemplate, TEMPLATE_CATEGORIES, TemplateCategory } from "../../types/template";
 import { createCodeMirrorTheme } from "../../utils/codemirrorTheme";
 import { preloadImages } from "../../utils/imageUrlReplacer";
@@ -39,9 +38,8 @@ interface TemplateItemProps {
 }
 
 function TemplateItem({ template, previewConfig, onDelete, onUpdate, onLoadTemplate, isOpen = false, onOpen, onClose, allTemplates = [], currentIndex = 0, onNavigate, savedScrollPosition: savedScrollPositionProp = 0, focusedBlock }: TemplateItemProps) {
-  const theme = useTheme();
-  const { mode, style } = useThemeMode();
-  const codeMirrorTheme = createCodeMirrorTheme(theme, mode, style);
+  const { mode } = useThemeMode();
+  const codeMirrorTheme = createCodeMirrorTheme(mode === "dark");
 
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);

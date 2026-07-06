@@ -1,23 +1,17 @@
-import { FirstPageOutlined, MenuOutlined } from "@mui/icons-material";
-import { IconButton, Tooltip } from "@mui/material";
+import { Menu, PanelLeftClose } from "lucide-react";
 
 import { toggleSamplesDrawerOpen, useSamplesDrawerOpen } from "../../contexts/AppState";
 
-function useIcon() {
-  const samplesDrawerOpen = useSamplesDrawerOpen();
-  if (samplesDrawerOpen) {
-    return <FirstPageOutlined fontSize='small' />;
-  }
-  return <MenuOutlined fontSize='small' />;
-}
-
 export default function ToggleSamplesPanelButton() {
   const samplesDrawerOpen = useSamplesDrawerOpen();
-  const icon = useIcon();
 
   return (
-    <Tooltip title={samplesDrawerOpen ? "Close menu" : "Open menu"}>
-      <IconButton onClick={toggleSamplesDrawerOpen}>{icon}</IconButton>
-    </Tooltip>
+    <button
+      type='button'
+      onClick={toggleSamplesDrawerOpen}
+      title={samplesDrawerOpen ? "Close menu" : "Open menu"}
+      className='flex items-center justify-center w-9 h-9 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors'>
+      {samplesDrawerOpen ? <PanelLeftClose className='w-4 h-4' /> : <Menu className='w-4 h-4' />}
+    </button>
   );
 }

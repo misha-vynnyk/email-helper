@@ -3,32 +3,12 @@
  * Modal for adding custom email blocks
  */
 
-import { Add as AddIcon, Close as CloseIcon } from "@mui/icons-material";
-import {
-  Alert,
-  Box,
-  Button,
-  Checkbox,
-  Chip,
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  FormControl,
-  FormControlLabel,
-  IconButton,
-  InputLabel,
-  MenuItem,
-  Select,
-  TextField,
-  Typography,
-} from "@mui/material";
-import { alpha, useTheme } from "@mui/material/styles";
-import React, { useMemo, useState } from "react";
+import { Loader2, Plus as AddIcon, X as CloseIcon } from "lucide-react";
+import React, { useState } from "react";
 
-import { useThemeMode } from "../theme";
-import { getComponentStyles } from "../theme/componentStyles";
+import { Checkbox } from "../components/ui/checkbox";
+import { Note } from "../components/ui/primitives";
+import Modal from "../templateLibrary/components/Modal";
 import { BlockCategory, EmailBlock } from "../types/block";
 import { logger } from "../utils/logger";
 import { blockFileApi } from "./blockFileApi";
@@ -53,10 +33,6 @@ const CATEGORIES: BlockCategory[] = [
 ];
 
 export default function AddBlockModal({ open, onClose, onBlockAdded }: AddBlockModalProps) {
-  const theme = useTheme();
-  const { mode, style } = useThemeMode();
-  const componentStyles = useMemo(() => getComponentStyles(mode, style), [mode, style]);
-
   const [name, setName] = useState("");
   const [category, setCategory] = useState<BlockCategory>("Custom");
   const [html, setHtml] = useState("");
@@ -212,226 +188,189 @@ export default function AddBlockModal({ open, onClose, onBlockAdded }: AddBlockM
     }
   };
 
+  const inputClass =
+    "w-full px-4 py-2.5 text-sm rounded-xl border border-input bg-background focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground outline-none transition-all";
+
   return (
-    <Dialog
+    <Modal
       open={open}
       onClose={handleClose}
-      maxWidth='md'
-      fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: `${componentStyles.card.borderRadius}px`,
-          background:
-            componentStyles.card.background || alpha(theme.palette.background.paper, 0.9),
-          backdropFilter: componentStyles.card.backdropFilter,
-          WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
-          border: componentStyles.card.border,
-          boxShadow: componentStyles.card.boxShadow,
-        },
-      }}
-    >
-      <DialogTitle>Add Custom Email Block</DialogTitle>
-      <DialogContent>
-        {error && (
-          <Alert
-            severity='error'
-            sx={{ mb: 2 }}
-            onClose={() => setError(null)}
+      maxWidthClass='max-w-2xl'
+      title='Add Custom Email Block'
+      actionsRow={
+        <>
+          <button
+            onClick={handleClose}
+            disabled={loading}
+            className='px-5 py-2.5 text-sm font-bold bg-muted hover:bg-muted/80 text-foreground rounded-xl transition-all disabled:opacity-50'
           >
-            {error}
-          </Alert>
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={!name || !html || keywords.length === 0 || loading}
+            className='flex items-center gap-2 px-5 py-2.5 text-sm font-bold bg-primary hover:brightness-110 text-primary-foreground rounded-xl transition-all shadow-sm disabled:opacity-50'
+          >
+            {loading ? <Loader2 size={16} className='animate-spin' /> : <AddIcon size={16} />}
+            {loading ? "Creating..." : createAsFile ? "Create .ts File" : "Add to Storage"}
+          </button>
+        </>
+      }
+    >
+      <div className='flex flex-col gap-5'>
+        {error && (
+          <Note tone='error'>{error}</Note>
         )}
 
-        <Box
-          display='flex'
-          flexDirection='column'
-          gap={2}
-          mt={1}
-        >
-          {/* Name */}
-          <TextField
-            label='Block Name'
-            fullWidth
-            required
+        {/* Name */}
+        <div>
+          <label className='block text-sm font-extrabold text-foreground mb-1.5'>
+            Block Name<span className='text-destructive'> *</span>
+          </label>
+          <input
+            type='text'
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder='e.g., My Custom Header'
+            className={inputClass}
           />
+        </div>
 
-          {/* Category */}
-          <FormControl
-            fullWidth
-            required
+        {/* Category */}
+        <div>
+          <label className='block text-sm font-extrabold text-foreground mb-1.5'>
+            Category<span className='text-destructive'> *</span>
+          </label>
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value as BlockCategory)}
+            className={`${inputClass} appearance-none cursor-pointer`}
           >
-            <InputLabel>Category</InputLabel>
-            <Select
-              value={category}
-              label='Category'
-              onChange={(e) => setCategory(e.target.value as BlockCategory)}
-            >
-              {CATEGORIES.map((cat) => (
-                <MenuItem
-                  key={cat}
-                  value={cat}
-                >
-                  {cat}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+            {CATEGORIES.map((cat) => (
+              <option
+                key={cat}
+                value={cat}
+              >
+                {cat}
+              </option>
+            ))}
+          </select>
+        </div>
 
-          {/* Save as File Option */}
-          <Box sx={{ bgcolor: "action.hover", p: 2, borderRadius: 1 }}>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={createAsFile}
-                  onChange={(e) => setCreateAsFile(e.target.checked)}
-                />
-              }
-              label={
-                <Box>
-                  <Typography
-                    variant='body2'
-                    fontWeight='bold'
-                  >
-                    Save as TypeScript file (.ts)
-                  </Typography>
-                  <Typography
-                    variant='caption'
-                    color='text.secondary'
-                  >
-                    {createAsFile
-                      ? "✅ Will create file (recommended for version control)"
-                      : "Will save to localStorage (temporary storage)"}
-                  </Typography>
-                </Box>
-              }
+        {/* Save as File Option */}
+        <div className='bg-muted/40 p-4 rounded-xl border border-border/50'>
+          <label className='flex items-start gap-2.5 cursor-pointer'>
+            <Checkbox
+              checked={createAsFile}
+              onCheckedChange={(checked) => setCreateAsFile(checked === true)}
+              className='mt-0.5'
             />
+            <div>
+              <p className='text-sm font-bold text-foreground'>Save as TypeScript file (.ts)</p>
+              <p className='text-xs text-muted-foreground mt-0.5'>
+                {createAsFile
+                  ? "✅ Will create file (recommended for version control)"
+                  : "Will save to localStorage (temporary storage)"}
+              </p>
+            </div>
+          </label>
 
-            {/* Storage Location Selection (only if createAsFile is true) */}
-            {createAsFile && (
-              <>
-                {storageLocations.length === 0 ? (
-                  <Alert
-                    severity='warning'
-                    sx={{ mt: 2 }}
-                  >
-                    ⚠️ No storage locations configured! Please add a location in Storage settings
+          {/* Storage Location Selection (only if createAsFile is true) */}
+          {createAsFile && (
+            <>
+              {storageLocations.length === 0 ? (
+                <div className='mt-3'>
+                  <Note tone='warning'>
+                    No storage locations configured! Please add a location in Storage settings
                     before creating file blocks, or switch to localStorage.
-                  </Alert>
-                ) : (
-                  <FormControl
-                    fullWidth
-                    sx={{ mt: 2 }}
+                  </Note>
+                </div>
+              ) : (
+                <div className='mt-3'>
+                  <label className='block text-sm font-extrabold text-foreground mb-1.5'>
+                    Save Location
+                  </label>
+                  <select
+                    value={selectedLocationId}
+                    onChange={(e) => setSelectedLocationId(e.target.value)}
+                    className={`${inputClass} appearance-none cursor-pointer`}
                   >
-                    <InputLabel>Save Location</InputLabel>
-                    <Select
-                      value={selectedLocationId}
-                      label='Save Location'
-                      onChange={(e) => setSelectedLocationId(e.target.value)}
-                    >
-                      {storageLocations.map((location) => (
-                        <MenuItem
-                          key={location.id}
-                          value={location.id}
-                        >
-                          <Box>
-                            <Typography variant='body2'>
-                              📁 {location.name}
-                              {location.isDefault && " (Default)"}
-                            </Typography>
-                            <Typography
-                              variant='caption'
-                              color='text.secondary'
-                            >
-                              {location.path}
-                            </Typography>
-                          </Box>
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                )}
-              </>
-            )}
-          </Box>
+                    {storageLocations.map((location) => (
+                      <option
+                        key={location.id}
+                        value={location.id}
+                      >
+                        📁 {location.name}
+                        {location.isDefault && " (Default)"} — {location.path}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </>
+          )}
+        </div>
 
-          {/* Keywords */}
-          <Box>
-            <TextField
-              label='Keywords'
-              fullWidth
+        {/* Keywords */}
+        <div>
+          <label className='block text-sm font-extrabold text-foreground mb-1.5'>Keywords</label>
+          <div className='flex gap-2'>
+            <input
+              type='text'
               value={keywordInput}
               onChange={(e) => setKeywordInput(e.target.value)}
               onKeyPress={handleKeywordKeyPress}
               placeholder='Type and press Enter to add'
-              helperText='Add keywords to make your block easier to find'
-              InputProps={{
-                endAdornment: (
-                  <IconButton
-                    size='small'
-                    onClick={handleAddKeyword}
-                    disabled={!keywordInput.trim()}
-                  >
-                    <AddIcon />
-                  </IconButton>
-                ),
-              }}
+              className={inputClass}
             />
-            {keywords.length > 0 && (
-              <Box
-                display='flex'
-                flexWrap='wrap'
-                gap={1}
-                mt={1}
-              >
-                {keywords.map((keyword) => (
-                  <Chip
-                    key={keyword}
-                    label={keyword}
-                    size='small'
-                    onDelete={() => handleRemoveKeyword(keyword)}
-                    deleteIcon={<CloseIcon />}
-                  />
-                ))}
-              </Box>
-            )}
-          </Box>
+            <button
+              onClick={handleAddKeyword}
+              disabled={!keywordInput.trim()}
+              className='shrink-0 px-3 rounded-xl border border-input text-foreground hover:bg-muted transition-colors disabled:opacity-50'
+            >
+              <AddIcon size={18} />
+            </button>
+          </div>
+          <p className='text-xs text-muted-foreground mt-1.5'>
+            Add keywords to make your block easier to find
+          </p>
+          {keywords.length > 0 && (
+            <div className='flex flex-wrap gap-1.5 mt-2'>
+              {keywords.map((keyword) => (
+                <span
+                  key={keyword}
+                  className='inline-flex items-center gap-1 pl-2.5 pr-1.5 py-1 rounded-full text-xs font-semibold bg-muted text-foreground border border-border/50'
+                >
+                  {keyword}
+                  <button
+                    onClick={() => handleRemoveKeyword(keyword)}
+                    className='p-0.5 hover:bg-black/10 dark:hover:bg-white/10 rounded-full transition-colors'
+                  >
+                    <CloseIcon size={12} />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
 
-          {/* HTML Code */}
-          <TextField
-            label='HTML Code'
-            fullWidth
-            required
-            multiline
+        {/* HTML Code */}
+        <div>
+          <label className='block text-sm font-extrabold text-foreground mb-1.5'>
+            HTML Code<span className='text-destructive'> *</span>
+          </label>
+          <textarea
             rows={12}
             value={html}
             onChange={(e) => setHtml(e.target.value)}
             placeholder='Paste your email-safe HTML code here...'
-            InputProps={{
-              style: { fontFamily: "monospace", fontSize: "0.875rem" },
-            }}
-            helperText='Use table-based layout with inline styles for best email compatibility'
+            className={`${inputClass} font-mono resize-y`}
           />
-        </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button
-          onClick={handleClose}
-          disabled={loading}
-        >
-          Cancel
-        </Button>
-        <Button
-          onClick={handleSubmit}
-          variant='contained'
-          disabled={!name || !html || keywords.length === 0 || loading}
-          startIcon={loading ? <CircularProgress size={20} /> : <AddIcon />}
-        >
-          {loading ? "Creating..." : createAsFile ? "Create .ts File" : "Add to Storage"}
-        </Button>
-      </DialogActions>
-    </Dialog>
+          <p className='text-xs text-muted-foreground mt-1.5'>
+            Use table-based layout with inline styles for best email compatibility
+          </p>
+        </div>
+      </div>
+    </Modal>
   );
 }

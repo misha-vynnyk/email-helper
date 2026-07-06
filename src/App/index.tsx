@@ -1,6 +1,5 @@
 import "react-toastify/dist/ReactToastify.css";
 
-import { Stack, useTheme } from "@mui/material";
 import { useState } from "react";
 import { ErrorBoundary, type FallbackProps } from "react-error-boundary";
 import { ToastContainer } from "react-toastify";
@@ -30,14 +29,6 @@ function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
   );
 }
 
-function useDrawerTransition(cssProperty: "margin-left" | "margin-right", open: boolean) {
-  const { transitions } = useTheme();
-  return transitions.create(cssProperty, {
-    easing: !open ? transitions.easing.sharp : transitions.easing.easeOut,
-    duration: !open ? transitions.duration.leavingScreen : transitions.duration.enteringScreen,
-  });
-}
-
 export default function App() {
   const samplesDrawerOpen = useSamplesDrawerOpen();
   const [showSplash, setShowSplash] = useState(true);
@@ -45,8 +36,6 @@ export default function App() {
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const { isRegistered, registrationData } = useRegistrationStatus();
   const serverHealth = useServerHealthCheck();
-
-  const marginLeftTransition = useDrawerTransition("margin-left", samplesDrawerOpen);
 
   const handleSplashComplete = () => {
     setShowSplash(false);
@@ -74,14 +63,11 @@ export default function App() {
     <ErrorBoundary FallbackComponent={ErrorFallback}>
       <SamplesDrawer onSettingsOpen={() => setSettingsMenuOpen(true)} onRegistrationOpen={() => setRegistrationOpen(true)} />
 
-      <Stack
-        sx={{
-          marginLeft: samplesDrawerOpen ? `${SAMPLES_DRAWER_WIDTH}px` : 0,
-          transition: marginLeftTransition,
-          minHeight: "100vh",
-        }}>
+      <div
+        className='flex flex-col min-h-screen transition-[margin-left] duration-300 ease-out'
+        style={{ marginLeft: samplesDrawerOpen ? SAMPLES_DRAWER_WIDTH : 0 }}>
         <TemplatePanel />
-      </Stack>
+      </div>
 
       <ToastContainer position='top-right' autoClose={5000} hideProgressBar={false} newestOnTop={false} closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover />
 

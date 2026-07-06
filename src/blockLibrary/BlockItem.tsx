@@ -3,43 +3,13 @@
  * Displays a single block card with preview and actions
  */
 
-import {
-  Add as AddIcon,
-  Code as CodeIcon,
-  ContentCopy as CopyIcon,
-  Delete as DeleteIcon,
-  Edit as EditIcon,
-  Folder as FolderIcon,
-  Remove as RemoveIcon,
-  RestartAlt as RestartAltIcon,
-  Visibility,
-} from "@mui/icons-material";
-import {
-  Alert,
-  Box,
-  Button,
-  ButtonGroup,
-  Card,
-  CardActions,
-  CardContent,
-  Chip,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  IconButton,
-  Snackbar,
-  TextField,
-  Tooltip,
-  Typography,
-  useTheme,
-} from "@mui/material";
-import { alpha } from "@mui/material/styles";
+import { Code as CodeIcon, Copy as CopyIcon, Eye, Folder as FolderIcon, Minus, Pencil as EditIcon, Plus as AddIcon, RotateCcw as RestartAltIcon, Trash2 as DeleteIcon } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
+import { toast } from "react-toastify";
 
-import { useThemeMode } from "../theme";
-import { getComponentStyles } from "../theme/componentStyles";
+import Modal from "../templateLibrary/components/Modal";
 import { EmailBlock } from "../types/block";
+import { cn } from "../lib/utils";
 import { logger } from "../utils/logger";
 import { blockFileApi } from "./blockFileApi";
 import { updateCustomBlock } from "./blockLoader";
@@ -56,27 +26,21 @@ interface BlockItemProps {
   isFileBlock?: boolean; // NEW: Indicates if this is a file-based block
 }
 
+type LocationColor = "primary" | "secondary" | "warning" | "default";
+
+const LOCATION_COLOR_CLASSES: Record<LocationColor, string> = {
+  primary: "border-primary/30 bg-primary/10 text-primary",
+  secondary: "border-purple-300 bg-purple-50 text-purple-700 dark:border-purple-800/50 dark:bg-purple-950/40 dark:text-purple-300",
+  warning: "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800/50 dark:bg-amber-950/40 dark:text-amber-300",
+  default: "border-border bg-muted/40 text-muted-foreground",
+};
+
 function BlockItem({
   block,
   onDelete,
   onUpdate,
   isFileBlock = false,
 }: BlockItemProps) {
-  const theme = useTheme();
-  const { mode, style } = useThemeMode();
-  const componentStyles = getComponentStyles(mode, style);
-  const dialogPaperSx = useMemo(
-    () => ({
-      borderRadius: `${componentStyles.card.borderRadius}px`,
-      background: componentStyles.card.background || alpha(theme.palette.background.paper, 0.92),
-      backdropFilter: componentStyles.card.backdropFilter,
-      WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
-      border: componentStyles.card.border,
-      boxShadow: componentStyles.card.boxShadow,
-    }),
-    [componentStyles, theme.palette.background.paper]
-  );
-
   // ✅ useMemo: Wrap HTML only when block.html changes
   const wrappedPreviewHtml = useMemo(() => wrapInTemplate(block.html), [block.html]);
 
@@ -86,7 +50,7 @@ function BlockItem({
       case "src":
         return {
           label: "src/blocks",
-          color: "secondary" as const,
+          color: "secondary" as LocationColor,
           tooltip: block.filePath || "Source code blocks - requires rebuild",
         };
       case "data": {
@@ -117,34 +81,32 @@ function BlockItem({
 
           return {
             label: displayPath,
-            color: "primary" as const,
+            color: "primary" as LocationColor,
             tooltip: `Full path: ${dirPath}`,
           };
         }
         return {
           label: "data/blocks/files",
-          color: "primary" as const,
+          color: "primary" as LocationColor,
           tooltip: "Data blocks - immediately visible",
         };
       }
       case "localStorage":
         return {
           label: "Browser Storage",
-          color: "warning" as const,
+          color: "warning" as LocationColor,
           tooltip: "Stored in browser localStorage",
         };
       default:
-        return { label: "Unknown", color: "default" as const, tooltip: "Unknown source location" };
+        return { label: "Unknown", color: "default" as LocationColor, tooltip: "Unknown source location" };
     }
   };
 
   const locationInfo = getLocationInfo();
-  const [copySuccess, setCopySuccess] = useState(false);
   const [codeDialogOpen, setCodeDialogOpen] = useState(false);
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedHtml, setEditedHtml] = useState(block.html);
-  const [saveSuccess, setSaveSuccess] = useState(false);
 
   // Responsive viewport state
   const [viewportWidth, setViewportWidth] = useState<number | "responsive">("responsive");
@@ -154,15 +116,6 @@ function BlockItem({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [snackbar, setSnackbar] = useState<{
-    open: boolean;
-    message: string;
-    severity: "success" | "error" | "info";
-  }>({
-    open: false,
-    message: "",
-    severity: "success",
-  });
   const [zoom, setZoom] = useState(1);
 
   // Keyboard shortcuts for zoom
@@ -213,20 +166,12 @@ function BlockItem({
   const handleCopyCode = async () => {
     try {
       await navigator.clipboard.writeText(block.html);
-      setCopySuccess(true);
+      toast.success("Code copied to clipboard!");
     } catch (err) {
       const error = err instanceof Error ? err.message : "Unknown error";
       logger.error("BlockItem", "Failed to copy block HTML", err);
-      setSnackbar({
-        open: true,
-        message: `Copy failed: ${error}. Check clipboard permissions.`,
-        severity: "error",
-      });
+      toast.error(`Copy failed: ${error}. Check clipboard permissions.`);
     }
-  };
-
-  const handleCloseCopySnackbar = () => {
-    setCopySuccess(false);
   };
 
   const handleOpenCodeDialog = () => {
@@ -263,7 +208,7 @@ function BlockItem({
             html: updatedFileBlock.html,
           };
           onUpdate(updatedBlock);
-          setSaveSuccess(true);
+          toast.success("Block updated successfully!");
           setIsEditing(false);
           setCodeDialogOpen(false);
         }
@@ -273,7 +218,7 @@ function BlockItem({
 
         if (updatedBlock && onUpdate) {
           onUpdate(updatedBlock);
-          setSaveSuccess(true);
+          toast.success("Block updated successfully!");
           setIsEditing(false);
           setCodeDialogOpen(false);
         } else {
@@ -309,20 +254,12 @@ function BlockItem({
       // Parent (BlockLibrary) handles the actual API call and state updates
       onDelete(block.id);
 
-      setSnackbar({
-        open: true,
-        message: `"${block.name}" deleted successfully`,
-        severity: "success",
-      });
+      toast.success(`"${block.name}" deleted successfully`);
     } catch (err) {
       const error = err instanceof Error ? err.message : "Unknown error";
       logger.error("BlockItem", "Failed to delete block", err);
 
-      setSnackbar({
-        open: true,
-        message: `Delete failed: ${error}`,
-        severity: "error",
-      });
+      toast.error(`Delete failed: ${error}`);
     } finally {
       setDeleteLoading(false);
     }
@@ -330,42 +267,11 @@ function BlockItem({
 
   return (
     <>
-      <Card
-        sx={{
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-          borderRadius: `${componentStyles.card.borderRadius}px`,
-          background: componentStyles.card.background || theme.palette.background.paper,
-          backdropFilter: componentStyles.card.backdropFilter,
-          WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
-          border: componentStyles.card.border,
-          boxShadow: componentStyles.card.boxShadow,
-          transition: "transform 0.2s ease, box-shadow 0.2s ease",
-          "&:hover": componentStyles.card.hover
-            ? {
-                transform: componentStyles.card.hover.transform,
-                boxShadow: componentStyles.card.hover.boxShadow,
-                border: componentStyles.card.hover.border || componentStyles.card.border,
-              }
-            : {},
-        }}
-      >
+      <div className='h-full flex flex-col bg-card rounded-2xl border border-border/50 shadow-soft hover:shadow-lg hover:border-border transition-all duration-300 group overflow-hidden'>
         {/* Preview Area */}
-        <Box
-          sx={{
-            position: "relative",
-            height: GRID.PREVIEW_HEIGHT,
-            backgroundColor: theme.palette.action.hover,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            overflow: "hidden",
-            borderBottom: "1px solid",
-            borderColor: "divider",
-            cursor: "pointer",
-            "&:hover .quick-actions": { opacity: 1 },
-          }}
+        <div
+          className='relative flex items-center justify-center overflow-hidden border-b border-border/50 cursor-pointer bg-muted/30'
+          style={{ height: GRID.PREVIEW_HEIGHT }}
           onClick={() => setPreviewDialogOpen(true)}
         >
           {block.preview ? (
@@ -375,299 +281,232 @@ function BlockItem({
               style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
             />
           ) : (
-            <Box
-              sx={{
-                width: "100%",
-                height: "100%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "12px",
-                color: "text.secondary",
-                padding: 2,
-              }}
+            <div
+              className='w-full h-full flex items-center justify-center text-xs text-muted-foreground p-4'
               dangerouslySetInnerHTML={{ __html: wrappedPreviewHtml }}
             />
           )}
 
           {/* Quick Actions Overlay */}
-          <Box
-            className='quick-actions'
-            sx={{
-              position: "absolute",
-              top: 8,
-              right: 8,
-              opacity: 0,
-              transition: "opacity 0.2s ease",
-              display: "flex",
-              gap: 0.5,
-              bgcolor: "rgba(0, 0, 0, 0.7)",
-              borderRadius: 1,
-              p: 0.5,
-              backdropFilter: "blur(4px)",
-            }}
+          <div
+            className='absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-1 bg-black/70 rounded-lg p-1 backdrop-blur-sm'
             onClick={(e) => e.stopPropagation()}
           >
-            <IconButton
-              size='small'
+            <button
               onClick={handleCopyCode}
-              sx={{ color: "white" }}
+              className='p-1.5 text-white hover:bg-white/20 rounded-md transition-colors'
               title='Quick copy'
             >
-              <CopyIcon fontSize='small' />
-            </IconButton>
-            <IconButton
-              size='small'
+              <CopyIcon size={14} />
+            </button>
+            <button
               onClick={() => setPreviewDialogOpen(true)}
-              sx={{ color: "white" }}
+              className='p-1.5 text-white hover:bg-white/20 rounded-md transition-colors'
               title='Full preview'
             >
-              <Visibility fontSize='small' />
-            </IconButton>
-          </Box>
-        </Box>
+              <Eye size={14} />
+            </button>
+          </div>
+        </div>
 
-        <CardContent sx={{ flexGrow: 1 }}>
-          <Box
-            display='flex'
-            justifyContent='space-between'
-            alignItems='start'
-            mb={1}
-          >
-            <Typography
-              variant='h6'
-              component='h3'
-              fontSize='1rem'
-              fontWeight='bold'
-            >
-              {block.name}
-            </Typography>
+        <div className='flex-grow p-4'>
+          <div className='flex justify-between items-start mb-2 gap-2'>
+            <h3 className='text-base font-bold text-foreground leading-tight'>{block.name}</h3>
             {(block.isCustom || isFileBlock) && (
-              <Chip
-                label={isFileBlock ? "File" : "Custom"}
-                size='small'
-                color='primary'
-                sx={{ ml: 1 }}
-              />
+              <span className='shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary'>
+                {isFileBlock ? "File" : "Custom"}
+              </span>
             )}
-          </Box>
+          </div>
 
-          <Box
-            display='flex'
-            gap={0.5}
-            mb={1}
-            flexWrap='wrap'
-          >
-            <Chip
-              icon={getCategoryIcon(block.category)}
-              label={block.category}
-              size='small'
-            />
-            <Tooltip
+          <div className='flex flex-wrap items-center gap-1.5 mb-2'>
+            <span className='inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-foreground border border-border/50'>
+              {getCategoryIcon(block.category)}
+              {block.category}
+            </span>
+            <span
               title={locationInfo.tooltip}
-              arrow
+              className={cn(
+                "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border",
+                LOCATION_COLOR_CLASSES[locationInfo.color]
+              )}
             >
-              <Chip
-                icon={<FolderIcon />}
-                label={locationInfo.label}
-                size='small'
-                color={locationInfo.color}
-                variant='outlined'
-              />
-            </Tooltip>
-          </Box>
+              <FolderIcon size={12} />
+              {locationInfo.label}
+            </span>
+          </div>
 
-          <Typography
-            variant='body2'
-            color='text.secondary'
-            fontSize='0.75rem'
-          >
+          <p className='text-xs text-muted-foreground'>
             {block.keywords.slice(0, GRID.MAX_KEYWORDS_DISPLAY).join(", ")}
             {block.keywords.length > GRID.MAX_KEYWORDS_DISPLAY && "..."}
-          </Typography>
-        </CardContent>
+          </p>
+        </div>
 
-        <CardActions sx={{ justifyContent: "space-between", px: 2, pb: 2 }}>
-          <Box>
-            <IconButton
-              size='small'
+        <div className='flex items-center justify-between px-4 pb-4'>
+          <div className='flex items-center gap-1'>
+            <button
               onClick={handleOpenCodeDialog}
               title='View code'
+              className='p-2 text-muted-foreground hover:bg-muted hover:text-foreground rounded-lg transition-colors'
             >
-              <CodeIcon fontSize='small' />
-            </IconButton>
-            <IconButton
-              size='small'
+              <CodeIcon size={16} />
+            </button>
+            <button
               onClick={() => setPreviewDialogOpen(true)}
               title='Preview'
+              className='p-2 text-muted-foreground hover:bg-muted hover:text-foreground rounded-lg transition-colors'
             >
-              <Visibility fontSize='small' />
-            </IconButton>
-          </Box>
-          <Box>
-            <Button
-              size='small'
-              startIcon={<CopyIcon />}
+              <Eye size={16} />
+            </button>
+          </div>
+          <div className='flex items-center gap-1'>
+            <button
               onClick={handleCopyCode}
+              className='flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted hover:text-foreground rounded-lg transition-colors'
             >
-              Copy
-            </Button>
+              <CopyIcon size={14} /> Copy
+            </button>
             {onDelete && (
-              <IconButton
-                size='small'
+              <button
                 onClick={handleDeleteClick}
-                color='error'
-                title='Delete'
                 disabled={deleteLoading}
+                title='Delete'
+                className='p-2 text-destructive hover:bg-destructive/10 rounded-lg transition-colors disabled:opacity-50'
               >
-                <DeleteIcon fontSize='small' />
-              </IconButton>
+                <DeleteIcon size={16} />
+              </button>
             )}
-          </Box>
-        </CardActions>
-      </Card>
+          </div>
+        </div>
+      </div>
 
       {/* Code Dialog */}
-      <Dialog
+      <Modal
         open={codeDialogOpen}
         onClose={() => setCodeDialogOpen(false)}
-        maxWidth='md'
-        fullWidth
-        PaperProps={{ sx: dialogPaperSx }}
-      >
-        <DialogTitle>
-          <Box
-            display='flex'
-            justifyContent='space-between'
-            alignItems='center'
-          >
-            <span>HTML Code - {block.name}</span>
-            {(block.isCustom || isFileBlock) && !isEditing && (
-              <Button
-                size='small'
-                startIcon={<EditIcon />}
-                onClick={handleStartEditing}
-                variant='outlined'
-              >
-                Edit
-              </Button>
-            )}
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          {saveError && (
-            <Alert
-              severity='error'
-              sx={{ mb: 2 }}
-              onClose={() => setSaveError(null)}
+        maxWidthClass='max-w-2xl'
+        title={`HTML Code - ${block.name}`}
+        headerExtra={
+          (block.isCustom || isFileBlock) && !isEditing ? (
+            <button
+              onClick={handleStartEditing}
+              className='flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border border-border rounded-lg hover:bg-muted transition-colors'
             >
-              {saveError}
-            </Alert>
-          )}
-          <TextField
-            multiline
-            fullWidth
-            rows={15}
-            value={isEditing ? editedHtml : block.html}
-            onChange={isEditing ? (e) => setEditedHtml(e.target.value) : undefined}
-            InputProps={{
-              readOnly: !isEditing,
-              style: { fontFamily: "monospace", fontSize: "0.875rem" },
-            }}
-            placeholder={isEditing ? "Enter your email-safe HTML code here..." : undefined}
-          />
-        </DialogContent>
-        <DialogActions>
-          {isEditing ? (
+              <EditIcon size={14} /> Edit
+            </button>
+          ) : undefined
+        }
+        actionsRow={
+          isEditing ? (
             <>
-              <Button onClick={handleCancelEditing}>Cancel</Button>
-              <Button
+              <button
+                onClick={handleCancelEditing}
+                className='px-5 py-2.5 text-sm font-bold bg-muted hover:bg-muted/80 text-foreground rounded-xl transition-all'
+              >
+                Cancel
+              </button>
+              <button
                 onClick={handleSaveChanges}
-                variant='contained'
                 disabled={!editedHtml.trim()}
+                className='px-5 py-2.5 text-sm font-bold bg-primary hover:brightness-110 text-primary-foreground rounded-xl transition-all shadow-sm disabled:opacity-50'
               >
                 Save Changes
-              </Button>
+              </button>
             </>
           ) : (
             <>
-              <Button
+              <button
                 onClick={handleCopyCode}
-                startIcon={<CopyIcon />}
+                className='px-5 py-2.5 flex items-center gap-2 text-sm font-bold bg-muted hover:bg-muted/80 text-foreground rounded-xl transition-all'
               >
-                Copy to Clipboard
-              </Button>
-              <Button onClick={() => setCodeDialogOpen(false)}>Close</Button>
+                <CopyIcon size={16} /> Copy to Clipboard
+              </button>
+              <button
+                onClick={() => setCodeDialogOpen(false)}
+                className='px-5 py-2.5 text-sm font-bold bg-primary hover:brightness-110 text-primary-foreground rounded-xl transition-all shadow-sm'
+              >
+                Close
+              </button>
             </>
+          )
+        }
+      >
+        {saveError && (
+          <div className='mb-4 rounded-xl border border-red-200 bg-red-50 text-red-800 dark:border-red-800/50 dark:bg-red-950/40 dark:text-red-200 px-3.5 py-2.5 text-xs leading-relaxed'>
+            {saveError}
+          </div>
+        )}
+        <textarea
+          rows={15}
+          readOnly={!isEditing}
+          value={isEditing ? editedHtml : block.html}
+          onChange={isEditing ? (e) => setEditedHtml(e.target.value) : undefined}
+          placeholder={isEditing ? "Enter your email-safe HTML code here..." : undefined}
+          className={cn(
+            "w-full font-mono text-sm rounded-xl border border-input p-3 text-foreground outline-none resize-y",
+            isEditing
+              ? "bg-background focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+              : "bg-muted/30 cursor-default"
           )}
-        </DialogActions>
-      </Dialog>
+        />
+      </Modal>
 
       {/* Preview Dialog */}
-      <Dialog
+      <Modal
         open={previewDialogOpen}
         onClose={() => {
           setPreviewDialogOpen(false);
           setZoom(1); // Reset zoom on close
         }}
-        maxWidth='lg'
-        fullWidth
-        PaperProps={{ sx: dialogPaperSx }}
-      >
-        <DialogTitle>
-          <Box
-            display='flex'
-            flexDirection='column'
-            gap={2}
-          >
-            <Box
-              display='flex'
-              justifyContent='space-between'
-              alignItems='center'
+        maxWidthClass='max-w-5xl'
+        title={`${block.name} - Preview`}
+        actionsRow={
+          <div className='flex items-center justify-between w-full gap-3'>
+            <p className='text-xs text-muted-foreground'>
+              💡 Tip: Use <strong className='text-foreground'>+/-</strong> keys,{" "}
+              <strong className='text-foreground'>R</strong> to reset, or{" "}
+              <strong className='text-foreground'>Ctrl+Scroll</strong> to zoom
+            </p>
+            <button
+              onClick={() => setPreviewDialogOpen(false)}
+              className='px-5 py-2.5 text-sm font-bold bg-primary hover:brightness-110 text-primary-foreground rounded-xl transition-all shadow-sm shrink-0'
             >
-              <Typography variant='h6'>{block.name} - Preview</Typography>
-              <ButtonGroup
-                size='small'
-                variant='outlined'
+              Close
+            </button>
+          </div>
+        }
+      >
+        <div className='flex flex-col gap-3'>
+          <div className='flex items-center justify-between flex-wrap gap-3'>
+            <div className='flex items-center rounded-lg border border-border overflow-hidden'>
+              <button
+                onClick={() => setZoom((z) => Math.max(0.25, z - 0.1))}
+                disabled={zoom <= 0.25}
+                title='Zoom out (-)'
+                className='p-2 text-foreground hover:bg-muted transition-colors disabled:opacity-40'
               >
-                <Tooltip title='Zoom out (-)'>
-                  <span>
-                    <Button
-                      onClick={() => setZoom((z) => Math.max(0.25, z - 0.1))}
-                      disabled={zoom <= 0.25}
-                    >
-                      <RemoveIcon fontSize='small' />
-                    </Button>
-                  </span>
-                </Tooltip>
-                <Tooltip title='Reset zoom (R)'>
-                  <span>
-                    <Button
-                      onClick={() => setZoom(1)}
-                      disabled={zoom === 1}
-                    >
-                      <RestartAltIcon fontSize='small' />
-                    </Button>
-                  </span>
-                </Tooltip>
-                <Button
-                  disabled
-                  sx={{ minWidth: 70 }}
-                >
-                  {Math.round(zoom * 100)}%
-                </Button>
-                <Tooltip title='Zoom in (+)'>
-                  <span>
-                    <Button
-                      onClick={() => setZoom((z) => Math.min(3, z + 0.1))}
-                      disabled={zoom >= 3}
-                    >
-                      <AddIcon fontSize='small' />
-                    </Button>
-                  </span>
-                </Tooltip>
-              </ButtonGroup>
-            </Box>
+                <Minus size={14} />
+              </button>
+              <button
+                onClick={() => setZoom(1)}
+                disabled={zoom === 1}
+                title='Reset zoom (R)'
+                className='p-2 text-foreground hover:bg-muted transition-colors disabled:opacity-40 border-x border-border'
+              >
+                <RestartAltIcon size={14} />
+              </button>
+              <span className='px-3 text-xs font-semibold min-w-[56px] text-center'>
+                {Math.round(zoom * 100)}%
+              </span>
+              <button
+                onClick={() => setZoom((z) => Math.min(3, z + 0.1))}
+                disabled={zoom >= 3}
+                title='Zoom in (+)'
+                className='p-2 text-foreground hover:bg-muted transition-colors disabled:opacity-40 border-l border-border'
+              >
+                <AddIcon size={14} />
+              </button>
+            </div>
 
             {/* Responsive Toolbar */}
             <ResponsiveToolbar
@@ -676,133 +515,66 @@ function BlockItem({
               orientation={viewportOrientation}
               onOrientationChange={setViewportOrientation}
             />
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          <Box
-            sx={{
-              overflow: "auto",
-              maxHeight: "70vh",
-              p: 2,
-              bgcolor: "#f5f5f5",
-            }}
+          </div>
+
+          <div
+            className='overflow-auto rounded-xl p-4'
+            style={{ maxHeight: "70vh", backgroundColor: "#f5f5f5" }}
           >
             <ResizablePreview
               width={viewportWidth}
               onWidthChange={setViewportWidth}
               zoom={zoom}
             >
-              <Box
-                sx={{
+              <div
+                style={{
                   transform: `scale(${zoom})`,
                   transformOrigin: "top center",
                   transition: "transform 0.3s ease",
-                  border: "1px solid",
-                  borderColor: "divider",
-                  borderRadius: 1,
                   backgroundColor: "#fff",
                   minHeight: 200,
-                  p: 2,
-                  boxShadow: 2,
                 }}
+                className='border border-border rounded-lg p-4 shadow-md'
                 dangerouslySetInnerHTML={{ __html: wrappedPreviewHtml }}
               />
             </ResizablePreview>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Typography
-            variant='caption'
-            color='text.secondary'
-            sx={{ mr: "auto" }}
-          >
-            💡 Tip: Use <strong>+/-</strong> keys, <strong>R</strong> to reset, or{" "}
-            <strong>Ctrl+Scroll</strong> to zoom
-          </Typography>
-          <Button onClick={() => setPreviewDialogOpen(false)}>Close</Button>
-        </DialogActions>
-      </Dialog>
+          </div>
+        </div>
+      </Modal>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog
+      <Modal
         open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
-        maxWidth='xs'
-        fullWidth
-        PaperProps={{ sx: dialogPaperSx }}
+        maxWidthClass='max-w-xs'
+        title='Delete Block?'
+        actionsRow={
+          <>
+            <button
+              onClick={() => setDeleteDialogOpen(false)}
+              className='px-5 py-2.5 text-sm font-bold bg-muted hover:bg-muted/80 text-foreground rounded-xl transition-all'
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDeleteConfirm}
+              disabled={deleteLoading}
+              className='px-5 py-2.5 text-sm font-bold bg-destructive hover:brightness-110 text-destructive-foreground rounded-xl transition-all shadow-sm disabled:opacity-50'
+            >
+              Delete
+            </button>
+          </>
+        }
       >
-        <DialogTitle>Delete Block?</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Are you sure you want to delete <strong>"{block.name}"</strong>?
-          </Typography>
-          <Typography
-            variant='body2'
-            color='text.secondary'
-            sx={{ mt: 1 }}
-          >
-            {isFileBlock
-              ? "This will permanently delete the .ts file from your project."
-              : "This action cannot be undone."}
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-          <Button
-            onClick={handleDeleteConfirm}
-            color='error'
-            variant='contained'
-            disabled={deleteLoading}
-          >
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Copy Success Snackbar */}
-      <Snackbar
-        open={copySuccess}
-        autoHideDuration={3000}
-        onClose={handleCloseCopySnackbar}
-      >
-        <Alert
-          onClose={handleCloseCopySnackbar}
-          severity='success'
-          sx={{ width: "100%" }}
-        >
-          Code copied to clipboard!
-        </Alert>
-      </Snackbar>
-
-      {/* Save Success Snackbar */}
-      <Snackbar
-        open={saveSuccess}
-        autoHideDuration={3000}
-        onClose={() => setSaveSuccess(false)}
-      >
-        <Alert
-          onClose={() => setSaveSuccess(false)}
-          severity='success'
-          sx={{ width: "100%" }}
-        >
-          Block updated successfully!
-        </Alert>
-      </Snackbar>
-
-      {/* Universal Snackbar */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={4000}
-        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
-      >
-        <Alert
-          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
-          severity={snackbar.severity}
-          sx={{ width: "100%" }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
+        <p className='text-foreground'>
+          Are you sure you want to delete <strong>&quot;{block.name}&quot;</strong>?
+        </p>
+        <p className='text-sm text-muted-foreground mt-1'>
+          {isFileBlock
+            ? "This will permanently delete the .ts file from your project."
+            : "This action cannot be undone."}
+        </p>
+      </Modal>
     </>
   );
 }

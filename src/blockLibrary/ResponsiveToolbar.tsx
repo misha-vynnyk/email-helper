@@ -3,13 +3,7 @@
  * Chrome DevTools-style responsive viewport selector
  */
 
-import {
-  Laptop as DesktopIcon,
-  PhoneAndroid as MobileIcon,
-  ScreenRotation as RotateIcon,
-  Tablet as TabletIcon,
-} from "@mui/icons-material";
-import { Box, IconButton, MenuItem, Select, TextField, Tooltip, Typography } from "@mui/material";
+import { Monitor, RotateCw, Smartphone, Tablet as TabletIcon } from "lucide-react";
 import React from "react";
 
 export interface ViewportPreset {
@@ -20,12 +14,12 @@ export interface ViewportPreset {
 }
 
 export const VIEWPORT_PRESETS: ViewportPreset[] = [
-  { name: "Mobile S", width: 320, height: 568, icon: <MobileIcon /> },
-  { name: "Mobile M", width: 375, height: 667, icon: <MobileIcon /> },
-  { name: "Mobile L", width: 425, height: 812, icon: <MobileIcon /> },
-  { name: "Tablet", width: 768, height: 1024, icon: <TabletIcon /> },
-  { name: "Laptop", width: 1024, height: 768, icon: <DesktopIcon /> },
-  { name: "Desktop", width: 1440, height: 900, icon: <DesktopIcon /> },
+  { name: "Mobile S", width: 320, height: 568, icon: <Smartphone size={16} /> },
+  { name: "Mobile M", width: 375, height: 667, icon: <Smartphone size={16} /> },
+  { name: "Mobile L", width: 425, height: 812, icon: <Smartphone size={16} /> },
+  { name: "Tablet", width: 768, height: 1024, icon: <TabletIcon size={16} /> },
+  { name: "Laptop", width: 1024, height: 768, icon: <Monitor size={16} /> },
+  { name: "Desktop", width: 1440, height: 900, icon: <Monitor size={16} /> },
 ];
 
 interface ResponsiveToolbarProps {
@@ -100,93 +94,60 @@ export default function ResponsiveToolbar({
   };
 
   return (
-    <Box
-      display='flex'
-      alignItems='center'
-      gap={2}
-    >
+    <div className='flex items-center gap-4'>
       {/* Preset Selector */}
-      <Select
+      <select
         value={getCurrentPreset()}
         onChange={handlePresetChange}
-        size='small'
-        sx={{ minWidth: 150 }}
+        className='h-8 min-w-[150px] rounded-lg border border-input bg-background px-2 text-xs text-foreground outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20'
       >
-        <MenuItem value='responsive'>
-          <Box
-            display='flex'
-            alignItems='center'
-            gap={1}
-          >
-            <DesktopIcon fontSize='small' />
-            <Typography>Responsive</Typography>
-          </Box>
-        </MenuItem>
+        <option value='responsive'>Responsive</option>
         {VIEWPORT_PRESETS.map((preset) => (
-          <MenuItem
+          <option
             key={preset.name}
             value={preset.name}
           >
-            <Box
-              display='flex'
-              alignItems='center'
-              gap={1}
-            >
-              {preset.icon}
-              <Typography>
-                {preset.name} ({orientation === "portrait" ? preset.width : preset.height}px)
-              </Typography>
-            </Box>
-          </MenuItem>
+            {preset.name} ({orientation === "portrait" ? preset.width : preset.height}px)
+          </option>
         ))}
-        <MenuItem value='custom'>Custom</MenuItem>
-      </Select>
+        <option value='custom'>Custom</option>
+      </select>
 
       {/* Width Input */}
       {width !== "responsive" && (
         <>
-          <TextField
-            type='number'
-            value={customWidth}
-            onChange={handleCustomWidthChange}
-            size='small'
-            sx={{ width: 100 }}
-            InputProps={{
-              endAdornment: <Typography variant='caption'>px</Typography>,
-            }}
-          />
+          <div className='relative w-[100px]'>
+            <input
+              type='number'
+              value={customWidth}
+              onChange={handleCustomWidthChange}
+              className='h-8 w-full rounded-lg border border-input bg-background pl-2 pr-7 text-xs text-foreground outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20'
+            />
+            <span className='pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground'>
+              px
+            </span>
+          </div>
 
           {/* Orientation Toggle */}
-          <Tooltip title='Rotate viewport'>
-            <IconButton
-              onClick={toggleOrientation}
-              size='small'
-            >
-              <RotateIcon />
-            </IconButton>
-          </Tooltip>
+          <button
+            onClick={toggleOrientation}
+            title='Rotate viewport'
+            className='flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'
+          >
+            <RotateCw size={16} />
+          </button>
 
           {/* Orientation Label */}
-          <Typography
-            variant='caption'
-            color='text.secondary'
-            sx={{ minWidth: 60 }}
-          >
+          <span className='min-w-[60px] text-xs text-muted-foreground'>
             {orientation === "portrait" ? "Portrait" : "Landscape"}
-          </Typography>
+          </span>
         </>
       )}
 
       {/* Current Dimensions Display */}
       {width !== "responsive" && (
-        <Typography
-          variant='caption'
-          color='primary'
-          fontWeight={600}
-        >
-          {customWidth} × auto
-        </Typography>
+        <span className='text-xs font-semibold text-primary'>{customWidth} × auto</span>
       )}
-    </Box>
+    </div>
   );
 }

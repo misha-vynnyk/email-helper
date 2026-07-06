@@ -3,27 +3,19 @@
  * Visual icons for each block category
  */
 
-import {
-  Article as ArticleIcon,
-  GridOn as GridOnIcon,
-  Share as ShareIcon,
-  SmartButton as SmartButtonIcon,
-  Star as StarIcon,
-  VerticalAlignBottom as VerticalAlignBottomIcon,
-  ViewAgenda as ViewAgendaIcon,
-} from "@mui/icons-material";
+import { ArrowDownToLine, FileText, LayoutGrid, MousePointerClick, PanelTop, Share2, Star } from "lucide-react";
 import React from "react";
 
 export const CATEGORY_ICONS: Record<string, React.ReactElement> = {
-  Structure: <GridOnIcon fontSize='small' />,
-  Layout: <GridOnIcon fontSize='small' />,
-  Content: <ArticleIcon fontSize='small' />,
-  Buttons: <SmartButtonIcon fontSize='small' />,
-  Footer: <VerticalAlignBottomIcon fontSize='small' />,
-  Footers: <VerticalAlignBottomIcon fontSize='small' />,
-  Headers: <ViewAgendaIcon fontSize='small' />,
-  Social: <ShareIcon fontSize='small' />,
-  Custom: <StarIcon fontSize='small' />,
+  Structure: <LayoutGrid size={14} />,
+  Layout: <LayoutGrid size={14} />,
+  Content: <FileText size={14} />,
+  Buttons: <MousePointerClick size={14} />,
+  Footer: <ArrowDownToLine size={14} />,
+  Footers: <ArrowDownToLine size={14} />,
+  Headers: <PanelTop size={14} />,
+  Social: <Share2 size={14} />,
+  Custom: <Star size={14} />,
 };
 
 /**

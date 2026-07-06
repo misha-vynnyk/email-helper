@@ -3,21 +3,17 @@
  * Manages theme mode (light/dark) state and provides it to the app
  */
 
-import { CssBaseline } from "@mui/material";
-import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
-import React, { createContext, useContext, useEffect,useMemo } from "react";
+import React, { createContext, useContext, useEffect, useMemo } from "react";
 
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { STORAGE_KEYS } from "../utils/storageKeys";
-import { createAppTheme } from "./theme";
-import { ThemeMode, ThemeStyle } from "./tokens";
+
+export type ThemeMode = "light" | "dark";
 
 interface ThemeContextValue {
   mode: ThemeMode;
-  style: ThemeStyle;
   toggleMode: () => void;
   setMode: (mode: ThemeMode) => void;
-  setStyle: (style: ThemeStyle) => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
@@ -36,7 +32,6 @@ interface ThemeProviderProps {
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
   const [mode, setMode] = useLocalStorage<ThemeMode>(STORAGE_KEYS.THEME_MODE, "dark");
-  const [style, setStyle] = useLocalStorage<ThemeStyle>(STORAGE_KEYS.THEME_STYLE, "default");
 
   // Sync with system preference on first load (only if no stored preference)
   useEffect(() => {
@@ -69,32 +64,14 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     [setMode]
   );
 
-  const handleSetStyle = useMemo(
-    () => (newStyle: ThemeStyle) => {
-      setStyle(newStyle);
-    },
-    [setStyle]
-  );
-
-  const theme = useMemo(() => createAppTheme(mode), [mode]);
-
   const value = useMemo<ThemeContextValue>(
     () => ({
       mode,
-      style,
       toggleMode,
       setMode: handleSetMode,
-      setStyle: handleSetStyle,
     }),
-    [mode, style, toggleMode, handleSetMode, handleSetStyle]
+    [mode, toggleMode, handleSetMode]
   );
 
-  return (
-    <ThemeContext.Provider value={value}>
-      <MuiThemeProvider theme={theme}>
-        <CssBaseline />
-        {children}
-      </MuiThemeProvider>
-    </ThemeContext.Provider>
-  );
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
