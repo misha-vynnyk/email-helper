@@ -4,9 +4,8 @@
  * Uses react-window v2 API
  */
 
-import { Box, useMediaQuery, useTheme } from "@mui/material";
 import type { CSSProperties, ReactElement } from "react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { VirtualList } from "../components/VirtualList";
 import { useContainerDimensions } from "../hooks";
@@ -28,6 +27,26 @@ const CARD_EXTRA_HEIGHT = 180;
 // Calculate card height based on GRID.PREVIEW_HEIGHT
 const CARD_HEIGHT = GRID.PREVIEW_HEIGHT + CARD_EXTRA_HEIGHT;
 const ROW_HEIGHT = CARD_HEIGHT + GAP;
+
+// react-window v2 doesn't have access to MUI's theme/useMediaQuery anymore;
+// replicate the same xs(<600px) / sm(600-900px) / md(>=900px) breakpoints
+// via matchMedia so column counts stay identical to the previous MUI logic.
+function useMatchMedia(query: string): boolean {
+  const [matches, setMatches] = useState<boolean>(() =>
+    typeof window !== "undefined" ? window.matchMedia(query).matches : false
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mql = window.matchMedia(query);
+    const handler = () => setMatches(mql.matches);
+    handler();
+    mql.addEventListener("change", handler);
+    return () => mql.removeEventListener("change", handler);
+  }, [query]);
+
+  return matches;
+}
 
 // Row props type for react-window v2
 interface RowProps {
@@ -63,17 +82,13 @@ function RowComponent({
     paddingLeft: 16,
     paddingRight: 16,
     boxSizing: "border-box" as const,
+    display: "grid",
+    gridTemplateColumns: `repeat(${columns}, 1fr)`,
+    gap: `${GAP}px`,
   };
 
   return (
-    <Box
-      style={adjustedStyle}
-      sx={{
-        display: "grid",
-        gridTemplateColumns: `repeat(${columns}, 1fr)`,
-        gap: `${GAP}px`,
-      }}
-    >
+    <div style={adjustedStyle}>
       {rowItems.map((block) => (
         <BlockItem
           key={`${block.source || "unknown"}-${block.id}`}
@@ -83,7 +98,7 @@ function RowComponent({
           isFileBlock={fileBlockIds.has(block.id)}
         />
       ))}
-    </Box>
+    </div>
   );
 }
 
@@ -93,9 +108,8 @@ export default function VirtualizedBlockGrid({
   onDelete,
   onUpdate,
 }: VirtualizedBlockGridProps) {
-  const theme = useTheme();
-  const isXs = useMediaQuery(theme.breakpoints.only("xs"));
-  const isSm = useMediaQuery(theme.breakpoints.only("sm"));
+  const isXs = useMatchMedia("(max-width: 599.98px)");
+  const isSm = useMatchMedia("(min-width: 600px) and (max-width: 899.98px)");
 
   // Calculate columns based on breakpoint
   const columns = isXs ? 1 : isSm ? 2 : 3;
@@ -129,7 +143,11 @@ export default function VirtualizedBlockGrid({
   }
 
   return (
-    <Box ref={containerRef} sx={{ width: "100%", height: "100%", pt: `${GAP}px` }}>
+    <div
+      ref={containerRef}
+      className='w-full h-full'
+      style={{ paddingTop: `${GAP}px` }}
+    >
       {dimensions.width > 0 && dimensions.height > 0 && (
         <VirtualList
           rowComponent={RowComponent}
@@ -140,6 +158,6 @@ export default function VirtualizedBlockGrid({
           style={{ height: dimensions.height - GAP, width: dimensions.width }}
         />
       )}
-    </Box>
+    </div>
   );
 }

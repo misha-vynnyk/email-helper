@@ -1,43 +1,9 @@
-import {
-  CheckCircle,
-  Close,
-  Delete,
-  Edit,
-  Email,
-  Info,
-  Security,
-  Settings,
-  Storage,
-  Warning,
-} from "@mui/icons-material";
-import {
-  Alert,
-  Button,
-  CardActions,
-  CardContent,
-  Chip,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  IconButton,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  Stack,
-  Typography,
-} from "@mui/material";
-import { alpha, useTheme } from "@mui/material/styles";
-import React, { useMemo, useState } from "react";
+import { CheckCircle2, Info, KeyRound, Mail, Pencil, Settings, Shield, Trash2, TriangleAlert } from "lucide-react";
+import React, { useState } from "react";
 import { toast } from "react-toastify";
 
-import {
-  triggerRegistrationStatusUpdate,
-  useRegistrationStatus,
-} from "../../hooks/useRegistrationStatus";
-import { StyledCard, useThemeMode } from "../../theme";
-import { getComponentStyles } from "../../theme/componentStyles";
+import { triggerRegistrationStatusUpdate, useRegistrationStatus } from "../../hooks/useRegistrationStatus";
+import Modal from "../../templateLibrary/components/Modal";
 import { logger } from "../../utils/logger";
 
 interface EmailSettingsMenuProps {
@@ -46,28 +12,8 @@ interface EmailSettingsMenuProps {
   onEditCredentials?: () => void;
 }
 
-export const EmailSettingsMenu: React.FC<EmailSettingsMenuProps> = ({
-  open,
-  onClose,
-  onEditCredentials,
-}) => {
-  const theme = useTheme();
-  const { mode, style } = useThemeMode();
-  const componentStyles = useMemo(() => getComponentStyles(mode, style), [mode, style]);
-  const dialogPaperSx = useMemo(
-    () => ({
-      borderRadius: `${componentStyles.card.borderRadius}px`,
-      background: componentStyles.card.background || alpha(theme.palette.background.paper, 0.92),
-      backdropFilter: componentStyles.card.backdropFilter,
-      WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
-      border: componentStyles.card.border,
-      boxShadow: componentStyles.card.boxShadow,
-    }),
-    [componentStyles, theme.palette.background.paper]
-  );
-
-  const { isRegistered, registrationData, hasValidCredentials, registeredAt } =
-    useRegistrationStatus();
+export const EmailSettingsMenu: React.FC<EmailSettingsMenuProps> = ({ open, onClose, onEditCredentials }) => {
+  const { isRegistered, registrationData, hasValidCredentials, registeredAt } = useRegistrationStatus();
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   const handleDeleteCredentials = () => {
@@ -102,10 +48,7 @@ export const EmailSettingsMenu: React.FC<EmailSettingsMenuProps> = ({
   const maskEmail = (email: string) => {
     if (!email || !email.includes("@")) return email;
     const [local, domain] = email.split("@");
-    const maskedLocal =
-      local.length > 2
-        ? local.substring(0, 2) + "*".repeat(Math.max(0, local.length - 4)) + local.slice(-2)
-        : local;
+    const maskedLocal = local.length > 2 ? local.substring(0, 2) + "*".repeat(Math.max(0, local.length - 4)) + local.slice(-2) : local;
     return `${maskedLocal}@${domain}`;
   };
 
@@ -113,286 +56,184 @@ export const EmailSettingsMenu: React.FC<EmailSettingsMenuProps> = ({
     return "•".repeat(Math.min(password.length, 16));
   };
 
+  if (!open) return null;
+
   if (!isRegistered || !registrationData) {
     return (
-      <Dialog
+      <Modal
         open={open}
         onClose={onClose}
-        maxWidth='sm'
-        fullWidth
-        PaperProps={{ sx: dialogPaperSx }}
-      >
-        <DialogTitle>
-          <Stack
-            direction='row'
-            alignItems='center'
-            spacing={1}
-          >
-            <Settings color='primary' />
-            <Typography variant='h6'>Email Settings</Typography>
-          </Stack>
-        </DialogTitle>
-        <DialogContent>
-          <Alert
-            severity='info'
-            sx={{ mb: 2 }}
-          >
-            <Typography variant='body2'>
-              No email credentials found. Set up your email configuration to start sending emails.
-            </Typography>
-          </Alert>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={onClose}>Close</Button>
-          <Button
-            variant='contained'
-            onClick={handleEditCredentials}
-          >
-            Setup Email
-          </Button>
-        </DialogActions>
-      </Dialog>
+        maxWidthClass='max-w-md'
+        title={
+          <div className='flex items-center gap-2'>
+            <Settings className='w-5 h-5 text-primary' />
+            <span>Email Settings</span>
+          </div>
+        }
+        actionsRow={
+          <>
+            <button type='button' onClick={onClose} className='px-4 py-2 text-sm font-semibold rounded-xl text-muted-foreground hover:bg-muted transition-colors'>
+              Close
+            </button>
+            <button type='button' onClick={handleEditCredentials} className='px-4 py-2 text-sm font-semibold text-primary-foreground rounded-xl bg-primary hover:bg-primary/90 transition-colors'>
+              Setup Email
+            </button>
+          </>
+        }>
+        <div className='flex items-start gap-2.5 rounded-xl border border-sky-200 bg-sky-50 px-3.5 py-2.5 text-xs leading-relaxed text-sky-800 dark:border-sky-800/50 dark:bg-sky-950/40 dark:text-sky-200'>
+          <Info className='w-4 h-4 shrink-0 mt-0.5' />
+          <div className='min-w-0'>No email credentials found. Set up your email configuration to start sending emails.</div>
+        </div>
+      </Modal>
     );
   }
 
   return (
     <>
-      <Dialog
+      <Modal
         open={open}
         onClose={onClose}
-        maxWidth='md'
-        fullWidth
-        PaperProps={{ sx: dialogPaperSx }}
-      >
-        <DialogTitle>
-          <Stack
-            direction='row'
-            alignItems='center'
-            justifyContent='space-between'
-          >
-            <Stack
-              direction='row'
-              alignItems='center'
-              spacing={1}
-            >
-              <Settings color='primary' />
-              <Typography variant='h6'>Email Settings</Typography>
-            </Stack>
-            <IconButton
-              onClick={onClose}
-              size='small'
-            >
-              <Close />
-            </IconButton>
-          </Stack>
-        </DialogTitle>
-
-        <DialogContent>
+        maxWidthClass='max-w-2xl'
+        title={
+          <div className='flex items-center gap-2'>
+            <Settings className='w-5 h-5 text-primary' />
+            <span>Email Settings</span>
+          </div>
+        }
+        actionsRow={
+          <button type='button' onClick={onClose} className='px-4 py-2 text-sm font-semibold rounded-xl text-muted-foreground hover:bg-muted transition-colors'>
+            Close
+          </button>
+        }>
+        <div className='flex flex-col gap-4'>
           {/* Status Alert */}
-          <Alert
-            severity={hasValidCredentials ? "success" : "warning"}
-            sx={{ mb: 3 }}
-            icon={hasValidCredentials ? <CheckCircle /> : <Warning />}
-          >
-            <Typography variant='body2'>
-              {hasValidCredentials
-                ? "Your email credentials are valid and ready to use"
-                : "Your email credentials need attention - some fields may be invalid"}
-            </Typography>
-          </Alert>
+          <div
+            className={
+              hasValidCredentials
+                ? "flex items-start gap-2.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-xs leading-relaxed text-emerald-800 dark:border-emerald-800/50 dark:bg-emerald-950/40 dark:text-emerald-200"
+                : "flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs leading-relaxed text-amber-800 dark:border-amber-800/50 dark:bg-amber-950/40 dark:text-amber-200"
+            }>
+            {hasValidCredentials ? <CheckCircle2 className='w-4 h-4 shrink-0 mt-0.5' /> : <TriangleAlert className='w-4 h-4 shrink-0 mt-0.5' />}
+            <div className='min-w-0'>{hasValidCredentials ? "Your email credentials are valid and ready to use" : "Your email credentials need attention - some fields may be invalid"}</div>
+          </div>
 
           {/* Credentials Summary Card */}
-          <StyledCard
-            variant='outlined'
-            enableHover={false}
-            sx={{ mb: 3 }}
-          >
-            <CardContent>
-              <Stack
-                direction='row'
-                alignItems='center'
-                spacing={1}
-                sx={{ mb: 2 }}
-              >
-                <Security color='primary' />
-                <Typography variant='h6'>Saved Credentials</Typography>
-                <Chip
-                  label={hasValidCredentials ? "Valid" : "Needs Review"}
-                  color={hasValidCredentials ? "success" : "warning"}
-                  size='small'
-                />
-              </Stack>
+          <div className='rounded-2xl border border-border/50 bg-card p-4'>
+            <div className='flex items-center gap-2 mb-3'>
+              <Shield className='w-4 h-4 text-primary' />
+              <span className='text-sm font-bold text-foreground'>Saved Credentials</span>
+              <span
+                className={
+                  hasValidCredentials
+                    ? "px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+                    : "px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+                }>
+                {hasValidCredentials ? "Valid" : "Needs Review"}
+              </span>
+            </div>
 
-              <List>
-                <ListItem>
-                  <ListItemIcon>
-                    <Email />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary='Recipient Email'
-                    secondary={registrationData.userEmail || "Not set"}
-                  />
-                </ListItem>
+            <ul className='flex flex-col gap-3'>
+              <li className='flex items-center gap-3'>
+                <Mail className='w-4 h-4 shrink-0 text-muted-foreground' />
+                <div className='min-w-0'>
+                  <p className='text-xs font-semibold text-foreground'>Recipient Email</p>
+                  <p className='text-xs text-muted-foreground'>{registrationData.userEmail || "Not set"}</p>
+                </div>
+              </li>
+              <li className='flex items-center gap-3'>
+                <Mail className='w-4 h-4 shrink-0 text-muted-foreground' />
+                <div className='min-w-0'>
+                  <p className='text-xs font-semibold text-foreground'>Gmail Sender</p>
+                  <p className='text-xs text-muted-foreground'>{maskEmail(registrationData.senderEmail || "")}</p>
+                </div>
+              </li>
+              <li className='flex items-center gap-3'>
+                <KeyRound className='w-4 h-4 shrink-0 text-muted-foreground' />
+                <div className='min-w-0'>
+                  <p className='text-xs font-semibold text-foreground'>App Password</p>
+                  <p className='text-xs text-muted-foreground'>{registrationData.appPassword ? maskPassword(registrationData.appPassword) : "Not set"}</p>
+                </div>
+              </li>
+              <li className='flex items-center gap-3'>
+                <Shield className='w-4 h-4 shrink-0 text-muted-foreground' />
+                <div className='min-w-0'>
+                  <p className='text-xs font-semibold text-foreground'>Storage Method</p>
+                  <p className='text-xs text-muted-foreground'>Browser localStorage</p>
+                </div>
+              </li>
+              {registeredAt && (
+                <li className='flex items-center gap-3'>
+                  <Info className='w-4 h-4 shrink-0 text-muted-foreground' />
+                  <div className='min-w-0'>
+                    <p className='text-xs font-semibold text-foreground'>Registered</p>
+                    <p className='text-xs text-muted-foreground'>{formatDate(registeredAt)}</p>
+                  </div>
+                </li>
+              )}
+            </ul>
 
-                <ListItem>
-                  <ListItemIcon>
-                    <Email />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary='Gmail Sender'
-                    secondary={maskEmail(registrationData.senderEmail || "")}
-                  />
-                </ListItem>
-
-                <ListItem>
-                  <ListItemIcon>
-                    <Security />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary='App Password'
-                    secondary={
-                      registrationData.appPassword
-                        ? maskPassword(registrationData.appPassword)
-                        : "Not set"
-                    }
-                  />
-                </ListItem>
-
-                <ListItem>
-                  <ListItemIcon>
-                    <Storage />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary='Storage Method'
-                    secondary='Browser localStorage'
-                  />
-                </ListItem>
-
-                {registeredAt && (
-                  <ListItem>
-                    <ListItemIcon>
-                      <Info />
-                    </ListItemIcon>
-                    <ListItemText
-                      primary='Registered'
-                      secondary={formatDate(registeredAt)}
-                    />
-                  </ListItem>
-                )}
-              </List>
-            </CardContent>
-
-            <CardActions>
-              <Button
-                startIcon={<Edit />}
+            <div className='flex gap-2 mt-4'>
+              <button
+                type='button'
                 onClick={handleEditCredentials}
-                variant='outlined'
-              >
+                className='flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl border border-border hover:bg-muted transition-colors'>
+                <Pencil className='w-3.5 h-3.5' />
                 Edit Credentials
-              </Button>
-              <Button
-                startIcon={<Delete />}
+              </button>
+              <button
+                type='button'
                 onClick={() => setDeleteConfirmOpen(true)}
-                color='error'
-                variant='outlined'
-              >
+                className='flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl border border-destructive/30 text-destructive hover:bg-destructive/10 transition-colors'>
+                <Trash2 className='w-3.5 h-3.5' />
                 Delete All
-              </Button>
-            </CardActions>
-          </StyledCard>
+              </button>
+            </div>
+          </div>
 
           {/* Help Information */}
-          <StyledCard variant='outlined' enableHover={false}>
-            <CardContent>
-              <Typography
-                variant='subtitle1'
-                gutterBottom
-              >
-                <Info sx={{ verticalAlign: "middle", mr: 1 }} />
-                Important Information
-              </Typography>
-
-              <Typography
-                variant='body2'
-                color='text.secondary'
-                paragraph
-              >
-                • Your credentials are stored locally in your browser only
-              </Typography>
-              <Typography
-                variant='body2'
-                color='text.secondary'
-                paragraph
-              >
-                • Use Google App Passwords, not your regular Gmail password
-              </Typography>
-              <Typography
-                variant='body2'
-                color='text.secondary'
-                paragraph
-              >
-                • Deleting credentials will require re-registration to send emails
-              </Typography>
-              <Typography
-                variant='body2'
-                color='text.secondary'
-              >
-                • Credentials are not synced across devices or browsers
-              </Typography>
-            </CardContent>
-          </StyledCard>
-        </DialogContent>
-
-        <DialogActions>
-          <Button onClick={onClose}>Close</Button>
-        </DialogActions>
-      </Dialog>
+          <div className='rounded-2xl border border-border/50 bg-card p-4'>
+            <div className='flex items-center gap-2 mb-2'>
+              <Info className='w-4 h-4 text-primary' />
+              <span className='text-sm font-bold text-foreground'>Important Information</span>
+            </div>
+            <div className='flex flex-col gap-1.5 text-xs text-muted-foreground'>
+              <p>• Your credentials are stored locally in your browser only</p>
+              <p>• Use Google App Passwords, not your regular Gmail password</p>
+              <p>• Deleting credentials will require re-registration to send emails</p>
+              <p>• Credentials are not synced across devices or browsers</p>
+            </div>
+          </div>
+        </div>
+      </Modal>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog
+      <Modal
         open={deleteConfirmOpen}
         onClose={() => setDeleteConfirmOpen(false)}
-        maxWidth='sm'
-        fullWidth
-        PaperProps={{ sx: dialogPaperSx }}
-      >
-        <DialogTitle>
-          <Stack
-            direction='row'
-            alignItems='center'
-            spacing={1}
-          >
-            <Warning color='error' />
-            <Typography variant='h6'>Delete Email Credentials?</Typography>
-          </Stack>
-        </DialogTitle>
-        <DialogContent>
-          <Typography
-            variant='body1'
-            paragraph
-          >
-            Are you sure you want to delete your saved email credentials?
-          </Typography>
-          <Typography
-            variant='body2'
-            color='text.secondary'
-          >
-            This action cannot be undone. You will need to re-register your email settings to send
-            emails from the builder.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteConfirmOpen(false)}>Cancel</Button>
-          <Button
-            onClick={handleDeleteCredentials}
-            color='error'
-            variant='contained'
-            startIcon={<Delete />}
-          >
-            Delete Credentials
-          </Button>
-        </DialogActions>
-      </Dialog>
+        maxWidthClass='max-w-md'
+        title={
+          <div className='flex items-center gap-2'>
+            <TriangleAlert className='w-5 h-5 text-destructive' />
+            <span>Delete Email Credentials?</span>
+          </div>
+        }
+        actionsRow={
+          <>
+            <button type='button' onClick={() => setDeleteConfirmOpen(false)} className='px-4 py-2 text-sm font-semibold rounded-xl text-muted-foreground hover:bg-muted transition-colors'>
+              Cancel
+            </button>
+            <button
+              type='button'
+              onClick={handleDeleteCredentials}
+              className='flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-white rounded-xl bg-destructive hover:bg-destructive/90 transition-colors'>
+              <Trash2 className='w-4 h-4' />
+              Delete Credentials
+            </button>
+          </>
+        }>
+        <p className='text-sm text-foreground'>Are you sure you want to delete your saved email credentials?</p>
+        <p className='mt-2 text-xs text-muted-foreground'>This action cannot be undone. You will need to re-register your email settings to send emails from the builder.</p>
+      </Modal>
     </>
   );
 };

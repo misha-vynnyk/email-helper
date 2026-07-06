@@ -1,11 +1,11 @@
-import { Box, CircularProgress, Fade, Stack } from "@mui/material";
-import { alpha } from "@mui/material/styles";
+import { Loader2 } from "lucide-react";
 import React from "react";
 
 import { BLOCK_LIBRARY_ENABLED } from "../../config/featureFlags";
 import { useSelectedMainTab } from "../../contexts/AppState";
 import { EmailSenderProvider } from "../../emailSender/EmailSenderContext";
-import { getComponentStyles, ThemeStyleSelector, ThemeToggle, useThemeMode } from "../../theme";
+import { cn } from "../../lib/utils";
+import { ThemeToggle } from "../../theme/ThemeToggle";
 import ToggleSamplesPanelButton from "../SamplesDrawer/ToggleSamplesPanelButton";
 import MainTabsGroup from "./MainTabsGroup";
 import TabPanel from "./TabPanel";
@@ -18,15 +18,13 @@ const ImageConverterPanel = React.lazy(() => import("../../imageConverter/compon
 const HtmlConverterPanel = React.lazy(() => import("../../htmlConverter/HtmlConverterPanel"));
 
 const tabLoadingFallback = (
-  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
-    <CircularProgress size={40} />
-  </Box>
+  <div className='flex items-center justify-center h-full'>
+    <Loader2 className='w-10 h-10 animate-spin text-primary' />
+  </div>
 );
 
 export default function TemplatePanel() {
-  const { mode, style } = useThemeMode();
   const selectedMainTab = useSelectedMainTab();
-  const componentStyles = React.useMemo(() => getComponentStyles(mode, style), [mode, style]);
   // useDeferredValue - рендер контенту відкладається, таб-індикатор оновлюється миттєво
   const deferredTab = React.useDeferredValue(selectedMainTab);
 
@@ -53,64 +51,28 @@ export default function TemplatePanel() {
 
   return (
     <>
-      <Stack
-        sx={{
-          height: 49,
-          borderBottom: 1,
-          borderColor: "divider",
-          background: componentStyles.card.background || ((theme) => alpha(theme.palette.background.paper, 0.9)),
-          backdropFilter: componentStyles.card.backdropFilter,
-          WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
-          position: "sticky",
-          top: 0,
-          zIndex: "appBar",
-          px: 1,
-        }}
-        direction='row'
-        justifyContent='space-between'
-        alignItems='center'
+      <header
+        className='sticky top-0 z-40 flex items-center justify-between h-12 px-2 border-b border-border bg-card/90 backdrop-blur-md'
         onWheel={handleFixedWheel}>
-        <Box sx={{ position: "relative", zIndex: 1, minWidth: 40 }}>
+        <div className='relative z-10 min-w-10'>
           <ToggleSamplesPanelButton />
-        </Box>
-        <Stack px={2} direction='row' flex={1} justifyContent='center' alignItems='center' sx={{ position: "relative", zIndex: 1 }}>
+        </div>
+        <div className='relative z-10 flex items-center justify-center flex-1 px-4'>
           <MainTabsGroup />
-        </Stack>
-        <Box
-          sx={{
-            position: "relative",
-            zIndex: 1,
-            minWidth: 40,
-            display: "flex",
-            justifyContent: "flex-end",
-            alignItems: "center",
-            gap: 0.5,
-          }}>
-          <ThemeStyleSelector />
+        </div>
+        <div className='relative z-10 flex items-center justify-end gap-1 min-w-10'>
           <ThemeToggle />
-        </Box>
-      </Stack>
-      <Box sx={{ height: "calc(100vh - 49px)", overflow: "hidden", minWidth: 370, position: "relative" }}>
+        </div>
+      </header>
+      <div className='relative h-[calc(100vh-48px)] min-w-[370px] overflow-hidden'>
         {/* Loading overlay при переході між табами */}
-        <Fade in={isTransitioning} timeout={{ enter: 100, exit: 200 }}>
-          <Box
-            sx={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: (theme) => (theme.palette.mode === "dark" ? "rgba(0, 0, 0, 0.5)" : "rgba(255, 255, 255, 0.6)"),
-              backdropFilter: "blur(4px)",
-              zIndex: 100,
-              pointerEvents: isTransitioning ? "auto" : "none",
-            }}>
-            <CircularProgress size={40} />
-          </Box>
-        </Fade>
+        <div
+          className={cn(
+            "absolute inset-0 z-[100] flex items-center justify-center bg-background/60 backdrop-blur-sm transition-opacity",
+            isTransitioning ? "opacity-100 duration-100 pointer-events-auto" : "opacity-0 duration-200 pointer-events-none"
+          )}>
+          <Loader2 className='w-10 h-10 animate-spin text-primary' />
+        </div>
 
         {/* Lazy mounting: рендеримо таб лише якщо він був відкритий хоча б раз */}
         <React.Suspense fallback={tabLoadingFallback}>
@@ -138,7 +100,7 @@ export default function TemplatePanel() {
             <HtmlConverterPanel />
           </TabPanel>
         </React.Suspense>
-      </Box>
+      </div>
     </>
   );
 }

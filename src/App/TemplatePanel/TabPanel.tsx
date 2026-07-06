@@ -3,8 +3,9 @@
  * Wrapper for lazy-mounted tab content with proper visibility handling
  */
 
-import { Box, Fade } from "@mui/material";
 import React from "react";
+
+import { cn } from "../../lib/utils";
 
 interface TabPanelProps {
   children: React.ReactNode;
@@ -21,34 +22,22 @@ export default function TabPanel({ children, value, selectedValue, mounted }: Ta
   }
 
   return (
-    <Box
-      role="tabpanel"
+    <div
+      role='tabpanel'
       hidden={!isActive}
       aria-hidden={!isActive}
-      sx={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
+      className='absolute inset-0'
+      style={{
         visibility: isActive ? "visible" : "hidden",
         pointerEvents: isActive ? "auto" : "none",
         // content-visibility: auto дозволяє браузеру пропускати рендер прихованого контенту
         contentVisibility: isActive ? "visible" : "auto",
-      }}
-    >
-      <Fade in={isActive} timeout={200}>
-        <Box
-          data-app-scroll="true"
-          sx={{
-            height: "100%",
-            width: "100%",
-            overflow: "auto",
-          }}
-        >
-          {children}
-        </Box>
-      </Fade>
-    </Box>
+      }}>
+      <div
+        data-app-scroll='true'
+        className={cn("h-full w-full overflow-auto transition-opacity duration-200", isActive ? "opacity-100" : "opacity-0")}>
+        {children}
+      </div>
+    </div>
   );
 }

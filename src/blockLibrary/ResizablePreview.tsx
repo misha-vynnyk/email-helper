@@ -3,7 +3,6 @@
  * Chrome DevTools-style resizable preview with ruler
  */
 
-import { alpha, Box, useTheme } from "@mui/material";
 import { motion } from "framer-motion";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
@@ -20,7 +19,6 @@ export default function ResizablePreview({
   onWidthChange,
   zoom,
 }: ResizablePreviewProps) {
-  const theme = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [currentWidth, setCurrentWidth] = useState<number>(typeof width === "number" ? width : 600);
@@ -81,148 +79,87 @@ export default function ResizablePreview({
   const displayWidth = isDragging ? currentWidth : typeof width === "number" ? width : 600;
 
   return (
-    <Box
+    <div
       ref={containerRef}
-      sx={{ position: "relative", width: "100%" }}
+      className='relative w-full'
     >
       {/* Ruler */}
       {!isResponsive && (
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "center",
-            mb: 1,
-            position: "relative",
-          }}
-        >
-          <Box
-            sx={{
+        <div className='flex justify-center mb-2 relative'>
+          <div
+            className='flex items-center justify-center text-primary font-mono text-[11px] font-semibold rounded-t border border-primary bg-primary/[0.08]'
+            style={{
               width: `${displayWidth * zoom}px`,
               height: 20,
-              backgroundColor: alpha(theme.palette.primary.main, 0.08),
-              border: `1px solid ${theme.palette.primary.main}`,
-              borderRadius: "4px 4px 0 0",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "11px",
-              fontWeight: 600,
-              color: theme.palette.primary.main,
-              fontFamily: "monospace",
               transition: isDragging ? "none" : "width 0.3s ease",
             }}
           >
             {displayWidth}px
-          </Box>
-        </Box>
+          </div>
+        </div>
       )}
 
       {/* Preview Container */}
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "center",
-          position: "relative",
-        }}
-      >
+      <div className='flex justify-center relative'>
         {/* Left Handle */}
         {!isResponsive && (
-          <Box
+          <div
             onMouseDown={handleMouseDown}
-            sx={{
-              position: "absolute",
+            className={`group absolute top-0 bottom-0 w-2 cursor-ew-resize ${isDragging ? "bg-primary" : "bg-transparent hover:bg-primary"}`}
+            style={{
               left: `calc(50% - ${(displayWidth * zoom) / 2}px - 4px)`,
-              top: 0,
-              bottom: 0,
-              width: 8,
-              cursor: "ew-resize",
-              backgroundColor: isDragging ? theme.palette.primary.main : "transparent",
               transition: isDragging ? "none" : "all 0.3s ease",
-              "&:hover": {
-                backgroundColor: theme.palette.primary.main,
-              },
-              "&::after": {
-                content: '""',
-                position: "absolute",
-                left: 3,
-                top: "50%",
-                transform: "translateY(-50%)",
-                width: 2,
-                height: 30,
-                backgroundColor: theme.palette.common.white,
-                borderRadius: 1,
-              },
             }}
-          />
+          >
+            <span
+              className='absolute top-1/2 -translate-y-1/2 rounded bg-white'
+              style={{ left: 3, width: 2, height: 30 }}
+            />
+          </div>
         )}
 
         {/* Content */}
-        <Box
-          sx={{
+        <div
+          style={{
             width: isResponsive ? "100%" : `${displayWidth}px`,
             transition: isDragging ? "none" : "width 0.3s ease",
           }}
         >
           {children}
-        </Box>
+        </div>
 
         {/* Right Handle */}
         {!isResponsive && (
-          <Box
+          <div
             onMouseDown={handleMouseDown}
-            sx={{
-              position: "absolute",
+            className={`group absolute top-0 bottom-0 w-2 cursor-ew-resize ${isDragging ? "bg-primary" : "bg-transparent hover:bg-primary"}`}
+            style={{
               right: `calc(50% - ${(displayWidth * zoom) / 2}px - 4px)`,
-              top: 0,
-              bottom: 0,
-              width: 8,
-              cursor: "ew-resize",
-              backgroundColor: isDragging ? theme.palette.primary.main : "transparent",
               transition: isDragging ? "none" : "all 0.3s ease",
-              "&:hover": {
-                backgroundColor: theme.palette.primary.main,
-              },
-              "&::after": {
-                content: '""',
-                position: "absolute",
-                right: 3,
-                top: "50%",
-                transform: "translateY(-50%)",
-                width: 2,
-                height: 30,
-                backgroundColor: theme.palette.common.white,
-                borderRadius: 1,
-              },
             }}
-          />
+          >
+            <span
+              className='absolute top-1/2 -translate-y-1/2 rounded bg-white'
+              style={{ right: 3, width: 2, height: 30 }}
+            />
+          </div>
         )}
-      </Box>
+      </div>
 
       {/* Visual Feedback */}
       {isDragging && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
+          className='fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-primary-foreground px-4 py-2 rounded font-mono text-sm font-semibold pointer-events-none shadow-lg'
           style={{
-            position: "fixed",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            backgroundColor: alpha(theme.palette.primary.main, 0.95),
-            color: theme.palette.primary.contrastText,
-            padding: "8px 16px",
-            borderRadius: theme.spacing(0.5), // 4px
-            fontSize: "14px",
-            fontWeight: 600,
-            fontFamily: "monospace",
-            pointerEvents: "none",
+            backgroundColor: "hsl(var(--primary) / 0.95)",
             zIndex: 10000,
-            boxShadow: theme.shadows[4],
           }}
         >
           {currentWidth}px
         </motion.div>
       )}
-    </Box>
+    </div>
   );
 }

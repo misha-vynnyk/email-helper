@@ -3,32 +3,11 @@
  * Main component for browsing and managing email blocks
  */
 
-import {
-  Add as AddIcon,
-  Refresh as RefreshIcon,
-  Search as SearchIcon,
-  SearchOffOutlined,
-  Settings as SettingsIcon,
-} from "@mui/icons-material";
-import {
-  Alert,
-  Box,
-  Button,
-  CardContent,
-  FormControl,
-  Grid,
-  InputAdornment,
-  InputLabel,
-  MenuItem,
-  Select,
-  Skeleton,
-  TextField,
-  Typography,
-} from "@mui/material";
+import { Plus as AddIcon, RefreshCw as RefreshIcon, Search as SearchIcon, SearchX as SearchOffOutlined, Settings as SettingsIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { Note } from "../components/ui/primitives";
 import { useDebounce } from "../hooks/useDebounce";
-import { StyledCard } from "../theme";
 import { EmailBlock } from "../types/block";
 import { preloadBlocksImages } from "../utils/blockImagePreloader";
 import { logger } from "../utils/logger";
@@ -47,6 +26,9 @@ import BlockStorageModal from "./BlockStorageModal";
 import { GRID, TIMEOUTS } from "./constants";
 import { formatErrorMessage } from "./errorHandling";
 import VirtualizedBlockGrid from "./VirtualizedBlockGrid";
+
+const selectClass =
+  "h-11 w-full rounded-xl border border-input bg-background px-3 text-sm text-foreground outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer";
 
 export default function BlockLibrary() {
   const [predefinedBlocks, setPredefinedBlocks] = useState<EmailBlock[]>([]);
@@ -335,392 +317,251 @@ export default function BlockLibrary() {
     setCustomBlocks(custom.map((b) => ({ ...b, source: "localStorage" })));
   }, [loadFileBlocks]);
 
+  const handleRefresh = async () => {
+    setLoading(true);
+    try {
+      const [predefined, files, custom] = await Promise.all([
+        Promise.resolve(loadPredefinedBlocks()),
+        loadFileBlocks(),
+        Promise.resolve(loadCustomBlocks()),
+      ]);
+
+      setPredefinedBlocks(predefined);
+
+      // Filter file blocks based on visible storage locations
+      const locations = getStorageLocations(false); // Exclude hidden
+      if (locations.length === 0) {
+        setFileBlocks(files);
+      } else {
+        const allowedPaths = new Set(locations.map((loc) => loc.path));
+        const filteredFiles = files.filter((block) => {
+          if (!block.filePath) return false;
+          return Array.from(allowedPaths).some((path) => block.filePath!.includes(path));
+        });
+        setFileBlocks(filteredFiles);
+      }
+
+      setCustomBlocks(custom.map((b) => ({ ...b, source: "localStorage" as const })));
+      setError(null);
+    } catch (err) {
+      setError(formatErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) {
     return (
-      <Box p={3}>
-        <Typography
-          variant='h4'
-          gutterBottom
-        >
-          Block Library
-        </Typography>
-        <Grid
-          container
-          spacing={2}
-        >
+      <div className='p-6'>
+        <h1 className='text-2xl font-bold text-foreground mb-6'>Block Library</h1>
+        <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4'>
           {[...Array(GRID.SKELETON_COUNT)].map((_, index) => (
-            <Grid
-              item
-              xs={12}
-              sm={6}
-              md={4}
+            <div
               key={index}
+              className='bg-card border border-border/50 rounded-2xl shadow-soft p-4'
             >
-              <StyledCard enableHover={false}>
-                <CardContent>
-                  <Skeleton
-                    variant='rectangular'
-                    height={200}
-                  />
-                  <Skeleton variant='text' />
-                  <Skeleton
-                    variant='text'
-                    width='60%'
-                  />
-                </CardContent>
-              </StyledCard>
-            </Grid>
+              <div
+                className='animate-pulse bg-muted rounded-xl'
+                style={{ height: 200 }}
+              />
+              <div className='animate-pulse bg-muted rounded-md h-4 mt-3 w-full' />
+              <div className='animate-pulse bg-muted rounded-md h-4 mt-2 w-3/5' />
+            </div>
           ))}
-        </Grid>
-      </Box>
+        </div>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <Box p={3}>
-        <Alert severity='error'>{error}</Alert>
-      </Box>
+      <div className='p-6'>
+        <Note tone='error'>{error}</Note>
+      </div>
     );
   }
 
   return (
-    <Box
-      data-app-scroll="true"
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        height: "100%",
-        overflow: filteredBlocks.length === 0 ? "auto" : "hidden",
-      }}
+    <div
+      data-app-scroll='true'
+      className='flex flex-col h-full'
+      style={{ overflow: filteredBlocks.length === 0 ? "auto" : "hidden" }}
     >
-      <Box sx={{ p: 3, pb: 0 }}>
-      <Box
-        display='flex'
-        justifyContent='space-between'
-        alignItems='center'
-        mb={3}
-      >
-        <Box>
-          <Typography
-            variant='h4'
-            fontWeight={600}
-          >
-            Block Library
-          </Typography>
-          <Typography
-            variant='caption'
-            color='text.secondary'
-          >
-            📁 {predefinedBlocks.length + fileBlocks.length + customBlocks.length} blocks in library
-          </Typography>
-        </Box>
-        <Box
-          display='flex'
-          gap={1}
-        >
-          <Button
-            variant='outlined'
-            startIcon={<RefreshIcon />}
-            onClick={async () => {
-              setLoading(true);
-              try {
-                const [predefined, files, custom] = await Promise.all([
-                  Promise.resolve(loadPredefinedBlocks()),
-                  loadFileBlocks(),
-                  Promise.resolve(loadCustomBlocks()),
-                ]);
-
-                setPredefinedBlocks(predefined);
-
-                // Filter file blocks based on visible storage locations
-                const locations = getStorageLocations(false); // Exclude hidden
-                if (locations.length === 0) {
-                  setFileBlocks(files);
-                } else {
-                  const allowedPaths = new Set(locations.map((loc) => loc.path));
-                  const filteredFiles = files.filter((block) => {
-                    if (!block.filePath) return false;
-                    return Array.from(allowedPaths).some((path) => block.filePath!.includes(path));
-                  });
-                  setFileBlocks(filteredFiles);
-                }
-
-                setCustomBlocks(custom.map((b) => ({ ...b, source: "localStorage" as const })));
-                setError(null);
-              } catch (err) {
-                setError(formatErrorMessage(err));
-              } finally {
-                setLoading(false);
-              }
-            }}
-            size='small'
-            disabled={loading || operationLoading}
-          >
-            Refresh
-          </Button>
-          <Button
-            variant='outlined'
-            startIcon={<SettingsIcon />}
-            onClick={() => setStorageModalOpen(true)}
-            size='small'
-          >
-            Storage
-          </Button>
-          <Button
-            variant='contained'
-            startIcon={<AddIcon />}
-            onClick={() => setAddModalOpen(true)}
-            size='small'
-          >
-            Add Block
-          </Button>
-        </Box>
-      </Box>
-
-      {/* Search and Filter */}
-      <StyledCard enableHover={false} sx={{ mb: 3 }}>
-        <CardContent>
-          <Grid
-            container
-            spacing={2}
-            alignItems='center'
-          >
-            <Grid
-              item
-              xs={12}
-              md={4}
+      <div className='px-6 pt-6'>
+        <div className='flex items-center justify-between mb-6 flex-wrap gap-3'>
+          <div>
+            <h1 className='text-2xl font-bold text-foreground'>Block Library</h1>
+            <p className='text-xs text-muted-foreground mt-0.5'>
+              📁 {predefinedBlocks.length + fileBlocks.length + customBlocks.length} blocks in
+              library
+            </p>
+          </div>
+          <div className='flex items-center gap-2'>
+            <button
+              onClick={handleRefresh}
+              disabled={loading || operationLoading}
+              className='flex items-center gap-1.5 px-3 py-2 text-sm font-semibold border border-input text-foreground hover:bg-muted rounded-xl transition-all disabled:opacity-50'
             >
-              <TextField
-                fullWidth
+              <RefreshIcon size={16} /> Refresh
+            </button>
+            <button
+              onClick={() => setStorageModalOpen(true)}
+              className='flex items-center gap-1.5 px-3 py-2 text-sm font-semibold border border-input text-foreground hover:bg-muted rounded-xl transition-all'
+            >
+              <SettingsIcon size={16} /> Storage
+            </button>
+            <button
+              onClick={() => setAddModalOpen(true)}
+              className='flex items-center gap-1.5 px-3 py-2 text-sm font-bold bg-primary hover:brightness-110 text-primary-foreground rounded-xl transition-all shadow-sm'
+            >
+              <AddIcon size={16} /> Add Block
+            </button>
+          </div>
+        </div>
+
+        {/* Search and Filter */}
+        <div className='bg-card border border-border/50 rounded-2xl shadow-soft p-4 mb-6'>
+          <div className='grid grid-cols-1 md:grid-cols-12 gap-3 items-center'>
+            <div className='md:col-span-4 relative'>
+              <SearchIcon
+                size={16}
+                className='absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none'
+              />
+              <input
+                type='text'
                 placeholder='Search blocks...'
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position='start'>
-                      <SearchIcon />
-                    </InputAdornment>
-                  ),
-                }}
+                className='h-11 w-full rounded-xl border border-input bg-background pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground/60 outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20'
               />
-            </Grid>
-            <Grid
-              item
-              xs={12}
-              md={3}
-            >
-              <FormControl fullWidth>
-                <InputLabel>Source</InputLabel>
-                <Select
-                  value={blockSource}
-                  onChange={(e) =>
-                    setBlockSource(e.target.value as "all" | "src" | "data" | "localStorage")
-                  }
-                  label='Source'
-                >
-                  <MenuItem value='all'>
-                    <Box>
-                      <Typography variant='body2'>🌐 All Sources</Typography>
-                      <Typography
-                        variant='caption'
-                        color='text.secondary'
-                      >
-                        {predefinedBlocks.length + fileBlocks.length + customBlocks.length} blocks
-                      </Typography>
-                    </Box>
-                  </MenuItem>
-                  <MenuItem value='src'>
-                    <Box>
-                      <Typography variant='body2'>📁 src/blocks/</Typography>
-                      <Typography
-                        variant='caption'
-                        color='text.secondary'
-                      >
-                        {predefinedBlocks.length} blocks
-                      </Typography>
-                    </Box>
-                  </MenuItem>
-                  <MenuItem value='data'>
-                    <Box>
-                      <Typography variant='body2'>💾 data/blocks/files/</Typography>
-                      <Typography
-                        variant='caption'
-                        color='text.secondary'
-                      >
-                        {fileBlocks.length} blocks
-                      </Typography>
-                    </Box>
-                  </MenuItem>
-                  <MenuItem value='localStorage'>
-                    <Box>
-                      <Typography variant='body2'>🔒 localStorage</Typography>
-                      <Typography
-                        variant='caption'
-                        color='text.secondary'
-                      >
-                        {customBlocks.length} blocks
-                      </Typography>
-                    </Box>
-                  </MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid
-              item
-              xs={12}
-              md={3}
-            >
-              <FormControl fullWidth>
-                <InputLabel>Category</InputLabel>
-                <Select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  label='Category'
-                >
-                  <MenuItem value='All'>All Categories</MenuItem>
-                  {categories.map((category) => (
-                    <MenuItem
-                      key={category}
-                      value={category}
-                    >
-                      {category}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid
-              item
-              xs={12}
-              md={2}
-            >
-              <Typography
-                variant='body2'
-                color='text.secondary'
-                textAlign='center'
+            </div>
+            <div className='md:col-span-3'>
+              <select
+                value={blockSource}
+                onChange={(e) =>
+                  setBlockSource(e.target.value as "all" | "src" | "data" | "localStorage")
+                }
+                className={selectClass}
               >
+                <option value='all'>
+                  🌐 All Sources ({predefinedBlocks.length + fileBlocks.length + customBlocks.length})
+                </option>
+                <option value='src'>📁 src/blocks/ ({predefinedBlocks.length})</option>
+                <option value='data'>💾 data/blocks/files/ ({fileBlocks.length})</option>
+                <option value='localStorage'>🔒 localStorage ({customBlocks.length})</option>
+              </select>
+            </div>
+            <div className='md:col-span-3'>
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className={selectClass}
+              >
+                <option value='All'>All Categories</option>
+                {categories.map((category) => (
+                  <option
+                    key={category}
+                    value={category}
+                  >
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className='md:col-span-2'>
+              <p className='text-sm text-muted-foreground text-center'>
                 {filteredBlocks.length} {filteredBlocks.length === 1 ? "block" : "blocks"}
-              </Typography>
-            </Grid>
-          </Grid>
-        </CardContent>
-      </StyledCard>
-      </Box>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Blocks Grid */}
       {filteredBlocks.length === 0 ? (
-        <Box
-          display='flex'
-          flexDirection='column'
-          alignItems='center'
-          justifyContent='center'
-          minHeight={400}
-          textAlign='center'
-          sx={{ p: 3 }}
+        <div className='flex flex-col items-center justify-center text-center p-6'
+          style={{ minHeight: 400 }}
         >
           {getStorageLocations(false).length === 0 && !searchQuery && selectedCategory === "All" ? (
             <>
-              <Alert
-                severity='info'
-                sx={{ mb: 3, maxWidth: 600 }}
-              >
-                <Typography
-                  variant='body2'
-                  gutterBottom
-                >
-                  <strong>No visible storage locations configured!</strong>
-                </Typography>
-                <Typography variant='body2'>
-                  Please click the <strong>Storage</strong> button above to add locations where your
-                  blocks will be stored. For example: <code>/Users/your-name/Documents/blocks</code>
-                </Typography>
-              </Alert>
-              <Box
-                sx={{
-                  width: 120,
-                  height: 120,
-                  borderRadius: "50%",
-                  bgcolor: "action.hover",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <SettingsIcon sx={{ fontSize: 60, color: "text.disabled" }} />
-              </Box>
+              <div className='mb-6 max-w-[600px]'>
+                <Note tone='info'>
+                  <p className='font-bold mb-1'>No visible storage locations configured!</p>
+                  <p>
+                    Please click the <strong>Storage</strong> button above to add locations where
+                    your blocks will be stored. For example:{" "}
+                    <code className='bg-muted px-1 py-0.5 rounded'>
+                      /Users/your-name/Documents/blocks
+                    </code>
+                  </p>
+                </Note>
+              </div>
+              <div className='w-[120px] h-[120px] rounded-full bg-muted flex items-center justify-center mb-4'>
+                <SettingsIcon
+                  size={60}
+                  className='text-muted-foreground/50'
+                />
+              </div>
             </>
           ) : (
             <>
-              <Box
-                sx={{
-                  width: 120,
-                  height: 120,
-                  borderRadius: "50%",
-                  bgcolor: "action.hover",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
+              <div className='w-[120px] h-[120px] rounded-full bg-muted flex items-center justify-center mb-4'>
                 {searchQuery || selectedCategory !== "All" ? (
-                  <SearchOffOutlined sx={{ fontSize: 60, color: "text.disabled" }} />
+                  <SearchOffOutlined
+                    size={60}
+                    className='text-muted-foreground/50'
+                  />
                 ) : (
-                  <AddIcon sx={{ fontSize: 60, color: "text.disabled" }} />
+                  <AddIcon
+                    size={60}
+                    className='text-muted-foreground/50'
+                  />
                 )}
-              </Box>
-              <Typography
-                variant='h5'
-                gutterBottom
-                fontWeight={600}
-              >
+              </div>
+              <h2 className='text-xl font-bold text-foreground mb-2'>
                 {searchQuery || selectedCategory !== "All"
                   ? "No blocks found"
                   : "Your block library is empty"}
-              </Typography>
+              </h2>
             </>
           )}
-          <Typography
-            variant='body2'
-            color='text.secondary'
-            mb={3}
-            maxWidth={400}
-          >
+          <p className='text-sm text-muted-foreground mb-6 max-w-[400px]'>
             {searchQuery || selectedCategory !== "All"
               ? "Try different keywords or clear filters to see more blocks."
               : "Start building your email templates by creating your first custom block."}
-          </Typography>
+          </p>
           {searchQuery || selectedCategory !== "All" ? (
-            <Button
-              variant='outlined'
+            <button
               onClick={() => {
                 setSearchQuery("");
                 setSelectedCategory("All");
               }}
+              className='px-5 py-2.5 text-sm font-bold border border-input text-foreground hover:bg-muted rounded-xl transition-all'
             >
               Clear Filters
-            </Button>
+            </button>
           ) : (
-            <Button
-              variant='contained'
-              startIcon={<AddIcon />}
+            <button
               onClick={() => setAddModalOpen(true)}
-              size='large'
+              className='flex items-center gap-2 px-5 py-3 text-sm font-bold bg-primary hover:brightness-110 text-primary-foreground rounded-xl transition-all shadow-sm'
             >
-              Create First Block
-            </Button>
+              <AddIcon size={18} /> Create First Block
+            </button>
           )}
-        </Box>
+        </div>
       ) : (
         /* Virtualized Blocks Grid - рендерить лише видимі елементи */
-        <Box sx={{ flex: 1, minHeight: 400, px: 3, pb: 3 }}>
+        <div
+          className='flex-1 px-6 pb-6'
+          style={{ minHeight: 400 }}
+        >
           <VirtualizedBlockGrid
             blocks={filteredBlocks}
             fileBlocks={fileBlocks}
             onDelete={handleDeleteBlock}
             onUpdate={handleUpdateBlock}
           />
-        </Box>
+        </div>
       )}
 
       {/* Add Block Modal */}
@@ -735,6 +576,6 @@ export default function BlockLibrary() {
         open={storageModalOpen}
         onClose={() => setStorageModalOpen(false)}
       />
-    </Box>
+    </div>
   );
 }

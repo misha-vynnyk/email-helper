@@ -1,5 +1,4 @@
 import { html } from "@codemirror/lang-html";
-import { useTheme } from "@mui/material";
 import CodeMirror from "@uiw/react-codemirror";
 import { Eraser, FileCode2, Loader2, Send, Text, TriangleAlert } from "lucide-react";
 import React from "react";
@@ -8,15 +7,13 @@ import { cardClass, inputClass, Note, SectionHeader } from "../components/ui/pri
 import { EMAIL_VALIDATOR_ENABLED } from "../config/featureFlags";
 import EmailValidationPanel from "../emailValidator/EmailValidationPanel";
 import { cn } from "../lib/utils";
-import { useThemeMode } from "../theme";
+import { useThemeMode } from "../theme/ThemeContext";
 import { createCodeMirrorTheme } from "../utils/codemirrorTheme";
 import { useEmailSender } from "./EmailSenderContext";
 
 const EmailHtmlEditor: React.FC = () => {
-  // MUI theme is kept only to build the shared CodeMirror theme (same as TemplateItem)
-  const theme = useTheme();
-  const { mode, style } = useThemeMode();
-  const codeMirrorTheme = createCodeMirrorTheme(theme, mode, style);
+  const { mode } = useThemeMode();
+  const codeMirrorTheme = createCodeMirrorTheme(mode === "dark");
   const {
     editorHtml,
     setEditorHtml,

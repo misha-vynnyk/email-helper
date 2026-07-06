@@ -23,7 +23,11 @@
       "Bash(git add *)",
       "Bash(git commit -m 'feat\\(emailValidator\\): redesign validation panel with Tailwind *)",
       "Bash(npx jest *)",
-      "Bash(python3 -)"
+      "Bash(python3 -)",
+      "Bash(grep -rhoE 'className=\\\\{?[`\"][^`\"]{10,70}' src/templateLibrary --include=\"*.tsx\")",
+      "Bash(pkill -f \"vite\")",
+      "Bash(pkill -f \"dev-runner.js\")",
+      "Bash(pkill -f \"node.*server/index\")"
     ]
   }
 }

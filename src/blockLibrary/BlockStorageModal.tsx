@@ -3,38 +3,12 @@
  * Manage storage locations for new blocks with add/remove capabilities
  */
 
-import {
-  Add as AddIcon,
-  Close as CloseIcon,
-  Delete as DeleteIcon,
-  FolderOpen,
-  Star as StarIcon,
-  StarOutline as StarOutlineIcon,
-  Visibility as VisibilityIcon,
-  VisibilityOff as VisibilityOffIcon,
-} from "@mui/icons-material";
-import {
-  Alert,
-  Box,
-  Button,
-  Chip,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  IconButton,
-  List,
-  ListItem,
-  ListItemText,
-  TextField,
-  Tooltip,
-  Typography,
-} from "@mui/material";
-import { alpha, useTheme } from "@mui/material/styles";
-import { useMemo, useState } from "react";
+import { FolderOpen, Plus as AddIcon, Star as StarIcon, Trash2 as DeleteIcon, Eye as VisibilityIcon, EyeOff as VisibilityOffIcon } from "lucide-react";
+import { useState } from "react";
 
-import { useThemeMode } from "../theme";
-import { getComponentStyles } from "../theme/componentStyles";
+import { Note } from "../components/ui/primitives";
+import { cn } from "../lib/utils";
+import Modal from "../templateLibrary/components/Modal";
 import {
   addStorageLocation,
   getStorageLocations,
@@ -50,11 +24,10 @@ interface BlockStorageModalProps {
   onSave?: () => void;
 }
 
-export default function BlockStorageModal({ open, onClose, onSave }: BlockStorageModalProps) {
-  const theme = useTheme();
-  const { mode, style } = useThemeMode();
-  const componentStyles = useMemo(() => getComponentStyles(mode, style), [mode, style]);
+const inputClass =
+  "w-full px-4 py-2.5 text-sm rounded-xl border border-input bg-background focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground outline-none transition-all";
 
+export default function BlockStorageModal({ open, onClose, onSave }: BlockStorageModalProps) {
   const [locations, setLocations] = useState<StorageLocation[]>(getStorageLocations(true)); // Include hidden
   const [newLocationName, setNewLocationName] = useState("");
   const [newLocationPath, setNewLocationPath] = useState("");
@@ -142,297 +115,191 @@ export default function BlockStorageModal({ open, onClose, onSave }: BlockStorag
   };
 
   return (
-    <Dialog
+    <Modal
       open={open}
       onClose={handleClose}
-      maxWidth='md'
-      fullWidth
-      PaperProps={{
-        sx: {
-          borderRadius: `${componentStyles.card.borderRadius}px`,
-          background:
-            componentStyles.card.background || alpha(theme.palette.background.paper, 0.9),
-          backdropFilter: componentStyles.card.backdropFilter,
-          WebkitBackdropFilter: componentStyles.card.WebkitBackdropFilter,
-          border: componentStyles.card.border,
-          boxShadow: componentStyles.card.boxShadow,
-        },
-      }}
-    >
-      <DialogTitle>
-        <Box
-          display='flex'
-          justifyContent='space-between'
-          alignItems='center'
-        >
-          <Box
-            display='flex'
-            alignItems='center'
-            gap={1}
-          >
-            <FolderOpen />
-            <Typography variant='h6'>Block Storage Locations</Typography>
-          </Box>
-          <IconButton
+      maxWidthClass='max-w-2xl'
+      title={
+        <span className='flex items-center gap-2'>
+          <FolderOpen size={20} /> Block Storage Locations
+        </span>
+      }
+      actionsRow={
+        <>
+          <button
             onClick={handleClose}
-            size='small'
+            className='px-5 py-2.5 text-sm font-bold bg-muted hover:bg-muted/80 text-foreground rounded-xl transition-all'
           >
-            <CloseIcon />
-          </IconButton>
-        </Box>
-      </DialogTitle>
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            className='px-5 py-2.5 text-sm font-bold bg-primary hover:brightness-110 text-primary-foreground rounded-xl transition-all shadow-sm'
+          >
+            Save Configuration
+          </button>
+        </>
+      }
+    >
+      <div className='flex flex-col gap-4'>
+        {saved && <Note tone='success'>Configuration saved!</Note>}
+        {error && <Note tone='error'>{error}</Note>}
 
-      <DialogContent>
-        {saved && (
-          <Alert
-            severity='success'
-            sx={{ mb: 2 }}
-          >
-            ✅ Configuration saved!
-          </Alert>
-        )}
-
-        {error && (
-          <Alert
-            severity='error'
-            sx={{ mb: 2 }}
-            onClose={() => setError(null)}
-          >
-            {error}
-          </Alert>
-        )}
-
-        <Alert
-          severity='info'
-          sx={{ mb: 3 }}
-        >
-          <Typography
-            variant='body2'
-            component='div'
-          >
-            <strong>💡 Paths:</strong> Use <strong>relative</strong> paths (e.g. `src/blocks`) or{" "}
-            <strong>absolute</strong> paths within your Documents folder. Click ⭐ to set default.
-          </Typography>
-        </Alert>
+        <Note tone='info'>
+          <strong>Paths:</strong> Use <strong>relative</strong> paths (e.g. `src/blocks`) or{" "}
+          <strong>absolute</strong> paths within your Documents folder. Click ⭐ to set default.
+        </Note>
 
         {/* Locations List */}
         {locations.length > 0 ? (
-          <List sx={{ mb: 2 }}>
+          <div className='flex flex-col gap-2'>
             {locations.map((location) => (
-              <ListItem
+              <div
                 key={location.id}
-                sx={{
-                  border: "1px solid",
-                  borderColor: location.isDefault ? "primary.main" : "divider",
-                  borderRadius: 1,
-                  mb: 1,
-                  bgcolor: location.isDefault ? "action.selected" : "background.paper",
-                }}
+                className={cn(
+                  "flex items-start justify-between gap-3 p-3 rounded-xl border",
+                  location.isDefault ? "border-primary bg-primary/5" : "border-border bg-card"
+                )}
               >
-                <ListItemText
-                  primary={
-                    <Box
-                      display='flex'
-                      alignItems='center'
-                      gap={1}
+                <div className='min-w-0'>
+                  <div className='flex items-center gap-2 flex-wrap'>
+                    <span
+                      className={cn(
+                        "text-sm",
+                        location.isDefault ? "font-semibold" : "font-normal",
+                        location.isHidden && "line-through opacity-60"
+                      )}
                     >
-                      <Typography
-                        variant='body1'
-                        fontWeight={location.isDefault ? 600 : 400}
-                        sx={{
-                          textDecoration: location.isHidden ? "line-through" : "none",
-                          opacity: location.isHidden ? 0.6 : 1,
-                        }}
-                      >
-                        {location.name}
-                      </Typography>
-                      {location.isDefault && !location.isHidden && (
-                        <Chip
-                          label='Default'
-                          size='small'
-                          color='primary'
-                        />
-                      )}
-                      {location.isHidden && (
-                        <Chip
-                          label='Hidden'
-                          size='small'
-                          color='default'
-                          variant='outlined'
-                        />
-                      )}
-                    </Box>
-                  }
-                  primaryTypographyProps={{ component: "div" }}
-                  secondary={
-                    <Box component='div'>
-                      <Typography
-                        variant='caption'
-                        color='text.secondary'
-                        component='div'
-                        display='block'
-                      >
-                        📁 {location.path}
-                      </Typography>
-                      {location.description && (
-                        <Typography
-                          variant='caption'
-                          color='text.secondary'
-                          component='div'
-                          display='block'
-                        >
-                          {location.description}
-                        </Typography>
-                      )}
-                    </Box>
-                  }
-                  secondaryTypographyProps={{ component: "div" }}
-                />
-                <Box
-                  display='flex'
-                  gap={1}
-                >
-                  <Tooltip title={location.isHidden ? "Show location" : "Hide location"}>
-                    <span>
-                      <IconButton
-                        size='small'
-                        onClick={() => handleToggleVisibility(location.id)}
-                      >
-                        {location.isHidden ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                      </IconButton>
+                      {location.name}
                     </span>
-                  </Tooltip>
-                  <Tooltip title='Set as default'>
-                    <span>
-                      <IconButton
-                        size='small'
-                        onClick={() => handleSetDefault(location.id)}
-                        disabled={location.isDefault || location.isHidden}
-                      >
-                        {location.isDefault ? <StarIcon color='primary' /> : <StarOutlineIcon />}
-                      </IconButton>
-                    </span>
-                  </Tooltip>
-                  <Tooltip title='Remove location'>
-                    <span>
-                      <IconButton
-                        size='small'
-                        onClick={() => handleRemoveLocation(location.id)}
-                        color='error'
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </span>
-                  </Tooltip>
-                </Box>
-              </ListItem>
+                    {location.isDefault && !location.isHidden && (
+                      <span className='px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary'>
+                        Default
+                      </span>
+                    )}
+                    {location.isHidden && (
+                      <span className='px-2 py-0.5 rounded-full text-[10px] font-bold border border-border text-muted-foreground'>
+                        Hidden
+                      </span>
+                    )}
+                  </div>
+                  <p className='text-xs text-muted-foreground mt-1 break-all'>
+                    📁 {location.path}
+                  </p>
+                  {location.description && (
+                    <p className='text-xs text-muted-foreground mt-0.5'>{location.description}</p>
+                  )}
+                </div>
+                <div className='flex items-center gap-1 shrink-0'>
+                  <button
+                    onClick={() => handleToggleVisibility(location.id)}
+                    title={location.isHidden ? "Show location" : "Hide location"}
+                    className='p-2 text-muted-foreground hover:bg-muted hover:text-foreground rounded-lg transition-colors'
+                  >
+                    {location.isHidden ? <VisibilityOffIcon size={16} /> : <VisibilityIcon size={16} />}
+                  </button>
+                  <button
+                    onClick={() => handleSetDefault(location.id)}
+                    disabled={location.isDefault || location.isHidden}
+                    title='Set as default'
+                    className='p-2 text-muted-foreground hover:bg-muted hover:text-foreground rounded-lg transition-colors disabled:opacity-40'
+                  >
+                    <StarIcon
+                      size={16}
+                      className={location.isDefault ? "fill-primary text-primary" : ""}
+                    />
+                  </button>
+                  <button
+                    onClick={() => handleRemoveLocation(location.id)}
+                    title='Remove location'
+                    className='p-2 text-destructive hover:bg-destructive/10 rounded-lg transition-colors'
+                  >
+                    <DeleteIcon size={16} />
+                  </button>
+                </div>
+              </div>
             ))}
-          </List>
+          </div>
         ) : (
-          <Alert
-            severity='warning'
-            sx={{ mb: 2 }}
-          >
-            No storage locations configured. Add at least one location.
-          </Alert>
+          <Note tone='warning'>No storage locations configured. Add at least one location.</Note>
         )}
 
         {/* Add Location Form */}
         {showAddForm ? (
-          <Box sx={{ border: "2px dashed", borderColor: "primary.main", p: 2, borderRadius: 1 }}>
-            <Typography
-              variant='subtitle2'
-              gutterBottom
-              fontWeight={600}
-            >
-              ➕ Add New Location
-            </Typography>
-            <TextField
-              fullWidth
-              label='Location Name'
-              value={newLocationName}
-              onChange={(e) => setNewLocationName(e.target.value)}
-              placeholder='e.g., Custom Blocks, External Project'
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              fullWidth
-              label='Directory Path'
-              value={newLocationPath}
-              onChange={(e) => setNewLocationPath(e.target.value)}
-              placeholder='e.g., /Users/your-name/Documents/my-blocks'
-              helperText='Must be an absolute path (start with /)'
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              fullWidth
-              label='Description (optional)'
-              value={newLocationDescription}
-              onChange={(e) => setNewLocationDescription(e.target.value)}
-              placeholder='e.g., Shared blocks for multiple projects'
-              sx={{ mb: 2 }}
-            />
-            <Box
-              display='flex'
-              gap={1}
-            >
-              <Button
-                variant='contained'
-                startIcon={<AddIcon />}
-                onClick={handleAddLocation}
-              >
-                Add Location
-              </Button>
-              <Button
-                variant='outlined'
-                onClick={() => {
-                  setShowAddForm(false);
-                  setNewLocationName("");
-                  setNewLocationPath("");
-                  setNewLocationDescription("");
-                  setError(null);
-                }}
-              >
-                Cancel
-              </Button>
-            </Box>
-          </Box>
+          <div className='border-2 border-dashed border-primary/50 p-4 rounded-xl'>
+            <p className='text-sm font-bold text-foreground mb-3'>➕ Add New Location</p>
+            <div className='flex flex-col gap-3'>
+              <div>
+                <label className='block text-xs font-bold text-foreground mb-1'>Location Name</label>
+                <input
+                  type='text'
+                  value={newLocationName}
+                  onChange={(e) => setNewLocationName(e.target.value)}
+                  placeholder='e.g., Custom Blocks, External Project'
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className='block text-xs font-bold text-foreground mb-1'>Directory Path</label>
+                <input
+                  type='text'
+                  value={newLocationPath}
+                  onChange={(e) => setNewLocationPath(e.target.value)}
+                  placeholder='e.g., /Users/your-name/Documents/my-blocks'
+                  className={inputClass}
+                />
+                <p className='text-xs text-muted-foreground mt-1'>
+                  Must be an absolute path (start with /)
+                </p>
+              </div>
+              <div>
+                <label className='block text-xs font-bold text-foreground mb-1'>
+                  Description (optional)
+                </label>
+                <input
+                  type='text'
+                  value={newLocationDescription}
+                  onChange={(e) => setNewLocationDescription(e.target.value)}
+                  placeholder='e.g., Shared blocks for multiple projects'
+                  className={inputClass}
+                />
+              </div>
+              <div className='flex gap-2'>
+                <button
+                  onClick={handleAddLocation}
+                  className='flex items-center gap-2 px-4 py-2.5 text-sm font-bold bg-primary hover:brightness-110 text-primary-foreground rounded-xl transition-all shadow-sm'
+                >
+                  <AddIcon size={16} /> Add Location
+                </button>
+                <button
+                  onClick={() => {
+                    setShowAddForm(false);
+                    setNewLocationName("");
+                    setNewLocationPath("");
+                    setNewLocationDescription("");
+                    setError(null);
+                  }}
+                  className='px-4 py-2.5 text-sm font-bold border border-input text-foreground hover:bg-muted rounded-xl transition-all'
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
         ) : (
-          <Button
-            fullWidth
-            variant='outlined'
-            startIcon={<AddIcon />}
+          <button
             onClick={() => setShowAddForm(true)}
-            sx={{ borderStyle: "dashed" }}
+            className='w-full flex items-center justify-center gap-2 py-2.5 text-sm font-bold border-2 border-dashed border-input text-foreground hover:bg-muted rounded-xl transition-all'
           >
-            Add Storage Location
-          </Button>
+            <AddIcon size={16} /> Add Storage Location
+          </button>
         )}
 
-        {/* Info Alert */}
-        <Alert
-          severity='warning'
-          sx={{ mt: 2 }}
-        >
-          <Typography
-            variant='caption'
-            component='div'
-          >
-            <strong>Security:</strong> Paths outside project directory must be within your Documents
-            folder. Backend validates all paths to prevent unauthorized access.
-          </Typography>
-        </Alert>
-      </DialogContent>
-
-      <DialogActions>
-        <Button onClick={handleClose}>Cancel</Button>
-        <Button
-          variant='contained'
-          onClick={handleSave}
-        >
-          Save Configuration
-        </Button>
-      </DialogActions>
-    </Dialog>
+        <Note tone='warning'>
+          <strong>Security:</strong> Paths outside project directory must be within your Documents
+          folder. Backend validates all paths to prevent unauthorized access.
+        </Note>
+      </div>
+    </Modal>
   );
 }
