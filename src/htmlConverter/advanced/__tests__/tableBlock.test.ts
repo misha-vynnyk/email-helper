@@ -77,26 +77,26 @@ describe("classifyTable — single-cell", () => {
   it("dark bg with border and href → buttonBand carries the border in props", () => {
     const cell = makeCell({
       bg: "#000000",
-      border: { top: { width: 1, color: "#ffffff" } },
+      border: { top: { color: "#ffffff" } },
       children: [makePara("Click me", "https://example.com")],
     });
     const table = makeTable([[cell]]);
     const result = classifyTable(table);
     expect(result?.kind).toBe("buttonBand");
-    expect((result?.props as Record<string, unknown>)["border"]).toEqual({ top: { width: 1, color: "#ffffff" } });
+    expect((result?.props as Record<string, unknown>)["border"]).toEqual({ top: { color: "#ffffff" } });
   });
 
   it("dark bg with border and no href → alertBand carries the border in props", () => {
-    const cell = makeCell({ bg: "#000000", border: { top: { width: 1, color: "#ffffff" } } });
+    const cell = makeCell({ bg: "#000000", border: { top: { color: "#ffffff" } } });
     const table = makeTable([[cell]]);
     const result = classifyTable(table);
     expect(result?.kind).toBe("alertBand");
-    expect((result?.props as Record<string, unknown>)["border"]).toEqual({ top: { width: 1, color: "#ffffff" } });
+    expect((result?.props as Record<string, unknown>)["border"]).toEqual({ top: { color: "#ffffff" } });
   });
 
   it("h5 marker + border but no bg is NOT classified as buttonBand", () => {
     const cell = makeCell({
-      border: { top: { width: 1, color: "#000000" } },
+      border: { top: { color: "#000000" } },
       children: [{ type: "p", size: "small", headingLevel: 5, lines: [[makeRun("Button")]] }],
     });
     const table = makeTable([[cell]]);
@@ -128,26 +128,26 @@ describe("classifyTable — single-cell", () => {
 // Fix #6: near-white/near-root-bg border colors are GDocs gridline leftovers, not intent
 describe("classifyTable — meaningless (near-white) border", () => {
   it("unwraps a 1×1 cell whose border is near-white and has no bg", () => {
-    const table = makeTable([[makeCell({ border: { top: { width: 1, color: "#fafafa" } } })]]);
+    const table = makeTable([[makeCell({ border: { top: { color: "#fafafa" } } })]]);
     expect(classifyTable(table)).toBeNull();
   });
 
   it("keeps a near-white border on a dark bg (deliberate accent, not a gridline leftover)", () => {
     const cell = makeCell({
       bg: "#000000",
-      border: { top: { width: 1, color: "#ffffff" } },
+      border: { top: { color: "#ffffff" } },
       children: [makePara("Click me", "https://example.com")],
     });
     const table = makeTable([[cell]]);
     const result = classifyTable(table);
     expect(result?.kind).toBe("buttonBand");
-    expect((result?.props as Record<string, unknown>)["border"]).toEqual({ top: { width: 1, color: "#ffffff" } });
+    expect((result?.props as Record<string, unknown>)["border"]).toEqual({ top: { color: "#ffffff" } });
   });
 
   it("still classifies calloutBox for a visibly distinct border color", () => {
     const table = makeTable([[makeCell({
-      border: { top: { width: 1, color: "#c2410c" }, right: { width: 1, color: "#c2410c" },
-                bottom: { width: 1, color: "#c2410c" }, left: { width: 1, color: "#c2410c" } },
+      border: { top: { color: "#c2410c" }, right: { color: "#c2410c" },
+                bottom: { color: "#c2410c" }, left: { color: "#c2410c" } },
     })]]);
     const result = classifyTable(table);
     expect(result?.kind).toBe("calloutBox");
@@ -201,8 +201,8 @@ describe("classifyTable — multi-cell", () => {
   // Fix #5: per-cell border colors must survive classification, not collapse to one shared color
   it("statsGrid children each carry their own borderColor", () => {
     const table = makeTable([[
-      makeCell({ border: { top: { width: 1, color: "#ff0000" } } }),
-      makeCell({ border: { top: { width: 1, color: "#0000ff" } } }),
+      makeCell({ border: { top: { color: "#ff0000" } } }),
+      makeCell({ border: { top: { color: "#0000ff" } } }),
     ]]);
     const result = classifyTable(table);
     expect(result?.children?.[0].props["borderColor"]).toBe("#ff0000");
@@ -210,8 +210,8 @@ describe("classifyTable — multi-cell", () => {
   });
 
   it("recordRow cells each carry their own borderColor", () => {
-    const redCell = makeCell({ border: { top: { width: 1, color: "#ff0000" } } });
-    const blueCell = makeCell({ border: { top: { width: 1, color: "#0000ff" } } });
+    const redCell = makeCell({ border: { top: { color: "#ff0000" } } });
+    const blueCell = makeCell({ border: { top: { color: "#0000ff" } } });
     const table = makeTable([[redCell, makeCell()], [blueCell, makeCell()]]);
     const result = classifyTable(table);
     const rows = (result?.props as Record<string, unknown>)["rows"] as Array<{ cells: Array<Record<string, unknown>> }>;

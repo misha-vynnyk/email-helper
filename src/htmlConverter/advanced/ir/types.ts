@@ -25,7 +25,6 @@ export interface ImageNode {
 }
 
 export interface BorderSide {
-  width: number;  // pt, as declared in the source — informational only (render widths come from tokens)
   color: string;  // normalized via canonicalizeBg (§5)
 }
 
