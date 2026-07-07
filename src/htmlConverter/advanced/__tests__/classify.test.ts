@@ -133,7 +133,7 @@ describe("classify — heading markers", () => {
 
   it("h5 button uses placeholder href when no href in runs", () => {
     const result = classify([makeHeading(5, "Click")]);
-    expect(result[0].props["href"]).toBe(tokens.color.placeholderHref);
+    expect(result[0].props["href"]).toBe(tokens.placeholderHref);
   });
 
   it("h5 button always uses placeholder href regardless of run href", () => {
@@ -142,7 +142,7 @@ describe("classify — heading markers", () => {
       lines: [[{ text: "Go", href: "https://example.com" }]],
     };
     const result = classify([para]);
-    expect(result[0].props["href"]).toBe(tokens.color.placeholderHref);
+    expect(result[0].props["href"]).toBe(tokens.placeholderHref);
   });
 
   it("h4 → paragraph with variant=quote", () => {

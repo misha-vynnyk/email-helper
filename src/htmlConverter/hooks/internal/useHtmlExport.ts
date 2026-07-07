@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from "react";
 
 import { getElectronAPI } from "@/hooks/useElectronAPI";
 
-import { convertAdvanced } from "../../advanced/index";
+import { convertAdvancedDetailed } from "../../advanced/index";
 import { profile as alphaoneProfile } from "../../advanced/profiles/alphaone";
 import { profile as defaultProfile } from "../../advanced/profiles/default";
 import { profile as tttProfile }     from "../../advanced/profiles/ttt";
@@ -115,7 +115,11 @@ export function useHtmlExport({
           storageProfile === "ttt"      ? tttProfile :
           storageProfile === "alphaone" ? alphaoneProfile :
           defaultProfile;
-        let result = convertAdvanced(rawHtml, profileOverride);
+        const conversion = convertAdvancedDetailed(rawHtml, profileOverride);
+        let result = conversion.html;
+        for (const warning of conversion.warnings) {
+          addLog(`⚠️ ${warning}`);
+        }
 
         if (Object.keys(uploadedUrlMap).length > 0) {
           const storageUrls = Object.values(uploadedUrlMap);

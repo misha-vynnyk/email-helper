@@ -137,63 +137,66 @@ describe("buildTemplates — statsGrid gridBorder", () => {
   });
 });
 
-// ── calloutBox ────────────────────────────────────────────────────────────────
+// ── calloutLeft ───────────────────────────────────────────────────────────────
 
-describe("buildTemplates — calloutBox", () => {
-  it("uses full border (border: N px solid color), not just border-left", () => {
-    const html = tmpl.calloutBox("content", { accentColor: "#ff9900" });
-    expect(html).toContain("content");
-    expect(html).toMatch(/border:\d+px solid #ff9900/);
-    expect(html).not.toMatch(/border-left:/);
-  });
-
-  it("uses calloutBoxBorderPx from tokens", () => {
-    const html = tmpl.calloutBox("x", { accentColor: "#ff9900" });
-    expect(html).toContain(`${tokens.layout.calloutBoxBorderPx}px solid`);
-  });
-
-  it("uses default calloutBg when bg not specified", () => {
-    const html = tmpl.calloutBox("x", { accentColor: "#aabbcc" });
-    expect(html).toContain(tokens.color.calloutBg);
-  });
-
-  it("uses custom bg when provided", () => {
-    const html = tmpl.calloutBox("x", { accentColor: "#aabbcc", bg: "#fff3cd" });
-    expect(html).toContain("#fff3cd");
-    expect(html).not.toContain(tokens.color.calloutBg);
-  });
-
-  it("calloutLeft uses border-left, not full border", () => {
+describe("buildTemplates — calloutLeft", () => {
+  it("uses border-left, not full border", () => {
     const html = tmpl.calloutLeft("x", { accentColor: "#ff9900" });
     expect(html).toMatch(/border-left:\d+px solid/);
     expect(html).not.toMatch(/border:\d+px solid/);
   });
+
+  it("uses default calloutBg when bg not specified", () => {
+    const html = tmpl.calloutLeft("x", { accentColor: "#aabbcc" });
+    expect(html).toContain(tokens.color.calloutBg);
+  });
+
+  it("uses custom bg when provided", () => {
+    const html = tmpl.calloutLeft("x", { accentColor: "#aabbcc", bg: "#fff3cd" });
+    expect(html).toContain("#fff3cd");
+    expect(html).not.toContain(tokens.color.calloutBg);
+  });
 });
 
-// ── divider template ──────────────────────────────────────────────────────────
+// ── image template ────────────────────────────────────────────────────────────
 
-describe("buildTemplates — divider", () => {
-  it("renders a table row with border-top matching the given color", () => {
-    const html = tmpl.divider({ color: "#cccccc" });
-    expect(html).toContain("border-top:");
-    expect(html).toContain("#cccccc");
+describe("buildTemplates — image", () => {
+  it("renders img wrapped in a placeholder link (matches simple wrapImg)", () => {
+    const html = tmpl.image({ src: "https://cdn.example.com/pic.png", alt: "Promo" });
+    expect(html).toContain(`href="${tokens.placeholderHref}"`);
+    expect(html).toContain('src="https://cdn.example.com/pic.png"');
+    expect(html).toContain('alt="Promo"');
+    expect(html).toContain(`class="${tokens.classes.imgBg}"`);
   });
 
-  it("uses tok.layout.dividerPx for border width", () => {
-    const html = tmpl.divider({ color: "#000000" });
-    expect(html).toContain(`${tokens.layout.dividerPx}px solid`);
+  it("width equals containerMaxWidth − 2×sidePadding (560 by default)", () => {
+    const html = tmpl.image({ src: "x.png" });
+    const w = tokens.layout.containerMaxWidth - 2 * tokens.layout.sidePadding;
+    expect(html).toContain(`width="${w}"`);
+    expect(html).toContain(`max-width:${w}px`);
   });
 
-  it("custom dividerPx is reflected", () => {
-    const tok = mergeTokens(tokens, { layout: { dividerPx: 3 } });
-    const html = buildTemplates(tok).divider({ color: "#333333" });
-    expect(html).toContain("3px solid");
+  it("falls back to alt=\"Image\" when alt is absent", () => {
+    const html = tmpl.image({ src: "x.png" });
+    expect(html).toContain('alt="Image"');
+  });
+
+  it("escapes quotes in src and alt attributes", () => {
+    const html = tmpl.image({ src: 'x.png" onerror="alert(1)', alt: '"><script>' });
+    expect(html).not.toContain('onerror="alert(1)"');
+    expect(html).not.toContain("<script>");
   });
 
   it("uses tok.layout.blockPadY for outer padding", () => {
-    const html = tmpl.divider({ color: "#000000" });
+    const html = tmpl.image({ src: "x.png" });
     expect(html).toContain(`padding-top:${tokens.layout.blockPadY}px`);
     expect(html).toContain(`padding-bottom:${tokens.layout.blockPadY}px`);
+  });
+
+  it("profile override of sidePadding changes rendered width", () => {
+    const tok = mergeTokens(tokens, { layout: { sidePadding: 30 } });
+    const html = buildTemplates(tok).image({ src: "x.png" });
+    expect(html).toContain(`width="${tok.layout.containerMaxWidth - 60}"`);
   });
 });
 

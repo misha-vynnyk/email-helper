@@ -1,6 +1,7 @@
 /**
  * Regression tests for the DOM-based email validator.
- * Each block references the bug it guards against (see src/emailValidator/fix.md).
+ * Each block references the bug it guards against — bugs found in the 2026-07
+ * validator audit and fixed by the DOMParser migration (commit 57066b1).
  */
 // The real logger uses import.meta (Vite) which ts-jest cannot compile.
 jest.mock("../../utils/logger", () => ({

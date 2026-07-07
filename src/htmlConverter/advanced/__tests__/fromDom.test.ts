@@ -277,7 +277,7 @@ describe("fromDom — link-color span whitespace stripping", () => {
   it("non-whitespace text in a link-colored span gets placeholder href", () => {
     const p = firstParagraph('<p><span style="color:#1155cc;">Click here</span></p>');
     const run = p.lines[0].find((r) => r.text === "Click here");
-    expect(run?.href).toBe(tokens.color.placeholderHref);
+    expect(run?.href).toBe(tokens.placeholderHref);
   });
 });
 
@@ -335,5 +335,52 @@ describe("fromDom — paragraph alignment", () => {
   it("no text-align → align is undefined", () => {
     const p = firstParagraph("<p>Default</p>");
     expect(p.align).toBeUndefined();
+  });
+});
+
+// ── Images ────────────────────────────────────────────────────────────────────
+
+describe("fromDom — images", () => {
+  it("top-level <img> becomes an ImageNode", () => {
+    const result = nodes('<img src="https://x.com/a.png" alt="A">');
+    expect(result).toEqual([{ type: "img", src: "https://x.com/a.png", alt: "A" }]);
+  });
+
+  it("GDocs image paragraph (<p><span><img></span></p>) becomes an ImageNode", () => {
+    const result = nodes('<p><span><img src="https://lh7.googleusercontent.com/abc"></span></p>');
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ type: "img", src: "https://lh7.googleusercontent.com/abc" });
+  });
+
+  it("img without alt → alt is undefined", () => {
+    const result = nodes('<p><img src="x.png"></p>');
+    expect((result[0] as { alt?: string }).alt).toBeUndefined();
+  });
+
+  it("img without src is dropped", () => {
+    expect(nodes("<p><img></p>")).toEqual([]);
+  });
+
+  it("image before text in the same paragraph → ImageNode precedes Paragraph", () => {
+    const result = nodes('<p><img src="a.png">Caption text</p>');
+    expect(result.map(n => n.type)).toEqual(["img", "p"]);
+  });
+
+  it("image after text in the same paragraph → Paragraph precedes ImageNode", () => {
+    const result = nodes('<p>Intro text<img src="a.png"></p>');
+    expect(result.map(n => n.type)).toEqual(["p", "img"]);
+  });
+
+  it("image inside a table cell is preserved in cell children", () => {
+    const result = nodes('<table><tr><td><p><img src="cell.png"></p></td></tr></table>');
+    const table = result[0] as import("../ir/types").TableNode;
+    expect(table.type).toBe("table");
+    expect(table.rows[0].cells[0].children).toEqual([{ type: "img", src: "cell.png", alt: undefined }]);
+  });
+
+  it("paragraph text is not affected by an embedded image", () => {
+    const result = nodes('<p>Hello <b>world</b><img src="a.png"></p>');
+    const p = result.find(n => n.type === "p") as Paragraph;
+    expect(p.lines[0].map(r => r.text).join("")).toBe("Hello world");
   });
 });

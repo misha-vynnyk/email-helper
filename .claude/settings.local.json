@@ -27,7 +27,14 @@
       "Bash(grep -rhoE 'className=\\\\{?[`\"][^`\"]{10,70}' src/templateLibrary --include=\"*.tsx\")",
       "Bash(pkill -f \"vite\")",
       "Bash(pkill -f \"dev-runner.js\")",
-      "Bash(pkill -f \"node.*server/index\")"
+      "Bash(pkill -f \"node.*server/index\")",
+      "Bash(node -e \"const d = require\\('dompurify'\\); console.log\\(typeof d, typeof d.sanitize, typeof d.default\\);\")",
+      "Bash(node -e \"console.log\\(require\\('dompurify/package.json'\\).main, JSON.stringify\\(require\\('dompurify/package.json'\\).exports || 'none'\\).slice\\(0,200\\)\\)\")",
+      "Bash(xargs ls -la)",
+      "Bash(awk '{print $5, $9}')",
+      "Bash(sort -k2)",
+      "Bash(git status *)",
+      "Bash(git rm *)"
     ]
   }
 }

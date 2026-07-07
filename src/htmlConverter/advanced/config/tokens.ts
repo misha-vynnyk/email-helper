@@ -20,8 +20,9 @@ export interface Tokens {
     button: string;
     white: string;
     black: string;
-    placeholderHref: string;
   };
+  /** Href stub rendered into links/buttons/images — real URLs are filled in manually after conversion */
+  placeholderHref: string;
   font: {
     stack: string;
     lineHeight: number;
@@ -41,8 +42,6 @@ export interface Tokens {
     quotePadX: number;
     calloutAccentPx: number;
     calloutPadX: number;
-    calloutBoxBorderPx: number;
-    dividerPx: number;
     alertBandPadH: number;
     alertBandPadV: number;
     gridCellPadY: number;
@@ -96,8 +95,8 @@ export const tokens: Tokens = {
     button: config.colors.button,  // "#28b628"
     white:  config.colors.white,
     black:  config.colors.black,
-    placeholderHref: "urlhere",
   },
+  placeholderHref: "urlhere",
   font: {
     // Pulled from shared config — one place to update for all converters and profiles
     stack:          config.fontFamily,  // "'Roboto', Arial, Helvetica, sans-serif"
@@ -118,8 +117,6 @@ export const tokens: Tokens = {
     quotePadX:             20,   // h4 quote paragraph left/right indent (matches Simple converter)
     calloutAccentPx:       10,   // calloutLeft left-border width
     calloutPadX:           10,   // callout left/right inner padding
-    calloutBoxBorderPx:     2,   // calloutBox full-border width
-    dividerPx:              1,   // divider line height/border-top width
     alertBandPadH:         10,   // alertBand horizontal inner padding
     alertBandPadV:          4,   // alertBand vertical inner padding
     gridCellPadY:          10,   // statsGrid card cell padding top/bottom
@@ -153,6 +150,7 @@ export type TokensOverride = {
   tags?:        Partial<Tokens["tags"]>;
   classes?:     Partial<Tokens["classes"]>;
   accentBullet?: string;
+  placeholderHref?: string;
 };
 
 export function mergeTokens(base: Tokens, override: TokensOverride): Tokens {
@@ -164,5 +162,6 @@ export function mergeTokens(base: Tokens, override: TokensOverride): Tokens {
     tags:         { ...base.tags,    ...override.tags },
     classes:      { ...base.classes, ...override.classes },
     accentBullet: override.accentBullet ?? base.accentBullet,
+    placeholderHref: override.placeholderHref ?? base.placeholderHref,
   } as Tokens;
 }

@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 import { tokens } from "../config/tokens";
-import { convertAdvanced } from "../index";
+import { convertAdvanced, convertAdvancedDetailed } from "../index";
 import { profile as alphaoneProfile } from "../profiles/alphaone";
 import { profile as tttProfile } from "../profiles/ttt";
 
@@ -58,7 +58,7 @@ describe("convertAdvanced — plain-text fixture", () => {
   });
 
   it("renders the link as an <a> tag with placeholder href", () => {
-    expect(html).toContain(`href="${tokens.color.placeholderHref}"`);
+    expect(html).toContain(`href="${tokens.placeholderHref}"`);
     expect(html).toContain("our website");
   });
 
@@ -226,7 +226,7 @@ describe("convertAdvanced — GDocs button-in-table pattern", () => {
   });
 
   it("href is placeholder urlhere", () => {
-    expect(html).toContain(`href="${tokens.color.placeholderHref}"`);
+    expect(html).toContain(`href="${tokens.placeholderHref}"`);
   });
 });
 
@@ -253,10 +253,10 @@ describe("convertAdvanced — inline override", () => {
     expect(withEmpty).toBe(withNone);
   });
 
-  it("inline color override changes placeholderHref in output", () => {
+  it("inline placeholderHref override changes hrefs in output", () => {
     const result = convertAdvanced(
       '<p><a href="https://example.com">link</a></p>',
-      { color: { placeholderHref: "CUSTOM_URL" } },
+      { placeholderHref: "CUSTOM_URL" },
     );
     expect(result).toContain("CUSTOM_URL");
     expect(result).not.toContain('"urlhere"');
@@ -289,5 +289,118 @@ describe("convertAdvanced — inline override", () => {
     expect(result).toContain("padding-left:30px");
     // Unchanged: containerMaxWidth stays 600
     expect(result).toContain("max-width:600px");
+  });
+});
+
+// ── Images end-to-end ─────────────────────────────────────────────────────────
+
+describe("convertAdvanced — images", () => {
+  it("keeps the original src so uploadedUrlMap replacement can match it", () => {
+    const html = convertAdvanced('<p><span><img src="https://lh7.googleusercontent.com/xyz" alt="Banner"></span></p>');
+    expect(html).toContain('src="https://lh7.googleusercontent.com/xyz"');
+    expect(html).toContain('alt="Banner"');
+  });
+
+  it("wraps the image in a placeholder link inside an img-bg-block cell", () => {
+    const html = convertAdvanced('<p><img src="pic.png"></p>');
+    expect(html).toContain(`class="${tokens.classes.imgBg}"`);
+    expect(html).toContain(`href="${tokens.placeholderHref}"`);
+  });
+
+  it("image between paragraphs keeps document order", () => {
+    const html = convertAdvanced("<p>before</p><p><img src='mid.png'></p><p>after</p>");
+    const iBefore = html.indexOf("before");
+    const iImg = html.indexOf("mid.png");
+    const iAfter = html.indexOf("after");
+    expect(iBefore).toBeGreaterThan(-1);
+    expect(iImg).toBeGreaterThan(iBefore);
+    expect(iAfter).toBeGreaterThan(iImg);
+  });
+
+  it("output <img> matches the useHtmlExport replacement regex", () => {
+    const html = convertAdvanced('<p><img src="https://x.com/a.png"></p>');
+    const regex = /(<img[^>]+src=["'])([^"']+)(["'][^>]*>)/gi;
+    expect(regex.test(html)).toBe(true);
+  });
+});
+
+// ── convertAdvancedDetailed — warnings & profile-aware IR ─────────────────────
+
+describe("convertAdvancedDetailed — warnings", () => {
+  it("clean input produces no warnings", () => {
+    const { warnings } = convertAdvancedDetailed("<p>hello</p>");
+    expect(warnings).toEqual([]);
+  });
+
+  it("img without src produces a warning", () => {
+    const { warnings } = convertAdvancedDetailed("<p><img alt='x'></p>");
+    expect(warnings.some(w => w.includes("без src"))).toBe(true);
+  });
+
+  it("nested table inside a colored cell is flattened to text with a warning", () => {
+    const raw = `<table><tr><td style="background-color:#1a1a2e;">
+      <table><tr><td><p>inner text</p></td></tr></table>
+    </td></tr></table>`;
+    const { html, warnings } = convertAdvancedDetailed(raw);
+    expect(html).toContain("inner text");
+    expect(warnings.some(w => w.includes("Вкладену таблицю"))).toBe(true);
+  });
+});
+
+describe("convertAdvancedDetailed — tok reaches IR construction", () => {
+  // #808080 has luminance ≈0.502: not dark with default darkLuma=0.5 (calloutLeft),
+  // dark with darkLuma=0.6 (alertBand). Verifies profile tokens flow into ir/color.
+  const raw = '<table><tr><td style="background-color:#808080;"><p>band</p></td></tr></table>';
+
+  it("default darkLuma → light bg → calloutLeft (border-left)", () => {
+    const { html } = convertAdvancedDetailed(raw);
+    expect(html).toContain("border-left:");
+  });
+
+  it("darkLuma override → dark bg → alertBand (no border-left)", () => {
+    const { html } = convertAdvancedDetailed(raw, { color: { darkLuma: 0.6 } });
+    expect(html).not.toContain("border-left:");
+    expect(html).toContain("#808080");
+  });
+});
+
+// ── Proportional column widths from <colgroup> ────────────────────────────────
+
+describe("convertAdvanced — proportional colgroup widths", () => {
+  it("statsGrid uses colgroup proportions instead of equal split", () => {
+    const raw = `<table>
+      <colgroup><col width="150"><col width="300"><col width="150"></colgroup>
+      <tr><td><p>a</p></td><td><p>b</p></td><td><p>c</p></td></tr>
+    </table>`;
+    const html = convertAdvanced(raw);
+    expect(html).toContain('width="25%"');
+    expect(html).toContain('width="50%"');
+  });
+
+  it("grid widths still sum to 100 with uneven proportions", () => {
+    const raw = `<table>
+      <colgroup><col width="132"><col width="360"><col width="132"></colgroup>
+      <tr><td><p>a</p></td><td><p>b</p></td><td><p>c</p></td></tr>
+    </table>`;
+    const html = convertAdvanced(raw);
+    const widths = [...html.matchAll(/width="(\d+)%"/g)].map(m => parseInt(m[1])).filter(w => w < 100);
+    expect(widths.reduce((s, w) => s + w, 0)).toBe(100);
+  });
+
+  it("falls back to equal split when colgroup is absent", () => {
+    const raw = "<table><tr><td><p>a</p></td><td><p>b</p></td></tr></table>";
+    const html = convertAdvanced(raw);
+    expect(html).toContain('width="50%"');
+  });
+
+  it("recordRow uses colgroup proportions", () => {
+    const raw = `<table>
+      <colgroup><col width="100"><col width="300"></colgroup>
+      <tr><td><p>k1</p></td><td><p>v1</p></td></tr>
+      <tr><td><p>k2</p></td><td><p>v2</p></td></tr>
+    </table>`;
+    const html = convertAdvanced(raw);
+    expect(html).toContain('width="25%"');
+    expect(html).toContain('width="75%"');
   });
 });

@@ -2,16 +2,20 @@
 
 import type { Tokens } from "../config/tokens";
 import { tokens as defaultTokens } from "../config/tokens";
-import type { ComponentNode, Run,StructuralNode, TableNode } from "../ir/types";
+import type { ComponentNode, Run,StructuralNode, TableNode, WarnFn } from "../ir/types";
 import { classifyFlow } from "./flowBlock";
 import { classifyTable } from "./tableBlock";
 
 function pushMerged(result: ComponentNode[], comp: ComponentNode): void {
   const last = result[result.length - 1];
 
+  // align defaults to "left" at render time — treat undefined and "left" as equal here
+  const alignOf = (c: ComponentNode) => (c.props["align"] as string | undefined) ?? "left";
+
   if (comp.kind === "paragraph" && last?.kind === "paragraph" &&
       last.props["size"] === comp.props["size"] &&
-      last.props["align"] === comp.props["align"]) {
+      last.props["variant"] === comp.props["variant"] &&
+      alignOf(last) === alignOf(comp)) {
     const lastLines = last.props["lines"] as Run[][];
     const newLines = comp.props["lines"] as Run[][];
     if (newLines.length > 0) {
@@ -41,18 +45,18 @@ function pushMerged(result: ComponentNode[], comp: ComponentNode): void {
   result.push(comp);
 }
 
-export function classify(nodes: StructuralNode[], tok: Tokens = defaultTokens): ComponentNode[] {
+export function classify(nodes: StructuralNode[], tok: Tokens = defaultTokens, warn?: WarnFn): ComponentNode[] {
   const result: ComponentNode[] = [];
 
   for (const node of nodes) {
     if (node.type === "table") {
-      const component = classifyTable(node as TableNode, tok);
+      const component = classifyTable(node as TableNode, tok, warn);
       if (component) {
         pushMerged(result, component);
       } else {
         for (const row of (node as TableNode).rows) {
           for (const cell of row.cells) {
-            for (const comp of classify(cell.children, tok)) {
+            for (const comp of classify(cell.children, tok, warn)) {
               pushMerged(result, comp);
             }
           }
@@ -62,6 +66,8 @@ export function classify(nodes: StructuralNode[], tok: Tokens = defaultTokens): 
       for (const comp of classifyFlow([node], tok)) {
         pushMerged(result, comp);
       }
+    } else if (node.type === "img") {
+      result.push({ kind: "image", props: { src: node.src, alt: node.alt } });
     }
   }
 

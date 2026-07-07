@@ -42,7 +42,7 @@ describe("renderRuns", () => {
   it("renders href as <a> with placeholder href + full link style", () => {
     const runs: Run[] = [{ text: "click", href: "https://example.com" }];
     const result = renderRuns(runs, tokens);
-    expect(result).toContain(`href="${tokens.color.placeholderHref}"`);
+    expect(result).toContain(`href="${tokens.placeholderHref}"`);
     expect(result).toContain(tokens.color.link);
     expect(result).toContain(`font-weight:${tokens.font.linkWeight}`);
     expect(result).toContain(`text-decoration:${tokens.font.linkDecoration}`);
@@ -123,7 +123,7 @@ describe("renderRuns", () => {
     const runs: Run[] = [{ text: "click", href: "https://example.com", color: "#cc0000" }];
     const result = renderRuns(runs, tokens);
     expect(result).toContain("color:#cc0000");
-    expect(result).toContain(`href="${tokens.color.placeholderHref}"`);
+    expect(result).toContain(`href="${tokens.placeholderHref}"`);
   });
 
   it("omits color tag when run.color matches baseColor", () => {
@@ -315,20 +315,23 @@ describe("renderNode — alertBand", () => {
   });
 });
 
-// ── renderNode — divider ───────────────────────────────────────────────────────
+// ── renderNode — image ────────────────────────────────────────────────────────
 
-describe("renderNode — divider", () => {
-  it("renders a horizontal rule with the given color", () => {
-    const node: ComponentNode = { kind: "divider", props: { color: "#cccccc" } };
+describe("renderNode — image", () => {
+  it("renders an img row with the source URL and alt", () => {
+    const node: ComponentNode = {
+      kind: "image",
+      props: { src: "https://lh7.googleusercontent.com/abc", alt: "Chart" },
+    };
     const result = renderNode(node, tmpl, tokens);
-    expect(result).toContain("#cccccc");
-    expect(result).toContain("border-top");
+    expect(result).toContain('src="https://lh7.googleusercontent.com/abc"');
+    expect(result).toContain('alt="Chart"');
+    expect(result).toContain(`href="${tokens.placeholderHref}"`);
   });
 
-  it("divider height matches tok.layout.dividerPx", () => {
-    const node: ComponentNode = { kind: "divider", props: { color: "#000000" } };
-    const result = renderNode(node, tmpl, tokens);
-    expect(result).toContain(`${tokens.layout.dividerPx}px solid`);
+  it("returns empty string when src is missing", () => {
+    const node: ComponentNode = { kind: "image", props: {} };
+    expect(renderNode(node, tmpl, tokens)).toBe("");
   });
 });
 
@@ -355,28 +358,17 @@ describe("renderNode — spacer", () => {
   });
 });
 
-// ── renderNode — calloutBox ───────────────────────────────────────────────────
+// ── renderNode — calloutLeft ──────────────────────────────────────────────────
 
-describe("renderNode — calloutBox", () => {
-  it("renders calloutBox with full border (not just left border)", () => {
-    const node: ComponentNode = {
-      kind: "calloutBox",
-      props: { runs: [{ text: "note" }], accentColor: "#28b628" },
-    };
-    const result = renderNode(node, tmpl, tokens);
-    expect(result).toContain("note");
-    expect(result).toContain("#28b628");
-    // calloutBox uses full border (border:), calloutLeft uses border-left:
-    expect(result).toContain("border:");
-    expect(result).not.toMatch(/border-left:[^;]+solid/);
-  });
-
-  it("calloutLeft uses border-left (not full border)", () => {
+describe("renderNode — calloutLeft", () => {
+  it("renders runs with left accent border", () => {
     const node: ComponentNode = {
       kind: "calloutLeft",
       props: { runs: [{ text: "tip" }], accentColor: "#ff9900" },
     };
     const result = renderNode(node, tmpl, tokens);
+    expect(result).toContain("tip");
+    expect(result).toContain("#ff9900");
     expect(result).toContain("border-left:");
   });
 });
@@ -436,7 +428,7 @@ describe("renderNode — buttonBand", () => {
 
 describe("renderNode — unknown kind", () => {
   it("returns empty string for unhandled component kind", () => {
-    const node = { kind: "header" as ComponentNode["kind"], props: {} };
+    const node = { kind: "nonexistent" as ComponentNode["kind"], props: {} };
     const result = renderNode(node, tmpl, tokens);
     expect(result).toBe("");
   });

@@ -2,6 +2,18 @@
 
 This document outlines identified issues in the `@usewaypoint/editor-sample-server` (FlexiBuilder Pro Backend) found during the audit on 2026-03-30.
 
+## Status (re-verified 2026-07-06)
+
+| # | Issue | Status |
+|---|-------|--------|
+| 1 | RCE in `generateBlockCode` | ⚠️ **Partially fixed** — `html` is sanitized (`sanitizeHTML`), but `id`/`name`/`category`/`keywords` are still single-quote interpolated (`'${k}'`) — injection via metadata remains possible. Use `JSON.stringify()`. |
+| 2 | SSRF in `convert-from-url` | ❌ **Open** — private-IP guard exists in `routes/imageProxy.js` but NOT in `imageConverter.js`'s `convert-from-url`. |
+| 3 | OOM DoS (memoryStorage) | ⚠️ **Mitigated** — file cap lowered 50 → 20, but still `memoryStorage` × 50MB (≤1GB/request). |
+| 4 | No auth on internal API | ❌ Open (accepted for local-only use). |
+| 5 | Stray compiled `.js` in `server/` root | ❌ Open (`server/blockFileManager.js` still present). |
+| 6 | Global 50MB JSON limit | ❌ Open. |
+| 7 | Duplicate CORS origins | ❌ Open (static entry line ~31 + conditional `push` line ~44). |
+
 ## 🔴 High Priority
 
 ### 1. TypeScript Code Injection in `BlockFileManager`

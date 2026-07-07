@@ -134,7 +134,6 @@ $env:BRAVE_USER_DATA_DIR = "$env:TEMP\brave-debug"
 ## Додатково
 
 - **Відправка листів:** Gmail App Password (Google Account → Security → App Passwords). У додатку вводити цей пароль, не основний.
-- **GIF:** див. [GIF_OPTIMIZATION.md](src/imageConverter/GIF_OPTIMIZATION.md).
 - **Збірка:** `npm run build`, деплой — `npm run deploy`.
 
 ### Storage Upload (default / alphaone) — де налаштовувати

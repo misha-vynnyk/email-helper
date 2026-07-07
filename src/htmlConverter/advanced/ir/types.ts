@@ -24,26 +24,12 @@ export interface ImageNode {
   alt?: string;
 }
 
-export interface BorderSide {
-  width: number;  // px
-  color: string;  // normalized hex
-}
-
-export interface BorderSpec {
-  top?: BorderSide;
-  right?: BorderSide;
-  bottom?: BorderSide;
-  left?: BorderSide;
-}
-
 export interface CellNode {
   type: "cell";
   colspan?: number;
   bg?: string;
-  border?: BorderSpec;
   align?: "left" | "center" | "right";
   valign?: "top" | "middle" | "bottom";
-  colWidthPct?: number;  // relative column width from <col> elements (for statsGrid/recordRow detection)
   children: StructuralNode[];
 }
 
@@ -55,8 +41,11 @@ export interface RowNode {
 export interface TableNode {
   type: "table";
   rows: RowNode[];
-  colWidths?: number[];  // relative widths from <colgroup><col>, sum = 100
+  colWidths?: number[];  // relative widths from <colgroup><col> (raw px values, any sum)
 }
+
+/** Collector for non-fatal conversion issues (silently-dropped/flattened content). */
+export type WarnFn = (message: string) => void;
 
 export type StructuralNode = TableNode | RowNode | CellNode | Paragraph | ImageNode;
 
@@ -64,16 +53,12 @@ export type StructuralNode = TableNode | RowNode | CellNode | Paragraph | ImageN
 
 export type ComponentKind =
   | "alertBand"
-  | "header"
-  | "divider"
   | "paragraph"
   | "buttonBand"
   | "calloutLeft"
-  | "calloutBox"
   | "statsGrid"
   | "recordRow"
-  | "authorBlock"
-  | "warningLine"
+  | "image"
   | "spacer";
 
 export interface ComponentNode {

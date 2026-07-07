@@ -23,8 +23,8 @@
 | React | ^18.2.0 | UI framework |
 | TypeScript | ^5.2.2 | Type safety |
 | Vite | ^8.0.11 | Build tool & dev server |
-| Material-UI (MUI) | ^5.15.10 | Component library |
-| Tailwind CSS | ^3.4.19 | Utility styling |
+| Tailwind CSS | ^3.4.19 | Styling (MUI fully removed; shadcn-style CSS variables) |
+| Electron + electron-vite | ^42 | Desktop packaging (`npm run dist:mac` / `dist:win`) |
 | Zustand | ^4.5.1 | State management |
 | i18next | ^25.8.13 | Internationalization |
 | Radix UI | various | Headless accessible components |
@@ -83,6 +83,7 @@ email-helper-copy/
 │   ├── blockLibrary/           # Block library UI & logic
 │   ├── templateLibrary/        # Template library UI & logic
 │   ├── htmlConverter/          # HTML/MJML converter (main feature)
+│   │   └── advanced/           # DOM-based GDocs→email pipeline (IR + classify + render)
 │   ├── imageConverter/         # Image format conversion tool
 │   ├── emailSender/            # Email sending functionality
 │   ├── emailValidator/         # Email HTML validation
@@ -90,7 +91,7 @@ email-helper-copy/
 │   ├── hooks/                  # Shared custom hooks
 │   ├── api/                    # HTTP client & endpoint definitions
 │   ├── contexts/               # Zustand global state
-│   ├── config/                 # API URL + env validation
+│   ├── config/                 # API URL, env validation, feature flags
 │   ├── theme/                  # MUI theme + dark/light mode
 │   ├── utils/                  # Utility functions
 │   ├── lib/                    # Shared libs (clsx/cn helper)
@@ -161,10 +162,12 @@ No React Router — tab-based navigation:
 | Tab | Component | Purpose |
 |-----|-----------|---------|
 | `email` | `EmailSenderPanel` | Send test emails via SMTP |
-| `blocks` | `BlockLibrary` | Browse/manage email blocks |
+| `blocks` | `BlockLibrary` | Browse/manage email blocks (hidden in v1.0, see feature flags) |
 | `templates` | `TemplateLibrary` | Browse/manage email templates |
 | `images` | `ImageConverterPanel` | Convert image formats |
 | `converter` | `HtmlConverterPanel` | Main HTML/MJML editor & formatter |
+
+**Feature flags** (`src/config/featureFlags.ts`, build-time): `BLOCK_LIBRARY_ENABLED = false` (Blocks tab hidden for v1.0), `EMAIL_VALIDATOR_ENABLED = false` (validator panel hidden for v1.0).
 
 ### State Management (Zustand)
 
@@ -219,6 +222,13 @@ The most complex feature. Converts plain text/raw HTML to formatted email-safe H
 **Storage providers (subdirs):**
 - `ttt/` — TTT (TerraTrans) provider config
 - `alphaone/` — AlfaOne provider config
+
+**Advanced converter (`advanced/`)** — DOM-based pipeline for raw GDocs paste (spec: `ADVANCED_HTML_CONVERTER.md`):
+- Pipeline: `preprocess → normalize → fromDom (structural IR) → classify (semantic IR) → render`
+- All visuals come from `config/tokens.ts`; profiles (`profiles/ttt.ts`, `alphaone.ts`) are token overrides — no markup forks
+- `convertAdvancedDetailed()` returns `{ html, warnings }`; warnings surface in the UI log
+- Inline links intentionally render `href="urlhere"` (placeholder workflow); images keep original `src` for URL-map replacement
+- Optional DOMPurify pass in `sanitize.ts` for untrusted input
 
 **Features:**
 - Convert plain text → email-safe HTML
@@ -471,6 +481,9 @@ npm run build         # Production build → dist/
 npm run deploy        # Build + push to GitHub Pages (gh-pages)
 npm run test          # Jest tests
 npm run test:coverage # Tests with coverage report
+npm run dev:electron  # Electron dev shell
+npm run dist:mac      # Package desktop app (macOS); dist:win for Windows
+                      # (icons required — see build/ICONS_NEEDED.md)
 npm run automation:upload  # Run browser upload automation
 ```
 
@@ -563,19 +576,16 @@ npm run dev 1   # Instance 1: frontend=5183, backend=3011, AI=8010
 
 ---
 
-## Theme System (`src/theme/`)
+## Theme System (`src/theme/` + Tailwind)
+
+Styling is Tailwind-based: shadcn-style CSS variables (`hsl(var(--…))`) defined in `src/index.css`, palette wired in `tailwind.config.js`. MUI was fully removed during the Tailwind migration.
 
 | File | Purpose |
 |------|---------|
 | `ThemeContext.tsx` | Dark/light mode state |
-| `theme.ts` | MUI theme definition |
-| `tokens.ts` | Design tokens |
-| `componentStyles.ts` | Component-specific overrides |
-| `StyledCard.tsx` | Reusable styled card |
-| `StyledPaper.tsx` | Reusable styled paper |
 | `ThemeToggle.tsx` | Dark/light toggle button |
-| `ThemeStyleSelector.tsx` | Theme style picker |
-| `COLOR_SCHEME.md` | Color scheme documentation |
+| `index.ts` | Public exports |
+| `examples/` | Reference screens for the design system |
 
 ---
 

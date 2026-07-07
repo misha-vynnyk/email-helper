@@ -1,5 +1,6 @@
 // Maps GDocs inline CSS values to IR roles — no raw px/pt values flow into ComponentNode.
 
+import type { Tokens } from "../config/tokens";
 import { tokens } from "../config/tokens";
 
 export function parseStyle(style: string): Record<string, string> {
@@ -14,10 +15,10 @@ export function parseStyle(style: string): Record<string, string> {
   return result;
 }
 
-export function ptToSizeRole(ptStr: string): "body" | "small" {
+export function ptToSizeRole(ptStr: string, tok: Tokens = tokens): "body" | "small" {
   const pt = parseFloat(ptStr);
   if (isNaN(pt)) return "body";
-  return pt <= tokens.font.smallMaxPt ? "small" : "body";
+  return pt <= tok.font.smallMaxPt ? "small" : "body";
 }
 
 export function isBold(style: Record<string, string>): boolean {
