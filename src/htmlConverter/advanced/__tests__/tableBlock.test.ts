@@ -154,6 +154,24 @@ describe("classifyTable — meaningless (near-white) border", () => {
   });
 });
 
+// Fix #9: without classifyChildren, calloutBox's fallback child must match cellToChild
+describe("classifyTable — calloutBox fallback child (no classifyChildren)", () => {
+  it("fallback child uses align='center' and carries bg, same as cellToChild", () => {
+    const cell = makeCell({
+      bg: "#fff7ed",
+      border: { top: { color: "#c2410c" }, right: { color: "#c2410c" },
+                bottom: { color: "#c2410c" }, left: { color: "#c2410c" } },
+    });
+    const table = makeTable([[cell]]);
+    // classifyTable called with no 4th arg → classifySingleCell has no classifyChildren
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("calloutBox");
+    const child = result?.children?.[0];
+    expect(child?.props["align"]).toBe("center");
+    expect(child?.props["bg"]).toBe("#fff7ed");
+  });
+});
+
 // ── Multi-cell classification ─────────────────────────────────────────────────
 
 describe("classifyTable — multi-cell", () => {

@@ -175,10 +175,7 @@ function classifySingleCell(
   // calloutBox. Recurse into children (via classify.ts) so nested content — e.g. a
   // button table inside a bordered CTA box — survives instead of being flattened to text.
   if (border) {
-    const children = classifyChildren?.(cell.children) ?? [{
-      kind: "paragraph" as const,
-      props: { lines: flattenLines(cell, warn), align: cell.align ?? "left", size: "small" as const },
-    }];
+    const children = classifyChildren?.(cell.children) ?? [cellToChild(cell, warn)];
     return { kind: "calloutBox", props: { border, bg }, children };
   }
 
