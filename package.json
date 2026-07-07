@@ -114,5 +114,14 @@
     "ts-jest": "^28.0.8",
     "typescript": "^5.2.2",
     "vite": "^8.0.11"
+  },
+  "allowScripts": {
+    "@swc/core@1.15.40": true,
+    "esbuild@0.25.12": true,
+    "electron-winstaller@5.4.0": true,
+    "fsevents@2.3.3": true,
+    "gifsicle@5.3.0": true,
+    "sharp@0.33.5": true,
+    "tesseract.js@6.0.1": true
   }
 }
