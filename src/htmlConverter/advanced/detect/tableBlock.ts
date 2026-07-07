@@ -1,11 +1,18 @@
 // Phase 3: classify <table> StructuralNodes into ComponentNodes.
-// Precedence (1×1): buttonBand → alertBand → calloutLeft → unwrap (transparent)
+// Precedence (1×1): buttonBand → alertBand → calloutLeft → calloutBox → unwrap (transparent)
 // Multi-cell:       statsGrid (1 row, N≥2) → recordRow (M rows, N≥2)
 
 import type { Tokens } from "../config/tokens";
 import { tokens as defaultTokens } from "../config/tokens";
 import { isDarkBg } from "../ir/color";
-import type { CellNode, ComponentNode, Paragraph, Run,TableNode, WarnFn } from "../ir/types";
+import type { BorderSpec, CellNode, ComponentNode, Paragraph, Run,StructuralNode, TableNode, WarnFn } from "../ir/types";
+
+/** Recurses back into classify.ts — threaded in to avoid a circular import. */
+export type ClassifyChildrenFn = (nodes: StructuralNode[]) => ComponentNode[];
+
+function firstBorderColor(border: BorderSpec | undefined): string | undefined {
+  return border?.top?.color ?? border?.right?.color ?? border?.bottom?.color ?? border?.left?.color;
+}
 
 // ── Cell content helpers ──────────────────────────────────────────────────────
 
@@ -95,23 +102,31 @@ function toWidthPercents(colWidths: number[] | undefined, ncells: number): numbe
 
 // ── Single-cell classification ────────────────────────────────────────────────
 
-function classifySingleCell(cell: CellNode, tok: Tokens, warn?: WarnFn): ComponentNode | null {
+function classifySingleCell(
+  cell: CellNode,
+  tok: Tokens,
+  warn?: WarnFn,
+  classifyChildren?: ClassifyChildrenFn,
+): ComponentNode | null {
   const bg = cell.bg;
+  const border = cell.border;
 
-  // No color or matches root background → transparent, let classify.ts unwrap
-  if (!bg || bg === tok.color.rootBackground) return null;
+  // No color and no border, or bg matches root background with no border → transparent, let classify.ts unwrap
+  if (!border && (!bg || bg === tok.color.rootBackground)) return null;
 
   // h5 marker inside a colored cell → button using cell's bg color and no border-radius
   // (GDocs uses a colored td around an h5 to mark a button; radius comes from the cell,
   //  which never has border-radius in GDocs → use 0 to match the source document)
-  if (hasButtonMarker(cell)) {
+  // Requires an actual bg — a bordered-but-transparent h5 cell falls through to the
+  // border-handling branches below instead of reaching render with bg === undefined.
+  if (hasButtonMarker(cell) && bg && bg !== tok.color.rootBackground) {
     return {
       kind: "buttonBand",
       props: { runs: flattenRuns(cell, warn), href: tok.placeholderHref, bg, radius: 0 },
     };
   }
 
-  if (isDarkBg(bg, tok)) {
+  if (bg && isDarkBg(bg, tok)) {
     const href = findHref(cell);
     if (href) {
       return { kind: "buttonBand", props: { runs: flattenRuns(cell, warn), href, bg } };
@@ -119,7 +134,28 @@ function classifySingleCell(cell: CellNode, tok: Tokens, warn?: WarnFn): Compone
     return { kind: "alertBand", props: { runs: flattenRuns(cell, warn), bg } };
   }
 
-  // Light accent bg → callout with left border
+  // Pure border-left accent (+ optional light bg) → calloutLeft, using the
+  // document's own border color instead of the house default.
+  const isLeftAccentOnly = Boolean(border?.left) && !border?.top && !border?.right && !border?.bottom;
+  if (isLeftAccentOnly) {
+    return {
+      kind: "calloutLeft",
+      props: { runs: flattenRuns(cell, warn), bg, accentColor: border!.left!.color },
+    };
+  }
+
+  // Any other border shape (full frame, partial multi-side, or a lone rule line) →
+  // calloutBox. Recurse into children (via classify.ts) so nested content — e.g. a
+  // button table inside a bordered CTA box — survives instead of being flattened to text.
+  if (border) {
+    const children = classifyChildren?.(cell.children) ?? [{
+      kind: "paragraph" as const,
+      props: { lines: flattenLines(cell, warn), align: cell.align ?? "left", size: "small" as const },
+    }];
+    return { kind: "calloutBox", props: { border, bg }, children };
+  }
+
+  // Light bg with no border info in the document → generic accent callout (house default color)
   return {
     kind: "calloutLeft",
     props: { runs: flattenRuns(cell, warn), bg, accentColor: tok.color.button },
@@ -138,7 +174,12 @@ function rowCells(cells: CellNode[], warn?: WarnFn) {
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 
-export function classifyTable(node: TableNode, tok: Tokens = defaultTokens, warn?: WarnFn): ComponentNode | null {
+export function classifyTable(
+  node: TableNode,
+  tok: Tokens = defaultTokens,
+  warn?: WarnFn,
+  classifyChildren?: ClassifyChildrenFn,
+): ComponentNode | null {
   const { rows } = node;
   if (!rows.length) return null;
 
@@ -148,7 +189,7 @@ export function classifyTable(node: TableNode, tok: Tokens = defaultTokens, warn
 
   // Single-row, single-cell (check physical cell count, not colspan-expanded ncols)
   if (rows.length === 1 && rows[0].cells.length === 1) {
-    return classifySingleCell(rows[0].cells[0], tok, warn);
+    return classifySingleCell(rows[0].cells[0], tok, warn, classifyChildren);
   }
 
   // Single-row, multi-cell
@@ -160,14 +201,15 @@ export function classifyTable(node: TableNode, tok: Tokens = defaultTokens, warn
     // treating the whole row as a stats grid.
     const meaningfulCells = cells.filter(hasMeaningfulContent);
     if (meaningfulCells.length === 1) {
-      const comp = classifySingleCell(meaningfulCells[0], tok, warn);
+      const comp = classifySingleCell(meaningfulCells[0], tok, warn, classifyChildren);
       if (comp) return comp;
       // null → transparent cell, fall through to statsGrid
     }
 
+    const borderColor = firstBorderColor(cells.find(c => c.border)?.border);
     return {
       kind: "statsGrid",
-      props: { n: cells.length, widths: toWidthPercents(node.colWidths, cells.length) },
+      props: { n: cells.length, widths: toWidthPercents(node.colWidths, cells.length), borderColor },
       children: cells.map(c => cellToChild(c, warn)),
     };
   }
@@ -176,10 +218,14 @@ export function classifyTable(node: TableNode, tok: Tokens = defaultTokens, warn
   if (ncols >= 2) {
     const cellCounts = new Set(rows.map(r => r.cells.length));
     const uniformCells = cellCounts.size === 1 ? rows[0].cells.length : 0;
+    const borderColor = firstBorderColor(
+      rows.flatMap(r => r.cells).find(c => c.border)?.border,
+    );
     return {
       kind: "recordRow",
       props: {
         widths: toWidthPercents(node.colWidths, uniformCells),
+        borderColor,
         rows: rows.map(r => ({
           bg: r.cells.every(c => c.bg === r.cells[0].bg) ? r.cells[0].bg : undefined,
           cells: rowCells(r.cells, warn),
