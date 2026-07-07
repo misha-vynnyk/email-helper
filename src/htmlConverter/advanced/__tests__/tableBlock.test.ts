@@ -71,6 +71,28 @@ describe("classifyTable — single-cell", () => {
     expect((result?.props as Record<string, unknown>)["accentColor"]).toBe("#ff0000");
   });
 
+  // Fix #1: h5-marked cell with a border but no bg must not become a bg-less buttonBand
+  // (buttonBand with bg===undefined crashes render's isDarkBg(undefined) downstream).
+  it("h5 marker + border but no bg is NOT classified as buttonBand", () => {
+    const cell = makeCell({
+      border: { top: { width: 1, color: "#000000" } },
+      children: [{ type: "p", size: "small", headingLevel: 5, lines: [[makeRun("Button")]] }],
+    });
+    const table = makeTable([[cell]]);
+    const result = classifyTable(table);
+    expect(result?.kind).not.toBe("buttonBand");
+  });
+
+  it("h5 marker + bg still classifies as buttonBand (no regression)", () => {
+    const cell = makeCell({
+      bg: "#123456",
+      children: [{ type: "p", size: "small", headingLevel: 5, lines: [[makeRun("Button")]] }],
+    });
+    const table = makeTable([[cell]]);
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("buttonBand");
+  });
+
   // Fix #1: colspan=2 on a single physical cell → still single-cell, NOT statsGrid
   it("single physical cell with colspan=2 is NOT classified as statsGrid", () => {
     const cell = makeCell({ bg: "#f5f5f5", colspan: 2 });
