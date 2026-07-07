@@ -24,7 +24,17 @@ export function cleanEmptyHtmlTags(htmlContent: string): string {
   htmlContent = htmlContent.replace(/<b\b[^>]*>\s*<\/b>/g, " ");
   htmlContent = htmlContent.replace(/<u>\s*<\/u>/g, " ");
   htmlContent = htmlContent.replace(/<em[^>]*>\s*<\/em>/g, " ");
-  htmlContent = htmlContent.replace(/<\/em>\s*<em[^>]*>/g, " ");
+  // Merge adjacent <em> tags only when their opening tags are identical (e.g. the same
+  // italic run split across spans by Google Docs). Two <em> runs can carry different
+  // colors/styles (e.g. a quote followed by its attribution in a callout) — collapsing
+  // those unconditionally would silently drop the second run's styling.
+  htmlContent = htmlContent.replace(
+    /(<em(?:\s+[^>]*)?>)([\s\S]*?)<\/em>\s*<em((?:\s+[^>]*)?)>/g,
+    (match, openTag: string, content: string, secondAttrs: string) => {
+      const firstAttrs = openTag.slice(3, -1).trim();
+      return firstAttrs === secondAttrs.trim() ? `${openTag}${content} ` : match;
+    },
+  );
   htmlContent = htmlContent.replace(/<a[^>]*>\s*<\/a>/g, " ");
   htmlContent = htmlContent.replace(/<br><br>\s*<\/span>/g, "</span>");
   htmlContent = htmlContent.replace(/(<span[^>]*>)\s*<\/a>/gi, "$1");
