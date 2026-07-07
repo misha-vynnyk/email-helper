@@ -4,6 +4,7 @@
 
 import type { Tokens } from "../config/tokens";
 import { tokens as defaultTokens } from "../config/tokens";
+import { resolveNamedColor } from "./namedColors";
 
 function parseHex(c: string): [number, number, number] | null {
   const s = c.trim().toLowerCase();
@@ -20,6 +21,8 @@ function parseHex(c: string): [number, number, number] | null {
   }
   const rgb = s.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*[\d.]+)?\s*\)$/);
   if (rgb) return [+rgb[1], +rgb[2], +rgb[3]];
+  const named = resolveNamedColor(s);
+  if (named) return parseHex(named);
   return null;
 }
 
