@@ -288,6 +288,7 @@ function AiSuggestionsSection({ file, uploading, aiState, analysisLabel, customA
         {aiState?.cacheHit && <span className='px-2 py-0.5 text-[10px] border border-border/50 rounded text-muted-foreground'>cache</span>}
 
         {aiState?.status === "error" && <span className='text-[10px] text-destructive'>{aiState?.error}</span>}
+        {aiState?.status === "done" && aiState?.warning && <span className='text-[10px] text-amber-600 dark:text-amber-500'>{aiState.warning}</span>}
       </div>
 
       {/* Progress bar */}

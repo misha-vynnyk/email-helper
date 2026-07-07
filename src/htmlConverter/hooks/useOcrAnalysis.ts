@@ -93,6 +93,7 @@ export function useOcrAnalysis({ enabled, settings, files }: UseOcrAnalysisArgs)
           textLikelihood: result.textLikelihood,
           skippedReason: result.skippedReason,
           cacheHit: result.cacheHit,
+          warning: result.warning,
         });
 
         return result;

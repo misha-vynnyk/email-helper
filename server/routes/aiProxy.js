@@ -112,6 +112,18 @@ function httpPost(url, payload) {
   });
 }
 
+/** Model names currently pulled in Ollama (empty array if Ollama is unreachable). */
+async function getInstalledModels() {
+  try {
+    const r = await httpGet(`${ollamaHost}/api/tags`);
+    if (r.status !== 200) return [];
+    const data = JSON.parse(r.body);
+    return (data.models || []).map((m) => m.name);
+  } catch {
+    return [];
+  }
+}
+
 async function resizeImageToJpeg(buffer) {
   try {
     const sharp = require("sharp");
@@ -139,15 +151,7 @@ router.get("/health", async (_req, res) => {
 
 // List models available in Ollama
 router.get("/api/models", async (_req, res) => {
-  try {
-    const r = await httpGet(`${ollamaHost}/api/tags`);
-    if (r.status !== 200) return res.json({ models: [] });
-    const data = JSON.parse(r.body);
-    const models = (data.models || []).map((m) => m.name);
-    res.json({ models });
-  } catch {
-    res.json({ models: [] });
-  }
+  res.json({ models: await getInstalledModels() });
 });
 
 // Analyze image via Ollama
@@ -160,6 +164,30 @@ router.post("/api/analyze", upload.single("file"), async (req, res) => {
   }
 
   try {
+    // Each profile persists its own model choice (ollama-settings.json under its own
+    // ELECTRON_USER_DATA) — a fresh profile that never touched Settings falls back to
+    // a hardcoded default that may not actually be pulled in this machine's Ollama.
+    // Rather than fail outright, switch to whatever IS installed and stick with it.
+    const installed = await getInstalledModels();
+    let modelWarning;
+    if (installed.length === 0) {
+      return res.status(503).json({
+        error: `Ollama has no models installed. Run "ollama pull <model>" (e.g. qwen3.5:4b) first.`,
+      });
+    }
+    if (!installed.includes(ollamaModel)) {
+      const fallback = installed[0];
+      modelWarning = `Модель "${ollamaModel}" не встановлена в Ollama — використано "${fallback}". Доступні: ${installed.join(", ")}. Змініть модель в Налаштуваннях, щоб прибрати це попередження.`;
+      ollamaModel = fallback;
+      persistSettings({
+        ollama_host: ollamaHost,
+        model: ollamaModel,
+        temperature: modelTemperature,
+        num_predict: modelNumPredict,
+        num_ctx: modelNumCtx,
+      });
+    }
+
     const optimized = await resizeImageToJpeg(req.file.buffer);
     const base64Image = optimized.toString("base64");
 
@@ -169,6 +197,9 @@ router.post("/api/analyze", upload.single("file"), async (req, res) => {
       images: [base64Image],
       stream: false,
       format: "json",
+      // Reasoning models (e.g. qwen3.5) otherwise dump the JSON answer into `thinking`
+      // and leave `response` empty — force the final answer into `response`.
+      think: false,
       options: { temperature: modelTemperature, num_predict: modelNumPredict, num_ctx: modelNumCtx },
     };
 
@@ -195,6 +226,7 @@ router.post("/api/analyze", upload.single("file"), async (req, res) => {
       },
       raw: { ocr: String(parsed.cta || ""), caption: String(parsed.alt_text || "Image"), tags: [] },
       cached: false,
+      ...(modelWarning ? { warning: modelWarning } : {}),
     };
 
     if (responseCache.size >= CACHE_MAX) responseCache.delete(responseCache.keys().next().value);
@@ -220,6 +252,7 @@ router.post("/api/test", express.json(), async (req, res) => {
       prompt: 'Reply with exactly this JSON and nothing else: {"filename":"test","alt_text":"test image","cta":""}',
       stream: false,
       format: "json",
+      think: false,
       options: { temperature: modelTemperature, num_predict: modelNumPredict, num_ctx: modelNumCtx },
     };
     const r = await httpPost(`${ollamaHost}/api/generate`, payload);
