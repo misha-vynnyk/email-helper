@@ -384,3 +384,25 @@ describe("fromDom — images", () => {
     expect(p.lines[0].map(r => r.text).join("")).toBe("Hello world");
   });
 });
+
+// ── Cell borders (Fix #2: named CSS colors) ────────────────────────────────────
+
+describe("fromDom — cell borders", () => {
+  it("resolves a named CSS border color (not just hex/rgb())", () => {
+    const result = nodes('<table><tr><td style="border: 1px solid red;">x</td></tr></table>');
+    const table = result[0] as TableNode;
+    expect(table.rows[0].cells[0].border?.top?.color).toBe("#ff0000");
+  });
+
+  it("still resolves hex border colors (no regression)", () => {
+    const result = nodes('<table><tr><td style="border: 1px solid #c2410c;">x</td></tr></table>');
+    const table = result[0] as TableNode;
+    expect(table.rows[0].cells[0].border?.top?.color).toBe("#c2410c");
+  });
+
+  it("drops the border when the color word isn't a known keyword", () => {
+    const result = nodes('<table><tr><td style="border: 1px solid notacolor;">x</td></tr></table>');
+    const table = result[0] as TableNode;
+    expect(table.rows[0].cells[0].border).toBeUndefined();
+  });
+});

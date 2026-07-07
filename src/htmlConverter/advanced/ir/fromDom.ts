@@ -7,7 +7,7 @@ import type { Tokens } from "../config/tokens";
 import { tokens as defaultTokens } from "../config/tokens";
 import { canonicalizeBg,canonicalizeText } from "./color";
 import { getAlign, isBold, isExplicitNonBold, isExplicitNonItalic, isExplicitNonUnderline, isItalic, isUnderline, parseStyle, ptToSizeRole } from "./style";
-import type { CellNode, ImageNode, Paragraph, RowNode, Run,StructuralNode, TableNode, WarnFn } from "./types";
+import type { BorderSide, BorderSpec, CellNode, ImageNode, Paragraph, RowNode, Run,StructuralNode, TableNode, WarnFn } from "./types";
 
 // ── Inline run collection ─────────────────────────────────────────────────────
 
@@ -208,6 +208,42 @@ function extractImages(el: Element, warn?: WarnFn): { before: ImageNode[]; after
   return { before, after };
 }
 
+// ── Borders (cell classification + color only — widths always come from tokens) ─
+
+// GDocs usually emits hex/rgb() (e.g. "solid #c2410c 1.75pt"), but named CSS colors
+// (e.g. "1px solid red") show up too — try hex/rgb() first, then fall back to
+// scanning the remaining words for one that resolves via canonicalizeBg (named colors).
+function extractBorderColorToken(v: string, tok: Tokens): string | undefined {
+  const colorMatch = v.match(/#[0-9a-f]{3,8}\b|rgba?\([^)]+\)/);
+  if (colorMatch) return colorMatch[0];
+  const words = v.match(/[a-z]+/g) ?? [];
+  return words.find(w => canonicalizeBg(w, tok) !== null);
+}
+
+function parseBorderSide(value: string | undefined, tok: Tokens): BorderSide | undefined {
+  if (!value) return undefined;
+  const v = value.trim().toLowerCase();
+  if (!v || v === "none") return undefined;
+  const colorToken = extractBorderColorToken(v, tok);
+  if (!colorToken) return undefined;
+  const widthMatch = v.match(/([\d.]+)\s*(?:pt|px)/);
+  const width = widthMatch ? parseFloat(widthMatch[1]) : 1;
+  if (width <= 0) return undefined;
+  const color = canonicalizeBg(colorToken, tok);
+  if (!color) return undefined;
+  return { width, color };
+}
+
+function parseBorderSpec(style: Record<string, string>, tok: Tokens): BorderSpec | undefined {
+  const shorthand = style["border"];
+  const top = parseBorderSide(style["border-top"] ?? shorthand, tok);
+  const right = parseBorderSide(style["border-right"] ?? shorthand, tok);
+  const bottom = parseBorderSide(style["border-bottom"] ?? shorthand, tok);
+  const left = parseBorderSide(style["border-left"] ?? shorthand, tok);
+  if (!top && !right && !bottom && !left) return undefined;
+  return { top, right, bottom, left };
+}
+
 // ── Table ────────────────────────────────────────────────────────────────────
 
 function parseTable(el: Element, bg: string, tok: Tokens, warn?: WarnFn): TableNode | null {
@@ -234,10 +270,12 @@ function parseTable(el: Element, bg: string, tok: Tokens, warn?: WarnFn): TableN
       const cellAlign = getAlign(cellStyle) ??
         (cellEl.getAttribute("align") as "left" | "center" | "right" | undefined);
       const colspan = parseInt(cellEl.getAttribute("colspan") ?? "1");
+      const border = parseBorderSpec(cellStyle, tok);
       const children = fromDom(cellEl as Element, cellBg ?? bg, tok, warn);
       return {
         type: "cell" as const,
         bg: cellBg,
+        border,
         align: cellAlign,
         colspan: colspan > 1 ? colspan : undefined,
         children,

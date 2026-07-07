@@ -101,6 +101,20 @@ describe("ir/color", () => {
     it("returns null for empty string", () => {
       expect(canonicalizeBg("")).toBeNull();
     });
+
+    // Fix #2: named CSS colors (e.g. border: 1px solid red) must resolve, not be lost.
+    it("resolves named CSS colors to hex", () => {
+      expect(canonicalizeBg("red")).toBe("#ff0000");
+      expect(canonicalizeBg("rebeccapurple")).toBe("#663399");
+    });
+
+    it("is case-insensitive for named colors", () => {
+      expect(canonicalizeBg("RED")).toBe("#ff0000");
+    });
+
+    it("returns null for an unknown color keyword", () => {
+      expect(canonicalizeBg("notacolor")).toBeNull();
+    });
   });
 
   // ── isBgRedundant ─────────────────────────────────────────────────────────
