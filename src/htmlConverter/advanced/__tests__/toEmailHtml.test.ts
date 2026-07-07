@@ -417,7 +417,7 @@ describe("renderNode — calloutLeft", () => {
   it("renders runs with left accent border", () => {
     const node: ComponentNode = {
       kind: "calloutLeft",
-      props: { runs: [{ text: "tip" }], accentColor: "#ff9900" },
+      props: { lines: [[{ text: "tip" }]], accentColor: "#ff9900" },
     };
     const result = renderNode(node, tmpl, tokens);
     expect(result).toContain("tip");

@@ -155,7 +155,12 @@ export function renderNode(
     }
 
     case "calloutLeft": {
-      const innerHtml = renderRuns(p["runs"] as Run[], tok, tok.color.black);
+      const innerHtml = renderLines(
+        p["lines"] as Run[][],
+        tok,
+        tok.color.black,
+        p["paraBreaks"] as Set<number> | undefined,
+      );
       const opts: CalloutOpts = {
         accentColor: (p["accentColor"] as string) ?? tok.color.button,
         bg: p["bg"] as string | undefined,

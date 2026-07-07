@@ -71,6 +71,36 @@ function flattenLines(cell: CellNode, warn?: WarnFn): Run[][] {
   return lines;
 }
 
+/**
+ * Same as flattenLines, but also tracks which line indices start a new source
+ * paragraph — lets the caller render a <br><br> at those boundaries instead of
+ * silently gluing separate paragraphs (e.g. a quote + its attribution) together.
+ */
+function flattenLinesWithBreaks(cell: CellNode, warn?: WarnFn): { lines: Run[][]; paraBreaks: Set<number> } {
+  const lines: Run[][] = [];
+  const paraBreaks = new Set<number>();
+  const appendBlock = (blockLines: Run[][], blockBreaks?: Set<number>) => {
+    if (blockLines.length === 0) return;
+    if (lines.length > 0) paraBreaks.add(lines.length);
+    if (blockBreaks) for (const idx of blockBreaks) paraBreaks.add(idx + lines.length);
+    lines.push(...blockLines);
+  };
+  for (const child of cell.children) {
+    if (child.type === "p") {
+      appendBlock(child.lines);
+    } else if (child.type === "table") {
+      warn?.("Вкладену таблицю сплющено до тексту (розмітка внутрішньої таблиці втрачена)");
+      for (const row of child.rows) {
+        for (const nested of row.cells) {
+          const nestedResult = flattenLinesWithBreaks(nested, undefined);
+          appendBlock(nestedResult.lines, nestedResult.paraBreaks);
+        }
+      }
+    }
+  }
+  return { lines, paraBreaks };
+}
+
 function findHref(cell: CellNode): string | null {
   for (const line of flattenLines(cell)) {
     for (const run of line) {
@@ -165,9 +195,10 @@ function classifySingleCell(
   // document's own border color instead of the house default.
   const isLeftAccentOnly = Boolean(border?.left) && !border?.top && !border?.right && !border?.bottom;
   if (isLeftAccentOnly) {
+    const { lines, paraBreaks } = flattenLinesWithBreaks(cell, warn);
     return {
       kind: "calloutLeft",
-      props: { runs: flattenRuns(cell, warn), bg, accentColor: border!.left!.color },
+      props: { lines, paraBreaks, bg, accentColor: border!.left!.color },
     };
   }
 
@@ -180,10 +211,13 @@ function classifySingleCell(
   }
 
   // Light bg with no border info in the document → generic accent callout (house default color)
-  return {
-    kind: "calloutLeft",
-    props: { runs: flattenRuns(cell, warn), bg, accentColor: tok.color.button },
-  };
+  {
+    const { lines, paraBreaks } = flattenLinesWithBreaks(cell, warn);
+    return {
+      kind: "calloutLeft",
+      props: { lines, paraBreaks, bg, accentColor: tok.color.button },
+    };
+  }
 }
 
 // ── Multi-row helper ──────────────────────────────────────────────────────────
