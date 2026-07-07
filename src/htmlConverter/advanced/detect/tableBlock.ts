@@ -4,14 +4,29 @@
 
 import type { Tokens } from "../config/tokens";
 import { tokens as defaultTokens } from "../config/tokens";
-import { isDarkBg } from "../ir/color";
-import type { BorderSpec, CellNode, ComponentNode, Paragraph, Run,StructuralNode, TableNode, WarnFn } from "../ir/types";
+import { isBgRedundant, isDarkBg } from "../ir/color";
+import type { BorderSide, BorderSpec, CellNode, ComponentNode, Paragraph, Run,StructuralNode, TableNode, WarnFn } from "../ir/types";
 
 /** Recurses back into classify.ts — threaded in to avoid a circular import. */
 export type ClassifyChildrenFn = (nodes: StructuralNode[]) => ComponentNode[];
 
 function firstBorderColor(border: BorderSpec | undefined): string | undefined {
   return border?.top?.color ?? border?.right?.color ?? border?.bottom?.color ?? border?.left?.color;
+}
+
+// A GDocs 1×1 layout table often keeps a faint default gridline even when the author
+// never intended a visible border — only treat `border` as meaningful when at least
+// one side's color is visibly distinct from white/the document background.
+function isNearWhiteOrRoot(color: string, tok: Tokens): boolean {
+  return isBgRedundant(color, "#ffffff", tok) || isBgRedundant(color, tok.color.rootBackground, tok);
+}
+
+function hasMeaningfulBorder(border: BorderSpec | undefined, tok: Tokens): boolean {
+  if (!border) return false;
+  const sides = [border.top, border.right, border.bottom, border.left].filter(
+    (s): s is BorderSide => Boolean(s)
+  );
+  return sides.length > 0 && sides.some(s => !isNearWhiteOrRoot(s.color, tok));
 }
 
 // ── Cell content helpers ──────────────────────────────────────────────────────
@@ -115,7 +130,11 @@ function classifySingleCell(
   classifyChildren?: ClassifyChildrenFn,
 ): ComponentNode | null {
   const bg = cell.bg;
-  const border = cell.border;
+  // A GDocs 1×1 layout table often keeps a faint default gridline with no intent behind
+  // it — near-white/near-root-bg colors don't count as a border for unwrap/callout
+  // purposes. A dark bg with an explicit (e.g. white) outline is a different, deliberate
+  // case (see below) and keeps the raw border regardless of color.
+  const border = hasMeaningfulBorder(cell.border, tok) ? cell.border : undefined;
 
   // No color and no border, or bg matches root background with no border → transparent, let classify.ts unwrap
   if (!border && (!bg || bg === tok.color.rootBackground)) return null;
@@ -133,11 +152,13 @@ function classifySingleCell(
   }
 
   if (bg && isDarkBg(bg, tok)) {
+    // A white/light outline against a dark bg is a deliberate accent regardless of how
+    // close its color is to white — use the raw border here, not the near-white-filtered one.
     const href = findHref(cell);
     if (href) {
-      return { kind: "buttonBand", props: { runs: flattenRuns(cell, warn), href, bg, border } };
+      return { kind: "buttonBand", props: { runs: flattenRuns(cell, warn), href, bg, border: cell.border } };
     }
-    return { kind: "alertBand", props: { runs: flattenRuns(cell, warn), bg, border } };
+    return { kind: "alertBand", props: { runs: flattenRuns(cell, warn), bg, border: cell.border } };
   }
 
   // Pure border-left accent (+ optional light bg) → calloutLeft, using the
