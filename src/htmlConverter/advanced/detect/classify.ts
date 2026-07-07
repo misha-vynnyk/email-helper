@@ -6,7 +6,7 @@ import type { ComponentNode, Run,StructuralNode, TableNode, WarnFn } from "../ir
 import { classifyFlow } from "./flowBlock";
 import { classifyTable } from "./tableBlock";
 
-function pushMerged(result: ComponentNode[], comp: ComponentNode): void {
+function pushMerged(result: ComponentNode[], comp: ComponentNode, warn?: WarnFn): void {
   const last = result[result.length - 1];
 
   // align defaults to "left" at render time — treat undefined and "left" as equal here
@@ -37,6 +37,12 @@ function pushMerged(result: ComponentNode[], comp: ComponentNode): void {
     const lastRows = last.props["rows"] as Row[];
     const newRows = comp.props["rows"] as Row[];
     if (lastRows[0]?.cells?.length === newRows[0]?.cells?.length) {
+      // Merge keeps the first table's borderColor/widths — warn if the second table
+      // actually disagrees, so a silently-repainted table doesn't go unnoticed.
+      if (comp.props["borderColor"] !== last.props["borderColor"] ||
+          JSON.stringify(comp.props["widths"]) !== JSON.stringify(last.props["widths"])) {
+        warn?.("Сусідні таблиці об'єднано в одну, але кольір рамки або ширини колонок другої таблиці відрізняються — застосовано значення першої");
+      }
       (lastRows as unknown[]).push(...newRows);
       return;
     }
@@ -53,19 +59,19 @@ export function classify(nodes: StructuralNode[], tok: Tokens = defaultTokens, w
     if (node.type === "table") {
       const component = classifyTable(node as TableNode, tok, warn, classifyChildren);
       if (component) {
-        pushMerged(result, component);
+        pushMerged(result, component, warn);
       } else {
         for (const row of (node as TableNode).rows) {
           for (const cell of row.cells) {
             for (const comp of classify(cell.children, tok, warn)) {
-              pushMerged(result, comp);
+              pushMerged(result, comp, warn);
             }
           }
         }
       }
     } else if (node.type === "p") {
       for (const comp of classifyFlow([node], tok)) {
-        pushMerged(result, comp);
+        pushMerged(result, comp, warn);
       }
     } else if (node.type === "img") {
       result.push({ kind: "image", props: { src: node.src, alt: node.alt } });

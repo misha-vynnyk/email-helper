@@ -88,6 +88,30 @@ describe("classify — recordRow merging", () => {
     expect(result[0].kind).toBe("recordRow");
     expect(result[1].kind).toBe("recordRow");
   });
+
+  // Fix #4: merge still keeps the first table's borderColor, but warns when they differ
+  it("keeps the first table's borderColor when merging, and warns on mismatch", () => {
+    const redCell: CellNode = { ...makeCell(), border: { top: { width: 1, color: "#ff0000" } } };
+    const blueCell: CellNode = { ...makeCell(), border: { top: { width: 1, color: "#0000ff" } } };
+    const t1 = makeTable([[redCell, makeCell()], [makeCell(), makeCell()]]);
+    const t2 = makeTable([[blueCell, makeCell()], [makeCell(), makeCell()]]);
+    const warn = jest.fn();
+    const result = classify([t1, t2], tokens, warn);
+    expect(result).toHaveLength(1);
+    expect(result[0].kind).toBe("recordRow");
+    expect((result[0].props as Record<string, unknown>)["borderColor"]).toBe("#ff0000");
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("рамки"));
+  });
+
+  it("does not warn when merged tables share the same borderColor", () => {
+    const redCellA: CellNode = { ...makeCell(), border: { top: { width: 1, color: "#ff0000" } } };
+    const redCellB: CellNode = { ...makeCell(), border: { top: { width: 1, color: "#ff0000" } } };
+    const t1 = makeTable([[redCellA, makeCell()], [makeCell(), makeCell()]]);
+    const t2 = makeTable([[redCellB, makeCell()], [makeCell(), makeCell()]]);
+    const warn = jest.fn();
+    classify([t1, t2], tokens, warn);
+    expect(warn).not.toHaveBeenCalled();
+  });
 });
 
 // ── Table unwrapping ──────────────────────────────────────────────────────────
