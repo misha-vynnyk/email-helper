@@ -50,6 +50,8 @@ export interface GridCell {
   innerHtml: string;
   /** Optional highlight background (e.g. a featured stat tile) — text color adapts via isDarkBg */
   bg?: string;
+  /** This cell's own border color; falls back to GridOpts.borderColor, then tok.color.tableBorder */
+  borderColor?: string;
 }
 
 export interface GridOpts {
@@ -72,7 +74,8 @@ export interface RecordOpts {
   borderColor?: string;
   rows: Array<{
     bg?: string;
-    cells: Array<{ innerHtml: string; align?: string; bg?: string }>;
+    /** This cell's own border color; falls back to RecordOpts.borderColor, then tok.color.tableBorder */
+    cells: Array<{ innerHtml: string; align?: string; bg?: string; borderColor?: string }>;
   }>;
 }
 
@@ -261,7 +264,6 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
       const p = pad();
       const cy = tok.layout.gridCellPadY;
       const cx = tok.layout.gridCellPadX;
-      const gridBorder = `${tok.layout.recordBorderPx}px solid ${borderColor ?? tok.color.tableBorder}`;
       const cellsHtml = cells
         .map((cell, i) => {
           const w = widths?.[i] ?? (i === cells.length - 1 ? 100 - pct * (cells.length - 1) : pct);
@@ -269,8 +271,9 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
           const cellStyle = baseStyle({ align: "center", fontSize: tok.font.smallPx, color: textColor }, tok);
           const bgAttr = cell.bg ? ` bgcolor="${cell.bg}"` : "";
           const bgStyle = cell.bg ? `background-color:${cell.bg};` : "";
+          const cellBorder = `${tok.layout.recordBorderPx}px solid ${cell.borderColor ?? borderColor ?? tok.color.tableBorder}`;
           return `<td valign="top" align="center" class="${tok.classes.inlineCell}" width="${w}%"${bgAttr}
-          style="display:inline-block;width:${w}%;max-width:100%;min-width:${tok.layout.gridMinWidth}px;border:${gridBorder};${bgStyle}">
+          style="display:inline-block;width:${w}%;max-width:100%;min-width:${tok.layout.gridMinWidth}px;border:${cellBorder};${bgStyle}">
           <table border="0" cellspacing="0" cellpadding="0" role="presentation" width="100%" style="width:100%;">
             <tr>
               <td${bgAttr} style="${cellStyle} padding:${cy}px ${cx}px;${bgStyle}">${cell.innerHtml}</td>
@@ -315,7 +318,6 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
       const p = pad();
       const ry = tok.layout.recordCellPadY;
       const rx = tok.layout.recordCellPadX;
-      const border = borderColor ?? tok.color.tableBorder;
 
       const rowsHtml = rows
         .map((row) => {
@@ -334,7 +336,8 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
               const align = cell.align ?? "left";
               const w = rowWidths?.[i] ?? (i === ncols - 1 ? 100 - colPct * (ncols - 1) : colPct);
               const widthAttr = ncols > 1 ? ` width="${w}%"` : "";
-              return `<td align="${align}"${bgAttr}${widthAttr} style="${style} padding:${ry}px ${rx}px;border-bottom:${tok.layout.recordBorderPx}px solid ${border};">${cell.innerHtml}</td>`;
+              const cellBorder = cell.borderColor ?? borderColor ?? tok.color.tableBorder;
+              return `<td align="${align}"${bgAttr}${widthAttr} style="${style} padding:${ry}px ${rx}px;border-bottom:${tok.layout.recordBorderPx}px solid ${cellBorder};">${cell.innerHtml}</td>`;
             })
             .join("\n");
 

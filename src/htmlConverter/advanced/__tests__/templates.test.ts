@@ -171,6 +171,49 @@ describe("buildTemplates — statsGrid gridBorder", () => {
     const html = buildTemplates(tok).statsGrid([{ innerHtml: "a" }, { innerHtml: "b" }], { n: 2 });
     expect(html).toContain("#aabbcc");
   });
+
+  // Fix #5: per-cell borderColor must render per-<td>, not collapse to one shared color
+  it("each cell's own borderColor overrides the shared grid borderColor", () => {
+    const html = tmpl.statsGrid(
+      [{ innerHtml: "a", borderColor: "#ff0000" }, { innerHtml: "b", borderColor: "#0000ff" }],
+      { n: 2, borderColor: "#00ff00" },
+    );
+    expect(html).toContain("#ff0000");
+    expect(html).toContain("#0000ff");
+  });
+
+  it("cell without its own borderColor falls back to the shared grid borderColor", () => {
+    const html = tmpl.statsGrid(
+      [{ innerHtml: "a", borderColor: "#ff0000" }, { innerHtml: "b" }],
+      { n: 2, borderColor: "#00ff00" },
+    );
+    expect(html).toContain("#ff0000");
+    expect(html).toContain("#00ff00");
+  });
+});
+
+// ── recordRow border ──────────────────────────────────────────────────────────
+
+describe("buildTemplates — recordRow per-cell borderColor", () => {
+  it("each cell's own borderColor overrides the shared row borderColor", () => {
+    const html = tmpl.recordRow({
+      borderColor: "#00ff00",
+      rows: [{ cells: [
+        { innerHtml: "a", borderColor: "#ff0000" },
+        { innerHtml: "b", borderColor: "#0000ff" },
+      ] }],
+    });
+    expect(html).toContain("#ff0000");
+    expect(html).toContain("#0000ff");
+  });
+
+  it("cell without its own borderColor falls back to the shared row borderColor", () => {
+    const html = tmpl.recordRow({
+      borderColor: "#00ff00",
+      rows: [{ cells: [{ innerHtml: "a" }] }],
+    });
+    expect(html).toContain("#00ff00");
+  });
 });
 
 // ── statsGrid per-cell background ─────────────────────────────────────────────

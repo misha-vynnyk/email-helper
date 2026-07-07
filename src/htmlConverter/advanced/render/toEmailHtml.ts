@@ -174,9 +174,9 @@ export function renderNode(
 
     case "statsGrid": {
       const cells: GridCell[] = (node.children ?? []).map(child => {
-        const cp = child.props as { lines?: Run[][]; bg?: string };
+        const cp = child.props as { lines?: Run[][]; bg?: string; borderColor?: string };
         const baseColor = cp.bg && isDarkBg(cp.bg, tok) ? tok.color.white : tok.color.black;
-        return { innerHtml: renderLines(cp.lines ?? [], tok, baseColor), bg: cp.bg };
+        return { innerHtml: renderLines(cp.lines ?? [], tok, baseColor), bg: cp.bg, borderColor: cp.borderColor };
       });
       const opts: GridOpts = {
         n: (p["n"] as number) || cells.length,
@@ -187,7 +187,7 @@ export function renderNode(
     }
 
     case "recordRow": {
-      type RowData = { bg?: string; cells: Array<{ runs: Run[]; align?: string; bg?: string }> };
+      type RowData = { bg?: string; cells: Array<{ runs: Run[]; align?: string; bg?: string; borderColor?: string }> };
       const rawRows = p["rows"] as RowData[];
       const opts: RecordOpts = {
         widths: p["widths"] as number[] | undefined,
@@ -201,6 +201,7 @@ export function renderNode(
               innerHtml: renderRuns(c.runs, tok, textColor),
               align: c.align,
               bg: c.bg,
+              borderColor: c.borderColor,
             };
           }),
         })),
