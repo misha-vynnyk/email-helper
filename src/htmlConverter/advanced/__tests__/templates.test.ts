@@ -90,7 +90,7 @@ describe("buildTemplates — border on buttonBand/alertBand", () => {
       innerHtml: "click",
       href: "https://example.com",
       bg: "#000000",
-      border: { top: { width: 1, color: "#ffffff" } },
+      border: { top: { color: "#ffffff" } },
     });
     expect(html).toContain("border-top:");
     expect(html).toContain("#ffffff");
@@ -106,7 +106,7 @@ describe("buildTemplates — border on buttonBand/alertBand", () => {
     const html = tmpl.alertBand({
       innerHtml: "alert",
       bg: "#000000",
-      border: { left: { width: 1, color: "#ff0000" } },
+      border: { left: { color: "#ff0000" } },
     });
     expect(html).toContain("border-left:");
     expect(html).toContain("#ff0000");

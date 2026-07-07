@@ -361,7 +361,7 @@ describe("renderNode — alertBand", () => {
   it("passes border through to the template", () => {
     const node: ComponentNode = {
       kind: "alertBand",
-      props: { runs: [{ text: "hi" }], bg: "#000000", border: { top: { width: 1, color: "#ffffff" } } },
+      props: { runs: [{ text: "hi" }], bg: "#000000", border: { top: { color: "#ffffff" } } },
     };
     const result = renderNode(node, tmpl, tokens);
     expect(result).toContain("border-top:");
@@ -456,7 +456,7 @@ describe("renderNode — buttonBand", () => {
   it("passes border through to the template", () => {
     const node: ComponentNode = {
       kind: "buttonBand",
-      props: { runs: [{ text: "Go" }], href: "http://x.com", bg: "#000000", border: { left: { width: 1, color: "#ff0000" } } },
+      props: { runs: [{ text: "Go" }], href: "http://x.com", bg: "#000000", border: { left: { color: "#ff0000" } } },
     };
     const result = renderNode(node, tmpl, tokens);
     expect(result).toContain("border-left:");

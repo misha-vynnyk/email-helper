@@ -226,12 +226,13 @@ function parseBorderSide(value: string | undefined, tok: Tokens): BorderSide | u
   if (!v || v === "none") return undefined;
   const colorToken = extractBorderColorToken(v, tok);
   if (!colorToken) return undefined;
+  // A declared width of 0 means no visible border, even if a color is present.
   const widthMatch = v.match(/([\d.]+)\s*(?:pt|px)/);
   const width = widthMatch ? parseFloat(widthMatch[1]) : 1;
   if (width <= 0) return undefined;
   const color = canonicalizeBg(colorToken, tok);
   if (!color) return undefined;
-  return { width, color };
+  return { color };
 }
 
 function parseBorderSpec(style: Record<string, string>, tok: Tokens): BorderSpec | undefined {
