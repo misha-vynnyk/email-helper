@@ -82,6 +82,42 @@ describe("buildTemplates — escHref in buttonTableHtml", () => {
   });
 });
 
+// ── border on buttonBand/alertBand (Fix #3) ───────────────────────────────────
+
+describe("buildTemplates — border on buttonBand/alertBand", () => {
+  it("buttonBand draws the border when passed (dark bg CTA with an outline)", () => {
+    const html = tmpl.buttonBand({
+      innerHtml: "click",
+      href: "https://example.com",
+      bg: "#000000",
+      border: { top: { width: 1, color: "#ffffff" } },
+    });
+    expect(html).toContain("border-top:");
+    expect(html).toContain("#ffffff");
+  });
+
+  it("buttonBand has no border style when border is absent (no regression)", () => {
+    const html = tmpl.buttonBand({ innerHtml: "click", href: "https://example.com", bg: "#000000" });
+    expect(html).not.toContain("border-top:");
+    expect(html).not.toContain("border-left:");
+  });
+
+  it("alertBand draws the border when passed", () => {
+    const html = tmpl.alertBand({
+      innerHtml: "alert",
+      bg: "#000000",
+      border: { left: { width: 1, color: "#ff0000" } },
+    });
+    expect(html).toContain("border-left:");
+    expect(html).toContain("#ff0000");
+  });
+
+  it("alertBand has no border style when border is absent (no regression)", () => {
+    const html = tmpl.alertBand({ innerHtml: "alert", bg: "#000000" });
+    expect(html).not.toContain("border-left:");
+  });
+});
+
 // ── blockRow padding ──────────────────────────────────────────────────────────
 
 describe("buildTemplates — blockRow padding", () => {

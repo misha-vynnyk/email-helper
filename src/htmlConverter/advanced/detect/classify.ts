@@ -47,10 +47,11 @@ function pushMerged(result: ComponentNode[], comp: ComponentNode): void {
 
 export function classify(nodes: StructuralNode[], tok: Tokens = defaultTokens, warn?: WarnFn): ComponentNode[] {
   const result: ComponentNode[] = [];
+  const classifyChildren = (n: StructuralNode[]) => classify(n, tok, warn);
 
   for (const node of nodes) {
     if (node.type === "table") {
-      const component = classifyTable(node as TableNode, tok, warn);
+      const component = classifyTable(node as TableNode, tok, warn, classifyChildren);
       if (component) {
         pushMerged(result, component);
       } else {

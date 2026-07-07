@@ -356,6 +356,16 @@ describe("renderNode — alertBand", () => {
     const result = renderNode(node, tmpl, tokens);
     expect(result).toContain(tokens.color.black);
   });
+
+  // Fix #3: dark bg + cell border must not be dropped on the way to the template
+  it("passes border through to the template", () => {
+    const node: ComponentNode = {
+      kind: "alertBand",
+      props: { runs: [{ text: "hi" }], bg: "#000000", border: { top: { width: 1, color: "#ffffff" } } },
+    };
+    const result = renderNode(node, tmpl, tokens);
+    expect(result).toContain("border-top:");
+  });
 });
 
 // ── renderNode — image ────────────────────────────────────────────────────────
@@ -440,6 +450,17 @@ describe("renderNode — buttonBand", () => {
     };
     const result = renderNode(node, tmpl, tokens);
     expect(result).toContain(tokens.color.white);
+  });
+
+  // Fix #3: dark bg + cell border must not be dropped on the way to the template
+  it("passes border through to the template", () => {
+    const node: ComponentNode = {
+      kind: "buttonBand",
+      props: { runs: [{ text: "Go" }], href: "http://x.com", bg: "#000000", border: { left: { width: 1, color: "#ff0000" } } },
+    };
+    const result = renderNode(node, tmpl, tokens);
+    expect(result).toContain("border-left:");
+    expect(result).toContain("#ff0000");
   });
 
   it("uses label fallback when runs is absent (p['runs'] ?? p['label'])", () => {

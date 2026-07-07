@@ -7,9 +7,11 @@ const ALWAYS_STRIP = new Set([
   "font-family", "line-height",
   "margin", "margin-top", "margin-bottom", "margin-left", "margin-right",
   "padding", "padding-top", "padding-bottom", "padding-left", "padding-right",
-  "border", "border-top", "border-bottom", "border-left", "border-right",
   "border-collapse", "border-spacing",
 ]);
+// border / border-top / border-bottom / border-left / border-right are kept —
+// fromDom reads their color for classification (§4) and box rendering; GDocs
+// widths are still ignored at render time (house tokens control px).
 
 const STRIP_WHEN: Array<[string, string]> = [
   ["background-color", "transparent"],

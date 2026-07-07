@@ -129,9 +129,9 @@ function classifySingleCell(
   if (bg && isDarkBg(bg, tok)) {
     const href = findHref(cell);
     if (href) {
-      return { kind: "buttonBand", props: { runs: flattenRuns(cell, warn), href, bg } };
+      return { kind: "buttonBand", props: { runs: flattenRuns(cell, warn), href, bg, border } };
     }
-    return { kind: "alertBand", props: { runs: flattenRuns(cell, warn), bg } };
+    return { kind: "alertBand", props: { runs: flattenRuns(cell, warn), bg, border } };
   }
 
   // Pure border-left accent (+ optional light bg) → calloutLeft, using the

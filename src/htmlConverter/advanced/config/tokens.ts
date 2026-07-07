@@ -41,6 +41,7 @@ export interface Tokens {
     gridMinWidth: number;
     quotePadX: number;
     calloutAccentPx: number;
+    calloutBoxBorderPx: number;
     calloutPadX: number;
     alertBandPadH: number;
     alertBandPadV: number;
@@ -116,6 +117,7 @@ export const tokens: Tokens = {
     gridMinWidth:         100,
     quotePadX:             20,   // h4 quote paragraph left/right indent (matches Simple converter)
     calloutAccentPx:       10,   // calloutLeft left-border width
+    calloutBoxBorderPx:     1,   // calloutBox frame border width (all declared sides)
     calloutPadX:           10,   // callout left/right inner padding
     alertBandPadH:         10,   // alertBand horizontal inner padding
     alertBandPadV:          4,   // alertBand vertical inner padding

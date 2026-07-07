@@ -73,6 +73,27 @@ describe("classifyTable — single-cell", () => {
 
   // Fix #1: h5-marked cell with a border but no bg must not become a bg-less buttonBand
   // (buttonBand with bg===undefined crashes render's isDarkBg(undefined) downstream).
+  // Fix #3: dark bg + explicit border → still buttonBand/alertBand, border carried in props
+  it("dark bg with border and href → buttonBand carries the border in props", () => {
+    const cell = makeCell({
+      bg: "#000000",
+      border: { top: { width: 1, color: "#ffffff" } },
+      children: [makePara("Click me", "https://example.com")],
+    });
+    const table = makeTable([[cell]]);
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("buttonBand");
+    expect((result?.props as Record<string, unknown>)["border"]).toEqual({ top: { width: 1, color: "#ffffff" } });
+  });
+
+  it("dark bg with border and no href → alertBand carries the border in props", () => {
+    const cell = makeCell({ bg: "#000000", border: { top: { width: 1, color: "#ffffff" } } });
+    const table = makeTable([[cell]]);
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("alertBand");
+    expect((result?.props as Record<string, unknown>)["border"]).toEqual({ top: { width: 1, color: "#ffffff" } });
+  });
+
   it("h5 marker + border but no bg is NOT classified as buttonBand", () => {
     const cell = makeCell({
       border: { top: { width: 1, color: "#000000" } },

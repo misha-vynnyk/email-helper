@@ -6,6 +6,7 @@ import {
   type AlertBandOpts,
   buildTemplates,
   type ButtonBandOpts,
+  type CalloutBoxOpts,
   type CalloutOpts,
   type GridCell,
   type GridOpts,
@@ -18,7 +19,7 @@ import type { Tokens } from "../config/tokens";
 import { tokens as defaultTokens } from "../config/tokens";
 import { escapeHtml as esc } from "../escape";
 import { isDarkBg } from "../ir/color";
-import type { ComponentNode, Run } from "../ir/types";
+import type { BorderSpec, ComponentNode, Run } from "../ir/types";
 
 type Templates = ReturnType<typeof buildTemplates>;
 
@@ -131,6 +132,7 @@ export function renderNode(
       const opts: AlertBandOpts = {
         innerHtml: renderRuns(p["runs"] as Run[], tok, textColor),
         bg,
+        border: p["border"] as BorderSpec | undefined,
       };
       return tmpl.alertBand(opts);
     }
@@ -147,6 +149,7 @@ export function renderNode(
         href: (p["href"] as string) ?? tok.placeholderHref,
         bg,
         radius: p["radius"] as number | undefined,
+        border: p["border"] as BorderSpec | undefined,
       };
       return tmpl.buttonBand(opts);
     }
@@ -160,6 +163,15 @@ export function renderNode(
       return tmpl.calloutLeft(innerHtml, opts);
     }
 
+    case "calloutBox": {
+      const childrenHtml = renderAll(node.children ?? [], tmpl, tok);
+      const opts: CalloutBoxOpts = {
+        border: p["border"] as BorderSpec,
+        bg: p["bg"] as string | undefined,
+      };
+      return tmpl.calloutBox(childrenHtml, opts);
+    }
+
     case "statsGrid": {
       const cells: GridCell[] = (node.children ?? []).map(child => {
         const cp = child.props as { lines?: Run[][]; bg?: string };
@@ -169,6 +181,7 @@ export function renderNode(
       const opts: GridOpts = {
         n: (p["n"] as number) || cells.length,
         widths: p["widths"] as number[] | undefined,
+        borderColor: p["borderColor"] as string | undefined,
       };
       return tmpl.statsGrid(cells, opts);
     }
@@ -178,6 +191,7 @@ export function renderNode(
       const rawRows = p["rows"] as RowData[];
       const opts: RecordOpts = {
         widths: p["widths"] as number[] | undefined,
+        borderColor: p["borderColor"] as string | undefined,
         rows: rawRows.map(row => ({
           bg: row.bg,
           cells: row.cells.map(c => {
