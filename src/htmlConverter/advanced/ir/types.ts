@@ -24,10 +24,23 @@ export interface ImageNode {
   alt?: string;
 }
 
+export interface BorderSide {
+  width: number;  // pt, as declared in the source — informational only (render widths come from tokens)
+  color: string;  // normalized via canonicalizeBg (§5)
+}
+
+export interface BorderSpec {
+  top?: BorderSide;
+  right?: BorderSide;
+  bottom?: BorderSide;
+  left?: BorderSide;
+}
+
 export interface CellNode {
   type: "cell";
   colspan?: number;
   bg?: string;
+  border?: BorderSpec;      // for classification (§4) and border color — not for metrics
   align?: "left" | "center" | "right";
   valign?: "top" | "middle" | "bottom";
   children: StructuralNode[];
@@ -56,6 +69,7 @@ export type ComponentKind =
   | "paragraph"
   | "buttonBand"
   | "calloutLeft"
+  | "calloutBox"
   | "statsGrid"
   | "recordRow"
   | "image"

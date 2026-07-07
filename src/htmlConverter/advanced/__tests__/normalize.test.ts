@@ -39,8 +39,16 @@ describe("normalize", () => {
     expect(style).toContain("font-size");
   });
 
-  it("strips border and border-collapse", () => {
+  it("strips border-collapse but keeps border (needed for classification/color)", () => {
     const body = normalize('<p style="border: 1px solid red; border-collapse: collapse; color: red;">hi</p>');
+    const style = getStyle(body, "p");
+    expect(style).not.toContain("border-collapse");
+    expect(style).toContain("border: 1px solid red");
+    expect(style).toContain("color");
+  });
+
+  it("strips border:none", () => {
+    const body = normalize('<p style="border: none; color: red;">hi</p>');
     const style = getStyle(body, "p");
     expect(style).not.toContain("border");
     expect(style).toContain("color");

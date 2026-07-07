@@ -445,6 +445,24 @@ describe("convertAdvanced — tickr-promo fixture", () => {
     expect(html).toContain("border-left:");
   });
 
+  it("calloutLeft accent uses the source document's own border color, not the house green default", () => {
+    // Source declares border-left:solid #c2410c 1.75pt on the quote cell
+    expect(html).toContain("border-left:10px solid #c2410c");
+    expect(html).not.toContain("border-left:10px solid #28b628");
+  });
+
+  it("wraps the EDITOR'S NOTE box in its own bordered frame using the document's border color", () => {
+    // Source declares a full #c2410c frame (all four sides) on this cell
+    expect(html).toMatch(/border-top:1px solid #c2410c;border-right:1px solid #c2410c;border-bottom:1px solid #c2410c;border-left:1px solid #c2410c;/);
+  });
+
+  it("wraps the black-bordered CTA section in a frame instead of dropping the border", () => {
+    // Source declares a full #111111 frame with no background — previously this
+    // border was silently dropped because normalize.ts stripped all border CSS
+    // and single-cell classification returned null for cells without a bg.
+    expect(html).toMatch(/border-top:1px solid #000000;border-right:1px solid #000000;border-bottom:1px solid #000000;border-left:1px solid #000000;/);
+  });
+
   it("renders a 4-cell statsGrid with widths summing to 100%", () => {
     expect(html).toContain("32,481%");
     expect(html).toContain("3-Yr Revenue Growth");

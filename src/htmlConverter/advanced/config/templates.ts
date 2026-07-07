@@ -4,7 +4,7 @@
 
 import { escapeHtml } from "../escape";
 import { isDarkBg } from "../ir/color";
-import type { Run } from "../ir/types";
+import type { BorderSpec, Run } from "../ir/types";
 import type { Tokens } from "./tokens";
 import { tokens as defaultTokens } from "./tokens";
 
@@ -22,6 +22,8 @@ export interface ParagraphOpts {
 export interface AlertBandOpts {
   innerHtml: string;
   bg: string;
+  /** Cell border from the source document (e.g. a white outline on a dark CTA) */
+  border?: BorderSpec;
 }
 
 export interface ButtonBandOpts {
@@ -30,10 +32,17 @@ export interface ButtonBandOpts {
   innerHtml: string;
   subtitleHtml?: string;
   radius?: number;  // overrides tok.button.radius; 0 = no rounding (GDocs table-cell buttons)
+  /** Cell border from the source document (e.g. a white outline on a dark CTA) */
+  border?: BorderSpec;
 }
 
 export interface CalloutOpts {
   accentColor: string;
+  bg?: string;
+}
+
+export interface CalloutBoxOpts {
+  border: BorderSpec;
   bg?: string;
 }
 
@@ -47,6 +56,8 @@ export interface GridOpts {
   n: number;
   /** Integer column widths in %, summing to 100 (from GDocs <colgroup>); equal split when absent */
   widths?: number[];
+  /** Cell border color from the source document; falls back to tok.color.tableBorder */
+  borderColor?: string;
 }
 
 export interface ImageOpts {
@@ -57,6 +68,8 @@ export interface ImageOpts {
 export interface RecordOpts {
   /** Integer column widths in %, summing to 100 (from GDocs <colgroup>); equal split when absent */
   widths?: number[];
+  /** Cell border color from the source document; falls back to tok.color.tableBorder */
+  borderColor?: string;
   rows: Array<{
     bg?: string;
     cells: Array<{ innerHtml: string; align?: string; bg?: string }>;
@@ -95,17 +108,32 @@ export function blockRow(innerHtml: string, opts: Parameters<typeof baseStyle>[0
 </tr>`;
 }
 
-export function buttonTableHtml(label: string, href: string, bg: string, tok: Tokens = defaultTokens, radiusOverride?: number): string {
+/** Per-side `border-<side>:<width>px solid <color>;` — only sides present in `border` are drawn. */
+export function borderSpecToStyle(border: BorderSpec | undefined, tok: Tokens = defaultTokens): string {
+  if (!border) return "";
+  const bw = tok.layout.calloutBoxBorderPx;
+  const sides: Array<[keyof BorderSpec, string]> = [
+    ["top", "border-top"], ["right", "border-right"],
+    ["bottom", "border-bottom"], ["left", "border-left"],
+  ];
+  return sides
+    .filter(([key]) => border[key])
+    .map(([key, prop]) => `${prop}:${bw}px solid ${border[key]!.color};`)
+    .join("");
+}
+
+export function buttonTableHtml(label: string, href: string, bg: string, tok: Tokens = defaultTokens, radiusOverride?: number, border?: BorderSpec): string {
   const { height, padding, innerPadding, target } = tok.button;
   const r = radiusOverride !== undefined ? radiusOverride : tok.button.radius;
   const radiusStyle = r > 0 ? `border-radius:${r}px;` : "";
+  const borderStyle = borderSpecToStyle(border, tok);
   const textColor = isDarkBg(bg, tok) ? tok.color.white : tok.color.black;
   const style = baseStyle({ align: "center", fontWeight: "bold", color: textColor }, tok);
   const safeHref = escapeHtml(href);
   return `<table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="width:100%;max-width:100%;">
   <tr>
     <td class="${tok.classes.btnWrap}" height="${height}" align="center"
-        style="${style} padding:${padding};background-color:${bg};${radiusStyle}" bgcolor="${bg}">
+        style="${style} padding:${padding};background-color:${bg};${radiusStyle}${borderStyle}" bgcolor="${bg}">
       <a href="${safeHref}" target="${target}"
          style="text-decoration:${tok.button.textDecoration};color:${textColor};padding:${innerPadding};display:block;${style};background-color:${bg};${radiusStyle}">
         ${label}
@@ -157,15 +185,16 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
     },
 
     alertBand(opts: AlertBandOpts): string {
-      const { innerHtml, bg } = opts;
+      const { innerHtml, bg, border } = opts;
       const textColor = isDarkBg(bg, tok) ? tok.color.white : tok.color.black;
       const style = baseStyle({ color: textColor }, tok);
       const p = pad();
       const ph = tok.layout.alertBandPadH;
       const pv = tok.layout.alertBandPadV;
+      const borderStyle = borderSpecToStyle(border, tok);
       return `<tr>
   <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
-    <table align="center" border="0" bgcolor="${bg}" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;" role="presentation">
+    <table align="center" border="0" bgcolor="${bg}" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;${borderStyle}" role="presentation">
       <tr>
         <td style="${style} padding-left:${ph}px;padding-right:${ph}px;padding-top:${pv}px;padding-bottom:${pv}px;">${innerHtml}</td>
       </tr>
@@ -191,24 +220,48 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
 </tr>`;
     },
 
+    // Full/partial frame around recursively-rendered children (e.g. a bordered CTA box
+    // that contains its own buttonBand) — only the sides present in `border` are drawn.
+    calloutBox(childrenHtml: string, opts: CalloutBoxOpts): string {
+      const { border, bg } = opts;
+      const borderStyle = borderSpecToStyle(border, tok);
+      const p = pad();
+      const px = tok.layout.calloutPadX;
+      const bgAttr = bg ? ` bgcolor="${bg}"` : "";
+      const bgStyle = bg ? `background-color:${bg};` : "";
+      return `<tr>
+  <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
+    <table align="center" border="0"${bgAttr} cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;${bgStyle}${borderStyle}" role="presentation">
+      <tr>
+        <td style="padding-left:${px}px;padding-right:${px}px;">
+          <table border="0" cellspacing="0" cellpadding="0" width="100%" role="presentation" style="width:100%;">
+            ${childrenHtml}
+          </table>
+        </td>
+      </tr>
+    </table>
+  </td>
+</tr>`;
+    },
+
     buttonBand(opts: ButtonBandOpts): string {
-      const { innerHtml, href, bg, subtitleHtml, radius } = opts;
+      const { innerHtml, href, bg, subtitleHtml, radius, border } = opts;
       const p = pad();
       const subtitle = subtitleHtml ? `\n<tr>\n  <td align="center" style="padding-top:${tok.layout.buttonSubtitlePadTop}px;">${subtitleHtml}</td>\n</tr>` : "";
       return `<tr>
   <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
-    ${buttonTableHtml(innerHtml, href, bg, tok, radius)}${subtitle}
+    ${buttonTableHtml(innerHtml, href, bg, tok, radius, border)}${subtitle}
   </td>
 </tr>`;
     },
 
     statsGrid(cells: GridCell[], opts: GridOpts): string {
-      const { n, widths } = opts;
+      const { n, widths, borderColor } = opts;
       const pct = Math.floor(100 / n);
       const p = pad();
       const cy = tok.layout.gridCellPadY;
       const cx = tok.layout.gridCellPadX;
-      const gridBorder = `${tok.layout.recordBorderPx}px solid ${tok.color.tableBorder}`;
+      const gridBorder = `${tok.layout.recordBorderPx}px solid ${borderColor ?? tok.color.tableBorder}`;
       const cellsHtml = cells
         .map((cell, i) => {
           const w = widths?.[i] ?? (i === cells.length - 1 ? 100 - pct * (cells.length - 1) : pct);
@@ -257,12 +310,12 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
     },
 
     recordRow(opts: RecordOpts): string {
-      const { rows, widths } = opts;
+      const { rows, widths, borderColor } = opts;
       if (!rows.length) return "";
       const p = pad();
       const ry = tok.layout.recordCellPadY;
       const rx = tok.layout.recordCellPadX;
-      const border = tok.color.tableBorder;
+      const border = borderColor ?? tok.color.tableBorder;
 
       const rowsHtml = rows
         .map((row) => {
