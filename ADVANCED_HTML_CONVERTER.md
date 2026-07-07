@@ -1,10 +1,12 @@
 # Advanced HTML Converter — план
 
-> **Статус реалізації (2026-07-06):** конвеєр реалізований у `src/htmlConverter/advanced/` і покритий тестами (338). Розбіжності зі специфікацією нижче:
-> - ComponentKind-и `header`, `divider`, `calloutBox`, `authorBlock`, `warningLine` **видалені** (залишки специфікації, рішення від 2026-07-06). Реалізовані: `paragraph`, `alertBand`, `buttonBand`, `calloutLeft`, `statsGrid`, `recordRow`, `image`, `spacer`.
+> **Статус реалізації (2026-07-07):** конвеєр реалізований у `src/htmlConverter/advanced/` і покритий тестами (363). Розбіжності зі специфікацією нижче:
+> - ComponentKind-и `header`, `divider`, `authorBlock`, `warningLine` **видалені** (залишки специфікації, рішення від 2026-07-06). Реалізовані: `paragraph`, `alertBand`, `buttonBand`, `calloutLeft`, `calloutBox`, `statsGrid`, `recordRow`, `image`, `spacer`.
+> - **`calloutBox` повернуто 2026-07-07** (усупереч рішенню від 2026-07-06, яке його прибрало як "мертвий код"): без нього будь-яка комірка з рамкою, але без фону (наприклад чорна рамка навколо CTA-блоку, риска під шапкою листа) губила рамку повністю при конвертації, а `calloutLeft` завжди рендерив бренд-зелений (`tok.color.button`) замість реального кольору рамки з документа. `BorderSpec`/`BorderSide` (§8) теж повернуто в `ir/types.ts` — `normalize.ts` більше не стрипає `border`/`border-*` (лише `border-collapse`/`border-spacing` і явне `border:none`), `fromDom.ts` парсить колір/наявність рамки per-side для класифікації. `calloutBox` — узагальнений, не буквально зі спеки: рендерить будь-яку комбінацію сторін (не тільки "повна рамка"), рекурсивно класифікує дітей (тому вкладена кнопка всередині рамки не губиться), фон необовʼязковий.
 > - Додано підтримку зображень (`image`) і звіт конвертації `convertAdvancedDetailed() → { html, warnings }`.
 > - Inline-лінки рендеряться з `href="urlhere"` — свідомий workflow (лінки проставляються вручну); кнопки зберігають реальний href.
 > - `<colgroup>` ширини конвертуються в пропорційні відсотки для `statsGrid`/`recordRow`.
+> - `statsGrid`/`recordRow` беруть колір рамки з першої комірки документа, що має `border`, з фолбеком на `tok.color.tableBorder`.
 > - Актуальний беклог: `fix-advanced.md` (MJML-експорт, golden-файли).
 
 Конвертація **складних Google Docs** (таблиці, кольори, рамки, callout-бокси, кнопки,
