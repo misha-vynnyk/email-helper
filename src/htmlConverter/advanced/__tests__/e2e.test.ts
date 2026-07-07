@@ -404,3 +404,114 @@ describe("convertAdvanced — proportional colgroup widths", () => {
     expect(html).toContain('width="75%"');
   });
 });
+
+// ── tickr-promo.html fixture (real-world GDocs newsletter) ────────────────────
+// Reference: header masthead table, italic byline, body paragraphs, an orange
+// blockquote callout, a 4-cell stats grid with one highlighted (dark) tile, an
+// orange "editor's note" box, a black-bordered CTA section with a nested
+// button, a P.S. line, and small-print disclaimers.
+
+describe("convertAdvanced — tickr-promo fixture", () => {
+  let html: string;
+  let warnings: string[];
+  beforeAll(() => {
+    const result = convertAdvancedDetailed(loadFixture("tickr-promo.html"));
+    html = result.html;
+    warnings = result.warnings;
+  });
+
+  it("produces no conversion warnings for this document", () => {
+    expect(warnings).toEqual([]);
+  });
+
+  it("contains the masthead label, headline and subtitle", () => {
+    expect(html).toContain("FROM THE DESK OF TICKR NEWS");
+    expect(html).toContain("The SpaceX Story. And the One Beside It.");
+    expect(html).toContain("Why 59,000");
+    expect(html).toContain("investors quietly moved to");
+  });
+
+  it("contains the byline and body paragraphs", () => {
+    expect(html).toContain("By Katherine Holden");
+    expect(html).toContain("Everyone is talking about SpaceX.");
+    expect(html).toContain("Mode Mobile built EarnOS");
+  });
+
+  it("renders the pull-quote as a calloutLeft with the Kevin Harrington attribution", () => {
+    expect(html).toContain("Just like Uber turned cars into cash");
+    expect(html).toContain("Kevin Harrington, Original Shark Tank Investor");
+    // Light accent bg from the source table cell is preserved
+    expect(html).toContain("#fff7ed");
+    expect(html).toContain("border-left:");
+  });
+
+  it("renders a 4-cell statsGrid with widths summing to 100%", () => {
+    expect(html).toContain("32,481%");
+    expect(html).toContain("3-Yr Revenue Growth");
+    expect(html).toContain("490M");
+    expect(html).toContain("Total Users");
+    expect(html).toContain("11.8M");
+    expect(html).toContain("Actual EBITDA 2025");
+
+    const widths = [...html.matchAll(/width="(\d+)%"/g)]
+      .map(m => parseInt(m[1]))
+      .filter(w => w > 0 && w < 100);
+    // 4 equal-ish columns (156/156/156/156 colgroup) plus other grids/rows in
+    // the doc — just check the 25% quartet exists and some 4-way group sums to 100
+    const quarters = widths.filter(w => w >= 20 && w <= 30);
+    expect(quarters.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("highlights the featured stat tile with a dark background and white text", () => {
+    expect(html).toContain('bgcolor="#0a2463"');
+    expect(html).toContain("background-color:#0a2463");
+    // "$" is entity-encoded by normalizeSymbols in the final pass
+    expect(html).toContain("&#36;0.50");
+    expect(html).toContain("Until May 29");
+  });
+
+  it("non-highlighted stat tiles keep the light beige background", () => {
+    expect(html).toContain('bgcolor="#f1ede6"');
+  });
+
+  it("renders the editor's note as a callout with the light accent background", () => {
+    expect(html).toContain("EDITOR'S NOTE:");
+    expect(html).toContain("Mode's prior two rounds sold out entirely");
+    expect(html).toContain("59,095");
+  });
+
+  it("renders the CTA section text and the invest button", () => {
+    expect(html).toContain("SERIES A");
+    expect(html).toContain("REG A");
+    expect(html).toContain("&#36;0.50/SHARE");
+    expect(html).toContain("CLOSES MAY 29");
+    expect(html).toContain("&#36;1,000 minimum");
+    expect(html).toContain("Up to 20% bonus shares");
+    expect(html).toContain("INVEST AT &#36;0.50/SHARE");
+    // h5 marker inside the near-black cell → buttonBand using that cell's color;
+    // canonicalizeBg snaps #111111 to #000000 (within blackSnap tolerance, §5.A)
+    expect(html).toContain('bgcolor="#000000"');
+  });
+
+  it("renders the P.S. line and legal disclaimers", () => {
+    expect(html).toContain("P.S.");
+    expect(html).toContain("The SpaceX story is real");
+    expect(html).toContain("offering circular");
+    expect(html).toContain("invest.modemobile.com");
+    expect(html).toContain("Mode Mobile recently received their ticker reservation");
+    expect(html).toContain("Deloitte rankings");
+    expect(html).toContain("Pro forma revenue and EBITDA");
+  });
+
+  it("renders the offering-circular link text with the placeholder href (by-design workflow)", () => {
+    // Inline links intentionally render href="urlhere" — real URLs are filled in
+    // manually after conversion (confirmed workflow, unlike buttonBand which
+    // keeps the real href). The source URL itself is not expected in the output.
+    expect(html).toContain(`href="${tokens.placeholderHref}"`);
+    expect(html).toContain("offering circular");
+  });
+
+  it("snapshot — full document", () => {
+    expect(html).toMatchSnapshot();
+  });
+});

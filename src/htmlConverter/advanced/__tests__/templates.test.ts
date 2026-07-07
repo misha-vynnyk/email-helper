@@ -126,14 +126,42 @@ describe("buildTemplates — profile font stacks", () => {
 describe("buildTemplates — statsGrid gridBorder", () => {
   // Fix #5: gridBorder is computed from recordBorderPx + tableBorder (no separate token)
   it("statsGrid border matches tok.color.tableBorder", () => {
-    const html = tmpl.statsGrid(["a", "b"], { n: 2 });
+    const html = tmpl.statsGrid([{ innerHtml: "a" }, { innerHtml: "b" }], { n: 2 });
     expect(html).toContain(tokens.color.tableBorder);
   });
 
   it("custom tableBorder color is reflected in statsGrid", () => {
     const tok = mergeTokens(tokens, { color: { tableBorder: "#aabbcc" } });
-    const html = buildTemplates(tok).statsGrid(["a", "b"], { n: 2 });
+    const html = buildTemplates(tok).statsGrid([{ innerHtml: "a" }, { innerHtml: "b" }], { n: 2 });
     expect(html).toContain("#aabbcc");
+  });
+});
+
+// ── statsGrid per-cell background ─────────────────────────────────────────────
+
+describe("buildTemplates — statsGrid highlighted cell", () => {
+  it("renders bgcolor and background-color for a cell with bg", () => {
+    const html = tmpl.statsGrid(
+      [{ innerHtml: "a" }, { innerHtml: "b", bg: "#0a2463" }],
+      { n: 2 },
+    );
+    expect(html).toContain('bgcolor="#0a2463"');
+    expect(html).toContain("background-color:#0a2463");
+  });
+
+  it("uses white text color on a dark cell background", () => {
+    const html = tmpl.statsGrid([{ innerHtml: "x", bg: "#0a2463" }], { n: 1 });
+    expect(html).toContain(tokens.color.white);
+  });
+
+  it("uses black text color on a light cell background", () => {
+    const html = tmpl.statsGrid([{ innerHtml: "x", bg: "#f1ede6" }], { n: 1 });
+    expect(html).toContain(tokens.color.black);
+  });
+
+  it("cell without bg has no bgcolor attribute", () => {
+    const html = tmpl.statsGrid([{ innerHtml: "x" }], { n: 1 });
+    expect(html).not.toContain("bgcolor=");
   });
 });
 

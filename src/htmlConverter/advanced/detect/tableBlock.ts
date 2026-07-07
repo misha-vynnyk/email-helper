@@ -73,7 +73,7 @@ function hasMeaningfulContent(cell: CellNode): boolean {
 function cellToChild(cell: CellNode, warn?: WarnFn): ComponentNode {
   return {
     kind: "paragraph",
-    props: { lines: flattenLines(cell, warn), align: cell.align ?? "center", size: "small" as const },
+    props: { lines: flattenLines(cell, warn), align: cell.align ?? "center", size: "small" as const, bg: cell.bg },
   };
 }
 

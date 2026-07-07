@@ -298,6 +298,49 @@ describe("renderNode — statsGrid", () => {
   });
 });
 
+// ── renderNode — statsGrid highlighted cell (per-cell bg) ─────────────────────
+
+describe("renderNode — statsGrid with per-cell background", () => {
+  it("carries child bg through to the rendered cell", () => {
+    const node: ComponentNode = {
+      kind: "statsGrid",
+      props: { n: 2 },
+      children: [
+        { kind: "paragraph", props: { lines: [[{ text: "plain" }]], size: "small", align: "center" } },
+        { kind: "paragraph", props: { lines: [[{ text: "$0.50" }]], size: "small", align: "center", bg: "#0a2463" } },
+      ],
+    };
+    const result = renderNode(node, tmpl, tokens);
+    expect(result).toContain('bgcolor="#0a2463"');
+    expect(result).toContain("$0.50");
+  });
+
+  it("implicit (non-colored) text on a dark cell renders white for legibility", () => {
+    const node: ComponentNode = {
+      kind: "statsGrid",
+      props: { n: 1 },
+      children: [
+        { kind: "paragraph", props: { lines: [[{ text: "Until May 29" }]], size: "small", align: "center", bg: "#0a2463" } },
+      ],
+    };
+    const result = renderNode(node, tmpl, tokens);
+    // baseColor flips to white on dark bg, so plain (uncolored) text renders inside white-styled markup
+    expect(result).toContain(tokens.color.white);
+  });
+
+  it("cell without bg renders with no bgcolor attribute", () => {
+    const node: ComponentNode = {
+      kind: "statsGrid",
+      props: { n: 1 },
+      children: [
+        { kind: "paragraph", props: { lines: [[{ text: "plain" }]], size: "small", align: "center" } },
+      ],
+    };
+    const result = renderNode(node, tmpl, tokens);
+    expect(result).not.toContain("bgcolor=");
+  });
+});
+
 // ── renderNode — alertBand text color ─────────────────────────────────────────
 
 describe("renderNode — alertBand", () => {

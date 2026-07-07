@@ -99,6 +99,22 @@ describe("classifyTable — multi-cell", () => {
     expect(result?.children).toHaveLength(3);
   });
 
+  it("statsGrid children carry each cell's bg (e.g. a highlighted stat tile)", () => {
+    const table = makeTable([[
+      makeCell({ bg: "#f1ede6" }),
+      makeCell({ bg: "#0a2463" }),
+    ]]);
+    const result = classifyTable(table);
+    expect(result?.children?.[0].props["bg"]).toBe("#f1ede6");
+    expect(result?.children?.[1].props["bg"]).toBe("#0a2463");
+  });
+
+  it("statsGrid child has no bg prop when the cell is transparent", () => {
+    const table = makeTable([[makeCell(), makeCell()]]);
+    const result = classifyTable(table);
+    expect(result?.children?.[0].props["bg"]).toBeUndefined();
+  });
+
   it("multiple rows with 2 columns → recordRow", () => {
     const table = makeTable([
       [makeCell(), makeCell()],
