@@ -37,6 +37,12 @@ export interface CalloutOpts {
   bg?: string;
 }
 
+export interface GridCell {
+  innerHtml: string;
+  /** Optional highlight background (e.g. a featured stat tile) — text color adapts via isDarkBg */
+  bg?: string;
+}
+
 export interface GridOpts {
   n: number;
   /** Integer column widths in %, summing to 100 (from GDocs <colgroup>); equal split when absent */
@@ -196,22 +202,25 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
 </tr>`;
     },
 
-    statsGrid(cells: string[], opts: GridOpts): string {
+    statsGrid(cells: GridCell[], opts: GridOpts): string {
       const { n, widths } = opts;
       const pct = Math.floor(100 / n);
       const p = pad();
       const cy = tok.layout.gridCellPadY;
       const cx = tok.layout.gridCellPadX;
-      const cellStyle = baseStyle({ align: "center", fontSize: tok.font.smallPx }, tok);
       const gridBorder = `${tok.layout.recordBorderPx}px solid ${tok.color.tableBorder}`;
       const cellsHtml = cells
-        .map((cellHtml, i) => {
+        .map((cell, i) => {
           const w = widths?.[i] ?? (i === cells.length - 1 ? 100 - pct * (cells.length - 1) : pct);
-          return `<td valign="top" align="center" class="${tok.classes.inlineCell}" width="${w}%"
-          style="display:inline-block;width:${w}%;max-width:100%;min-width:${tok.layout.gridMinWidth}px;border:${gridBorder};">
+          const textColor = cell.bg && isDarkBg(cell.bg, tok) ? tok.color.white : tok.color.black;
+          const cellStyle = baseStyle({ align: "center", fontSize: tok.font.smallPx, color: textColor }, tok);
+          const bgAttr = cell.bg ? ` bgcolor="${cell.bg}"` : "";
+          const bgStyle = cell.bg ? `background-color:${cell.bg};` : "";
+          return `<td valign="top" align="center" class="${tok.classes.inlineCell}" width="${w}%"${bgAttr}
+          style="display:inline-block;width:${w}%;max-width:100%;min-width:${tok.layout.gridMinWidth}px;border:${gridBorder};${bgStyle}">
           <table border="0" cellspacing="0" cellpadding="0" role="presentation" width="100%" style="width:100%;">
             <tr>
-              <td style="${cellStyle} padding:${cy}px ${cx}px;">${cellHtml}</td>
+              <td${bgAttr} style="${cellStyle} padding:${cy}px ${cx}px;${bgStyle}">${cell.innerHtml}</td>
             </tr>
           </table>
         </td>`;

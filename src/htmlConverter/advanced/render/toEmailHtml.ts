@@ -7,6 +7,7 @@ import {
   buildTemplates,
   type ButtonBandOpts,
   type CalloutOpts,
+  type GridCell,
   type GridOpts,
   type ImageOpts,
   type ParagraphOpts,
@@ -160,15 +161,16 @@ export function renderNode(
     }
 
     case "statsGrid": {
-      const cellsHtml = (node.children ?? []).map(child => {
-        const cp = child.props as { lines?: Run[][] };
-        return renderLines(cp.lines ?? [], tok, tok.color.black);
+      const cells: GridCell[] = (node.children ?? []).map(child => {
+        const cp = child.props as { lines?: Run[][]; bg?: string };
+        const baseColor = cp.bg && isDarkBg(cp.bg, tok) ? tok.color.white : tok.color.black;
+        return { innerHtml: renderLines(cp.lines ?? [], tok, baseColor), bg: cp.bg };
       });
       const opts: GridOpts = {
-        n: (p["n"] as number) || cellsHtml.length,
+        n: (p["n"] as number) || cells.length,
         widths: p["widths"] as number[] | undefined,
       };
-      return tmpl.statsGrid(cellsHtml, opts);
+      return tmpl.statsGrid(cells, opts);
     }
 
     case "recordRow": {
