@@ -146,8 +146,23 @@ if (require.main === module) {
     process.exit(1);
   });
 
-  startServer().catch((err) => {
-    console.error("❌ Failed to start server:", err.message);
-    process.exit(1);
-  });
+  // Multiple users/instances on the same machine (or the packaged Electron app,
+  // which does its own 3001-3010 scan) can already occupy the preferred port —
+  // scan forward instead of crashing outright, same as the embedded server does.
+  const preferred = parseInt(process.env.PORT) || 3001;
+  (async () => {
+    for (let port = preferred; port <= preferred + 9; port++) {
+      try {
+        await startServer(port);
+        return;
+      } catch (err) {
+        if (err.code === "EADDRINUSE" && port < preferred + 9) {
+          console.log(`⚠️  Port ${port} in use, trying ${port + 1}...`);
+          continue;
+        }
+        console.error("❌ Failed to start server:", err.message);
+        process.exit(1);
+      }
+    }
+  })();
 }
