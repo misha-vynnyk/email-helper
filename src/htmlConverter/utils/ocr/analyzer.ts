@@ -19,6 +19,8 @@ export type OcrAnalyzeResult = {
   textLikelihood?: number;
   skippedReason?: OcrSkipReason;
   cacheHit?: boolean;
+  /** Non-fatal backend notice (e.g. auto-switched to a different installed Ollama model) */
+  warning?: string;
 };
 
 export type OcrAnalyzer = {

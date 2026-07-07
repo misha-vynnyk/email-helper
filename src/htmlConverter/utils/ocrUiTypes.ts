@@ -14,5 +14,6 @@ export type ImageAiAnalysis = {
   skippedReason?: OcrSkipReason;
   cacheHit?: boolean;
   error?: string;
+  warning?: string;
 };
 

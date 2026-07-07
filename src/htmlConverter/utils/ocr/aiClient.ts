@@ -125,7 +125,16 @@ export class AiBackendClient {
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => response.statusText);
-        throw new Error(`AI Backend Error: ${response.status} ${response.statusText} - ${errorText}`);
+        // Backend errors are `{ "error": "..." }` — surface that message directly
+        // instead of the raw HTTP status line, so the UI shows something actionable.
+        let message = errorText;
+        try {
+          const parsed = JSON.parse(errorText);
+          if (parsed?.error) message = parsed.error;
+        } catch {
+          // not JSON — keep the raw text
+        }
+        throw new Error(message);
       }
 
       const data = await response.json();
@@ -160,6 +169,7 @@ export class AiBackendClient {
         nameSuggestions,
         textLikelihood: 1,
         cacheHit: false,
+        warning: data.warning || undefined,
       };
     } finally {
       clearTimeout(timeoutId);
