@@ -2,6 +2,7 @@
 // `buildTemplates(tok)` bakes a token set into every template so profile overrides
 // (TTT, Alfa, …) propagate automatically without forking markup.
 
+import { escapeHtml } from "../escape";
 import { isDarkBg } from "../ir/color";
 import type { Run } from "../ir/types";
 import type { Tokens } from "./tokens";
@@ -38,13 +39,18 @@ export interface CalloutOpts {
 
 export interface GridOpts {
   n: number;
+  /** Integer column widths in %, summing to 100 (from GDocs <colgroup>); equal split when absent */
+  widths?: number[];
 }
 
-export interface DividerOpts {
-  color: string;
+export interface ImageOpts {
+  src: string;
+  alt?: string;
 }
 
 export interface RecordOpts {
+  /** Integer column widths in %, summing to 100 (from GDocs <colgroup>); equal split when absent */
+  widths?: number[];
   rows: Array<{
     bg?: string;
     cells: Array<{ innerHtml: string; align?: string; bg?: string }>;
@@ -83,17 +89,13 @@ export function blockRow(innerHtml: string, opts: Parameters<typeof baseStyle>[0
 </tr>`;
 }
 
-function escHref(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
-
 export function buttonTableHtml(label: string, href: string, bg: string, tok: Tokens = defaultTokens, radiusOverride?: number): string {
   const { height, padding, innerPadding, target } = tok.button;
   const r = radiusOverride !== undefined ? radiusOverride : tok.button.radius;
   const radiusStyle = r > 0 ? `border-radius:${r}px;` : "";
-  const textColor = isDarkBg(bg) ? tok.color.white : tok.color.black;
+  const textColor = isDarkBg(bg, tok) ? tok.color.white : tok.color.black;
   const style = baseStyle({ align: "center", fontWeight: "bold", color: textColor }, tok);
-  const safeHref = escHref(href);
+  const safeHref = escapeHtml(href);
   return `<table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="width:100%;max-width:100%;">
   <tr>
     <td class="${tok.classes.btnWrap}" height="${height}" align="center"
@@ -150,7 +152,7 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
 
     alertBand(opts: AlertBandOpts): string {
       const { innerHtml, bg } = opts;
-      const textColor = isDarkBg(bg) ? tok.color.white : tok.color.black;
+      const textColor = isDarkBg(bg, tok) ? tok.color.white : tok.color.black;
       const style = baseStyle({ color: textColor }, tok);
       const p = pad();
       const ph = tok.layout.alertBandPadH;
@@ -183,23 +185,6 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
 </tr>`;
     },
 
-    calloutBox(innerHtml: string, opts: CalloutOpts): string {
-      const { accentColor, bg = tok.color.calloutBg } = opts;
-      const style = baseStyle({}, tok);
-      const p = pad();
-      const px = tok.layout.calloutPadX;
-      const bw = tok.layout.calloutBoxBorderPx;
-      return `<tr>
-  <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
-    <table align="center" border="0" bgcolor="${bg}" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;border:${bw}px solid ${accentColor};" role="presentation">
-      <tr>
-        <td align="left" style="${style} padding-left:${px}px;padding-right:${px}px;padding-top:${p}px;padding-bottom:${p}px;">${innerHtml}</td>
-      </tr>
-    </table>
-  </td>
-</tr>`;
-    },
-
     buttonBand(opts: ButtonBandOpts): string {
       const { innerHtml, href, bg, subtitleHtml, radius } = opts;
       const p = pad();
@@ -212,7 +197,7 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
     },
 
     statsGrid(cells: string[], opts: GridOpts): string {
-      const { n } = opts;
+      const { n, widths } = opts;
       const pct = Math.floor(100 / n);
       const p = pad();
       const cy = tok.layout.gridCellPadY;
@@ -221,7 +206,7 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
       const gridBorder = `${tok.layout.recordBorderPx}px solid ${tok.color.tableBorder}`;
       const cellsHtml = cells
         .map((cellHtml, i) => {
-          const w = i === cells.length - 1 ? 100 - pct * (cells.length - 1) : pct;
+          const w = widths?.[i] ?? (i === cells.length - 1 ? 100 - pct * (cells.length - 1) : pct);
           return `<td valign="top" align="center" class="${tok.classes.inlineCell}" width="${w}%"
           style="display:inline-block;width:${w}%;max-width:100%;min-width:${tok.layout.gridMinWidth}px;border:${gridBorder};">
           <table border="0" cellspacing="0" cellpadding="0" role="presentation" width="100%" style="width:100%;">
@@ -245,23 +230,25 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
 </tr>`;
     },
 
-    divider(opts: DividerOpts): string {
-      const { color } = opts;
+    image(opts: ImageOpts): string {
+      const { src, alt = "Image" } = opts;
       const p = pad();
-      const d = tok.layout.dividerPx;
+      // Content width inside side padding (600 − 2×20 = 560) — matches simple wrapImg
+      const w = tok.layout.containerMaxWidth - 2 * tok.layout.sidePadding;
       return `<tr>
-  <td style="padding-top:${p}px;padding-bottom:${p}px;">
-    <table border="0" cellspacing="0" cellpadding="0" role="presentation" width="100%" style="width:100%;">
-      <tr>
-        <td height="${d}" style="border-top:${d}px solid ${color};font-size:0;line-height:0;mso-line-height-rule:exactly;"></td>
-      </tr>
-    </table>
+  <td class="${tok.classes.imgBg}" align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
+    <a href="${tok.placeholderHref}" target="${tok.button.target}">
+      <img alt="${escapeHtml(alt)}" height="auto"
+           src="${escapeHtml(src)}"
+           style="border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;max-width:${w}px;font-size:13px;"
+           width="${w}"/>
+    </a>
   </td>
 </tr>`;
     },
 
     recordRow(opts: RecordOpts): string {
-      const { rows } = opts;
+      const { rows, widths } = opts;
       if (!rows.length) return "";
       const p = pad();
       const ry = tok.layout.recordCellPadY;
@@ -271,18 +258,20 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
       const rowsHtml = rows
         .map((row) => {
           const firstBg = row.cells[0]?.bg ?? row.bg;
-          const rowTextColor = firstBg && isDarkBg(firstBg) ? tok.color.white : tok.color.black;
+          const rowTextColor = firstBg && isDarkBg(firstBg, tok) ? tok.color.white : tok.color.black;
           const ncols = row.cells.length;
           const colPct = ncols > 1 ? Math.floor(100 / ncols) : 0;
+          const rowWidths = widths?.length === ncols ? widths : undefined;
 
           const cellsHtml = row.cells
             .map((cell, i) => {
               const bg = cell.bg ?? row.bg;
               const bgAttr = bg ? ` bgcolor="${bg}"` : "";
-              const textColor = bg && isDarkBg(bg) ? tok.color.white : rowTextColor;
+              const textColor = bg && isDarkBg(bg, tok) ? tok.color.white : rowTextColor;
               const style = baseStyle({ fontSize: tok.font.smallPx, color: textColor }, tok);
               const align = cell.align ?? "left";
-              const widthAttr = ncols > 1 ? ` width="${i === ncols - 1 ? 100 - colPct * (ncols - 1) : colPct}%"` : "";
+              const w = rowWidths?.[i] ?? (i === ncols - 1 ? 100 - colPct * (ncols - 1) : colPct);
+              const widthAttr = ncols > 1 ? ` width="${w}%"` : "";
               return `<td align="${align}"${bgAttr}${widthAttr} style="${style} padding:${ry}px ${rx}px;border-bottom:${tok.layout.recordBorderPx}px solid ${border};">${cell.innerHtml}</td>`;
             })
             .join("\n");

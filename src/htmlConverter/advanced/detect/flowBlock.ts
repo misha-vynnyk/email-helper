@@ -11,10 +11,14 @@ export function classifyFlow(nodes: StructuralNode[], tok: Tokens = defaultToken
     const { lines, align, size, headingLevel } = node;
     if (!lines.some(l => l.length > 0)) continue;
 
+    // Heading levels are markers matching the simple converter's conventions:
+    // H1/H2 → headline size (set in fromDom), H4 → quote, H5 → button,
+    // H6 → small size (fromDom). H3 has no special role — renders as body text.
+
     // h5 → button component (matches simple converter "Кнопка" marker)
     if (headingLevel === 5) {
       const allRuns: Run[] = lines.flat();
-      result.push({ kind: "buttonBand", props: { runs: allRuns, bg: tok.color.button, href: tok.color.placeholderHref } });
+      result.push({ kind: "buttonBand", props: { runs: allRuns, bg: tok.color.button, href: tok.placeholderHref } });
       continue;
     }
 

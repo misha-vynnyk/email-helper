@@ -5,23 +5,54 @@
 import type { Tokens } from "../config/tokens";
 import { tokens as defaultTokens } from "../config/tokens";
 import { isDarkBg } from "../ir/color";
-import type { CellNode, ComponentNode, Paragraph, Run,TableNode } from "../ir/types";
+import type { CellNode, ComponentNode, Paragraph, Run,TableNode, WarnFn } from "../ir/types";
 
 // ── Cell content helpers ──────────────────────────────────────────────────────
 
-function flattenRuns(cell: CellNode): Run[] {
-  return cell.children
-    .filter((n): n is Paragraph => n.type === "p")
-    .flatMap(p => p.lines.flat());
+/**
+ * Collect runs from a cell, descending into nested tables (their cells'
+ * paragraphs are flattened in document order). Nested-table flattening is
+ * reported via `warn` — the layout is lost, only the text survives.
+ */
+function flattenRuns(cell: CellNode, warn?: WarnFn): Run[] {
+  const runs: Run[] = [];
+  for (const child of cell.children) {
+    if (child.type === "p") {
+      runs.push(...child.lines.flat());
+    } else if (child.type === "table") {
+      warn?.("Вкладену таблицю сплющено до тексту (розмітка внутрішньої таблиці втрачена)");
+      for (const row of child.rows) {
+        for (const nested of row.cells) {
+          runs.push(...flattenRuns(nested, undefined /* warn once per table */));
+        }
+      }
+    }
+  }
+  return runs;
+}
+
+/** Paragraph lines of a cell, including lines from nested tables (flattened). */
+function flattenLines(cell: CellNode, warn?: WarnFn): Run[][] {
+  const lines: Run[][] = [];
+  for (const child of cell.children) {
+    if (child.type === "p") {
+      lines.push(...child.lines);
+    } else if (child.type === "table") {
+      warn?.("Вкладену таблицю сплющено до тексту (розмітка внутрішньої таблиці втрачена)");
+      for (const row of child.rows) {
+        for (const nested of row.cells) {
+          lines.push(...flattenLines(nested, undefined));
+        }
+      }
+    }
+  }
+  return lines;
 }
 
 function findHref(cell: CellNode): string | null {
-  for (const child of cell.children) {
-    if (child.type !== "p") continue;
-    for (const line of child.lines) {
-      for (const run of line) {
-        if (run.href) return run.href;
-      }
+  for (const line of flattenLines(cell)) {
+    for (const run of line) {
+      if (run.href) return run.href;
     }
   }
   return null;
@@ -39,20 +70,32 @@ function hasMeaningfulContent(cell: CellNode): boolean {
   return flattenRuns(cell).some(r => r.text.trim() !== "");
 }
 
-function cellToChild(cell: CellNode): ComponentNode {
-  const lines = cell.children
-    .filter((n): n is Paragraph => n.type === "p")
-    .map(p => p.lines)
-    .flat();
+function cellToChild(cell: CellNode, warn?: WarnFn): ComponentNode {
   return {
     kind: "paragraph",
-    props: { lines, align: cell.align ?? "center", size: "small" as const },
+    props: { lines: flattenLines(cell, warn), align: cell.align ?? "center", size: "small" as const },
   };
+}
+
+// ── Column widths ─────────────────────────────────────────────────────────────
+
+/**
+ * Convert raw <colgroup> widths to integer percentages summing to 100.
+ * Returns undefined when widths are missing/mismatched (e.g. colspan rows or
+ * cols without a width attribute) — callers fall back to the equal split.
+ */
+function toWidthPercents(colWidths: number[] | undefined, ncells: number): number[] | undefined {
+  if (!colWidths || colWidths.length !== ncells || ncells < 2) return undefined;
+  const total = colWidths.reduce((s, w) => s + w, 0);
+  if (total <= 0) return undefined;
+  const pcts = colWidths.map(w => Math.floor((w / total) * 100));
+  pcts[pcts.length - 1] = 100 - pcts.slice(0, -1).reduce((s, p) => s + p, 0);
+  return pcts;
 }
 
 // ── Single-cell classification ────────────────────────────────────────────────
 
-function classifySingleCell(cell: CellNode, tok: Tokens): ComponentNode | null {
+function classifySingleCell(cell: CellNode, tok: Tokens, warn?: WarnFn): ComponentNode | null {
   const bg = cell.bg;
 
   // No color or matches root background → transparent, let classify.ts unwrap
@@ -64,30 +107,30 @@ function classifySingleCell(cell: CellNode, tok: Tokens): ComponentNode | null {
   if (hasButtonMarker(cell)) {
     return {
       kind: "buttonBand",
-      props: { runs: flattenRuns(cell), href: tok.color.placeholderHref, bg, radius: 0 },
+      props: { runs: flattenRuns(cell, warn), href: tok.placeholderHref, bg, radius: 0 },
     };
   }
 
-  if (isDarkBg(bg)) {
+  if (isDarkBg(bg, tok)) {
     const href = findHref(cell);
     if (href) {
-      return { kind: "buttonBand", props: { runs: flattenRuns(cell), href, bg } };
+      return { kind: "buttonBand", props: { runs: flattenRuns(cell, warn), href, bg } };
     }
-    return { kind: "alertBand", props: { runs: flattenRuns(cell), bg } };
+    return { kind: "alertBand", props: { runs: flattenRuns(cell, warn), bg } };
   }
 
   // Light accent bg → callout with left border
   return {
     kind: "calloutLeft",
-    props: { runs: flattenRuns(cell), bg, accentColor: tok.color.button },
+    props: { runs: flattenRuns(cell, warn), bg, accentColor: tok.color.button },
   };
 }
 
 // ── Multi-row helper ──────────────────────────────────────────────────────────
 
-function rowCells(cells: CellNode[]) {
+function rowCells(cells: CellNode[], warn?: WarnFn) {
   return cells.map(c => ({
-    runs: flattenRuns(c),
+    runs: flattenRuns(c, warn),
     align: c.align ?? "left",
     bg: c.bg,
   }));
@@ -95,7 +138,7 @@ function rowCells(cells: CellNode[]) {
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 
-export function classifyTable(node: TableNode, tok: Tokens = defaultTokens): ComponentNode | null {
+export function classifyTable(node: TableNode, tok: Tokens = defaultTokens, warn?: WarnFn): ComponentNode | null {
   const { rows } = node;
   if (!rows.length) return null;
 
@@ -105,7 +148,7 @@ export function classifyTable(node: TableNode, tok: Tokens = defaultTokens): Com
 
   // Single-row, single-cell (check physical cell count, not colspan-expanded ncols)
   if (rows.length === 1 && rows[0].cells.length === 1) {
-    return classifySingleCell(rows[0].cells[0], tok);
+    return classifySingleCell(rows[0].cells[0], tok, warn);
   }
 
   // Single-row, multi-cell
@@ -117,26 +160,29 @@ export function classifyTable(node: TableNode, tok: Tokens = defaultTokens): Com
     // treating the whole row as a stats grid.
     const meaningfulCells = cells.filter(hasMeaningfulContent);
     if (meaningfulCells.length === 1) {
-      const comp = classifySingleCell(meaningfulCells[0], tok);
+      const comp = classifySingleCell(meaningfulCells[0], tok, warn);
       if (comp) return comp;
       // null → transparent cell, fall through to statsGrid
     }
 
     return {
       kind: "statsGrid",
-      props: { n: cells.length },
-      children: cells.map(cellToChild),
+      props: { n: cells.length, widths: toWidthPercents(node.colWidths, cells.length) },
+      children: cells.map(c => cellToChild(c, warn)),
     };
   }
 
   // Multi-row, multi-col → recordRow
   if (ncols >= 2) {
+    const cellCounts = new Set(rows.map(r => r.cells.length));
+    const uniformCells = cellCounts.size === 1 ? rows[0].cells.length : 0;
     return {
       kind: "recordRow",
       props: {
+        widths: toWidthPercents(node.colWidths, uniformCells),
         rows: rows.map(r => ({
           bg: r.cells.every(c => c.bg === r.cells[0].bg) ? r.cells[0].bg : undefined,
-          cells: rowCells(r.cells),
+          cells: rowCells(r.cells, warn),
         })),
       },
     };

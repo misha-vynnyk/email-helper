@@ -7,24 +7,21 @@ import {
   buildTemplates,
   type ButtonBandOpts,
   type CalloutOpts,
-  type DividerOpts,
   type GridOpts,
+  type ImageOpts,
   type ParagraphOpts,
   type RecordOpts,
   templates as defaultTemplates,
 } from "../config/templates";
 import type { Tokens } from "../config/tokens";
 import { tokens as defaultTokens } from "../config/tokens";
+import { escapeHtml as esc } from "../escape";
 import { isDarkBg } from "../ir/color";
 import type { ComponentNode, Run } from "../ir/types";
 
 type Templates = ReturnType<typeof buildTemplates>;
 
 // ── Run → HTML ────────────────────────────────────────────────────────────────
-
-function esc(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-}
 
 function isSafeHref(href: string): boolean {
   const lower = href.trimStart().toLowerCase();
@@ -52,7 +49,7 @@ export function renderRuns(runs: Run[], tok: Tokens = defaultTokens, baseColor?:
       const linkColor = run.color ?? tok.color.link;
       // Match simple converter link format: placeholder href, full style with font-family + bold
       const inner = run.italic ? `<${I}>${html}</${I}>` : html;
-      return `<a href="${tok.color.placeholderHref}" style="font-family:${tok.font.stack};text-decoration:${tok.font.linkDecoration};font-weight:${tok.font.linkWeight};color:${linkColor};">${inner}</a>`;
+      return `<a href="${tok.placeholderHref}" style="font-family:${tok.font.stack};text-decoration:${tok.font.linkDecoration};font-weight:${tok.font.linkWeight};color:${linkColor};">${inner}</a>`;
     }
 
     const hasColor = Boolean(run.color) &&
@@ -129,7 +126,7 @@ export function renderNode(
 
     case "alertBand": {
       const bg = p["bg"] as string;
-      const textColor = isDarkBg(bg) ? tok.color.white : tok.color.black;
+      const textColor = isDarkBg(bg, tok) ? tok.color.white : tok.color.black;
       const opts: AlertBandOpts = {
         innerHtml: renderRuns(p["runs"] as Run[], tok, textColor),
         bg,
@@ -140,29 +137,26 @@ export function renderNode(
     case "buttonBand": {
       const runs = (p["runs"] ?? p["label"]) as Run[];
       const bg = p["bg"] as string;
-      const textColor = isDarkBg(bg) ? tok.color.white : tok.color.black;
+      const textColor = isDarkBg(bg, tok) ? tok.color.white : tok.color.black;
       // Strip per-run color and href: button template controls text color/link,
       // and nested <a> inside a button link would produce invalid HTML.
       const buttonRuns = runs.map(r => ({ ...r, color: undefined, href: undefined }));
       const opts: ButtonBandOpts = {
         innerHtml: renderRuns(buttonRuns, tok, textColor),
-        href: (p["href"] as string) ?? tok.color.placeholderHref,
+        href: (p["href"] as string) ?? tok.placeholderHref,
         bg,
         radius: p["radius"] as number | undefined,
       };
       return tmpl.buttonBand(opts);
     }
 
-    case "calloutLeft":
-    case "calloutBox": {
+    case "calloutLeft": {
       const innerHtml = renderRuns(p["runs"] as Run[], tok, tok.color.black);
       const opts: CalloutOpts = {
         accentColor: (p["accentColor"] as string) ?? tok.color.button,
         bg: p["bg"] as string | undefined,
       };
-      return node.kind === "calloutLeft"
-        ? tmpl.calloutLeft(innerHtml, opts)
-        : tmpl.calloutBox(innerHtml, opts);
+      return tmpl.calloutLeft(innerHtml, opts);
     }
 
     case "statsGrid": {
@@ -170,7 +164,10 @@ export function renderNode(
         const cp = child.props as { lines?: Run[][] };
         return renderLines(cp.lines ?? [], tok, tok.color.black);
       });
-      const opts: GridOpts = { n: (p["n"] as number) || cellsHtml.length };
+      const opts: GridOpts = {
+        n: (p["n"] as number) || cellsHtml.length,
+        widths: p["widths"] as number[] | undefined,
+      };
       return tmpl.statsGrid(cellsHtml, opts);
     }
 
@@ -178,11 +175,12 @@ export function renderNode(
       type RowData = { bg?: string; cells: Array<{ runs: Run[]; align?: string; bg?: string }> };
       const rawRows = p["rows"] as RowData[];
       const opts: RecordOpts = {
+        widths: p["widths"] as number[] | undefined,
         rows: rawRows.map(row => ({
           bg: row.bg,
           cells: row.cells.map(c => {
             const bg = c.bg ?? row.bg;
-            const textColor = bg && isDarkBg(bg) ? tok.color.white : tok.color.black;
+            const textColor = bg && isDarkBg(bg, tok) ? tok.color.white : tok.color.black;
             return {
               innerHtml: renderRuns(c.runs, tok, textColor),
               align: c.align,
@@ -194,11 +192,16 @@ export function renderNode(
       return tmpl.recordRow(opts);
     }
 
-    case "divider":
-      return tmpl.divider(p as unknown as DividerOpts);
+    case "image": {
+      const opts: ImageOpts = {
+        src: p["src"] as string,
+        alt: p["alt"] as string | undefined,
+      };
+      return opts.src ? tmpl.image(opts) : "";
+    }
 
     case "spacer":
-      return tmpl.spacer(((p["heightPx"] as number) | 0) || tok.layout.spacerPx);
+      return tmpl.spacer(Math.trunc((p["heightPx"] as number) || 0) || tok.layout.spacerPx);
 
     default:
       return "";
