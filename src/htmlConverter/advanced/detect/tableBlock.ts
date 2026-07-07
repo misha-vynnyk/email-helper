@@ -80,7 +80,13 @@ function hasMeaningfulContent(cell: CellNode): boolean {
 function cellToChild(cell: CellNode, warn?: WarnFn): ComponentNode {
   return {
     kind: "paragraph",
-    props: { lines: flattenLines(cell, warn), align: cell.align ?? "center", size: "small" as const, bg: cell.bg },
+    props: {
+      lines: flattenLines(cell, warn),
+      align: cell.align ?? "center",
+      size: "small" as const,
+      bg: cell.bg,
+      borderColor: firstBorderColor(cell.border),
+    },
   };
 }
 
@@ -169,6 +175,7 @@ function rowCells(cells: CellNode[], warn?: WarnFn) {
     runs: flattenRuns(c, warn),
     align: c.align ?? "left",
     bg: c.bg,
+    borderColor: firstBorderColor(c.border),
   }));
 }
 

@@ -169,6 +169,27 @@ describe("classifyTable — multi-cell", () => {
     expect(rows).toHaveLength(2);
   });
 
+  // Fix #5: per-cell border colors must survive classification, not collapse to one shared color
+  it("statsGrid children each carry their own borderColor", () => {
+    const table = makeTable([[
+      makeCell({ border: { top: { width: 1, color: "#ff0000" } } }),
+      makeCell({ border: { top: { width: 1, color: "#0000ff" } } }),
+    ]]);
+    const result = classifyTable(table);
+    expect(result?.children?.[0].props["borderColor"]).toBe("#ff0000");
+    expect(result?.children?.[1].props["borderColor"]).toBe("#0000ff");
+  });
+
+  it("recordRow cells each carry their own borderColor", () => {
+    const redCell = makeCell({ border: { top: { width: 1, color: "#ff0000" } } });
+    const blueCell = makeCell({ border: { top: { width: 1, color: "#0000ff" } } });
+    const table = makeTable([[redCell, makeCell()], [blueCell, makeCell()]]);
+    const result = classifyTable(table);
+    const rows = (result?.props as Record<string, unknown>)["rows"] as Array<{ cells: Array<Record<string, unknown>> }>;
+    expect(rows[0].cells[0]["borderColor"]).toBe("#ff0000");
+    expect(rows[1].cells[0]["borderColor"]).toBe("#0000ff");
+  });
+
   it("multiple rows with single column → null (each row processed independently)", () => {
     const table = makeTable([
       [makeCell()],
