@@ -115,6 +115,25 @@ describe("convertAdvanced — paragraph gaps survive a large-margin opener", () 
     expect(gap).toContain("<br>");
     expect(gap).not.toContain("<br><br>");
   });
+
+  // Manually-typed GDocs checklist: three <p>s, each starting with a green "✓ " span —
+  // no real <ul>, detected by the marker-pair signal, merged with single <br>s.
+  it("merges a manually-typed ✓ checklist (real GDocs paste) with single <br>s", () => {
+    const item = (glyphColor: string, boldText: string, rest: string) =>
+      `<p dir="ltr" style="line-height:1.38;margin-top:0pt;margin-bottom:4pt;">` +
+      `<span style="font-size:11pt;color:${glyphColor};font-weight:400;">✓&nbsp; </span>` +
+      `<span style="font-size:11pt;color:#000000;font-weight:700;">${boldText}</span>` +
+      `<span style="font-size:11pt;color:#000000;font-weight:400;">${rest}</span></p>`;
+    const input = `<b style="font-weight:normal;" id="docs-internal-guid-206e861f">` +
+      item("#166434", "Partners: ", "Google, Meta, Microsoft, Qualcomm, Intel, Samsung") +
+      item("#166534", "Backed by: ", "Pat Gelsinger, Mark McClain, and Tim Tebow") +
+      item("#166434", "4,000% valuation growth", " · $36M+ raised · 9,500+ investors") +
+      `</b>`;
+    const { html } = convertAdvancedDetailed(input);
+    const list = html.slice(html.indexOf("Partners:"), html.indexOf("9,500+ investors"));
+    expect(list).not.toContain("<br><br>");
+    expect(list.match(/<br>/g)).toHaveLength(2);
+  });
 });
 
 // ── tables.html fixture ───────────────────────────────────────────────────────
