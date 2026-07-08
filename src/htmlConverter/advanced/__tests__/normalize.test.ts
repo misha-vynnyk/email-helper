@@ -18,10 +18,15 @@ describe("normalize", () => {
     expect(getStyle(body, "p")).toContain("color");
   });
 
-  it("strips margin and margin-top", () => {
-    const body = normalize('<p style="margin: 0; margin-top: 4px; color: red;">hi</p>');
+  it("strips margin shorthand and margin-bottom/left/right, but keeps margin-top", () => {
+    // margin-top survives — fromDom reads it as the adjacent-paragraph merge signal (§4).
+    const body = normalize(
+      '<p style="margin: 0; margin-top: 4pt; margin-bottom: 4pt; margin-left: 1pt; color: red;">hi</p>',
+    );
     const style = getStyle(body, "p");
-    expect(style).not.toContain("margin");
+    expect(style).not.toContain("margin-bottom");
+    expect(style).not.toContain("margin-left");
+    expect(style).toContain("margin-top");
     expect(style).toContain("color");
   });
 

@@ -5,10 +5,12 @@ const ALWAYS_STRIP = new Set([
   "white-space", "vertical-align", "font-variant",
   "overflow", "overflow-wrap",
   "font-family", "line-height",
-  "margin", "margin-top", "margin-bottom", "margin-left", "margin-right",
+  "margin", "margin-bottom", "margin-left", "margin-right",
   "padding", "padding-top", "padding-bottom", "padding-left", "padding-right",
   "border-collapse", "border-spacing",
 ]);
+// margin-top is kept (not stripped) — fromDom reads it as a signal for adjacent-paragraph
+// merging (§4): margin-top:0 is GDocs' explicit "no space before this paragraph" marker.
 // border / border-top / border-bottom / border-left / border-right are kept —
 // fromDom reads their color for classification (§4) and box rendering; GDocs
 // widths are still ignored at render time (house tokens control px).

@@ -4,14 +4,13 @@ import type { CellNode,Paragraph, StructuralNode, TableNode } from "../ir/types"
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function makePara(text: string, size: Paragraph["size"] = "body", align: Paragraph["align"] = "left"): Paragraph {
-  return { type: "p", size, align, lines: [[{ text }]] };
-}
-
-// A leading bullet/checkmark run followed by the item's own text, matching how a manually-
-// typed list ("✓ Partners: ...") or a real <li> (fromDom's "• " prefix) is represented.
-function makeListPara(marker: string, text: string): Paragraph {
-  return { type: "p", size: "body", align: "left", lines: [[{ text: marker }, { text }]] };
+function makePara(
+  text: string,
+  size: Paragraph["size"] = "body",
+  align: Paragraph["align"] = "left",
+  extra: Partial<Pick<Paragraph, "marginTopPt" | "listItem">> = {},
+): Paragraph {
+  return { type: "p", size, align, lines: [[{ text }]], ...extra };
 }
 
 function makeCell(children: StructuralNode[] = [], bg?: string): CellNode {
@@ -74,14 +73,14 @@ describe("classify — paragraph merging", () => {
     expect(breaks.has(1)).toBe(true);
   });
 
-  // Bug fix: manually-typed checklists ("✓ Partners: ...") and real <ul>/<li> lists (which
-  // fromDom.ts renders as plain left-aligned paragraphs prefixed with "• ") both encode each
-  // item as its own <p> with a leading marker run — these must merge with single <br>s.
-  it("merges adjacent paragraphs that both start with a bullet/checkmark marker — no paraBreak", () => {
+  // Bug fix: real <ul>/<li> lists are structurally certain — fromDom.ts sets listItem:true
+  // on every <li>-derived paragraph — so adjacent items always merge with a single <br>,
+  // regardless of what text/character (if any) each item happens to start with.
+  it("merges adjacent listItem paragraphs with NO paraBreak (single <br>), whatever their text", () => {
     const nodes: StructuralNode[] = [
-      makeListPara("✓  ", "Partners: Google, Meta"),
-      makeListPara("✓  ", "Backed by: Pat Gelsinger"),
-      makeListPara("✓  ", "4,000% valuation growth"),
+      makePara("Partners: Google, Meta", "body", "left", { listItem: true }),
+      makePara("Backed by: Pat Gelsinger", "body", "left", { listItem: true }),
+      makePara("4,000% valuation growth", "body", "left", { listItem: true }),
     ];
     const result = classify(nodes);
     expect(result).toHaveLength(1);
@@ -90,9 +89,38 @@ describe("classify — paragraph merging", () => {
     expect(lines).toHaveLength(3);
   });
 
+  // Bug fix: a manually-typed checklist (no real <ul>, just <p>s with a leading "✓") is
+  // detected via GDocs' own margin-top metadata instead — the first line establishes the
+  // group's baseline "space before", and later lines with a REDUCED margin-top (a genuine
+  // author-set "no gap" override, not just any small value) are continuations of it.
+  it("merges adjacent paragraphs whose margin-top drops below the chain's opening value — no paraBreak", () => {
+    const nodes: StructuralNode[] = [
+      makePara("✓  Partners: Google, Meta", "body", "left", { marginTopPt: 11 }),
+      makePara("✓  Backed by: Pat Gelsinger", "body", "left", { marginTopPt: 0 }),
+      makePara("✓  4,000% valuation growth", "body", "left", { marginTopPt: 0 }),
+    ];
+    const result = classify(nodes);
+    expect(result).toHaveLength(1);
+    expect(result[0].props["paraBreaks"]).toBeUndefined();
+  });
+
+  // A uniform margin-top across every paragraph (including margin-top:0 on ALL of them —
+  // a common CSS-reset default from non-GDocs sources, not an authorial "pack tight" signal)
+  // must NOT be read as tight: there's no reduction relative to the chain's own baseline.
+  it("does NOT treat a uniform margin-top (even 0 on every paragraph) as tight", () => {
+    const nodes: StructuralNode[] = [
+      makePara("Welcome to our newsletter.", "body", "left", { marginTopPt: 0 }),
+      makePara("This month we share updates.", "body", "left", { marginTopPt: 0 }),
+    ];
+    const result = classify(nodes);
+    expect(result).toHaveLength(1);
+    const breaks = result[0].props["paraBreaks"] as Set<number>;
+    expect(breaks.has(1)).toBe(true);
+  });
+
   it("does NOT treat a single dash/asterisk mid-sentence as a list marker", () => {
-    // The marker check only fires on an ISOLATED leading run — a run beginning with "-"
-    // but continuing into prose text must not be mistaken for a bullet.
+    // Plain prose starting with "-" must not be mistaken for a bullet — there is no
+    // listItem flag and no margin-top reduction, so it stays genuine prose.
     const nodes: StructuralNode[] = [
       { type: "p", size: "body", align: "left", lines: [[{ text: "- not a bullet, just a dash-led sentence." }]] },
       { type: "p", size: "body", align: "left", lines: [[{ text: "Second sentence continues normally." }]] },
