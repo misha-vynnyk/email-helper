@@ -10,6 +10,7 @@ export interface ElectronUploadResult {
   publicUrl?: string;
   filePath?: string;
   error?: string;
+  cancelled?: boolean;
 }
 
 interface ElectronAPI {

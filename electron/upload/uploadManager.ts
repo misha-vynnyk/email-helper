@@ -16,9 +16,17 @@ export interface UploadResult {
   filePath?: string;
   error?: string;
   skipped?: boolean; // true when file already existed (duplicate)
+  cancelled?: boolean; // true when the user closed the upload window mid-flight
 }
 
 const CANCEL_MSG = "cancelled";
+
+// All cancel paths funnel through here so the renderer can reliably tell a
+// user-initiated window close apart from a normal upload error (which it
+// can't do by matching localized `error` text).
+function cancelResult(message = "Upload скасовано"): UploadResult {
+  return { success: false, cancelled: true, error: message };
+}
 
 // ── Session state ─────────────────────────────────────────────────────────────
 // One persistent window per provider. Reused across uploads to avoid repeated
@@ -253,11 +261,11 @@ export async function uploadFile(
       try {
         await loadUrlWithTimeout(uploadWindow, targetUrl, 30_000, isCancelled);
       } catch (err) {
-        if (isCancelError(err)) return { success: false, error: "Upload скасовано" };
+        if (isCancelError(err)) return cancelResult();
         return { success: false, error: (err as Error).message };
       }
 
-      if (isCancelled()) return { success: false, error: "Upload скасовано" };
+      if (isCancelled()) return cancelResult();
 
       // ── Step 2: Wait for upload UI (allows login) ───────────────────────
       // Always wait for #upload-main with a generous timeout so the user has
@@ -266,11 +274,11 @@ export async function uploadFile(
       try {
         await waitForSelector(uploadWindow, "#upload-main", loginTimeoutMs, isCancelled);
       } catch (err) {
-        if (isCancelError(err)) return { success: false, error: "Upload скасовано — вікно закрито під час авторизації" };
+        if (isCancelError(err)) return cancelResult("Upload скасовано — вікно закрито під час авторизації");
         return { success: false, error: "Timeout (10 хв) — кнопка завантаження не з'явилась. Перевірте, чи вдалось увійти у сховище" };
       }
 
-      if (isCancelled()) return { success: false, error: "Upload скасовано" };
+      if (isCancelled()) return cancelResult();
 
       // After login MinIO may redirect to /browser root — re-navigate to target folder
       const currentUrl: string = await uploadWindow.webContents.executeJavaScript(`window.location.href`).catch(() => "");
@@ -282,7 +290,7 @@ export async function uploadFile(
         } catch {
           // Non-fatal: React Router may have already navigated client-side
         }
-        if (isCancelled()) return { success: false, error: "Upload скасовано" };
+        if (isCancelled()) return cancelResult();
       }
 
     } else {
@@ -295,10 +303,10 @@ export async function uploadFile(
         try {
           await loadUrlWithTimeout(uploadWindow, targetUrl, 30_000, isCancelled);
         } catch (err) {
-          if (isCancelError(err)) return { success: false, error: "Upload скасовано" };
+          if (isCancelError(err)) return cancelResult();
           return { success: false, error: (err as Error).message };
         }
-        if (isCancelled()) return { success: false, error: "Upload скасовано" };
+        if (isCancelled()) return cancelResult();
       }
 
       // Verify we're still authenticated (session could have expired)
@@ -310,12 +318,12 @@ export async function uploadFile(
         try {
           await waitForSelector(uploadWindow, "#upload-main", bootstrapWaitMs, isCancelled);
         } catch (err) {
-          if (isCancelError(err)) return { success: false, error: "Upload скасовано" };
+          if (isCancelError(err)) return cancelResult();
           return { success: false, error: "Сесія сховища закінчилась — спробуйте ще раз (відкриється вікно входу)" };
         }
       }
 
-      if (isCancelled()) return { success: false, error: "Upload скасовано" };
+      if (isCancelled()) return cancelResult();
     }
 
     // ── Step 3: Duplicate check ─────────────────────────────────────────────
@@ -347,7 +355,7 @@ export async function uploadFile(
       if (attempt > 1) {
         uploadWindow.setTitle(`Storage — повтор ${attempt}/${uploadAttempts}...`);
         await sleep(uploadWindow, 2_000);
-        if (isCancelled()) return { success: false, error: "Upload скасовано" };
+        if (isCancelled()) return cancelResult();
         uploaded = await checkInListing();
         if (uploaded) break;
       }
@@ -359,11 +367,11 @@ export async function uploadFile(
       try {
         await waitForSelector(uploadWindow, 'div[label="Upload File"]', elementWaitMs, isCancelled);
       } catch (err) {
-        if (isCancelError(err)) return { success: false, error: "Upload скасовано" };
+        if (isCancelError(err)) return cancelResult();
         uploadError = "Меню завантаження не відкрилось — можливо, змінився UI сховища";
         continue attemptLoop;
       }
-      if (isCancelled()) return { success: false, error: "Upload скасовано" };
+      if (isCancelled()) return cancelResult();
 
       // ── Step 5: Attach debugger and suppress native file dialog ───────────
       // Must happen BEFORE clicking "Upload File" so the OS file picker (Finder
@@ -385,7 +393,7 @@ export async function uploadFile(
       try {
         await waitForSelector(uploadWindow, 'input[type="file"]', elementWaitMs, isCancelled);
       } catch (err) {
-        if (isCancelError(err)) return { success: false, error: "Upload скасовано" };
+        if (isCancelError(err)) return cancelResult();
         uploadError = "Поле вибору файлу не з'явилось — можливо, змінився UI сховища";
         continue attemptLoop;
       }
@@ -403,7 +411,7 @@ export async function uploadFile(
         }
         await dbg.sendCommand("DOM.setFileInputFiles", { nodeId, files: [req.tempPath] });
       } catch (err) {
-        if (isCancelError(err)) return { success: false, error: "Upload скасовано" };
+        if (isCancelError(err)) return cancelResult();
         uploadError = `CDP помилка при завантаженні файлу: ${(err as Error).message}`;
         continue attemptLoop;
       } finally {
@@ -418,7 +426,7 @@ export async function uploadFile(
       uploadWindow.setTitle("Storage — очікування завершення...");
       const deadline = Date.now() + uploadCompletionMs;
       while (!uploaded) {
-        if (isCancelled()) return { success: false, error: "Upload скасовано під час передачі файлу" };
+        if (isCancelled()) return cancelResult("Upload скасовано під час передачі файлу");
         if (Date.now() > deadline) {
           uploadError = `Timeout завантаження (${Math.round(uploadCompletionMs / 1000)}s) — файл міг не завантажитись. Перевірте інтернет та спробуйте ще раз`;
           break;
@@ -443,7 +451,7 @@ export async function uploadFile(
     return { success: true, publicUrl, filePath: publicPath };
 
   } catch (err) {
-    if (isCancelled()) return { success: false, error: "Upload скасовано" };
+    if (isCancelled()) return cancelResult();
     return { success: false, error: err instanceof Error ? err.message : String(err) };
   } finally {
     if (debuggerAttached) {

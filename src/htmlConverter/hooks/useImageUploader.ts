@@ -200,7 +200,7 @@ export function useImageUploader({ images, imagesSessionId, storageProvider, for
             onLog?.(`📤 [${i + 1}/${completed.length}] Завантаження ${filename}...`);
             const tempPath = await getTempPathInner(img, filename);
 
-            let result: { success?: boolean; filePath?: string; publicUrl?: string; error?: string; skipped?: boolean } = {};
+            let result: { success?: boolean; filePath?: string; publicUrl?: string; error?: string; skipped?: boolean; cancelled?: boolean } = {};
 
             if (uploadMode === "electron") {
               const electronAPI = getElectronAPI();
@@ -209,7 +209,11 @@ export function useImageUploader({ images, imagesSessionId, storageProvider, for
                 electronAPI.uploadFile({ tempPath, provider: storageProvider, category, folderName }),
                 createTimeout(UPLOAD_CONFIG.STORAGE_TIMEOUT, "Timeout: electron upload не відповідає (180s)"),
               ]);
-              if (!result.success) throw new Error(result.error || "Electron upload failed");
+              if (!result.success) {
+                const uploadError = new Error(result.error || "Electron upload failed") as Error & { cancelled?: boolean };
+                if (result.cancelled) uploadError.cancelled = true;
+                throw uploadError;
+              }
             } else {
               const storageResponse = await Promise.race([
                 fetch(`${getApiBase()}/api/storage-upload`, {
@@ -231,7 +235,11 @@ export function useImageUploader({ images, imagesSessionId, storageProvider, for
               } catch {
                 // ignore parse error if ok
               }
-              if (!storageResponse.ok) throw new Error(result.error || `Storage HTTP ${storageResponse.status}`);
+              if (!storageResponse.ok) {
+                const uploadError = new Error(result.error || `Storage HTTP ${storageResponse.status}`) as Error & { cancelled?: boolean };
+                if (result.cancelled) uploadError.cancelled = true;
+                throw uploadError;
+              }
             }
 
             if (result.filePath) {
@@ -259,7 +267,14 @@ export function useImageUploader({ images, imagesSessionId, storageProvider, for
             results.push(resObj);
             onProgress?.(resObj);
 
-            if (errorMsg === "Завантаження скасовано") throw error;
+            // Either the abort controller was tripped (fetch-based upload) or the
+            // user closed the native upload window (Electron) — stop the batch
+            // instead of opening the next file's window.
+            const wasCancelled = errorMsg === "Завантаження скасовано" || (error as { cancelled?: boolean } | null)?.cancelled === true;
+            if (wasCancelled) {
+              uploadAbortControllerRef.current?.abort();
+              throw error;
+            }
             onLog?.(`❌ ${filename}: ${errorMsg}`);
             continue;
           }
@@ -301,8 +316,10 @@ export function useImageUploader({ images, imagesSessionId, storageProvider, for
 
         return { results, category, folderName };
       } finally {
-        // Always attempt to finalize (close tab) if provider requires it
-        if (providerCfg.closeTabAfterBatch) {
+        // Finalize closes the Playwright-controlled Brave tab after a batch.
+        // Electron mode manages its own window lifecycle (see uploadManager.ts)
+        // and never touches Brave, so calling this would launch Brave for nothing.
+        if (uploadMode !== "electron" && providerCfg.closeTabAfterBatch) {
           fetch(`${getApiBase()}/api/storage-upload/finalize`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
