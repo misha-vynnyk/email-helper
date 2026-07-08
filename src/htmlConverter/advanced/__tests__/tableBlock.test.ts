@@ -322,6 +322,20 @@ describe("classifyTable — multi-cell", () => {
     expect(rows[1].cells[0]["borderColor"]).toBe("#0000ff");
   });
 
+  // Bug fix: a cell with a label <p> + sublabel <p> (e.g. "THE SOFTWARE" / "Immersed App")
+  // must keep both lines — flattening to a single Run[] silently glued them together with
+  // no separator at all.
+  it("recordRow cell with two paragraphs keeps both as separate lines", () => {
+    const labelCell = makeCell({ children: [makePara("THE SOFTWARE"), makePara("Immersed App")] });
+    const table = makeTable([[labelCell, makeCell()], [makeCell(), makeCell()]]);
+    const result = classifyTable(table);
+    const rows = (result?.props as Record<string, unknown>)["rows"] as Array<{ cells: Array<Record<string, unknown>> }>;
+    const lines = rows[0].cells[0]["lines"] as unknown[][];
+    expect(lines).toHaveLength(2);
+    expect(lines[0]).toEqual([{ text: "THE SOFTWARE" }]);
+    expect(lines[1]).toEqual([{ text: "Immersed App" }]);
+  });
+
   it("multiple rows with single column → null (each row processed independently)", () => {
     const table = makeTable([
       [makeCell()],

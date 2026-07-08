@@ -240,8 +240,11 @@ function classifySingleCell(
 // ── Multi-row helper ──────────────────────────────────────────────────────────
 
 function rowCells(cells: CellNode[], warn?: WarnFn) {
+  // Same convention as cellToChild/statsGrid: adjacent <p>s inside a record cell are a
+  // label/sublabel or headline/body pair, not distinct paragraphs — join with a single
+  // <br>, not the double break flattenLinesWithBreaks uses for alertBand/calloutLeft.
   return cells.map(c => ({
-    runs: flattenRuns(c, warn),
+    lines: flattenLines(c, warn),
     align: c.align ?? "left",
     bg: c.bg,
     // Full per-side spec (drives a box border when the source doc declared one) plus the
