@@ -2,6 +2,7 @@ import { CheckSquare, Minus, Plus, Square } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import type { ConverterMode,StorageProfile } from "../hooks/useHtmlConverterLogic";
+import { BetaBadge } from "./BetaBadge";
 
 interface FileNamingBarProps {
   fileName: string;
@@ -108,7 +109,14 @@ export function FileNamingBar({
                 : "text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
           >
-            {mode === "simple" ? "Simple" : "Advanced"}
+            {mode === "simple" ? (
+              "Simple"
+            ) : (
+              <span className='inline-flex items-center gap-1.5'>
+                Advanced
+                <BetaBadge />
+              </span>
+            )}
           </button>
         ))}
       </div>
