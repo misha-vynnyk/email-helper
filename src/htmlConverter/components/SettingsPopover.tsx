@@ -31,7 +31,7 @@ export const SettingsPopover: React.FC<SettingsPopoverProps> = ({ open, onOpenCh
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>{triggerElement}</PopoverTrigger>
-      <PopoverContent className='w-[420px] sm:w-[520px] p-0 rounded-2xl border-border shadow-soft-lg overflow-hidden bg-card/95 backdrop-blur-md' align='end' sideOffset={8}>
+      <PopoverContent className='w-[420px] sm:w-[520px] max-w-[calc(100vw_-_2rem)] p-0 rounded-2xl border-border shadow-soft-lg overflow-hidden bg-card/95 backdrop-blur-md' align='end' sideOffset={8} collisionPadding={16}>
         <div className='flex items-center justify-between p-4 pb-2'>
           <div>
             <h4 className='text-sm font-bold'>Налаштування</h4>

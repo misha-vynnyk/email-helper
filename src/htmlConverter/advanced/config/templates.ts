@@ -357,15 +357,15 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
               const drawRight = Boolean(cell.border?.right) && (isLastCol || !cell.border?.left);
               const borderStyle = hasExplicitBorder
                 ? borderSpecToStyle(
-                    {
-                      top: cell.border!.top,
-                      left: cell.border!.left,
-                      bottom: drawBottom ? cell.border!.bottom : undefined,
-                      right: drawRight ? cell.border!.right : undefined,
-                    },
-                    tok,
-                    tok.layout.recordBorderPx,
-                  )
+                  {
+                    top: cell.border!.top,
+                    left: cell.border!.left,
+                    bottom: drawBottom ? cell.border!.bottom : undefined,
+                    right: drawRight ? cell.border!.right : undefined,
+                  },
+                  tok,
+                  tok.layout.recordBorderPx,
+                )
                 : `border-bottom:${tok.layout.recordBorderPx}px solid ${cellBorder};`;
               // Inner <span> repeats the font styling, matching the text-cell convention used by
               // paragraph/etc — some clients don't reliably inherit font styles from the <td>.

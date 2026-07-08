@@ -34,7 +34,30 @@
       "Bash(awk '{print $5, $9}')",
       "Bash(sort -k2)",
       "Bash(git status *)",
-      "Bash(git rm *)"
+      "Bash(git rm *)",
+      "Bash(grep -n \"role=\\\\\\\\\\\\\\\\\\\\\"presentation\\\\\\\\\\\\\\\\\\\\\"\\\\|padding-top:\\\\${p}px;padding-bottom:\\\\${p}px\" config/templates.ts)",
+      "Bash(lsof -nP -iTCP:3001 -sTCP:LISTEN)",
+      "Bash(echo \"exit:$?\")",
+      "Bash(lsof -nP -iTCP -sTCP:LISTEN)",
+      "Read(//private/tmp/**)",
+      "Read(//Applications/FlexiBuilder Pro.app/Contents/Resources/**)",
+      "Bash(npx --prefix /Users/mykhailovynnyk/Documents/projects/email-helper asar extract-file \"/Applications/FlexiBuilder Pro.app/Contents/Resources/app.asar\" server/routes/aiProxy.js)",
+      "Bash(mv aiProxy.js /tmp/installed-aiProxy.js)",
+      "Read(//tmp/**)",
+      "Bash(npx --prefix /Users/mykhailovynnyk/Documents/projects/email-helper asar extract-file \"/Applications/FlexiBuilder Pro.app/Contents/Resources/app.asar\" server/index.js)",
+      "Bash(ls /Applications | grep -i \"flexi\\\\|alpha\\\\|email\" *)",
+      "Read(//Applications/**)",
+      "Read(//Users/ttt/**)",
+      "Bash(ps -A -o pid,user,lstart,comm)",
+      "Bash(grep -i \"FlexiBuilder Pro$\")",
+      "Bash(node --check /Users/mykhailovynnyk/Documents/projects/email-helper/server/routes/storageUpload.js)",
+      "Bash(ls __tests__)",
+      "Bash(find . -maxdepth 2 -iname \"*.test.js\" -not -path \"./node_modules/*\")",
+      "Bash(npm ls *)",
+      "Read(//Users/mykhailovynnyk/Library/Caches/ms-playwright/**)",
+      "Bash(npx playwright *)",
+      "Bash(ls ~/Library/Caches/ms-playwright 2>/dev/null)",
+      "Read(//Users/mykhailovynnyk/Library/Caches/ms-playwright/chromium-1228/**)"
     ]
   }
 }
