@@ -110,4 +110,37 @@
       Thank you for being a valued customer.
     </span>
   </p>
+
+  <!-- Full-border comparison rows → recordRow with a boxed border per cell (every side declared
+       on every <td>, GDocs-style), not just a border-bottom divider. Regression fixture for the
+       double-border bug: adjacent cells must not each draw the shared edge. -->
+  <table style="border:none;border-collapse:collapse;">
+    <colgroup><col width="113" /><col width="511" /></colgroup>
+    <tbody>
+      <tr style="height:0pt">
+        <td style="border-left:solid #d6d2c4 0.5pt;border-right:solid #d6d2c4 0.5pt;border-bottom:solid #d6d2c4 0.5pt;border-top:solid #d6d2c4 0.5pt;vertical-align:middle;background-color:#f4f4f0;padding:8pt 10pt 8pt 10pt;">
+          <p dir="ltr" style="line-height:1.2;margin-top:0pt;margin-bottom:0pt;">
+            <span style="font-size:11pt;font-family:Arial,sans-serif;color:#595959;font-weight:700;">THEN</span>
+          </p>
+        </td>
+        <td style="border-left:solid #d6d2c4 0.5pt;border-right:solid #d6d2c4 0.5pt;border-bottom:solid #d6d2c4 0.5pt;border-top:solid #d6d2c4 0.5pt;vertical-align:middle;background-color:#f4f4f0;padding:8pt 10pt 8pt 10pt;">
+          <p dir="ltr" style="line-height:1.2;margin-top:0pt;margin-bottom:0pt;">
+            <span style="font-size:11pt;font-family:Arial,sans-serif;color:#000000;font-weight:400;">Company A &middot; Product launch &middot; </span><span style="font-size:11pt;font-family:Arial,sans-serif;color:#c00000;font-weight:700;text-decoration:underline;">1,234%</span><span style="font-size:11pt;font-family:Arial,sans-serif;color:#000000;font-weight:400;"> metric increase</span>
+          </p>
+        </td>
+      </tr>
+      <tr style="height:0pt">
+        <td style="border-left:solid #d6d2c4 0.5pt;border-right:solid #d6d2c4 0.5pt;border-bottom:solid #d6d2c4 0.5pt;border-top:solid #d6d2c4 0.5pt;vertical-align:middle;background-color:#f4f4f0;padding:8pt 10pt 8pt 10pt;">
+          <p dir="ltr" style="line-height:1.2;margin-top:0pt;margin-bottom:0pt;">
+            <span style="font-size:11pt;font-family:Arial,sans-serif;color:#1b5e20;font-weight:700;">NOW</span>
+          </p>
+        </td>
+        <td style="border-left:solid #d6d2c4 0.5pt;border-right:solid #d6d2c4 0.5pt;border-bottom:solid #d6d2c4 0.5pt;border-top:solid #d6d2c4 0.5pt;vertical-align:middle;background-color:#f4f4f0;padding:8pt 10pt 8pt 10pt;">
+          <p dir="ltr" style="line-height:1.2;margin-top:0pt;margin-bottom:0pt;">
+            <span style="font-size:11pt;font-family:Arial,sans-serif;color:#000000;font-weight:400;">Company B &middot; New feature &middot; </span><span style="font-size:11pt;font-family:Arial,sans-serif;color:#1b5e20;font-weight:700;text-decoration:underline;">5x better</span><span style="font-size:11pt;font-family:Arial,sans-serif;color:#000000;font-weight:400;"> than baseline</span>
+          </p>
+        </td>
+      </tr>
+    </tbody>
+  </table>
 </b>

@@ -192,7 +192,7 @@ export function renderNode(
     }
 
     case "recordRow": {
-      type RowData = { bg?: string; cells: Array<{ runs: Run[]; align?: string; bg?: string; borderColor?: string }> };
+      type RowData = { bg?: string; cells: Array<{ runs: Run[]; align?: string; bg?: string; border?: BorderSpec; borderColor?: string }> };
       const rawRows = p["rows"] as RowData[];
       const opts: RecordOpts = {
         widths: p["widths"] as number[] | undefined,
@@ -206,6 +206,7 @@ export function renderNode(
               innerHtml: renderRuns(c.runs, tok, textColor),
               align: c.align,
               bg: c.bg,
+              border: c.border,
               borderColor: c.borderColor,
             };
           }),
