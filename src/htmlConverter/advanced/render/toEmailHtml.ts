@@ -46,7 +46,9 @@ function wrapInline(tag: string, inner: string, style?: string): string {
 export function renderRuns(runs: Run[], tok: Tokens = defaultTokens, baseColor?: string): string {
   const { bold: B, italic: I, underline: U, colorWrap: S } = tok.tags;
   return runs.map(run => {
-    const html = esc(run.text);
+    // Source-formatting newlines (indented HTML input) collapse to a single space —
+    // same as browser rendering — so they don't leak into the formatted output.
+    const html = esc(run.text.replace(/\s*\n\s*/g, " "));
 
     if (run.href && isSafeHref(run.href)) {
       const linkColor = run.color ?? tok.color.link;
@@ -80,7 +82,9 @@ export function renderRuns(runs: Run[], tok: Tokens = defaultTokens, baseColor?:
     if (hasColor) styleParts.push(`color:${run.color}`);
 
     return wrapInline(tag, html, styleParts.length ? styleParts.join(";") : undefined);
-  }).join("");
+    // Callers always pass a complete line/label bounded by block edges, so edge
+    // whitespace is invisible in rendering — trim it out of the formatted output.
+  }).join("").trim();
 }
 
 export function renderLines(
@@ -94,8 +98,10 @@ export function renderLines(
     const l = lines[i];
     if (l.length === 0) continue;
     if (result.length > 0) {
-      // Paragraph boundary → double break; within-paragraph <br> → single break
-      result.push(paraBreaks?.has(i) ? "<br><br>\n" : "<br>\n");
+      // Paragraph boundary → <br><br> on its own line; within-paragraph break →
+      // single <br> closing the previous line. Newlines are re-indented by the
+      // enclosing template (indentHtml), so text lines stay at cell depth.
+      result.push(paraBreaks?.has(i) ? "\n<br><br>\n" : " <br>\n");
     }
     result.push(renderRuns(l, tok, baseColor));
   }

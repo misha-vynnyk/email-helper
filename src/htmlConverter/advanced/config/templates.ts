@@ -90,6 +90,20 @@ export interface RecordOpts {
 
 // ── Exported helpers — accept tok for profile-aware use ───────────────────────
 
+/**
+ * Shift a multi-line HTML fragment right by `spaces`. Every template builds its
+ * markup rooted at column 0; the parent re-indents the fragment at the insertion
+ * point, so nesting depth stays consistent no matter how deep the composition goes.
+ */
+export function indentHtml(html: string, spaces: number): string {
+  if (!html) return html;
+  const pad = " ".repeat(spaces);
+  return html
+    .split("\n")
+    .map(line => (line.length ? pad + line : line))
+    .join("\n");
+}
+
 export function baseStyle(
   opts: {
     align?: string;
@@ -114,8 +128,11 @@ export function blockRow(innerHtml: string, opts: Parameters<typeof baseStyle>[0
   // headline → tok.tags.bold (e.g. "b" or "strong"); all others → tok.tags.blockWrap (e.g. "span" or "div")
   const tag = coreOpts.fontWeight === "bold" ? tok.tags.bold : tok.tags.blockWrap;
   return `<tr>
-  <td align="${align}" style="${spanStyle}${tdExtra} padding-top:${padY}px;padding-bottom:${padY}px;">
-    <${tag} style="${spanStyle}">${innerHtml}</${tag}>
+  <td align="${align}"
+    style="${spanStyle}${tdExtra} padding-top:${padY}px;padding-bottom:${padY}px;">
+    <${tag} style="${spanStyle}">
+${indentHtml(innerHtml, 6)}
+    </${tag}>
   </td>
 </tr>`;
 }
@@ -144,11 +161,11 @@ export function buttonTableHtml(label: string, href: string, bg: string, tok: To
   const safeHref = escapeHtml(href);
   return `<table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="width:100%;max-width:100%;">
   <tr>
-    <td class="${tok.classes.btnWrap}" height="${height}" align="center"
-        style="${style} padding:${padding};background-color:${bg};${radiusStyle}${borderStyle}" bgcolor="${bg}">
+    <td class="${tok.classes.btnWrap}" height="${height}" align="center" bgcolor="${bg}"
+      style="${style} padding:${padding};background-color:${bg};${radiusStyle}${borderStyle}">
       <a href="${safeHref}" target="${target}"
-         style="text-decoration:${tok.button.textDecoration};color:${textColor};padding:${innerPadding};display:block;${style};background-color:${bg};${radiusStyle}">
-        ${label}
+        style="text-decoration:${tok.button.textDecoration};padding:${innerPadding};display:block;${style}background-color:${bg};${radiusStyle}">
+${indentHtml(label, 8)}
       </a>
     </td>
   </tr>
@@ -172,7 +189,7 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
           <td class="${verticalSpace}" align="center" style="padding-left:${sp}px;padding-right:${sp}px;">
             <table class="${innerTable}" border="0" cellspacing="0" role="presentation" cellpadding="0" width="100%" style="width:100%;">
               <tr><td height="${spacerPx}" width="100%" style="max-width:100%" class="${spacer}">&#160;</td></tr>
-              ${content}
+${indentHtml(content, 14)}
               <tr><td height="${spacerPx}" width="100%" style="max-width:100%" class="${spacer}">&#160;</td></tr>
             </table>
           </td>
@@ -208,7 +225,9 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
   <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
     <table align="center" border="0" bgcolor="${bg}" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;${borderStyle}" role="presentation">
       <tr>
-        <td style="${style} padding-left:${ph}px;padding-right:${ph}px;padding-top:${pv}px;padding-bottom:${pv}px;">${innerHtml}</td>
+        <td style="${style} padding-left:${ph}px;padding-right:${ph}px;padding-top:${pv}px;padding-bottom:${pv}px;">
+${indentHtml(innerHtml, 10)}
+        </td>
       </tr>
     </table>
   </td>
@@ -225,7 +244,10 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
   <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
     <table align="center" border="0" bgcolor="${bg}" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;border-left:${accent}px solid ${accentColor};" role="presentation">
       <tr>
-        <td align="left" style="${style} padding-left:${px}px;padding-right:${px}px;padding-top:${p}px;padding-bottom:${p}px;">${innerHtml}</td>
+        <td align="left"
+          style="${style} padding-left:${px}px;padding-right:${px}px;padding-top:${p}px;padding-bottom:${p}px;">
+${indentHtml(innerHtml, 10)}
+        </td>
       </tr>
     </table>
   </td>
@@ -247,7 +269,7 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
       <tr>
         <td style="padding-left:${px}px;padding-right:${px}px;">
           <table border="0" cellspacing="0" cellpadding="0" width="100%" role="presentation" style="width:100%;">
-            ${childrenHtml}
+${indentHtml(childrenHtml, 12)}
           </table>
         </td>
       </tr>
@@ -262,9 +284,9 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
       const subtitle = subtitleHtml ? `\n<tr>\n  <td align="center" style="padding-top:${tok.layout.buttonSubtitlePadTop}px;">${subtitleHtml}</td>\n</tr>` : "";
       return `<tr>
   <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
-    ${buttonTableHtml(innerHtml, href, bg, tok, radius, border)}${subtitle}
+${indentHtml(buttonTableHtml(innerHtml, href, bg, tok, radius, border), 4)}
   </td>
-</tr>`;
+</tr>${subtitle}`;
     },
 
     statsGrid(cells: GridCell[], opts: GridOpts): string {
@@ -282,13 +304,15 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
           const bgStyle = cell.bg ? `background-color:${cell.bg};` : "";
           const cellBorder = `${tok.layout.recordBorderPx}px solid ${cell.borderColor ?? borderColor ?? tok.color.tableBorder}`;
           return `<td valign="top" align="center" class="${tok.classes.inlineCell}" width="${w}%"${bgAttr}
-          style="display:inline-block;width:${w}%;max-width:100%;min-width:${tok.layout.gridMinWidth}px;border:${cellBorder};${bgStyle}">
-          <table border="0" cellspacing="0" cellpadding="0" role="presentation" width="100%" style="width:100%;">
-            <tr>
-              <td${bgAttr} style="${cellStyle} padding:${cy}px ${cx}px;${bgStyle}">${cell.innerHtml}</td>
-            </tr>
-          </table>
-        </td>`;
+  style="display:inline-block;width:${w}%;max-width:100%;min-width:${tok.layout.gridMinWidth}px;border:${cellBorder};${bgStyle}">
+  <table border="0" cellspacing="0" cellpadding="0" role="presentation" width="100%" style="width:100%;">
+    <tr>
+      <td${bgAttr ? `${bgAttr}\n       ` : ""} style="${cellStyle} padding:${cy}px ${cx}px;${bgStyle}">
+${indentHtml(cell.innerHtml, 8)}
+      </td>
+    </tr>
+  </table>
+</td>`;
         })
         .join("\n");
 
@@ -297,7 +321,7 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
     <table border="0" cellspacing="0" cellpadding="0" role="presentation" width="100%"
       style="width:100%;min-width:100%;font-size:0;line-height:0;mso-line-height-rule:exactly;text-align:center;">
       <tr>
-        ${cellsHtml}
+${indentHtml(cellsHtml, 8)}
       </tr>
     </table>
   </td>
@@ -343,10 +367,8 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
       return `<tr>
   <td class="${tok.classes.imgBg}" align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
     <a href="${tok.placeholderHref}" target="${tok.button.target}">
-      <img alt="${escapeHtml(alt)}" height="auto"
-           src="${escapeHtml(src)}"
-           style="border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;max-width:${w}px;font-size:13px;"
-           width="${w}"/>
+      <img alt="${escapeHtml(alt)}" height="auto" src="${escapeHtml(src)}" width="${w}"
+        style="border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;max-width:${w}px;font-size:13px;"/>
     </a>
   </td>
 </tr>`;
@@ -409,18 +431,25 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
                 : `border-bottom:${tok.layout.recordBorderPx}px solid ${cellBorder};`;
               // Inner <span> repeats the font styling, matching the text-cell convention used by
               // paragraph/etc — some clients don't reliably inherit font styles from the <td>.
-              return `<td align="${align}"${bgAttr}${widthAttr} style="${style} padding:${ry}px ${rx}px;${borderStyle}"><${tok.tags.blockWrap} style="${style}">${cell.innerHtml}</${tok.tags.blockWrap}></td>`;
+              return `<td align="${align}"${bgAttr}${widthAttr}
+  style="${style} padding:${ry}px ${rx}px;${borderStyle}">
+  <${tok.tags.blockWrap} style="${style}">
+${indentHtml(cell.innerHtml, 4)}
+  </${tok.tags.blockWrap}>
+</td>`;
             })
             .join("\n");
 
-          return `<tr>${cellsHtml}</tr>`;
+          return `<tr>
+${indentHtml(cellsHtml, 2)}
+</tr>`;
         })
         .join("\n");
 
       return `<tr>
   <td style="padding-top:${p}px;padding-bottom:${p}px;">
     <table border="0" cellspacing="0" cellpadding="0" role="presentation" width="100%" style="width:100%;border-collapse:collapse;">
-      ${rowsHtml}
+${indentHtml(rowsHtml, 6)}
     </table>
   </td>
 </tr>`;
