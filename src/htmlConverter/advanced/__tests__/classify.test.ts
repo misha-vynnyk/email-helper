@@ -89,11 +89,11 @@ describe("classify — paragraph merging", () => {
     expect(lines).toHaveLength(3);
   });
 
-  // Deliberate trade-off (see pushMerged): a manually-typed checklist (no real <ul>, just
-  // <p>s with a leading "✓") has no reliable structural signal — a margin-top heuristic was
-  // tried and reverted because it collapsed whole sections' <br><br>s to <br>. Such
-  // paragraphs stay ordinary prose and keep the paragraph gap.
-  it("keeps paraBreaks between manually-typed checklist paragraphs (no real <ul>)", () => {
+  // A manually-typed checklist (no real <ul>, just <p>s with a leading "✓") is detected
+  // by the marker PAIR signal: both adjacent paragraphs start with a list glyph. A
+  // margin-top heuristic was tried instead and reverted — it collapsed whole sections'
+  // <br><br>s to <br>.
+  it("merges manually-typed checklist paragraphs (✓ pair) with NO paraBreak", () => {
     const nodes: StructuralNode[] = [
       makePara("✓  Partners: Google, Meta", "body", "left"),
       makePara("✓  Backed by: Pat Gelsinger", "body", "left"),
@@ -101,9 +101,31 @@ describe("classify — paragraph merging", () => {
     ];
     const result = classify(nodes);
     expect(result).toHaveLength(1);
+    expect(result[0].props["paraBreaks"]).toBeUndefined();
+  });
+
+  // The glyph may sit in its own run ("✓ " styled green, text after it black) — the marker
+  // check must look at the first run only, not require the whole line to be one run.
+  it("merges checklist items whose ✓ is an isolated styled run", () => {
+    const nodes: StructuralNode[] = [
+      { type: "p", size: "body", lines: [[{ text: "✓  ", color: "#166434" }, { text: "Partners: ", bold: true }, { text: "Google, Meta" }]] },
+      { type: "p", size: "body", lines: [[{ text: "✓  ", color: "#166534", bold: true }, { text: "Backed by: ", bold: true }, { text: "Pat Gelsinger" }]] },
+    ] as StructuralNode[];
+    const result = classify(nodes);
+    expect(result).toHaveLength(1);
+    expect(result[0].props["paraBreaks"]).toBeUndefined();
+  });
+
+  // A checklist glyph on only ONE side of the pair is not a list — prose keeps the gap.
+  it("keeps paraBreak when only one paragraph of the pair starts with a marker", () => {
+    const nodes: StructuralNode[] = [
+      makePara("✓  Partners: Google, Meta", "body", "left"),
+      makePara("And that's just the beginning.", "body", "left"),
+    ];
+    const result = classify(nodes);
+    expect(result).toHaveLength(1);
     const breaks = result[0].props["paraBreaks"] as Set<number>;
     expect(breaks.has(1)).toBe(true);
-    expect(breaks.has(2)).toBe(true);
   });
 
   it("does NOT treat a single dash/asterisk mid-sentence as a list marker", () => {
