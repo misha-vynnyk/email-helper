@@ -8,6 +8,7 @@ import { useElectronAPI } from "@/hooks/useElectronAPI";
 
 import type { UploadMode } from "../hooks/useHtmlConverterLogic";
 import type { UiSettings } from "../hooks/useHtmlConverterSettings";
+import { DEFAULT_UI_SETTINGS } from "../hooks/useHtmlConverterSettings";
 
 type UiSettingsTabProps = {
   ui: UiSettings;
@@ -82,6 +83,39 @@ export const UiSettingsTab: React.FC<UiSettingsTabProps> = ({ ui, setUi, uploadM
             />
             <span className='text-xs text-muted-foreground'>KB</span>
           </div>
+        </div>
+      </section>
+
+      {/* ── Позначки ───────────────────────────────────────────────────────── */}
+      <div className='h-px bg-border' />
+      <section className='space-y-3'>
+        <h3 className='text-xs font-semibold uppercase tracking-widest text-muted-foreground'>Позначки</h3>
+        <div className='flex items-center justify-between gap-3'>
+          <div>
+            <Label htmlFor='oneBrSymbol' className='text-sm'>Символ одинарного переносу</Label>
+            <p className='text-[11px] text-muted-foreground mt-0.5'>Замінюється на один &lt;br&gt; при експорті</p>
+          </div>
+          <Input
+            id='oneBrSymbol'
+            value={ui.oneBrSymbol}
+            onChange={(e) => setUi((prev) => ({ ...prev, oneBrSymbol: e.target.value }))}
+            onBlur={(e) => {
+              if (!e.target.value) setUi((prev) => ({ ...prev, oneBrSymbol: DEFAULT_UI_SETTINGS.oneBrSymbol }));
+            }}
+            maxLength={4}
+            className='h-8 w-16 text-xs text-center font-mono'
+          />
+        </div>
+      </section>
+
+      {/* ── Редактор ───────────────────────────────────────────────────────── */}
+      <div className='h-px bg-border' />
+      <section className='space-y-3'>
+        <h3 className='text-xs font-semibold uppercase tracking-widest text-muted-foreground'>Редактор</h3>
+        <div className='space-y-3'>
+          <Row id='editorSelectionToolbar' label='Тулбар при виділенні'   hint='Плаваюча панель маркерів над виділеним текстом'                          checked={ui.editorSelectionToolbar} onCheckedChange={(v) => set("editorSelectionToolbar", v)} />
+          <Row id='editorMarkerHighlight'  label='Підсвічування позначок' hint='Маркери (i-r-s, ftr-s, § …) виділяються кольором у редакторі'            checked={ui.editorMarkerHighlight}  onCheckedChange={(v) => set("editorMarkerHighlight", v)} />
+          <Row id='editorHotkeys'          label='Гарячі клавіші'         hint='⌘/Ctrl+⌥+1/4/5/6 — заголовки, ⌘/Ctrl+⌥+0 — звичайний текст, ⌘/Ctrl+⇧+Enter — перенос' checked={ui.editorHotkeys}          onCheckedChange={(v) => set("editorHotkeys", v)} />
         </div>
       </section>
 

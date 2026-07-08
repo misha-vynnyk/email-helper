@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { getApiBase } from "@/config/api";
 
-import { STORAGE_KEYS } from "../constants";
+import { STORAGE_KEYS, SYMBOLS } from "../constants";
 import type { ImageAnalysisSettings } from "../types";
 
 export type UiSettings = {
@@ -18,6 +18,10 @@ export type UiSettings = {
   warningFileSizeKB: number;
   showAiTerminal: boolean;
   downloadFolder: string;
+  oneBrSymbol: string;
+  editorSelectionToolbar: boolean;
+  editorMarkerHighlight: boolean;
+  editorHotkeys: boolean;
 };
 
 export const DEFAULT_UI_SETTINGS: UiSettings = {
@@ -33,6 +37,10 @@ export const DEFAULT_UI_SETTINGS: UiSettings = {
   warningFileSizeKB: 1024,
   showAiTerminal: false,
   downloadFolder: "",
+  oneBrSymbol: SYMBOLS.ONE_BR,
+  editorSelectionToolbar: false,
+  editorMarkerHighlight: false,
+  editorHotkeys: false,
 };
 
 export const DEFAULT_IMAGE_ANALYSIS_SETTINGS: ImageAnalysisSettings = {
@@ -74,7 +82,9 @@ const loadUiSettings = (): UiSettings => {
     const raw = localStorage.getItem(STORAGE_KEYS.UI_SETTINGS);
     if (!raw) return DEFAULT_UI_SETTINGS;
     const parsed = JSON.parse(raw);
-    return { ...DEFAULT_UI_SETTINGS, ...(parsed || {}) };
+    const merged = { ...DEFAULT_UI_SETTINGS, ...(parsed || {}) };
+    if (!merged.oneBrSymbol) merged.oneBrSymbol = DEFAULT_UI_SETTINGS.oneBrSymbol;
+    return merged;
   } catch {
     return DEFAULT_UI_SETTINGS;
   }

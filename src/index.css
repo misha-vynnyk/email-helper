@@ -147,6 +147,47 @@
   .dark div[contenteditable="true"].editor-content [style*="background-image"] {
     filter: invert(1) hue-rotate(180deg);
   }
+
+  /* Marker highlighting in the converter editor (CSS Custom Highlight API,
+     registered as "hc-marker" by useMarkerHighlighter). The transparent-background
+     kill rule above doesn't apply to ::highlight paint. */
+  ::highlight(hc-marker) {
+    background-color: rgba(245, 158, 11, 0.28);
+    color: #92400e;
+  }
+
+  /* The highlight paints inside the editor's dark-mode invert(1) hue-rotate(180deg)
+     subtree, so these values are chosen to look amber-on-dark AFTER that filter. */
+  .dark ::highlight(hc-marker) {
+    background-color: rgba(37, 99, 235, 0.35);
+    color: #1d4ed8;
+  }
+
+  /* Visual structure for heading markers when "Підсвічування позначок" is on.
+     Typography + border only: no color/background-color, so the dark-mode invert
+     and the transparent-background rule stay unaffected. */
+  div[contenteditable="true"].editor-content.editor-marker-styles h1 {
+    font-size: 1.4em;
+    font-weight: 800;
+    border-left: 3px solid currentColor;
+    padding-left: 0.5rem;
+  }
+  div[contenteditable="true"].editor-content.editor-marker-styles h4 {
+    font-style: italic;
+    border-left: 3px dashed currentColor;
+    padding-left: 0.5rem;
+  }
+  div[contenteditable="true"].editor-content.editor-marker-styles h5 {
+    font-weight: 700;
+    border: 1px dashed currentColor;
+    border-radius: 0.5rem;
+    padding: 0.15rem 0.5rem;
+    display: inline-block;
+  }
+  div[contenteditable="true"].editor-content.editor-marker-styles h6 {
+    font-size: 0.82em;
+    opacity: 0.85;
+  }
 }
 
 @layer utilities {
