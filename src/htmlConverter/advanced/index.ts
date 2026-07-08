@@ -20,6 +20,7 @@ export interface AdvancedConversionResult {
 export function convertAdvancedDetailed(
   rawHtml: string,
   override: TokensOverride = {},
+  oneBrSymbol?: string,
 ): AdvancedConversionResult {
   const hasOverride = Object.keys(override).length > 0;
   const tok  = hasOverride ? mergeTokens(tokens, override) : tokens;
@@ -28,7 +29,7 @@ export function convertAdvancedDetailed(
   const warnings: string[] = [];
   const warn = (msg: string) => warnings.push(msg);
 
-  const html        = preprocess(rawHtml);
+  const html        = preprocess(rawHtml, oneBrSymbol);
   const bodyEl      = normalize(html);
   const structural  = fromDom(bodyEl, tok.color.rootBackground, tok, warn);
   const components  = classify(structural, tok, warn);

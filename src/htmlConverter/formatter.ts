@@ -193,7 +193,7 @@ function wrapTextInSpan(htmlContent: string, templateFn: (content: string) => st
   return htmlContent;
 }
 
-export function formatHtml(editorContent: string): string {
+export function formatHtml(editorContent: string, oneBrSymbol?: string): string {
   let content = editorContent;
   content = content.replace(/<meta[^>]*>/gi, "");
   content = content.replace(/<br\b[^>]*>/gi, "<br>");
@@ -230,13 +230,13 @@ export function formatHtml(editorContent: string): string {
 
   content = utils.cleanEmptyHtmlTags(content);
   content = htmlTemplates.fullStructure(content);
-  content = utils.addOneBr(content);
+  content = utils.addOneBr(content, oneBrSymbol);
   content = utils.replaceTripleBrWithSingle(content);
 
   return content;
 }
 
-export function formatMjml(editorContent: string): string {
+export function formatMjml(editorContent: string, oneBrSymbol?: string): string {
   let content = editorContent;
   content = content.replace(/<meta[^>]*>/gi, "");
   content = content.replace(/<br\b[^>]*>/gi, "<br>");
@@ -273,7 +273,7 @@ export function formatMjml(editorContent: string): string {
 
   content = utils.cleanEmptyHtmlTags(content);
   content = mjmlTemplates.fullStructure(content);
-  content = utils.addOneBr(content);
+  content = utils.addOneBr(content, oneBrSymbol);
   content = utils.replaceTripleBrWithSingle(content);
 
   return content;

@@ -159,7 +159,7 @@ function wrapTextInDiv(htmlContent: string, templateFn: (content: string) => str
 
 // ─── Public formatters ────────────────────────────────────────────────────────
 
-export function formatHtmlTTT(editorContent: string): string {
+export function formatHtmlTTT(editorContent: string, oneBrSymbol?: string): string {
   let content = editorContent;
   content = content.replace(/<meta[^>]*>/gi, "");
   content = content.replace(/<br\b[^>]*>/gi, "<br>");
@@ -195,13 +195,13 @@ export function formatHtmlTTT(editorContent: string): string {
 
   content = utils.cleanEmptyHtmlTags(content);
   content = tttHtmlTemplates.fullStructure(content);
-  content = utils.addOneBr(content);
+  content = utils.addOneBr(content, oneBrSymbol);
   content = utils.replaceTripleBrWithSingle(content);
 
   return content;
 }
 
-export function formatMjmlTTT(editorContent: string): string {
+export function formatMjmlTTT(editorContent: string, oneBrSymbol?: string): string {
   let content = editorContent;
   content = content.replace(/<meta[^>]*>/gi, "");
   content = content.replace(/<br\b[^>]*>/gi, "<br>");
@@ -237,7 +237,7 @@ export function formatMjmlTTT(editorContent: string): string {
 
   content = utils.cleanEmptyHtmlTags(content);
   content = tttMjmlTemplates.fullStructure(content);
-  content = utils.addOneBr(content);
+  content = utils.addOneBr(content, oneBrSymbol);
   content = utils.replaceTripleBrWithSingle(content);
 
   return content;

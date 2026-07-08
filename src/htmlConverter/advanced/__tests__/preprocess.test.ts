@@ -24,6 +24,14 @@ describe("resolveOneBrSymbol", () => {
     expect(result).toContain("<br>");
     expect(result).not.toContain("§");
   });
+
+  it("replaces a custom symbol instead of §", () => {
+    expect(resolveOneBrSymbol("text~more", "~")).toBe("text<br>\nmore");
+  });
+
+  it("leaves § alone when a custom symbol is configured", () => {
+    expect(resolveOneBrSymbol("text§~more", "~")).toBe("text§<br>\nmore");
+  });
 });
 
 // ── normalizeSymbols ──────────────────────────────────────────────────────────
