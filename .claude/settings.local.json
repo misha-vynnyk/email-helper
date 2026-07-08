@@ -57,7 +57,12 @@
       "Read(//Users/mykhailovynnyk/Library/Caches/ms-playwright/**)",
       "Bash(npx playwright *)",
       "Bash(ls ~/Library/Caches/ms-playwright 2>/dev/null)",
-      "Read(//Users/mykhailovynnyk/Library/Caches/ms-playwright/chromium-1228/**)"
+      "Read(//Users/mykhailovynnyk/Library/Caches/ms-playwright/chromium-1228/**)",
+      "Bash(ls ~/Library/Caches/ms-playwright 2>/dev/null; echo ---; cat /Users/mykhailovynnyk/Documents/projects/email-helper/package.json | grep -i playwright)",
+      "Bash(node \"/private/tmp/claude-501/-Users-mykhailovynnyk-Documents-projects-email-helper/e876771e-7f47-449a-8dcb-28979da0cf7a/scratchpad/check-beta-badges.js\")",
+      "Bash(find ~/Library/Caches/ms-playwright/chromium-1228 -name \"*.app\" -o -name \"Chromium\" -o -name \"chrome\" 2>/dev/null | head -10)",
+      "Bash(grep -o '.\\\\{80\\\\}\\\\$11\\\\.8M.\\\\{40\\\\}' /Users/mykhailovynnyk/Documents/projects/email-helper/src/htmlConverter/advanced/__tests__/fixtures/raw/tickr-promo.html)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }

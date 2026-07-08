@@ -54,6 +54,46 @@ exports[`convertAdvanced — button-dark fixture snapshot — default profile 1`
 </table>"
 `;
 
+exports[`convertAdvanced — letterhead fixture (splitRow) snapshot — default profile 1`] = `
+"<table width=\\"100%\\" border=\\"0\\" cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" style=\\"max-width:100%;\\">
+  <tr>
+    <td align=\\"center\\" valign=\\"top\\">
+      <table class=\\"primary-table-limit content-table\\" bgcolor=\\"#ffffff\\" border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"max-width:600px;\\">
+        <tr>
+          <td class=\\"content-vertical-space\\" align=\\"center\\" style=\\"padding-left:20px;padding-right:20px;\\">
+            <table class=\\"content-inner-table\\" border=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" cellpadding=\\"0\\" width=\\"100%\\" style=\\"width:100%;\\">
+              <tr><td height=\\"16\\" width=\\"100%\\" style=\\"max-width:100%\\" class=\\"md-horizontal-space\\">&#160;</td></tr>
+              <tr>
+  <td align=\\"center\\" style=\\"padding-top:14px;padding-bottom:14px;\\">
+    <table align=\\"center\\" border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" width=\\"100%\\" style=\\"width:100%;max-width:100%;padding:0;margin:0;\\" role=\\"presentation\\">
+      <tr>
+        <td style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-right:6px;padding-left:6px;\\">
+          <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\"><b style=\\"color:#111827;\\">immersed</b></span>
+        </td>
+        <td align=\\"right\\">
+          <table align=\\"right\\" border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" style=\\"padding:0;margin:0;\\" role=\\"presentation\\">
+            <tr>
+              <td style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-right:6px;padding-left:6px;\\">
+                <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\"><b style=\\"color:#6b7280;\\">MEDIA &amp; INVESTOR RELATIONS</b></span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </td>
+</tr>
+
+              <tr><td height=\\"16\\" width=\\"100%\\" style=\\"max-width:100%\\" class=\\"md-horizontal-space\\">&#160;</td></tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>"
+`;
+
 exports[`convertAdvanced — plain-text fixture snapshot — default profile 1`] = `
 "<table width=\\"100%\\" border=\\"0\\" cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" style=\\"max-width:100%;\\">
   <tr>
@@ -106,6 +146,38 @@ exports[`convertAdvanced — plain-text fixture snapshot — default profile 1`]
   </span>
   </td>
 </tr>
+              <tr><td height=\\"16\\" width=\\"100%\\" style=\\"max-width:100%\\" class=\\"md-horizontal-space\\">&#160;</td></tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>"
+`;
+
+exports[`convertAdvanced — promo-band fixture (alertBand narrowing) snapshot — default profile 1`] = `
+"<table width=\\"100%\\" border=\\"0\\" cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" style=\\"max-width:100%;\\">
+  <tr>
+    <td align=\\"center\\" valign=\\"top\\">
+      <table class=\\"primary-table-limit content-table\\" bgcolor=\\"#ffffff\\" border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"max-width:600px;\\">
+        <tr>
+          <td class=\\"content-vertical-space\\" align=\\"center\\" style=\\"padding-left:20px;padding-right:20px;\\">
+            <table class=\\"content-inner-table\\" border=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" cellpadding=\\"0\\" width=\\"100%\\" style=\\"width:100%;\\">
+              <tr><td height=\\"16\\" width=\\"100%\\" style=\\"max-width:100%\\" class=\\"md-horizontal-space\\">&#160;</td></tr>
+              
+<tr>
+  <td align=\\"center\\" style=\\"padding-top:14px;padding-bottom:14px;\\">
+    <table align=\\"center\\" border=\\"0\\" bgcolor=\\"#0f766e\\" cellspacing=\\"0\\" cellpadding=\\"0\\" width=\\"100%\\" style=\\"width:100%;max-width:100%;padding:0;margin:0;\\" role=\\"presentation\\">
+      <tr>
+        <td style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#ffffff; padding-left:10px;padding-right:10px;padding-top:4px;padding-bottom:4px;\\"><b style=\\"color:#99f6e4;\\">&#36;0.79/SHARE  ·  REG A&#43;  ·  NO ACCREDITATION REQUIRED</b><br><br>
+<a href=\\"urlhere\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration:underline;font-weight:700;color:#0000ff;\\">Lock In Your &#36;0.79 Allocation &#8594;</a><br><br>
+<span style=\\"color:#99f6e4;\\">Up to 20% bonus shares  ·  9,500&#43; investors already in</span>  </td>
+      </tr>
+    </table>
+  </td>
+</tr>
+
               <tr><td height=\\"16\\" width=\\"100%\\" style=\\"max-width:100%\\" class=\\"md-horizontal-space\\">&#160;</td></tr>
             </table>
           </td>
@@ -330,7 +402,7 @@ Nasdaq &#36;MODE reserved. IPO targeted within 18 months. Two previous rounds so
           style=\\"display:inline-block;width:25%;max-width:100%;min-width:100px;border:1px solid #cccccc;background-color:#f1ede6;\\">
           <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;\\">
             <tr>
-              <td bgcolor=\\"#f1ede6\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000; padding:10px 6px;background-color:#f1ede6;\\"><a href=\\"urlhere\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration:underline;font-weight:700;color:#0a2463;\\">32,481%</a><br>
+              <td bgcolor=\\"#f1ede6\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000; padding:10px 6px;background-color:#f1ede6;\\"><b style=\\"color:#0a2463;\\">32,481%</b><br>
 <span style=\\"color:#666666;\\">3-Yr Revenue Growth</span></td>
             </tr>
           </table>
@@ -339,7 +411,7 @@ Nasdaq &#36;MODE reserved. IPO targeted within 18 months. Two previous rounds so
           style=\\"display:inline-block;width:25%;max-width:100%;min-width:100px;border:1px solid #cccccc;background-color:#f1ede6;\\">
           <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;\\">
             <tr>
-              <td bgcolor=\\"#f1ede6\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000; padding:10px 6px;background-color:#f1ede6;\\"><a href=\\"urlhere\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration:underline;font-weight:700;color:#0a2463;\\">490M&#43;</a><br>
+              <td bgcolor=\\"#f1ede6\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000; padding:10px 6px;background-color:#f1ede6;\\"><b style=\\"color:#0a2463;\\">490M&#43;</b><br>
 <span style=\\"color:#666666;\\">Total Users</span></td>
             </tr>
           </table>
@@ -348,7 +420,7 @@ Nasdaq &#36;MODE reserved. IPO targeted within 18 months. Two previous rounds so
           style=\\"display:inline-block;width:25%;max-width:100%;min-width:100px;border:1px solid #cccccc;background-color:#f1ede6;\\">
           <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;\\">
             <tr>
-              <td bgcolor=\\"#f1ede6\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000; padding:10px 6px;background-color:#f1ede6;\\"><a href=\\"urlhere\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration:underline;font-weight:700;color:#0a2463;\\">&#36;11.8M</a><br>
+              <td bgcolor=\\"#f1ede6\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000; padding:10px 6px;background-color:#f1ede6;\\"><b style=\\"color:#0a2463;\\">&#36;11.8M</b><br>
 <span style=\\"color:#666666;\\">Actual EBITDA 2025</span></td>
             </tr>
           </table>

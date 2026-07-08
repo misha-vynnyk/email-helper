@@ -67,6 +67,11 @@ export interface ImageOpts {
   alt?: string;
 }
 
+export interface SplitRowOpts {
+  leftHtml: string;
+  rightHtml: string;
+}
+
 export interface RecordOpts {
   /** Integer column widths in %, summing to 100 (from GDocs <colgroup>); equal split when absent */
   widths?: number[];
@@ -293,6 +298,37 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
       style="width:100%;min-width:100%;font-size:0;line-height:0;mso-line-height-rule:exactly;text-align:center;">
       <tr>
         ${cellsHtml}
+      </tr>
+    </table>
+  </td>
+</tr>`;
+    },
+
+    // Letterhead/byline row: left cell flows normally, right cell sits in its own
+    // align="right" nested table — independent column alignment that survives Outlook,
+    // where a plain <td align="right"> next to a left-aligned <td> is unreliable.
+    splitRow(opts: SplitRowOpts): string {
+      const { leftHtml, rightHtml } = opts;
+      const style = baseStyle({ align: "left", fontSize: tok.font.bodyPx }, tok);
+      const p = pad();
+      const cx = tok.layout.recordCellPadX;
+      const tag = tok.tags.blockWrap;
+      return `<tr>
+  <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
+    <table align="center" border="0" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;" role="presentation">
+      <tr>
+        <td style="${style} padding-right:${cx}px;padding-left:${cx}px;">
+          <${tag} style="${style}">${leftHtml}</${tag}>
+        </td>
+        <td align="right">
+          <table align="right" border="0" cellspacing="0" cellpadding="0" style="padding:0;margin:0;" role="presentation">
+            <tr>
+              <td style="${style} padding-right:${cx}px;padding-left:${cx}px;">
+                <${tag} style="${style}">${rightHtml}</${tag}>
+              </td>
+            </tr>
+          </table>
+        </td>
       </tr>
     </table>
   </td>

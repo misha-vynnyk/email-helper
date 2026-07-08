@@ -135,8 +135,11 @@ function collectRuns(el: Element | Node, ctx: Ctx, tok: Tokens): Run[] {
       childCtx.href = child.getAttribute("href") ?? ctx.href;
     }
 
-    // Span with link-color styling but no surrounding <a> → treat as placeholder link
-    if (tag === "SPAN" && rawColor && !childCtx.href && isLinkColor(rawColor)) {
+    // Span styled like a link (blue + underlined) but with no surrounding <a> → treat as
+    // placeholder link. Both signals are required — color alone is too weak a signal (GDocs
+    // authors use blue for plain emphasis/headings too) and produced false-positive links
+    // (e.g. a promo banner's blue "readable" text becoming clickable for no reason).
+    if (tag === "SPAN" && rawColor && !childCtx.href && childCtx.underline && isLinkColor(rawColor)) {
       childCtx.href = tok.placeholderHref;
     }
 
