@@ -74,8 +74,12 @@ export interface RecordOpts {
   borderColor?: string;
   rows: Array<{
     bg?: string;
-    /** This cell's own border color; falls back to RecordOpts.borderColor, then tok.color.tableBorder */
-    cells: Array<{ innerHtml: string; align?: string; bg?: string; borderColor?: string }>;
+    /**
+     * `border` (full per-side spec from the source doc) takes precedence when present and draws
+     * every declared side; `borderColor` falls back to RecordOpts.borderColor, then
+     * tok.color.tableBorder, and only ever draws a single bottom rule.
+     */
+    cells: Array<{ innerHtml: string; align?: string; bg?: string; border?: BorderSpec; borderColor?: string }>;
   }>;
 }
 
@@ -112,9 +116,9 @@ export function blockRow(innerHtml: string, opts: Parameters<typeof baseStyle>[0
 }
 
 /** Per-side `border-<side>:<width>px solid <color>;` — only sides present in `border` are drawn. */
-export function borderSpecToStyle(border: BorderSpec | undefined, tok: Tokens = defaultTokens): string {
+export function borderSpecToStyle(border: BorderSpec | undefined, tok: Tokens = defaultTokens, widthPx?: number): string {
   if (!border) return "";
-  const bw = tok.layout.calloutBoxBorderPx;
+  const bw = widthPx ?? tok.layout.calloutBoxBorderPx;
   const sides: Array<[keyof BorderSpec, string]> = [
     ["top", "border-top"], ["right", "border-right"],
     ["bottom", "border-bottom"], ["left", "border-left"],
@@ -319,16 +323,20 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
       const ry = tok.layout.recordCellPadY;
       const rx = tok.layout.recordCellPadX;
 
+      const nrows = rows.length;
       const rowsHtml = rows
-        .map((row) => {
+        .map((row, rowIdx) => {
           const firstBg = row.cells[0]?.bg ?? row.bg;
           const rowTextColor = firstBg && isDarkBg(firstBg, tok) ? tok.color.white : tok.color.black;
           const ncols = row.cells.length;
           const colPct = ncols > 1 ? Math.floor(100 / ncols) : 0;
           const rowWidths = widths?.length === ncols ? widths : undefined;
+          const isLastRow = rowIdx === nrows - 1;
 
           const cellsHtml = row.cells
             .map((cell, i) => {
+              // bgcolor lives on the <td> only — a <tr bgcolor> would be redundant since every
+              // cell already resolves its own effective background (cell.bg ?? row.bg).
               const bg = cell.bg ?? row.bg;
               const bgAttr = bg ? ` bgcolor="${bg}"` : "";
               const textColor = bg && isDarkBg(bg, tok) ? tok.color.white : rowTextColor;
@@ -336,13 +344,36 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
               const align = cell.align ?? "left";
               const w = rowWidths?.[i] ?? (i === ncols - 1 ? 100 - colPct * (ncols - 1) : colPct);
               const widthAttr = ncols > 1 ? ` width="${w}%"` : "";
+              const isLastCol = i === ncols - 1;
+              // Full per-side border from the source doc (e.g. a bordered comparison card): every
+              // cell always draws top+left, but bottom/right are only suppressed on interior
+              // cells when the OPPOSITE side (top/left) is also declared — that's the only case
+              // where the neighboring cell's edge would double up. A "bottom-only" divider table
+              // (no top declared) has nothing to double against, so every row keeps its rule,
+              // matching the split-border technique already used by statsGrid.
+              const hasExplicitBorder = cell.border && Object.values(cell.border).some(Boolean);
               const cellBorder = cell.borderColor ?? borderColor ?? tok.color.tableBorder;
-              return `<td align="${align}"${bgAttr}${widthAttr} style="${style} padding:${ry}px ${rx}px;border-bottom:${tok.layout.recordBorderPx}px solid ${cellBorder};">${cell.innerHtml}</td>`;
+              const drawBottom = Boolean(cell.border?.bottom) && (isLastRow || !cell.border?.top);
+              const drawRight = Boolean(cell.border?.right) && (isLastCol || !cell.border?.left);
+              const borderStyle = hasExplicitBorder
+                ? borderSpecToStyle(
+                    {
+                      top: cell.border!.top,
+                      left: cell.border!.left,
+                      bottom: drawBottom ? cell.border!.bottom : undefined,
+                      right: drawRight ? cell.border!.right : undefined,
+                    },
+                    tok,
+                    tok.layout.recordBorderPx,
+                  )
+                : `border-bottom:${tok.layout.recordBorderPx}px solid ${cellBorder};`;
+              // Inner <span> repeats the font styling, matching the text-cell convention used by
+              // paragraph/etc — some clients don't reliably inherit font styles from the <td>.
+              return `<td align="${align}"${bgAttr}${widthAttr} style="${style} padding:${ry}px ${rx}px;${borderStyle}"><${tok.tags.blockWrap} style="${style}">${cell.innerHtml}</${tok.tags.blockWrap}></td>`;
             })
             .join("\n");
 
-          const rowBgAttr = row.bg ? ` bgcolor="${row.bg}"` : "";
-          return `<tr${rowBgAttr}>${cellsHtml}</tr>`;
+          return `<tr>${cellsHtml}</tr>`;
         })
         .join("\n");
 

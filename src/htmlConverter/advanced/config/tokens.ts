@@ -123,9 +123,9 @@ export const tokens: Tokens = {
     alertBandPadV:          4,   // alertBand vertical inner padding
     gridCellPadY:          10,   // statsGrid card cell padding top/bottom
     gridCellPadX:           6,   // statsGrid card cell padding left/right
-    recordCellPadY:         4,   // recordRow cell padding top/bottom
+    recordCellPadY:         6,   // recordRow cell padding top/bottom
     recordCellPadX:         6,   // recordRow cell padding left/right
-    recordBorderPx:         1,   // recordRow cell border-bottom width
+    recordBorderPx:         1,   // recordRow cell border width (all declared sides)
     buttonSubtitlePadTop:   8,   // gap above buttonBand subtitle line
   },
   button: { radius: 10, height: 51, padding: "3px 5px", innerPadding: "9px 15px", target: "_blank", textDecoration: "none" },

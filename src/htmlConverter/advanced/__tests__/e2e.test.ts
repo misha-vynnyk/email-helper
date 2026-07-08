@@ -110,6 +110,40 @@ describe("convertAdvanced — tables fixture", () => {
     expect(html).toContain("&#36;29/mo");
   });
 
+  // Regression: a recordRow whose source cells each declare a full 4-side border (GDocs
+  // "boxed comparison row" pattern) must not double up the border at shared internal seams.
+  describe("boxed comparison row (full per-cell border)", () => {
+    it("contains the sanitized comparison content", () => {
+      expect(html).toContain("THEN");
+      expect(html).toContain("NOW");
+      expect(html).toContain("Company A");
+      expect(html).toContain("Company B");
+      expect(html).toContain("1,234%");
+      expect(html).toContain("5x better");
+    });
+
+    it("draws top+left on every cell, but bottom/right only on the closing row/column", () => {
+      // 2 cols x 2 rows: top+left on all 4 cells; bottom only on the last row's 2 cells;
+      // right only on the last column's 2 cells. Any other count means a seam is either
+      // missing its border or doubled up.
+      const count = (needle: string) => html.split(needle).length - 1;
+      expect(count("border-top:1px solid #d6d2c4")).toBe(4);
+      expect(count("border-left:1px solid #d6d2c4")).toBe(4);
+      expect(count("border-bottom:1px solid #d6d2c4")).toBe(2);
+      expect(count("border-right:1px solid #d6d2c4")).toBe(2);
+    });
+
+    it("puts bgcolor on each <td>, not redundantly on the <tr>", () => {
+      expect(html).not.toContain('<tr bgcolor="#f4f4f0"');
+      const count = (needle: string) => html.split(needle).length - 1;
+      expect(count('bgcolor="#f4f4f0"')).toBe(4);
+    });
+
+    it("wraps cell text in a font-styled <span>, matching the text-cell convention", () => {
+      expect(html).toMatch(/<span style="font-family:[^"]*">\s*<b style="color:#595959;">THEN<\/b>\s*<\/span>/);
+    });
+  });
+
   it("snapshot — default profile", () => {
     expect(html).toMatchSnapshot();
   });

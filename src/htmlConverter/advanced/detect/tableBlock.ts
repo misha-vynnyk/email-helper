@@ -227,6 +227,9 @@ function rowCells(cells: CellNode[], warn?: WarnFn) {
     runs: flattenRuns(c, warn),
     align: c.align ?? "left",
     bg: c.bg,
+    // Full per-side spec (drives a box border when the source doc declared one) plus the
+    // single-color fallback used for the plain bottom-rule case.
+    border: c.border,
     borderColor: firstBorderColor(c.border),
   }));
 }
