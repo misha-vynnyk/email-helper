@@ -16,8 +16,8 @@ export interface Paragraph {
   headingLevel?: number;     // original H1–H6 tag level; used by classify to map to components
   accent?: boolean;          // bold accent line → template prepends ▸ (tokens.accentBullet)
   lines: Run[][];            // each line = array of runs; lines joined with <br>
-  marginTopPt?: number;      // source <p style="margin-top:Npt"> — 0 is GDocs' explicit
-                              // "no space before this paragraph" signal (§ adjacent-paragraph merging)
+  paraBreaks?: Set<number>;  // line indices preceded by an author-typed blank line
+                              // (<br><br> inside one <p>) — rendered as <br><br>
   listItem?: boolean;        // true for a <li>-derived paragraph (real <ul>/<ol>)
 }
 

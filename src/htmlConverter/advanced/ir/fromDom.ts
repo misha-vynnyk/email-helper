@@ -6,7 +6,7 @@ import { isLinkColor } from "../../utils/colorUtils";
 import type { Tokens } from "../config/tokens";
 import { tokens as defaultTokens } from "../config/tokens";
 import { canonicalizeBg,canonicalizeText } from "./color";
-import { getAlign, isBold, isExplicitNonBold, isExplicitNonItalic, isExplicitNonUnderline, isItalic, isUnderline, parseMarginTopPt, parseStyle, ptToSizeRole } from "./style";
+import { getAlign, isBold, isExplicitNonBold, isExplicitNonItalic, isExplicitNonUnderline, isItalic, isUnderline, parseStyle, ptToSizeRole } from "./style";
 import type { BorderSide, BorderSpec, CellNode, ImageNode, Paragraph, RowNode, Run,StructuralNode, TableNode, WarnFn } from "./types";
 
 // ── Inline run collection ─────────────────────────────────────────────────────
@@ -158,7 +158,6 @@ function parseParagraph(el: Element, bg: string, tok: Tokens): Paragraph | null 
   const tag = el.tagName.toUpperCase();
   const style = parseStyle(el.getAttribute("style") ?? "");
   const align = getAlign(style);
-  const marginTopPt = parseMarginTopPt(style);
   const headingMatch = tag.match(/^H([1-6])$/);
   const isHeading = Boolean(headingMatch);
   const headingLevel = headingMatch ? parseInt(headingMatch[1]) : undefined;
@@ -171,13 +170,25 @@ function parseParagraph(el: Element, bg: string, tok: Tokens): Paragraph | null 
   const ctx: Ctx = { bold: false, italic: false, underline: false, size, bg };
   const rawRuns = collectRuns(el, ctx, tok);
   const merged = mergeRuns(rawRuns);
-  const lines = splitIntoLines(merged);
+  const rawLines = splitIntoLines(merged);
 
-  // Strip leading empty lines so paraBreaks indices aren't offset by residual <br> at block start
-  while (lines.length > 1 && lines[0].length === 0) lines.shift();
+  // An empty line inside one <p> is an author-typed blank line (<br><br> between two
+  // sentences without a new paragraph). Renderers skip empty lines, so keeping it as a
+  // line would silently glue the sentences with a single <br> — collapse it and record
+  // a paragraph break at that index instead. Leading empties (residual <br> at block
+  // start) add no break, so paraBreaks indices stay aligned.
+  const lines: Run[][] = [];
+  const paraBreaks = new Set<number>();
+  for (const line of rawLines) {
+    if (line.length === 0) {
+      if (lines.length > 0) paraBreaks.add(lines.length);
+    } else {
+      lines.push(line);
+    }
+  }
 
-  if (!lines.some(l => l.length > 0)) return null;
-  return { type: "p", align, size, headingLevel, lines, marginTopPt };
+  if (lines.length === 0) return null;
+  return { type: "p", align, size, headingLevel, lines, paraBreaks: paraBreaks.size ? paraBreaks : undefined };
 }
 
 // ── Image ────────────────────────────────────────────────────────────────────
@@ -345,8 +356,7 @@ export function fromDom(
       for (const li of Array.from(el.querySelectorAll(":scope > li"))) {
         const p = parseParagraph(li as Element, bg, tok);
         if (p) {
-          // Drop leading empty lines (e.g. <li><br>text</li> produces an empty first line)
-          while (p.lines.length > 1 && p.lines[0].length === 0) p.lines.shift();
+          // parseParagraph never emits empty lines, so lines[0] is real content
           const prefix: Run = { text: tag === "UL" ? "• " : `${idx++}. ` };
           p.lines = [[prefix, ...(p.lines[0] ?? [])], ...p.lines.slice(1)];
           // Adjacent list items always merge with a single <br>, never a paragraph gap —
