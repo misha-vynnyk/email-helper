@@ -8,6 +8,12 @@ function makePara(text: string, size: Paragraph["size"] = "body", align: Paragra
   return { type: "p", size, align, lines: [[{ text }]] };
 }
 
+// A leading bullet/checkmark run followed by the item's own text, matching how a manually-
+// typed list ("✓ Partners: ...") or a real <li> (fromDom's "• " prefix) is represented.
+function makeListPara(marker: string, text: string): Paragraph {
+  return { type: "p", size: "body", align: "left", lines: [[{ text: marker }, { text }]] };
+}
+
 function makeCell(children: StructuralNode[] = [], bg?: string): CellNode {
   return { type: "cell", children: children.length ? children : [makePara("cell")], bg };
 }
@@ -61,6 +67,35 @@ describe("classify — paragraph merging", () => {
     const nodes: StructuralNode[] = [
       makePara("Everyone is talking about SpaceX.", "body", "left"),
       makePara("I get it. It's a great story.", "body", "left"),
+    ];
+    const result = classify(nodes);
+    expect(result).toHaveLength(1);
+    const breaks = result[0].props["paraBreaks"] as Set<number>;
+    expect(breaks.has(1)).toBe(true);
+  });
+
+  // Bug fix: manually-typed checklists ("✓ Partners: ...") and real <ul>/<li> lists (which
+  // fromDom.ts renders as plain left-aligned paragraphs prefixed with "• ") both encode each
+  // item as its own <p> with a leading marker run — these must merge with single <br>s.
+  it("merges adjacent paragraphs that both start with a bullet/checkmark marker — no paraBreak", () => {
+    const nodes: StructuralNode[] = [
+      makeListPara("✓  ", "Partners: Google, Meta"),
+      makeListPara("✓  ", "Backed by: Pat Gelsinger"),
+      makeListPara("✓  ", "4,000% valuation growth"),
+    ];
+    const result = classify(nodes);
+    expect(result).toHaveLength(1);
+    expect(result[0].props["paraBreaks"]).toBeUndefined();
+    const lines = result[0].props["lines"] as unknown[][];
+    expect(lines).toHaveLength(3);
+  });
+
+  it("does NOT treat a single dash/asterisk mid-sentence as a list marker", () => {
+    // The marker check only fires on an ISOLATED leading run — a run beginning with "-"
+    // but continuing into prose text must not be mistaken for a bullet.
+    const nodes: StructuralNode[] = [
+      { type: "p", size: "body", align: "left", lines: [[{ text: "- not a bullet, just a dash-led sentence." }]] },
+      { type: "p", size: "body", align: "left", lines: [[{ text: "Second sentence continues normally." }]] },
     ];
     const result = classify(nodes);
     expect(result).toHaveLength(1);
