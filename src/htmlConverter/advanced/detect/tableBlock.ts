@@ -87,7 +87,7 @@ function flattenLinesWithBreaks(cell: CellNode, warn?: WarnFn): { lines: Run[][]
   };
   for (const child of cell.children) {
     if (child.type === "p") {
-      appendBlock(child.lines);
+      appendBlock(child.lines, child.paraBreaks);
     } else if (child.type === "table") {
       warn?.("Вкладену таблицю сплющено до тексту (розмітка внутрішньої таблиці втрачена)");
       for (const row of child.rows) {

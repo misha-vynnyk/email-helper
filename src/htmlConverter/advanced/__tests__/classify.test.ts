@@ -8,7 +8,7 @@ function makePara(
   text: string,
   size: Paragraph["size"] = "body",
   align: Paragraph["align"] = "left",
-  extra: Partial<Pick<Paragraph, "marginTopPt" | "listItem">> = {},
+  extra: Partial<Pick<Paragraph, "listItem">> = {},
 ): Paragraph {
   return { type: "p", size, align, lines: [[{ text }]], ...extra };
 }
@@ -89,38 +89,26 @@ describe("classify — paragraph merging", () => {
     expect(lines).toHaveLength(3);
   });
 
-  // Bug fix: a manually-typed checklist (no real <ul>, just <p>s with a leading "✓") is
-  // detected via GDocs' own margin-top metadata instead — the first line establishes the
-  // group's baseline "space before", and later lines with a REDUCED margin-top (a genuine
-  // author-set "no gap" override, not just any small value) are continuations of it.
-  it("merges adjacent paragraphs whose margin-top drops below the chain's opening value — no paraBreak", () => {
+  // Deliberate trade-off (see pushMerged): a manually-typed checklist (no real <ul>, just
+  // <p>s with a leading "✓") has no reliable structural signal — a margin-top heuristic was
+  // tried and reverted because it collapsed whole sections' <br><br>s to <br>. Such
+  // paragraphs stay ordinary prose and keep the paragraph gap.
+  it("keeps paraBreaks between manually-typed checklist paragraphs (no real <ul>)", () => {
     const nodes: StructuralNode[] = [
-      makePara("✓  Partners: Google, Meta", "body", "left", { marginTopPt: 11 }),
-      makePara("✓  Backed by: Pat Gelsinger", "body", "left", { marginTopPt: 0 }),
-      makePara("✓  4,000% valuation growth", "body", "left", { marginTopPt: 0 }),
-    ];
-    const result = classify(nodes);
-    expect(result).toHaveLength(1);
-    expect(result[0].props["paraBreaks"]).toBeUndefined();
-  });
-
-  // A uniform margin-top across every paragraph (including margin-top:0 on ALL of them —
-  // a common CSS-reset default from non-GDocs sources, not an authorial "pack tight" signal)
-  // must NOT be read as tight: there's no reduction relative to the chain's own baseline.
-  it("does NOT treat a uniform margin-top (even 0 on every paragraph) as tight", () => {
-    const nodes: StructuralNode[] = [
-      makePara("Welcome to our newsletter.", "body", "left", { marginTopPt: 0 }),
-      makePara("This month we share updates.", "body", "left", { marginTopPt: 0 }),
+      makePara("✓  Partners: Google, Meta", "body", "left"),
+      makePara("✓  Backed by: Pat Gelsinger", "body", "left"),
+      makePara("✓  4,000% valuation growth", "body", "left"),
     ];
     const result = classify(nodes);
     expect(result).toHaveLength(1);
     const breaks = result[0].props["paraBreaks"] as Set<number>;
     expect(breaks.has(1)).toBe(true);
+    expect(breaks.has(2)).toBe(true);
   });
 
   it("does NOT treat a single dash/asterisk mid-sentence as a list marker", () => {
     // Plain prose starting with "-" must not be mistaken for a bullet — there is no
-    // listItem flag and no margin-top reduction, so it stays genuine prose.
+    // listItem flag, so it stays genuine prose.
     const nodes: StructuralNode[] = [
       { type: "p", size: "body", align: "left", lines: [[{ text: "- not a bullet, just a dash-led sentence." }]] },
       { type: "p", size: "body", align: "left", lines: [[{ text: "Second sentence continues normally." }]] },

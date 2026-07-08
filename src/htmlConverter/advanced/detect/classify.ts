@@ -20,31 +20,30 @@ function pushMerged(result: ComponentNode[], comp: ComponentNode, warn?: WarnFn)
     const newLines = comp.props["lines"] as Run[][];
     if (newLines.length > 0) {
       const breakIdx = lastLines.length;
-      // Three signals mean "no gap before me" — none of them depend on what character (if
-      // any) the paragraph happens to start with, so this works for plain text too:
+      // Two signals mean "no gap before me" — neither depends on what character (if any)
+      // the paragraph starts with:
       //  - centered: GDocs' banner/eyebrow convention (a centered headline + subline)
       //  - listItem: structurally certain — set by fromDom.ts only inside a real <ul>/<ol>
-      //  - marginTopPt dropping below the chain's own opening margin: GDocs expresses "no
-      //    gap before me" as a *reduction* in "space before paragraph" relative to a normal
-      //    paragraph's spacing, not as an absolute value — plenty of real documents use
-      //    margin-top:0 on EVERY ordinary paragraph (a CSS-reset default, not an authorial
-      //    "pack tight" signal), so 0 alone isn't safe to treat as tight. `last.props
-      //    .marginTopPt` never gets overwritten by earlier merges, so it always still holds
-      //    the value the current chain opened with — the baseline a later drop is judged against.
+      // A margin-top-based signal ("author explicitly zeroed the space before this
+      // paragraph") was tried and reverted: comparing against the merge chain's *opening*
+      // margin means one early paragraph with a larger-than-usual margin-top (common right
+      // after a heading/image) makes every ordinary paragraph after it look like a
+      // "reduction" forever, collapsing an entire section's <br><br>s to <br>. There's no
+      // reliable per-pair signal that survives both a real GDocs export and a manually-typed
+      // checklist, so manually-typed lists (no real <ul>, e.g. "✓ Partners: ...") are left
+      // as ordinary prose — a known, accepted gap rather than a heuristic that regresses
+      // everything else.
       // Anything else is genuine prose (common in short-paragraph marketing copy) and keeps
       // the <br><br> blank-line separation.
-      const lastMarginPt = last.props["marginTopPt"] as number | undefined;
-      const compMarginPt = comp.props["marginTopPt"] as number | undefined;
-      const isTight = alignOf(comp) === "center" ||
-        comp.props["listItem"] === true ||
-        (compMarginPt !== undefined && lastMarginPt !== undefined && compMarginPt < lastMarginPt);
-      if (!isTight) {
-        // Track paragraph boundary so renderLines can use <br><br> here
+      const isTight = alignOf(comp) === "center" || comp.props["listItem"] === true;
+      const compBreaks = comp.props["paraBreaks"] as Set<number> | undefined;
+      if (!isTight || compBreaks?.size) {
         if (!last.props["paraBreaks"]) last.props["paraBreaks"] = new Set<number>();
         const breaks = last.props["paraBreaks"] as Set<number>;
-        breaks.add(breakIdx);
-        // Carry over any paraBreaks from comp (offset by breakIdx)
-        const compBreaks = comp.props["paraBreaks"] as Set<number> | undefined;
+        // Track paragraph boundary so renderLines can use <br><br> here
+        if (!isTight) breaks.add(breakIdx);
+        // comp's own internal blank lines (author-typed <br><br> inside one <p>) survive
+        // the merge regardless of tightness — carry them over, offset by breakIdx
         if (compBreaks) for (const idx of compBreaks) breaks.add(idx + breakIdx);
       }
       lastLines.push(...newLines);

@@ -73,6 +73,50 @@ describe("convertAdvanced — plain-text fixture", () => {
   });
 });
 
+// ── paragraph-gap regression ──────────────────────────────────────────────────
+
+describe("convertAdvanced — paragraph gaps survive a large-margin opener", () => {
+  // Regression: the margin-top "reduction relative to the chain's opening value" heuristic
+  // made one large-margin paragraph (common right after a heading/image) mark every
+  // following ordinary paragraph as tight, collapsing a whole section's <br><br>s to <br>.
+  it("keeps <br><br> between ordinary left-aligned prose paragraphs", () => {
+    const input = `
+      <div>
+        <p style="margin-top:18pt;margin-bottom:0pt;text-align:left"><span style="font-size:11pt">Everyone is talking about SpaceX.</span></p>
+        <p style="margin-top:0pt;margin-bottom:0pt;text-align:left"><span style="font-size:11pt">I get it. It's a great story.</span></p>
+        <p style="margin-top:0pt;margin-bottom:0pt;text-align:left"><span style="font-size:11pt">But there's a bigger one.</span></p>
+        <p style="margin-top:0pt;margin-bottom:0pt;text-align:left"><span style="font-size:11pt">Let me explain why.</span></p>
+      </div>`;
+    const { html } = convertAdvancedDetailed(input);
+    const doubles = (html.match(/<br><br>/g) ?? []).length;
+    expect(doubles).toBe(3); // a blank line between each of the 4 paragraphs
+  });
+
+  // Regression: an author-typed blank line INSIDE one <p> (Shift+Enter twice → two <br>s,
+  // GDocs emits <span><br></span><span><br></span>) produced an empty line that renderLines
+  // silently skipped, gluing the sentences with a single <br>.
+  const GDOCS_SPANS = `<span style="font-size:11pt;color:#000000;">By the time most people hear, the entry is already gone.</span><span style="font-size:11pt;color:#000000;"><br /></span><span style="font-size:11pt;color:#000000;"><br /></span><span style="font-size:11pt;color:#000000;"> The company&rsquo;s on the front page.</span>`;
+  const gapBetween = (html: string) =>
+    html.slice(html.indexOf("already gone."), html.indexOf("The company") + 12);
+
+  it("keeps <br><br> for a double <br> typed inside one <p>", () => {
+    const { html } = convertAdvancedDetailed(`<p style="margin-top:0pt;">${GDOCS_SPANS}</p>`);
+    expect(gapBetween(html)).toContain("<br><br>");
+  });
+
+  it("keeps <br><br> for bare top-level spans (GDocs partial-paragraph copy)", () => {
+    const { html } = convertAdvancedDetailed(`<b style="font-weight:normal;" id="docs-internal-guid-655d">${GDOCS_SPANS}</b>`);
+    expect(gapBetween(html)).toContain("<br><br>");
+  });
+
+  it("a single <br> inside one <p> stays a single line break", () => {
+    const { html } = convertAdvancedDetailed(`<p><span>line one</span><span><br /></span><span>line two</span></p>`);
+    const gap = html.slice(html.indexOf("line one"), html.indexOf("line two") + 8);
+    expect(gap).toContain("<br>");
+    expect(gap).not.toContain("<br><br>");
+  });
+});
+
 // ── tables.html fixture ───────────────────────────────────────────────────────
 
 describe("convertAdvanced — tables fixture", () => {
