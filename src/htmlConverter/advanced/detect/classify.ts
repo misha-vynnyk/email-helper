@@ -6,6 +6,19 @@ import type { ComponentNode, Run,StructuralNode, TableNode, WarnFn } from "../ir
 import { classifyFlow } from "./flowBlock";
 import { classifyTable } from "./tableBlock";
 
+// Manually-typed bullets (GDocs paragraphs that fake a list with a leading glyph instead of
+// real <ul>/<li> markup) and the "• "/"N. " prefix fromDom.ts itself prepends to real <li>
+// paragraphs — both show up as an isolated leading run whose *trimmed* text is just the marker.
+const LIST_MARKER_CHARS = new Set([
+  "•", "◦", "▪", "▸", "►", "➤", "‣", "·", "●", "○", "✓", "✔", "✗", "✕", "✅", "❌", "☐", "☑", "-", "*", "→",
+]);
+
+function looksLikeListMarker(line: Run[] | undefined): boolean {
+  const trimmed = line?.[0]?.text.trim();
+  if (!trimmed) return false;
+  return LIST_MARKER_CHARS.has(trimmed) || /^\d+[.)]$/.test(trimmed);
+}
+
 function pushMerged(result: ComponentNode[], comp: ComponentNode, warn?: WarnFn): void {
   const last = result[result.length - 1];
 
@@ -22,9 +35,12 @@ function pushMerged(result: ComponentNode[], comp: ComponentNode, warn?: WarnFn)
       const breakIdx = lastLines.length;
       // Centered adjacent <p>s are GDocs' way of encoding a tight banner/eyebrow group
       // (e.g. a headline + subline, both centered) — a single <br>, not a paragraph gap.
-      // Left/right-aligned adjacent <p>s are genuine prose paragraphs (common in short-
-      // paragraph marketing copy) and keep the <br><br> blank-line separation.
-      if (alignOf(comp) !== "center") {
+      // Adjacent <p>s that both start with a bullet/checkmark marker are a (real or
+      // manually-typed) list — also a single <br> between items, never a paragraph gap.
+      // Anything else is genuine prose (common in short-paragraph marketing copy) and
+      // keeps the <br><br> blank-line separation.
+      const isListPair = looksLikeListMarker(newLines[0]) && looksLikeListMarker(lastLines[breakIdx - 1]);
+      if (alignOf(comp) !== "center" && !isListPair) {
         // Track paragraph boundary so renderLines can use <br><br> here
         if (!last.props["paraBreaks"]) last.props["paraBreaks"] = new Set<number>();
         const breaks = last.props["paraBreaks"] as Set<number>;
