@@ -43,6 +43,31 @@ describe("classify — paragraph merging", () => {
     expect(result).toHaveLength(2);
   });
 
+  // Bug fix: GDocs encodes a centered banner/eyebrow group (headline + subline) as two
+  // separate centered <p>s — these should merge with a single <br>, not a paragraph gap.
+  it("merges centered adjacent paragraphs with NO paraBreak (single <br>)", () => {
+    const nodes: StructuralNode[] = [
+      makePara("REG A+ · CLOSING SOON", "body", "center"),
+      makePara("Entry price: $0.79/share", "body", "center"),
+    ];
+    const result = classify(nodes);
+    expect(result).toHaveLength(1);
+    expect(result[0].props["paraBreaks"]).toBeUndefined();
+  });
+
+  // Left/right-aligned adjacent paragraphs are genuine prose (short-paragraph marketing
+  // copy) and keep the <br><br> blank-line separation between them.
+  it("merges left-aligned adjacent paragraphs WITH a paraBreak (double <br>)", () => {
+    const nodes: StructuralNode[] = [
+      makePara("Everyone is talking about SpaceX.", "body", "left"),
+      makePara("I get it. It's a great story.", "body", "left"),
+    ];
+    const result = classify(nodes);
+    expect(result).toHaveLength(1);
+    const breaks = result[0].props["paraBreaks"] as Set<number>;
+    expect(breaks.has(1)).toBe(true);
+  });
+
   it("merges only adjacent paragraphs — gap breaks the chain", () => {
     const darkTable = makeTable([[makeCell([makePara("alert")], "#000000")]]);
     const nodes: StructuralNode[] = [

@@ -20,13 +20,19 @@ function pushMerged(result: ComponentNode[], comp: ComponentNode, warn?: WarnFn)
     const newLines = comp.props["lines"] as Run[][];
     if (newLines.length > 0) {
       const breakIdx = lastLines.length;
-      // Track paragraph boundary so renderLines can use <br><br> here
-      if (!last.props["paraBreaks"]) last.props["paraBreaks"] = new Set<number>();
-      const breaks = last.props["paraBreaks"] as Set<number>;
-      breaks.add(breakIdx);
-      // Carry over any paraBreaks from comp (offset by breakIdx)
-      const compBreaks = comp.props["paraBreaks"] as Set<number> | undefined;
-      if (compBreaks) for (const idx of compBreaks) breaks.add(idx + breakIdx);
+      // Centered adjacent <p>s are GDocs' way of encoding a tight banner/eyebrow group
+      // (e.g. a headline + subline, both centered) — a single <br>, not a paragraph gap.
+      // Left/right-aligned adjacent <p>s are genuine prose paragraphs (common in short-
+      // paragraph marketing copy) and keep the <br><br> blank-line separation.
+      if (alignOf(comp) !== "center") {
+        // Track paragraph boundary so renderLines can use <br><br> here
+        if (!last.props["paraBreaks"]) last.props["paraBreaks"] = new Set<number>();
+        const breaks = last.props["paraBreaks"] as Set<number>;
+        breaks.add(breakIdx);
+        // Carry over any paraBreaks from comp (offset by breakIdx)
+        const compBreaks = comp.props["paraBreaks"] as Set<number> | undefined;
+        if (compBreaks) for (const idx of compBreaks) breaks.add(idx + breakIdx);
+      }
       lastLines.push(...newLines);
     }
     return;
