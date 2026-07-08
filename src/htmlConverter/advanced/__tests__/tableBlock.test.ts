@@ -125,6 +125,91 @@ describe("classifyTable — single-cell", () => {
   });
 });
 
+// Regression: a multi-line dark box (banner headline + a "fake link" line styled
+// blue/underlined with no real <a> + a footer line) must stay alertBand — findHref
+// used to match the fake-link line anywhere in the cell and swallow the WHOLE box
+// (unrelated header/footer text included) into one giant buttonBand <a> wrapper.
+describe("classifyTable — dark cell, single-line vs multi-line (buttonBand narrowing)", () => {
+  function fakeLinkPara(text: string): Paragraph {
+    // GDocs "styled to look like a link" run: blue + underline, but no real <a href>.
+    // fromDom.ts's isLinkColor heuristic is what attaches the placeholder href — here we
+    // model its output directly (a run with href already set) since classifyTable operates
+    // on the IR, not raw DOM.
+    return { type: "p", size: "body", lines: [[{ text, href: "urlhere" }]] };
+  }
+
+  it("3 paragraphs, only the middle one link-styled → alertBand, not buttonBand", () => {
+    const cell = makeCell({
+      bg: "#0f766e",
+      children: [
+        makePara("$0.79/SHARE · REG A+ · NO ACCREDITATION REQUIRED"),
+        fakeLinkPara("Lock In Your $0.79 Allocation →"),
+        makePara("Up to 20% bonus shares · 9,500+ investors already in"),
+      ],
+    });
+    const table = makeTable([[cell]]);
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("alertBand");
+  });
+
+  it("alertBand preserves all 3 lines with paragraph breaks (not flattened into one line)", () => {
+    const cell = makeCell({
+      bg: "#0f766e",
+      children: [
+        makePara("Headline"),
+        fakeLinkPara("Lock In →"),
+        makePara("Footer"),
+      ],
+    });
+    const table = makeTable([[cell]]);
+    const result = classifyTable(table);
+    const props = result?.props as Record<string, unknown>;
+    const lines = props["lines"] as unknown[];
+    expect(lines).toHaveLength(3);
+    expect((props["paraBreaks"] as Set<number>).has(1)).toBe(true);
+    expect((props["paraBreaks"] as Set<number>).has(2)).toBe(true);
+  });
+
+  it("the fake-link run's href survives inside alertBand's lines (still renders as a link)", () => {
+    const cell = makeCell({
+      bg: "#0f766e",
+      children: [makePara("Headline"), fakeLinkPara("Lock In →")],
+    });
+    const table = makeTable([[cell]]);
+    const result = classifyTable(table);
+    const lines = (result?.props as Record<string, unknown>)["lines"] as Array<Array<{ href?: string }>>;
+    expect(lines[1][0].href).toBe("urlhere");
+  });
+
+  it("a single paragraph split into 2 lines via internal <br> is still 'multi-line' → alertBand", () => {
+    const cell = makeCell({
+      bg: "#0f766e",
+      children: [{
+        type: "p", size: "body",
+        lines: [[{ text: "Headline" }], [{ text: "Lock In →", href: "urlhere" }]],
+      }],
+    });
+    const table = makeTable([[cell]]);
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("alertBand");
+  });
+
+  it("a single-paragraph, single-line fake link cell is still promoted to buttonBand (no regression)", () => {
+    const cell = makeCell({ bg: "#0f766e", children: [fakeLinkPara("Lock In →")] });
+    const table = makeTable([[cell]]);
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("buttonBand");
+    expect((result?.props as Record<string, unknown>)["href"]).toBe("urlhere");
+  });
+
+  it("single paragraph + real href → still buttonBand (existing CTA case unaffected)", () => {
+    const cell = makeCell({ bg: "#000000", children: [makePara("Click me", "https://example.com")] });
+    const table = makeTable([[cell]]);
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("buttonBand");
+  });
+});
+
 // Fix #6: near-white/near-root-bg border colors are GDocs gridline leftovers, not intent
 describe("classifyTable — meaningless (near-white) border", () => {
   it("unwraps a 1×1 cell whose border is near-white and has no bg", () => {
@@ -245,6 +330,126 @@ describe("classifyTable — multi-cell", () => {
     // ncols=1 but multiple rows → null, classify.ts handles each row separately
     const result = classifyTable(table);
     expect(result).toBeNull();
+  });
+});
+
+// ── splitRow (letterhead/byline: plain left cell + right-aligned right cell) ──
+
+describe("classifyTable — splitRow", () => {
+  function makeAlignedCell(text: string, align?: "left" | "center" | "right"): CellNode {
+    return {
+      type: "cell",
+      children: [{ type: "p", size: "body", align, lines: [[makeRun(text)]] }],
+    };
+  }
+
+  it("2 plain cells, second right-aligned via its paragraph → splitRow", () => {
+    const table = makeTable([[makeAlignedCell("immersed"), makeAlignedCell("MEDIA & INVESTOR RELATIONS", "right")]]);
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("splitRow");
+    expect((result?.props as Record<string, unknown>)["left"]).toEqual([{ text: "immersed" }]);
+    expect((result?.props as Record<string, unknown>)["right"]).toEqual([{ text: "MEDIA & INVESTOR RELATIONS" }]);
+  });
+
+  it("2 plain cells, neither right-aligned → statsGrid, not splitRow", () => {
+    const table = makeTable([[makeAlignedCell("a"), makeAlignedCell("b")]]);
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("statsGrid");
+  });
+
+  it("both cells right-aligned → statsGrid, not splitRow (no plain left column)", () => {
+    const table = makeTable([[makeAlignedCell("a", "right"), makeAlignedCell("b", "right")]]);
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("statsGrid");
+  });
+
+  it("right cell has a bg → not splitRow (colored cell keeps its own classification)", () => {
+    const cell = makeCell({ bg: "#f5f5f5" });
+    const table = makeTable([[makeAlignedCell("a"), { ...cell, align: "right" }]]);
+    const result = classifyTable(table);
+    expect(result?.kind).not.toBe("splitRow");
+  });
+
+  it("right cell has a meaningful border → not splitRow", () => {
+    const rightCell: CellNode = {
+      ...makeAlignedCell("b", "right"),
+      border: { top: { color: "#c2410c" } },
+    };
+    const table = makeTable([[makeAlignedCell("a"), rightCell]]);
+    const result = classifyTable(table);
+    expect(result?.kind).not.toBe("splitRow");
+  });
+
+  it("near-white bg on both cells is still transparent enough → splitRow", () => {
+    const table = makeTable([[
+      { ...makeAlignedCell("a"), bg: "#fefefe" },
+      { ...makeAlignedCell("b", "right"), bg: "#fefefe" },
+    ]]);
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("splitRow");
+  });
+
+  it("cell.align (attribute) right-aligns just as reliably as the paragraph's align", () => {
+    const table = makeTable([[
+      makeAlignedCell("a"),
+      { type: "cell", align: "right", children: [makePara("b")] },
+    ]]);
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("splitRow");
+  });
+
+  it("reversed alignment (left cell right-aligned, right cell plain) → statsGrid, not splitRow", () => {
+    const table = makeTable([[makeAlignedCell("a", "right"), makeAlignedCell("b")]]);
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("statsGrid");
+  });
+
+  it("center-aligned left cell still counts as 'not right' → splitRow", () => {
+    const table = makeTable([[makeAlignedCell("a", "center"), makeAlignedCell("b", "right")]]);
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("splitRow");
+  });
+
+  it("3 cells, last right-aligned → statsGrid, not splitRow (splitRow is exactly 2 columns)", () => {
+    const table = makeTable([[makeAlignedCell("a"), makeAlignedCell("b"), makeAlignedCell("c", "right")]]);
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("statsGrid");
+    expect((result?.props as Record<string, unknown>)["n"]).toBe(3);
+  });
+
+  it("one cell empty → falls through to the single-meaningful-cell path, not splitRow", () => {
+    const table = makeTable([[makeAlignedCell(""), makeAlignedCell("b", "right")]]);
+    const result = classifyTable(table);
+    expect(result?.kind).not.toBe("splitRow");
+  });
+
+  it("multiple rows with a right-aligned 2nd column → recordRow, not splitRow (splitRow is single-row only)", () => {
+    const table = makeTable([
+      [makeAlignedCell("a"), makeAlignedCell("b", "right")],
+      [makeAlignedCell("c"), makeAlignedCell("d", "right")],
+    ]);
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("recordRow");
+  });
+
+  it("preserves href/bold/color runs on both sides", () => {
+    const leftCell: CellNode = {
+      type: "cell",
+      children: [{ type: "p", size: "body", lines: [[{ text: "Name", bold: true }]] }],
+    };
+    const rightCell: CellNode = {
+      type: "cell",
+      children: [{
+        type: "p", size: "body", align: "right",
+        lines: [[{ text: "Role", color: "#6b7280", href: "https://example.com" }]],
+      }],
+    };
+    const table = makeTable([[leftCell, rightCell]]);
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("splitRow");
+    const props = result?.props as Record<string, unknown>;
+    expect(props["left"]).toEqual([{ text: "Name", bold: true }]);
+    expect(props["right"]).toEqual([{ text: "Role", color: "#6b7280", href: "https://example.com" }]);
   });
 });
 

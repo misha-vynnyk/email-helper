@@ -122,6 +122,17 @@ function hasMeaningfulContent(cell: CellNode): boolean {
   return flattenRuns(cell).some(r => r.text.trim() !== "");
 }
 
+/**
+ * Effective text alignment of a cell. GDocs puts `text-align` on the inner <p>,
+ * not the <td> — cell.align only covers an explicit `align`/`text-align` on the
+ * cell itself, so fall back to the first paragraph child's align.
+ */
+function cellAlign(cell: CellNode): "left" | "center" | "right" {
+  if (cell.align) return cell.align;
+  const firstPara = cell.children.find((c): c is Paragraph => c.type === "p");
+  return firstPara?.align ?? "left";
+}
+
 function cellToChild(cell: CellNode, warn?: WarnFn): ComponentNode {
   return {
     kind: "paragraph",
@@ -184,11 +195,17 @@ function classifySingleCell(
   if (bg && isDarkBg(bg, tok)) {
     // A white/light outline against a dark bg is a deliberate accent regardless of how
     // close its color is to white — use the raw border here, not the near-white-filtered one.
-    const href = findHref(cell);
+    const { lines, paraBreaks } = flattenLinesWithBreaks(cell, warn);
+    // Only promote to buttonBand (wraps the ENTIRE cell in one <a>) when the cell is a
+    // single logical line — a real one-line CTA. A multi-line dark box (e.g. a banner
+    // headline + a "fake link" line styled blue/underlined with no real <a> + a footer
+    // line) must stay an alertBand: findHref would happily match the fake-link line and
+    // swallow the whole box — including unrelated text — into one giant link.
+    const href = lines.length <= 1 ? findHref(cell) : null;
     if (href) {
-      return { kind: "buttonBand", props: { runs: flattenRuns(cell, warn), href, bg, border: cell.border } };
+      return { kind: "buttonBand", props: { runs: lines.flat(), href, bg, border: cell.border } };
     }
-    return { kind: "alertBand", props: { runs: flattenRuns(cell, warn), bg, border: cell.border } };
+    return { kind: "alertBand", props: { lines, paraBreaks, bg, border: cell.border } };
   }
 
   // Pure border-left accent (+ optional light bg) → calloutLeft, using the
@@ -257,6 +274,22 @@ export function classifyTable(
   // Single-row, multi-cell
   if (rows.length === 1 && ncols >= 2) {
     const cells = rows[0].cells;
+
+    // GDocs letterhead/byline pattern: exactly 2 plain cells (no bg, no border), both with
+    // content, the second right-aligned (e.g. "immersed" | "MEDIA & INVESTOR RELATIONS")
+    // → splitRow, rendered with independently-aligned columns instead of an equal-width grid.
+    if (
+      cells.length === 2 &&
+      cells.every(c => !hasMeaningfulBorder(c.border, tok) && (!c.bg || isNearWhiteOrRoot(c.bg, tok))) &&
+      cells.every(hasMeaningfulContent) &&
+      cellAlign(cells[0]) !== "right" &&
+      cellAlign(cells[1]) === "right"
+    ) {
+      return {
+        kind: "splitRow",
+        props: { left: flattenRuns(cells[0], warn), right: flattenRuns(cells[1], warn) },
+      };
+    }
 
     // GDocs button pattern: [empty-spacer] [colored-cell-with-h5] [empty-spacer]
     // When only 1 cell has meaningful content, classify that cell directly instead of

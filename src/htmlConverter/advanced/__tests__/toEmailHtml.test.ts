@@ -298,6 +298,72 @@ describe("renderNode — statsGrid", () => {
   });
 });
 
+// ── renderNode — splitRow ──────────────────────────────────────────────────────
+
+describe("renderNode — splitRow", () => {
+  it("renders left/right cells with the right cell in a nested align=right table", () => {
+    const node: ComponentNode = {
+      kind: "splitRow",
+      props: {
+        left: [{ text: "immersed", bold: true, color: "#111827" }],
+        right: [{ text: "MEDIA & INVESTOR RELATIONS", bold: true, color: "#6b7280" }],
+      },
+    };
+    const html = renderNode(node, tmpl, tokens);
+    expect(html).toContain('<td align="right">');
+    expect(html).toContain('<table align="right"');
+    expect(html).toContain('<b style="color:#111827;">immersed</b>');
+    expect(html).toContain('<b style="color:#6b7280;">MEDIA &amp; INVESTOR RELATIONS</b>');
+    // Both cells share the same left-aligned text style (on both <td> and inner <span>) —
+    // the right cell is positioned via the nested table's align="right", not text-align.
+    expect((html.match(/text-align:left/g) ?? []).length).toBe(4);
+  });
+
+  it("plain (non-bold, no color) runs render as bare text, no <b>/<span> wrapper", () => {
+    const node: ComponentNode = {
+      kind: "splitRow",
+      props: { left: [{ text: "Name" }], right: [{ text: "Role" }] },
+    };
+    const html = renderNode(node, tmpl, tokens);
+    expect(html).toContain(">Name<");
+    expect(html).toContain(">Role<");
+    expect(html).not.toContain("<b>Name</b>");
+    expect(html).not.toContain("<b>Role</b>");
+  });
+
+  it("a right-cell href renders as a placeholder-href <a>, not a <b>", () => {
+    const node: ComponentNode = {
+      kind: "splitRow",
+      props: {
+        left: [{ text: "Name" }],
+        right: [{ text: "Learn more", href: "https://example.com" }],
+      },
+    };
+    const html = renderNode(node, tmpl, tokens);
+    expect(html).toContain(`href="${tokens.placeholderHref}"`);
+    expect(html).toContain(">Learn more</a>");
+  });
+
+  it("empty left/right run lists still produce a valid row (no crash)", () => {
+    const node: ComponentNode = { kind: "splitRow", props: { left: [], right: [] } };
+    expect(() => renderNode(node, tmpl, tokens)).not.toThrow();
+    const html = renderNode(node, tmpl, tokens);
+    expect(html).toContain('<table align="right"');
+  });
+
+  it("multi-run left cell (mixed plain + bold) concatenates correctly", () => {
+    const node: ComponentNode = {
+      kind: "splitRow",
+      props: {
+        left: [{ text: "Jane Doe, " }, { text: "CEO", bold: true }],
+        right: [{ text: "Q3 2026" }],
+      },
+    };
+    const html = renderNode(node, tmpl, tokens);
+    expect(html).toContain("Jane Doe, <b>CEO</b>");
+  });
+});
+
 // ── renderNode — statsGrid highlighted cell (per-cell bg) ─────────────────────
 
 describe("renderNode — statsGrid with per-cell background", () => {
@@ -345,14 +411,14 @@ describe("renderNode — statsGrid with per-cell background", () => {
 
 describe("renderNode — alertBand", () => {
   it("uses white text on dark background", () => {
-    const node: ComponentNode = { kind: "alertBand", props: { runs: [{ text: "hi" }], bg: "#000000" } };
+    const node: ComponentNode = { kind: "alertBand", props: { lines: [[{ text: "hi" }]], bg: "#000000" } };
     const result = renderNode(node, tmpl, tokens);
     expect(result).toContain(tokens.color.white);
     expect(result).toContain("#000000");
   });
 
   it("uses black text on light background", () => {
-    const node: ComponentNode = { kind: "alertBand", props: { runs: [{ text: "hi" }], bg: "#ffeeee" } };
+    const node: ComponentNode = { kind: "alertBand", props: { lines: [[{ text: "hi" }]], bg: "#ffeeee" } };
     const result = renderNode(node, tmpl, tokens);
     expect(result).toContain(tokens.color.black);
   });
@@ -361,10 +427,27 @@ describe("renderNode — alertBand", () => {
   it("passes border through to the template", () => {
     const node: ComponentNode = {
       kind: "alertBand",
-      props: { runs: [{ text: "hi" }], bg: "#000000", border: { top: { color: "#ffffff" } } },
+      props: { lines: [[{ text: "hi" }]], bg: "#000000", border: { top: { color: "#ffffff" } } },
     };
     const result = renderNode(node, tmpl, tokens);
     expect(result).toContain("border-top:");
+  });
+
+  // Multi-line alertBand (e.g. a promo box with a headline, an inline "fake link" line,
+  // and a footer line) must preserve line breaks instead of gluing everything together.
+  it("preserves paragraph breaks across multiple lines", () => {
+    const node: ComponentNode = {
+      kind: "alertBand",
+      props: {
+        lines: [[{ text: "Headline" }], [{ text: "Footer" }]],
+        paraBreaks: new Set([1]),
+        bg: "#000000",
+      },
+    };
+    const result = renderNode(node, tmpl, tokens);
+    expect(result).toContain("Headline");
+    expect(result).toContain("Footer");
+    expect(result).toContain("<br><br>");
   });
 });
 

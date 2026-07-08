@@ -274,9 +274,32 @@ describe("fromDom — link-color span whitespace stripping", () => {
     expect(textRun?.href).toBeUndefined();
   });
 
-  it("non-whitespace text in a link-colored span gets placeholder href", () => {
-    const p = firstParagraph('<p><span style="color:#1155cc;">Click here</span></p>');
+  it("non-whitespace text in a link-colored + underlined span gets placeholder href", () => {
+    const p = firstParagraph('<p><span style="color:#1155cc;text-decoration:underline;">Click here</span></p>');
     const run = p.lines[0].find((r) => r.text === "Click here");
+    expect(run?.href).toBe(tokens.placeholderHref);
+  });
+
+  // Regression: color alone is too weak a signal — GDocs authors use blue for plain
+  // emphasis/headings too (e.g. a promo banner's readable-blue line with no link intent).
+  // Requiring underline as well avoids turning that into an accidental clickable link.
+  it("blue but NOT underlined → no href (color alone is not enough)", () => {
+    const p = firstParagraph('<p><span style="color:#1155cc;">Not a link</span></p>');
+    const run = p.lines[0].find((r) => r.text === "Not a link");
+    expect(run?.href).toBeUndefined();
+  });
+
+  it("underlined but NOT blue → no href (underline alone is not enough)", () => {
+    const p = firstParagraph('<p><span style="color:#111827;text-decoration:underline;">Underlined only</span></p>');
+    const run = p.lines[0].find((r) => r.text === "Underlined only");
+    expect(run?.href).toBeUndefined();
+  });
+
+  it("underline inherited from an ancestor still counts (effective underline, not just own style)", () => {
+    const p = firstParagraph(
+      '<p><span style="text-decoration:underline;"><span style="color:#1155cc;">Inherited</span></span></p>'
+    );
+    const run = p.lines[0].find((r) => r.text === "Inherited");
     expect(run?.href).toBe(tokens.placeholderHref);
   });
 });

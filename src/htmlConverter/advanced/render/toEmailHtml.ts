@@ -13,6 +13,7 @@ import {
   type ImageOpts,
   type ParagraphOpts,
   type RecordOpts,
+  type SplitRowOpts,
   templates as defaultTemplates,
 } from "../config/templates";
 import type { Tokens } from "../config/tokens";
@@ -130,7 +131,12 @@ export function renderNode(
       const bg = p["bg"] as string;
       const textColor = isDarkBg(bg, tok) ? tok.color.white : tok.color.black;
       const opts: AlertBandOpts = {
-        innerHtml: renderRuns(p["runs"] as Run[], tok, textColor),
+        innerHtml: renderLines(
+          p["lines"] as Run[][],
+          tok,
+          textColor,
+          p["paraBreaks"] as Set<number> | undefined,
+        ),
         bg,
         border: p["border"] as BorderSpec | undefined,
       };
@@ -213,6 +219,14 @@ export function renderNode(
         })),
       };
       return tmpl.recordRow(opts);
+    }
+
+    case "splitRow": {
+      const opts: SplitRowOpts = {
+        leftHtml: renderRuns(p["left"] as Run[], tok, tok.color.black),
+        rightHtml: renderRuns(p["right"] as Run[], tok, tok.color.black),
+      };
+      return tmpl.splitRow(opts);
     }
 
     case "image": {

@@ -71,6 +71,7 @@ export type ComponentKind =
   | "calloutBox"
   | "statsGrid"
   | "recordRow"
+  | "splitRow"
   | "image"
   | "spacer";
 

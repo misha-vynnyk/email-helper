@@ -171,6 +171,87 @@ describe("convertAdvanced — button-dark fixture", () => {
   });
 });
 
+// ── letterhead.html fixture (splitRow) ────────────────────────────────────────
+
+describe("convertAdvanced — letterhead fixture (splitRow)", () => {
+  let html: string;
+  beforeAll(() => {
+    html = convertAdvanced(loadFixture("letterhead.html"));
+  });
+
+  it("renders both columns' text", () => {
+    expect(html).toContain("immersed");
+    expect(html).toContain("MEDIA &amp; INVESTOR RELATIONS");
+  });
+
+  it("bolds each column in its own document color", () => {
+    expect(html).toContain('<b style="color:#111827;">immersed</b>');
+    expect(html).toContain('<b style="color:#6b7280;">MEDIA &amp; INVESTOR RELATIONS</b>');
+  });
+
+  it("wraps the right column in its own align=right nested table (not text-align)", () => {
+    expect(html).toContain('<td align="right">');
+    expect(html).toContain('<table align="right"');
+  });
+
+  it("does not fall back to statsGrid's bordered/centered cell layout", () => {
+    expect(html).not.toContain(`class="${tokens.classes.inlineCell}"`);
+  });
+
+  it("does not emit a warning (no nested tables, no lossy content)", () => {
+    const { warnings } = convertAdvancedDetailed(loadFixture("letterhead.html"));
+    expect(warnings).toEqual([]);
+  });
+
+  it("snapshot — default profile", () => {
+    expect(html).toMatchSnapshot();
+  });
+});
+
+// ── promo-band.html fixture (multi-line dark box, fake link on one line only) ─
+
+describe("convertAdvanced — promo-band fixture (alertBand narrowing)", () => {
+  let html: string;
+  beforeAll(() => {
+    html = convertAdvanced(loadFixture("promo-band.html"));
+  });
+
+  it("renders as a teal alertBand, not a buttonBand", () => {
+    expect(html).toContain("#0f766e");
+  });
+
+  it("renders all 3 lines of text", () => {
+    expect(html).toContain("&#36;0.79/SHARE");
+    expect(html).toContain("Lock In Your &#36;0.79 Allocation");
+    expect(html).toContain("Up to 20% bonus shares");
+  });
+
+  it("only the 'fake link' line is wrapped in an <a> — header/footer text is NOT a link", () => {
+    const linkMatch = html.match(/<a href="urlhere"[^>]*>([\s\S]*?)<\/a>/);
+    expect(linkMatch).not.toBeNull();
+    expect(linkMatch![1]).toContain("Lock In Your");
+    expect(linkMatch![1]).not.toContain("SHARE");
+    expect(linkMatch![1]).not.toContain("bonus shares");
+  });
+
+  it("does not wrap the whole box in a single <a> (no buttonBand button table)", () => {
+    expect(html).not.toContain('class="btn-edit-p"');
+  });
+
+  it("keeps the 3 lines visually separated (not glued onto one line)", () => {
+    expect(html).toContain("<br><br>");
+  });
+
+  it("does not emit a warning", () => {
+    const { warnings } = convertAdvancedDetailed(loadFixture("promo-band.html"));
+    expect(warnings).toEqual([]);
+  });
+
+  it("snapshot — default profile", () => {
+    expect(html).toMatchSnapshot();
+  });
+});
+
 // ── Profile overrides ─────────────────────────────────────────────────────────
 
 describe("convertAdvanced — profile overrides", () => {
@@ -512,6 +593,17 @@ describe("convertAdvanced — tickr-promo fixture", () => {
     // the doc — just check the 25% quartet exists and some 4-way group sums to 100
     const quarters = widths.filter(w => w >= 20 && w <= 30);
     expect(quarters.length).toBeGreaterThanOrEqual(4);
+  });
+
+  // Regression: these stat numbers are styled navy (#0a2463) with text-decoration:none —
+  // color alone previously triggered the "looks like a link" heuristic (isLinkColor treats
+  // navy as blueish) and wrapped plain stat numbers in a placeholder <a>. Underline is now
+  // required too, so a merely-colored accent number stays plain text.
+  it("does not turn navy-colored (but not underlined) stat numbers into links", () => {
+    expect(html).not.toMatch(/<a href="urlhere"[^>]*>32,481%<\/a>/);
+    expect(html).not.toMatch(/<a href="urlhere"[^>]*>490M&#43;<\/a>/);
+    expect(html).not.toMatch(/<a href="urlhere"[^>]*>&#36;11\.8M<\/a>/);
+    expect(html).toContain('<b style="color:#0a2463;">32,481%</b>');
   });
 
   it("highlights the featured stat tile with a dark background and white text", () => {
