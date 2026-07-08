@@ -6,7 +6,7 @@ import { isLinkColor } from "../../utils/colorUtils";
 import type { Tokens } from "../config/tokens";
 import { tokens as defaultTokens } from "../config/tokens";
 import { canonicalizeBg,canonicalizeText } from "./color";
-import { getAlign, isBold, isExplicitNonBold, isExplicitNonItalic, isExplicitNonUnderline, isItalic, isUnderline, parseStyle, ptToSizeRole } from "./style";
+import { getAlign, isBold, isExplicitNonBold, isExplicitNonItalic, isExplicitNonUnderline, isItalic, isUnderline, parseMarginTopPt, parseStyle, ptToSizeRole } from "./style";
 import type { BorderSide, BorderSpec, CellNode, ImageNode, Paragraph, RowNode, Run,StructuralNode, TableNode, WarnFn } from "./types";
 
 // ── Inline run collection ─────────────────────────────────────────────────────
@@ -158,6 +158,7 @@ function parseParagraph(el: Element, bg: string, tok: Tokens): Paragraph | null 
   const tag = el.tagName.toUpperCase();
   const style = parseStyle(el.getAttribute("style") ?? "");
   const align = getAlign(style);
+  const marginTopPt = parseMarginTopPt(style);
   const headingMatch = tag.match(/^H([1-6])$/);
   const isHeading = Boolean(headingMatch);
   const headingLevel = headingMatch ? parseInt(headingMatch[1]) : undefined;
@@ -176,7 +177,7 @@ function parseParagraph(el: Element, bg: string, tok: Tokens): Paragraph | null 
   while (lines.length > 1 && lines[0].length === 0) lines.shift();
 
   if (!lines.some(l => l.length > 0)) return null;
-  return { type: "p", align, size, headingLevel, lines };
+  return { type: "p", align, size, headingLevel, lines, marginTopPt };
 }
 
 // ── Image ────────────────────────────────────────────────────────────────────
@@ -348,6 +349,9 @@ export function fromDom(
           while (p.lines.length > 1 && p.lines[0].length === 0) p.lines.shift();
           const prefix: Run = { text: tag === "UL" ? "• " : `${idx++}. ` };
           p.lines = [[prefix, ...(p.lines[0] ?? [])], ...p.lines.slice(1)];
+          // Adjacent list items always merge with a single <br>, never a paragraph gap —
+          // structurally certain here (we're inside <ul>/<ol>), no heuristic needed.
+          p.listItem = true;
           nodes.push(p);
         }
       }

@@ -8,7 +8,7 @@ export function classifyFlow(nodes: StructuralNode[], tok: Tokens = defaultToken
   const result: ComponentNode[] = [];
   for (const node of nodes) {
     if (node.type !== "p") continue;
-    const { lines, align, size, headingLevel } = node;
+    const { lines, align, size, headingLevel, marginTopPt, listItem } = node;
     if (!lines.some(l => l.length > 0)) continue;
 
     // Heading levels are markers matching the simple converter's conventions:
@@ -28,7 +28,7 @@ export function classifyFlow(nodes: StructuralNode[], tok: Tokens = defaultToken
       continue;
     }
 
-    result.push({ kind: "paragraph", props: { lines, align, size } });
+    result.push({ kind: "paragraph", props: { lines, align, size, marginTopPt, listItem } });
   }
   return result;
 }

@@ -61,3 +61,13 @@ export function getAlign(style: Record<string, string>): "left" | "center" | "ri
   if (a === "center" || a === "right" || a === "left") return a;
   return undefined;
 }
+
+// GDocs always emits margin-top in pt (e.g. "margin-top:4pt"). Returns the raw number —
+// 0 is the deliberate "no space before this paragraph" signal used to merge adjacent
+// paragraphs with a single <br> instead of a paragraph gap (§4).
+export function parseMarginTopPt(style: Record<string, string>): number | undefined {
+  const mt = style["margin-top"];
+  if (!mt) return undefined;
+  const n = parseFloat(mt);
+  return isNaN(n) ? undefined : n;
+}
