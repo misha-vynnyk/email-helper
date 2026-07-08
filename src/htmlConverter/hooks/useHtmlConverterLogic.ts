@@ -157,6 +157,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
     rawPastedHtmlRef,
     downloadFolder: ui.downloadFolder,
     setDownloadFolder: (folder) => settings.setUi((prev) => ({ ...prev, downloadFolder: folder })),
+    oneBrSymbol: ui.oneBrSymbol,
   });
 
   const handleDownloadHTML = useCallback(async () => {

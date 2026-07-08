@@ -4,8 +4,9 @@
 
 import { SYMBOLS } from "../constants";
 
-// Pre-compiled regexes
-const ONE_BR_RE = new RegExp(SYMBOLS.ONE_BR, "gi");
+export function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 export function cleanEmptyHtmlTags(htmlContent: string): string {
   // Merge adjacent <a> tags (same link split across spans) BEFORE converting &nbsp;.
@@ -89,10 +90,11 @@ export function isSignatureImageTag(imgTag: string): boolean {
   return /alt=["'].*signature.*["']/i.test(imgTag);
 }
 
-export function addOneBr(htmlContent: string): string {
+export function addOneBr(htmlContent: string, symbol: string = SYMBOLS.ONE_BR): string {
   // Replace the symbol with a temporary marker to find its exact injection points
   const TEMP_MARKER = "___ONE_BR_MARKER___";
-  htmlContent = htmlContent.replace(ONE_BR_RE, TEMP_MARKER);
+  const oneBrRe = new RegExp(escapeRegExp(symbol || SYMBOLS.ONE_BR), "gi");
+  htmlContent = htmlContent.replace(oneBrRe, TEMP_MARKER);
 
   // If the user placed the ONE_BR symbol immediately before or after an existing <br />
   // we want exactly ONE break, not two. So we absorb the adjacent native breaks.

@@ -87,6 +87,24 @@ describe("htmlConverter utils", () => {
       const result = addOneBr(input);
       expect(result).toBe("<div>content</div>");
     });
+
+    it("should replace a custom symbol instead of §", () => {
+      const input = `Line 1~Line 2`;
+      const result = addOneBr(input, "~");
+      expect(result).toBe("Line 1<br>\nLine 2");
+    });
+
+    it("should ignore § when a custom symbol is configured", () => {
+      const input = `Line 1${SYMBOLS.ONE_BR}~Line 2`;
+      const result = addOneBr(input, "~");
+      expect(result).toBe(`Line 1${SYMBOLS.ONE_BR}<br>\nLine 2`);
+    });
+
+    it("should fall back to § when given an empty symbol", () => {
+      const input = `Line 1${SYMBOLS.ONE_BR}Line 2`;
+      const result = addOneBr(input, "");
+      expect(result).toBe("Line 1<br>\nLine 2");
+    });
   });
 
   describe("replaceTripleBrWithSingle", () => {

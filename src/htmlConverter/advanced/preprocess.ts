@@ -3,18 +3,18 @@
 
 import { SYMBOLS } from "../constants";
 import {
+  escapeRegExp,
   mergeSimilarTags,
   replaceAllEmojisAndSymbolsExcludingHTML,
 } from "../utils/htmlUtils";
 
-const ONE_BR_RE = new RegExp(
-  `(?:<br\\s*/?>\\s*)*${SYMBOLS.ONE_BR}(?:\\s*<br\\s*/?>)*`,
-  "gi",
-);
-
 /** § symbol (with any adjacent <br> elements absorbed) → a single <br> */
-export function resolveOneBrSymbol(html: string): string {
-  return html.replace(ONE_BR_RE, "<br>\n");
+export function resolveOneBrSymbol(html: string, symbol: string = SYMBOLS.ONE_BR): string {
+  const oneBrRe = new RegExp(
+    `(?:<br\\s*/?>\\s*)*${escapeRegExp(symbol || SYMBOLS.ONE_BR)}(?:\\s*<br\\s*/?>)*`,
+    "gi",
+  );
+  return html.replace(oneBrRe, "<br>\n");
 }
 
 /** Remove zero-width chars and encode emoji/symbols as HTML entities */
@@ -31,8 +31,8 @@ export function mergeSimilarBlockTags(html: string): string {
   return html;
 }
 
-export function preprocess(html: string): string {
-  html = resolveOneBrSymbol(html);
+export function preprocess(html: string, oneBrSymbol?: string): string {
+  html = resolveOneBrSymbol(html, oneBrSymbol);
   // normalizeSymbols is intentionally NOT called here — DOMParser in normalize()
   // decodes HTML entities back to raw characters, undoing the encoding.
   // It is applied after renderAll in index.ts instead.
