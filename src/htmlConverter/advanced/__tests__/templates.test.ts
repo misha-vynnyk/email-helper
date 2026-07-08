@@ -214,6 +214,24 @@ describe("buildTemplates — recordRow per-cell borderColor", () => {
     });
     expect(html).toContain("#00ff00");
   });
+
+  // Bug fix: a row with a dark-bg label cell + a light-bg content cell must not leak the
+  // dark cell's white text color onto the light cell — each cell's own bg (or the row's
+  // *uniform* bg, when set) decides its text color, never a sibling's bg.
+  it("light-bg cell in a row that also has a dark-bg cell gets black text, not white", () => {
+    const html = tmpl.recordRow({
+      rows: [{ cells: [
+        { innerHtml: "label", bg: "#0a2463" },
+        { innerHtml: "content", bg: "#f9f9f9" },
+      ] }],
+    });
+    // First "<td" is the template's own outer wrapper cell — skip it, keep only the
+    // per-record <td align="..."> cells.
+    const cells = html.split("<td").slice(1).filter(c => c.startsWith(" align="));
+    expect(cells[0]).toContain("color:#ffffff");
+    expect(cells[1]).toContain("color:#000000");
+    expect(cells[1]).not.toContain("color:#ffffff");
+  });
 });
 
 // ── statsGrid per-cell background ─────────────────────────────────────────────

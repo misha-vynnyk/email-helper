@@ -362,8 +362,12 @@ export function buildTemplates(tok: Tokens = defaultTokens) {
       const nrows = rows.length;
       const rowsHtml = rows
         .map((row, rowIdx) => {
-          const firstBg = row.cells[0]?.bg ?? row.bg;
-          const rowTextColor = firstBg && isDarkBg(firstBg, tok) ? tok.color.white : tok.color.black;
+          // Fallback color for cells with no bg of their own — derived from the row's
+          // *uniform* background (row.bg), never a sibling cell's individual bg. A row
+          // with mixed per-cell backgrounds (e.g. a dark label cell + a light content
+          // cell) has row.bg === undefined, so cells without their own bg correctly
+          // default to black instead of inheriting a neighboring cell's dark-bg white text.
+          const rowTextColor = row.bg && isDarkBg(row.bg, tok) ? tok.color.white : tok.color.black;
           const ncols = row.cells.length;
           const colPct = ncols > 1 ? Math.floor(100 / ncols) : 0;
           const rowWidths = widths?.length === ncols ? widths : undefined;
