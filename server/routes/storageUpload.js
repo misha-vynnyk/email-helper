@@ -308,6 +308,7 @@ router.post("/api/storage-upload", async (req, res) => {
         const stderrText = String(stderr || error.stderr || "");
         let errorMessage = error.message;
         let statusCode = 500;
+        let cancelled = false;
 
         // Provide more specific error messages
         if (error.killed && error.signal === "SIGTERM") {
@@ -324,6 +325,7 @@ router.post("/api/storage-upload", async (req, res) => {
         } else if (stderrText.includes("ERROR:BROWSER_CLOSED") || stderrText.includes("Target page, context or browser has been closed")) {
           statusCode = 499;
           errorMessage = "Браузер було закрито — завантаження скасовано.";
+          cancelled = true;
         } else if (stderrText.includes("connectOverCDP") && (stderrText.includes("127.0.0.1:9222") || stderrText.includes("127.0.0.1:9223"))) {
           errorMessage = "Brave CDP порт недоступний. Закрий BravePlaywright/BravePlaywright-AlfaOne або дай скрипту запустити Brave з потрібним портом, і повтори upload.";
         } else if (stderrText.includes("ECONNREFUSED") && stderrText.includes("127.0.0.1:")) {
@@ -341,6 +343,7 @@ router.post("/api/storage-upload", async (req, res) => {
           success: false,
           error: errorMessage,
           details: stderr || error.stderr,
+          cancelled,
         });
       }
 
