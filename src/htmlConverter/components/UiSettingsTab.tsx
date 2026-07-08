@@ -9,6 +9,7 @@ import { useElectronAPI } from "@/hooks/useElectronAPI";
 import type { UploadMode } from "../hooks/useHtmlConverterLogic";
 import type { UiSettings } from "../hooks/useHtmlConverterSettings";
 import { DEFAULT_UI_SETTINGS } from "../hooks/useHtmlConverterSettings";
+import { BetaBadge } from "./BetaBadge";
 
 type UiSettingsTabProps = {
   ui: UiSettings;
@@ -21,14 +22,18 @@ type RowProps = {
   id: string;
   label: string;
   hint?: string;
+  badge?: boolean;
   checked: boolean;
   onCheckedChange: (v: boolean) => void;
 };
 
-const Row: React.FC<RowProps> = ({ id, label, hint, checked, onCheckedChange }) => (
+const Row: React.FC<RowProps> = ({ id, label, hint, badge, checked, onCheckedChange }) => (
   <div className='flex items-center justify-between'>
     <div>
-      <Label htmlFor={id} className='text-sm cursor-pointer'>{label}</Label>
+      <Label htmlFor={id} className='text-sm cursor-pointer inline-flex items-center gap-1.5'>
+        {label}
+        {badge && <BetaBadge />}
+      </Label>
       {hint && <p className='text-[11px] text-muted-foreground mt-0.5'>{hint}</p>}
     </div>
     <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} />
@@ -113,9 +118,9 @@ export const UiSettingsTab: React.FC<UiSettingsTabProps> = ({ ui, setUi, uploadM
       <section className='space-y-3'>
         <h3 className='text-xs font-semibold uppercase tracking-widest text-muted-foreground'>Редактор</h3>
         <div className='space-y-3'>
-          <Row id='editorSelectionToolbar' label='Тулбар при виділенні'   hint='Плаваюча панель маркерів над виділеним текстом'                          checked={ui.editorSelectionToolbar} onCheckedChange={(v) => set("editorSelectionToolbar", v)} />
-          <Row id='editorMarkerHighlight'  label='Підсвічування позначок' hint='Маркери (i-r-s, ftr-s, § …) виділяються кольором у редакторі'            checked={ui.editorMarkerHighlight}  onCheckedChange={(v) => set("editorMarkerHighlight", v)} />
-          <Row id='editorHotkeys'          label='Гарячі клавіші'         hint='⌘/Ctrl+⌥+1/4/5/6 — заголовки, ⌘/Ctrl+⌥+0 — звичайний текст, ⌘/Ctrl+⇧+Enter — перенос' checked={ui.editorHotkeys}          onCheckedChange={(v) => set("editorHotkeys", v)} />
+          <Row id='editorSelectionToolbar' label='Тулбар при виділенні'   badge hint='Плаваюча панель маркерів над виділеним текстом'                          checked={ui.editorSelectionToolbar} onCheckedChange={(v) => set("editorSelectionToolbar", v)} />
+          <Row id='editorMarkerHighlight'  label='Підсвічування позначок' badge hint='Маркери (i-r-s, ftr-s, § …) виділяються кольором у редакторі'            checked={ui.editorMarkerHighlight}  onCheckedChange={(v) => set("editorMarkerHighlight", v)} />
+          <Row id='editorHotkeys'          label='Гарячі клавіші'         badge hint='⌘/Ctrl+⌥+1/4/5/6 — заголовки, ⌘/Ctrl+⌥+0 — звичайний текст, ⌘/Ctrl+⇧+Enter — перенос' checked={ui.editorHotkeys}          onCheckedChange={(v) => set("editorHotkeys", v)} />
         </div>
       </section>
 
