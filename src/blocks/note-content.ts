@@ -7,7 +7,6 @@ const NoteContent: EmailBlock = {
   keywords: ['note', 'two column', 'image left', 'display inline block', 'text right', 'text right with button'],
   preview: '',
   html: `
-<!--=============== Note ===============-->
                           <tr>
                             <td align="center"
                               style="padding-right: 10px; padding-left: 10px; padding-bottom: 26px;">
@@ -32,7 +31,7 @@ const NoteContent: EmailBlock = {
                                       <tr>
                                         <td valign="top"
                                           align="center"
-                                          class="inline-block-element"
+                                          class="d-i-b"
                                           width="40%"
                                           style="display: inline-block; width: 40%; max-width: 100%; min-width: 227px;font-size: 0; line-height: 0; mso-line-height-rule:exactly;">
                                           <table border="0"
@@ -47,14 +46,14 @@ const NoteContent: EmailBlock = {
                                                 <a href="urlhere"
                                                   target="_blank">
                                                   <img alt="Woman"
-                                                    class="inline-block-element note-image-desk"
+                                                    class="d-i-b note-image-desk"
                                                     height="auto"
                                                     src="https://storage.5th-elementagency.com/files/templates/fit-as-fiddles-v1/note-image.jpg"
                                                     style="border:0; display:block; outline:none;text-decoration:none; height:auto; width:100%;max-width: 207px; font-size:13px; border-radius: 20px;"
                                                     width="207" />
                                                   <!--[if !mso 9]><!-->
                                                   <img alt="Woman"
-                                                    class="inline-block-element note-image-mob"
+                                                    class="d-i-b note-image-mob"
                                                     height="auto"
                                                     src="https://storage.5th-elementagency.com/files/templates/fit-as-fiddles-v1/note-image-wide.jpg"
                                                     style="border:0; display:none; outline:none;text-decoration:none; height:auto; width:100%;max-width: 207px; font-size:13px; border-radius: 20px;"
@@ -66,7 +65,7 @@ const NoteContent: EmailBlock = {
                                           </table>
                                         </td>
                                         <td align="center"
-                                          class="inline-block-element"
+                                          class="d-i-b"
                                           width="58%"
                                           style="display: inline-block; width: 58%; max-width: 100%; min-width: 288px;font-size: 0; line-height: 0; mso-line-height-rule:exactly;">
                                           <table border="0"
@@ -152,7 +151,7 @@ const NoteContent: EmailBlock = {
                                       <tr>
                                         <td valign="top"
                                           align="center"
-                                          class="inline-block-element"
+                                          class="d-i-b"
                                           width="40%"
                                           style="display: inline-block; width: 40%; max-width: 100%; min-width: 227px;font-size: 0; line-height: 0; mso-line-height-rule:exactly;">
                                           <table border="0"
@@ -167,14 +166,14 @@ const NoteContent: EmailBlock = {
                                                 <a href="urlhere"
                                                   target="_blank">
                                                   <img alt="Woman"
-                                                    class="inline-block-element note-image-desk"
+                                                    class="d-i-b note-image-desk"
                                                     height="auto"
                                                     src="https://storage.5th-elementagency.com/files/templates/fit-as-fiddles-v1/note-image.jpg"
                                                     style="border:0; display:block; outline:none;text-decoration:none; height:auto; width:100%;max-width: 207px; font-size:13px; border-radius: 20px;"
                                                     width="207" />
                                                   <!--[if !mso 9]><!-->
                                                   <img alt="Woman"
-                                                    class="inline-block-element note-image-mob"
+                                                    class="d-i-b note-image-mob"
                                                     height="auto"
                                                     src="https://storage.5th-elementagency.com/files/templates/fit-as-fiddles-v1/note-image-wide.jpg"
                                                     style="border:0; display:none; outline:none;text-decoration:none; height:auto; width:100%;max-width: 207px; font-size:13px; border-radius: 20px;"
@@ -186,7 +185,7 @@ const NoteContent: EmailBlock = {
                                           </table>
                                         </td>
                                         <td align="center"
-                                          class="inline-block-element"
+                                          class="d-i-b"
                                           width="58%"
                                           style="display: inline-block; width: 58%; max-width: 100%; min-width: 288px;font-size: 0; line-height: 0; mso-line-height-rule:exactly;">
                                           <table border="0"
@@ -261,7 +260,6 @@ const NoteContent: EmailBlock = {
                               </table>
                             </td>
                           </tr>
-                          <!--=============== Note-end ===============-->
   `.trim(),
   createdAt: Date.now(),
 };

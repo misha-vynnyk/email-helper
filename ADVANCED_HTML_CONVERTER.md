@@ -343,7 +343,7 @@ export const templates = {
 | `buttonBand` | `bgcolor=<dark>` band → `.btn-edit-p` → вкладена `<td height bgcolor border-radius:10px><a display:block href>` + опц. підпис |
 | `calloutLeft` | таблиця `border-left:10px solid <c>; bgcolor=<tint>` |
 | `calloutBox` | `border:1px solid <c>; bgcolor=<tint>`, рекурсія в дітей |
-| `statsGrid` | fluid-hybrid inline-block: зовн. таблиця `font-size:0;mso-line-height-rule:exactly`, картки `.inline-block-element width=N% style="display:inline-block;width:N%;min-width:100px"`; рамки — зовн.(верх+ліво)+картка(право+низ) проти подвоєння |
+| `statsGrid` | fluid-hybrid inline-block: зовн. таблиця `font-size:0;mso-line-height-rule:exactly`, картки `.d-i-b width=N% style="display:inline-block;width:N%;min-width:100px"`; рамки — зовн.(верх+ліво)+картка(право+низ) проти подвоєння |
 | `recordRow` | 4-cell `22/22/22/34%`, остання right-aligned, `border-bottom` |
 | `authorBlock` | `<a><img float:left width:10%></a>` + text-cell |
 | `warningLine` | text-cell `color:<warning>; text-align:center; bold` |
@@ -443,7 +443,7 @@ export const tokens = {
     // CSS-класи спільні з Simple converter — НЕ перейменовувати
     primaryTable: "primary-table-limit content-table", verticalSpace: "content-vertical-space",
     innerTable: "content-inner-table", spacer: "md-horizontal-space",
-    btnWrap: "btn-edit-p", imgBg: "img-bg-block", inlineCell: "inline-block-element",
+    btnWrap: "btn-edit-p", imgBg: "img-bg-block", inlineCell: "d-i-b",
   },
 } as const;
 

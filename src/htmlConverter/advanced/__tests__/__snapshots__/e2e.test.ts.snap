@@ -161,7 +161,7 @@ exports[`convertAdvanced — tables fixture snapshot — default profile 1`] = `
     <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\"
       style=\\"width:100%;min-width:100%;font-size:0;line-height:0;mso-line-height-rule:exactly;text-align:center;\\">
       <tr>
-        <td valign=\\"top\\" align=\\"center\\" class=\\"inline-block-element\\" width=\\"33%\\"
+        <td valign=\\"top\\" align=\\"center\\" class=\\"d-i-b\\" width=\\"33%\\"
           style=\\"display:inline-block;width:33%;max-width:100%;min-width:100px;border:1px solid #e4e4e4;\\">
           <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;\\">
             <tr>
@@ -174,7 +174,7 @@ exports[`convertAdvanced — tables fixture snapshot — default profile 1`] = `
             </tr>
           </table>
         </td>
-<td valign=\\"top\\" align=\\"center\\" class=\\"inline-block-element\\" width=\\"33%\\"
+<td valign=\\"top\\" align=\\"center\\" class=\\"d-i-b\\" width=\\"33%\\"
           style=\\"display:inline-block;width:33%;max-width:100%;min-width:100px;border:1px solid #e4e4e4;\\">
           <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;\\">
             <tr>
@@ -187,7 +187,7 @@ exports[`convertAdvanced — tables fixture snapshot — default profile 1`] = `
             </tr>
           </table>
         </td>
-<td valign=\\"top\\" align=\\"center\\" class=\\"inline-block-element\\" width=\\"34%\\"
+<td valign=\\"top\\" align=\\"center\\" class=\\"d-i-b\\" width=\\"34%\\"
           style=\\"display:inline-block;width:34%;max-width:100%;min-width:100px;border:1px solid #e4e4e4;\\">
           <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;\\">
             <tr>
@@ -326,7 +326,7 @@ Nasdaq &#36;MODE reserved. IPO targeted within 18 months. Two previous rounds so
     <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\"
       style=\\"width:100%;min-width:100%;font-size:0;line-height:0;mso-line-height-rule:exactly;text-align:center;\\">
       <tr>
-        <td valign=\\"top\\" align=\\"center\\" class=\\"inline-block-element\\" width=\\"25%\\" bgcolor=\\"#f1ede6\\"
+        <td valign=\\"top\\" align=\\"center\\" class=\\"d-i-b\\" width=\\"25%\\" bgcolor=\\"#f1ede6\\"
           style=\\"display:inline-block;width:25%;max-width:100%;min-width:100px;border:1px solid #cccccc;background-color:#f1ede6;\\">
           <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;\\">
             <tr>
@@ -335,7 +335,7 @@ Nasdaq &#36;MODE reserved. IPO targeted within 18 months. Two previous rounds so
             </tr>
           </table>
         </td>
-<td valign=\\"top\\" align=\\"center\\" class=\\"inline-block-element\\" width=\\"25%\\" bgcolor=\\"#f1ede6\\"
+<td valign=\\"top\\" align=\\"center\\" class=\\"d-i-b\\" width=\\"25%\\" bgcolor=\\"#f1ede6\\"
           style=\\"display:inline-block;width:25%;max-width:100%;min-width:100px;border:1px solid #cccccc;background-color:#f1ede6;\\">
           <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;\\">
             <tr>
@@ -344,7 +344,7 @@ Nasdaq &#36;MODE reserved. IPO targeted within 18 months. Two previous rounds so
             </tr>
           </table>
         </td>
-<td valign=\\"top\\" align=\\"center\\" class=\\"inline-block-element\\" width=\\"25%\\" bgcolor=\\"#f1ede6\\"
+<td valign=\\"top\\" align=\\"center\\" class=\\"d-i-b\\" width=\\"25%\\" bgcolor=\\"#f1ede6\\"
           style=\\"display:inline-block;width:25%;max-width:100%;min-width:100px;border:1px solid #cccccc;background-color:#f1ede6;\\">
           <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;\\">
             <tr>
@@ -353,7 +353,7 @@ Nasdaq &#36;MODE reserved. IPO targeted within 18 months. Two previous rounds so
             </tr>
           </table>
         </td>
-<td valign=\\"top\\" align=\\"center\\" class=\\"inline-block-element\\" width=\\"25%\\" bgcolor=\\"#0a2463\\"
+<td valign=\\"top\\" align=\\"center\\" class=\\"d-i-b\\" width=\\"25%\\" bgcolor=\\"#0a2463\\"
           style=\\"display:inline-block;width:25%;max-width:100%;min-width:100px;border:1px solid #cccccc;background-color:#0a2463;\\">
           <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;\\">
             <tr>
