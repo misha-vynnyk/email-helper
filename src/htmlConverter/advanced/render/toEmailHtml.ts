@@ -4,6 +4,7 @@
 
 import {
   type AlertBandOpts,
+  type AlertBandSegment,
   buildTemplates,
   type ButtonBandOpts,
   type CalloutBoxOpts,
@@ -20,7 +21,7 @@ import type { Tokens } from "../config/tokens";
 import { tokens as defaultTokens } from "../config/tokens";
 import { escapeHtml as esc } from "../escape";
 import { isDarkBg } from "../ir/color";
-import type { ComponentNode, Run } from "../ir/types";
+import type { AlertBandProps,ComponentNode, Run } from "../ir/types";
 
 type Templates = ReturnType<typeof buildTemplates>;
 
@@ -108,6 +109,49 @@ export function renderLines(
   return result.join("");
 }
 
+/**
+ * alertBand content interleaved with nested buttons (see AlertBandProps.buttons):
+ * splits the cell into text/button segments for tmpl.alertBand to render as
+ * stacked <tr> rows — each button gets its own <td bgcolor> row rather than a
+ * bare <a> mid-flow, since clients that strip inline styles off anchors
+ * (Outlook's Word engine) would otherwise drop the background/padding/display
+ * and degrade the CTA to a plain underlined link.
+ */
+function buildAlertBandSegments(
+  p: AlertBandProps,
+  tok: Tokens,
+  textColor: string,
+): AlertBandSegment[] {
+  const segments: AlertBandSegment[] = [];
+  let groupStart = 0;
+  const flushTextGroup = (end: number) => {
+    if (end <= groupStart) return;
+    const groupLines = p.lines.slice(groupStart, end);
+    const groupBreaks = new Set<number>();
+    for (const idx of p.paraBreaks ?? []) {
+      if (idx > groupStart && idx < end) groupBreaks.add(idx - groupStart);
+    }
+    const html = renderLines(groupLines, tok, textColor, groupBreaks);
+    if (html) segments.push({ kind: "text", html });
+  };
+  const sortedButtons = [...(p.buttons ?? [])].sort((a, b) => a.atLine - b.atLine);
+  for (const { atLine, props: btn } of sortedButtons) {
+    flushTextGroup(atLine);
+    const btnTextColor = isDarkBg(btn.bg, tok) ? tok.color.white : tok.color.black;
+    // Unlike renderNode's standalone buttonBand case, keep each run's own color here:
+    // this button is nested inside a hand-styled banner where the author already chose
+    // an explicit text color (e.g. white on an orange CTA that isDarkBg doesn't classify
+    // as dark) — btnTextColor above is only the fallback for runs with no color of their
+    // own. href is still stripped: a nested <a> inside this button's <a> would be invalid.
+    const buttonRuns = btn.runs.map(r => ({ ...r, href: undefined }));
+    const label = renderRuns(buttonRuns, tok, btnTextColor);
+    segments.push({ kind: "button", label, href: btn.href ?? tok.placeholderHref, bg: btn.bg, radius: btn.radius, border: btn.border });
+    groupStart = atLine;
+  }
+  flushTextGroup(p.lines.length);
+  return segments;
+}
+
 // ── ComponentNode → HTML row ──────────────────────────────────────────────────
 
 export function renderNode(
@@ -130,11 +174,9 @@ export function renderNode(
     case "alertBand": {
       const p = node.props;
       const textColor = isDarkBg(p.bg, tok) ? tok.color.white : tok.color.black;
-      const opts: AlertBandOpts = {
-        innerHtml: renderLines(p.lines, tok, textColor, p.paraBreaks),
-        bg: p.bg,
-        border: p.border,
-      };
+      const opts: AlertBandOpts = p.buttons?.length
+        ? { segments: buildAlertBandSegments(p, tok, textColor), bg: p.bg, border: p.border, align: p.align }
+        : { innerHtml: renderLines(p.lines, tok, textColor, p.paraBreaks), bg: p.bg, border: p.border, align: p.align };
       return tmpl.alertBand(opts);
     }
 

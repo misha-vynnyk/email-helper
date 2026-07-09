@@ -7,6 +7,10 @@ export interface Run {
   underline?: boolean;
   color?: string;      // already normalized (§5)
   href?: string;
+  /** Internal only: set on the LINE_BREAK run for a <br data-one-br> (user-typed §
+   * marker). Consumed by fromDom's splitIntoLines to detect § at a paragraph's end —
+   * never present on a run that reaches rendering. */
+  oneBr?: true;
 }
 
 export interface Paragraph {
@@ -19,6 +23,9 @@ export interface Paragraph {
   paraBreaks?: Set<number>;  // line indices preceded by an author-typed blank line
                               // (<br><br> inside one <p>) — rendered as <br><br>
   listItem?: boolean;        // true for a <li>-derived paragraph (real <ul>/<ol>)
+  tightNext?: boolean;       // true if this paragraph's raw HTML ended with a user-typed
+                              // § (ONE_BR) marker — signals "no gap before whatever follows",
+                              // same tightness class as center-align/listItem in pushMerged
 }
 
 export interface ImageNode {
@@ -82,6 +89,7 @@ export interface ParagraphProps {
   variant?: "quote";           // h4 marker: extra horizontal indent
   paraBreaks?: Set<number>;    // line indices rendered as <br><br>
   listItem?: boolean;
+  tightNext?: boolean;         // ends with § — next merged paragraph gets no gap before it
   /** statsGrid cell paragraphs only: cell background + border color */
   bg?: string;
   borderColor?: string;
@@ -92,6 +100,15 @@ export interface AlertBandProps {
   bg: string;
   paraBreaks?: Set<number>;
   border?: BorderSpec;
+  /**
+   * Nested tables inside the source cell that resolve to a real button (GDocs'
+   * h5-in-colored-cell pattern) — rendered as actual buttons instead of being
+   * flattened to text. `atLine` is the index into `lines` the button is inserted
+   * before (does not itself occupy a `lines` slot).
+   */
+  buttons?: { atLine: number; props: ButtonBandProps }[];
+  /** Text alignment from the source cell's paragraphs — defaults to left. */
+  align?: Align;
 }
 
 export interface ButtonBandProps {

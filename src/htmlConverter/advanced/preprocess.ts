@@ -8,13 +8,22 @@ import {
   replaceAllEmojisAndSymbolsExcludingHTML,
 } from "../utils/htmlUtils";
 
-/** § symbol (with any adjacent <br> elements absorbed) → a single <br> */
+/**
+ * § symbol (with any adjacent <br> elements absorbed) → a single <br>, tagged
+ * data-one-br so fromDom.ts can tell an explicit user marker apart from a plain
+ * GDocs-typed <br> — needed to detect § placed at the very end of a <p> (right
+ * before </p>), which would otherwise be silently dropped as a trailing empty line.
+ * No trailing "\n" in the replacement (unlike historical "<br>\n"): DOMParser turns
+ * a bare newline after the tag into its own text node, and fromDom's collectRuns
+ * treats a lone "\n" text node as an (unmarked) line break too — which used to
+ * clobber the very data-one-br distinction this function exists to preserve.
+ */
 export function resolveOneBrSymbol(html: string, symbol: string = SYMBOLS.ONE_BR): string {
   const oneBrRe = new RegExp(
     `(?:<br\\s*/?>\\s*)*${escapeRegExp(symbol || SYMBOLS.ONE_BR)}(?:\\s*<br\\s*/?>)*`,
     "gi",
   );
-  return html.replace(oneBrRe, "<br>\n");
+  return html.replace(oneBrRe, '<br data-one-br="1">');
 }
 
 /** Remove zero-width chars and encode emoji/symbols as HTML entities */

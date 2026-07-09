@@ -408,6 +408,106 @@ describe("convertAdvanced — GDocs button-in-table pattern", () => {
   });
 });
 
+// ── GDocs banner with a nested h5 button (dark alertBand + orange CTA) ──────
+// Real-world GDocs paste: a dark-green banner (paragraphs of text) with an
+// orange "Lock In Your $0.79 Allocation" button nested inside as its own 1x1
+// table, followed by more banner text. Regression for the button degrading to
+// a plain <a> with no <td bgcolor> fallback — Outlook's Word engine strips
+// inline styles off anchors, so the button needs its own colored table cell
+// (like standalone buttonBand) to survive as a real button, not a link.
+describe("convertAdvanced — GDocs banner with nested h5 button", () => {
+  const bannerWithButton = `<b style="font-weight:normal;" id="docs-internal-guid-01b76533">
+    <div dir="ltr" style="margin-left:0pt;" align="left">
+      <table style="border:none;border-collapse:collapse;">
+        <colgroup><col width="624" /></colgroup>
+        <tbody>
+          <tr style="height:122.25pt">
+            <td style="vertical-align:top;background-color:#1b4332;padding:12pt 14pt 12pt 14pt;">
+              <p dir="ltr" style="text-align:center;margin-top:0pt;margin-bottom:2pt;">
+                <span style="font-family:Lexend,sans-serif;color:#52b788;font-weight:700;">$0.79/SHARE LIMITED ALLOCATION</span>
+              </p>
+              <p dir="ltr" style="text-align:center;margin-top:0pt;margin-bottom:4pt;">
+                <span style="font-family:Lexend,sans-serif;color:#ffffff;font-weight:700;">Limited Allocation at $0.79</span>
+              </p>
+              <p dir="ltr" style="text-align:center;margin-top:0pt;margin-bottom:9pt;">
+                <span style="font-family:Lexend,sans-serif;color:#52b788;font-weight:400;">9,500+ investors. $36M+ raised. Up to 20% bonus shares.</span>
+              </p>
+              <div dir="ltr" style="margin-left:7.5pt;" align="left">
+                <table style="border:none;border-collapse:collapse;">
+                  <colgroup><col width="539" /></colgroup>
+                  <tbody>
+                    <tr style="height:24.75pt">
+                      <td style="vertical-align:top;background-color:#e07b39;padding:6pt 11pt 6pt 11pt;">
+                        <h5 dir="ltr" style="text-align:center;margin-top:12pt;margin-bottom:4pt;">
+                          <span style="font-family:Arial,sans-serif;color:#ffffff;font-weight:400;">Lock In Your $0.79 Allocation &#8594;</span>
+                        </h5>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p dir="ltr" style="text-align:center;margin-top:7pt;margin-bottom:0pt;">
+                <span style="font-family:Lexend,sans-serif;color:#52b788;font-weight:400;">SEC-qualified Reg A+ &middot; Open to all investors &middot; $0.79/share</span>
+              </p>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </b>`;
+
+  let html: string;
+  let warnings: string[];
+  beforeAll(() => {
+    const result = convertAdvancedDetailed(bannerWithButton);
+    html = result.html;
+    warnings = result.warnings;
+  });
+
+  it("produces no conversion warnings", () => {
+    expect(warnings).toEqual([]);
+  });
+
+  it("keeps the dark-green banner background and the orange button color", () => {
+    expect(html).toContain('bgcolor="#1b4332"');
+    expect(html).toContain("#e07b39");
+  });
+
+  it("renders text before and after the button, in order, around one button row", () => {
+    const beforeIdx = html.indexOf("Allocation at &#36;0.79");
+    const buttonIdx = html.indexOf("Lock In Your");
+    const afterIdx = html.indexOf("SEC-qualified");
+    expect(beforeIdx).toBeGreaterThan(-1);
+    expect(buttonIdx).toBeGreaterThan(beforeIdx);
+    expect(afterIdx).toBeGreaterThan(buttonIdx);
+  });
+
+  it("gives the button its own bulletproof <td bgcolor> row instead of a bare inline <a>", () => {
+    // The colored cell must be a real <td bgcolor="...">, not just an <a> with an
+    // inline background-color that Outlook's Word engine would strip.
+    expect(html).toMatch(/<td height="51" align="center" bgcolor="#e07b39"/);
+  });
+
+  it("puts the button-row wrapper class on the padding row, not the colored cell", () => {
+    expect(html).toMatch(/<td class="btn-edit-p" align="center" style="padding-top:14px;padding-bottom:14px;">/);
+    // The inner colored cell itself carries no class — only bgcolor/style.
+    expect(html).not.toMatch(/<td class="btn-edit-p"[^>]*bgcolor="#e07b39"/);
+  });
+
+  it("uses the standard block side padding (20px) around the stacked rows, not the old thin alertBand padding", () => {
+    expect(html).toMatch(/padding-left:20px;padding-right:20px;/);
+    expect(html).not.toContain("padding-left:10px;padding-right:10px;");
+  });
+
+  it("does not leave a bare <a> with the button's background color outside a <td>", () => {
+    expect(html).not.toMatch(/<a[^>]*background-color:#e07b39[^>]*>(?!\s*<span)/);
+  });
+
+  it("snapshot — full banner-with-button block", () => {
+    expect(html).toMatchSnapshot();
+  });
+});
+
 // ── Google Docs <b style=font-weight:normal> wrapper ─────────────────────────
 
 describe("convertAdvanced — Google Docs b-wrapper", () => {

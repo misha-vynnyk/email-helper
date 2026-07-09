@@ -20,11 +20,25 @@ export interface ParagraphOpts {
 }
 
 export interface AlertBandOpts {
-  innerHtml: string;
   bg: string;
   /** Cell border from the source document (e.g. a white outline on a dark CTA) */
   border?: BorderSpec;
+  /** Text alignment from the source cell — defaults to left. */
+  align?: "left" | "center" | "right";
+  /** Plain flowing content (no nested buttons) — rendered as a single <td>. */
+  innerHtml?: string;
+  /**
+   * Present when the source cell has nested h5-button(s) (see AlertBandProps.buttons):
+   * each segment becomes its own stacked <tr> instead of interleaving a bare button
+   * mid-flow — a real button needs its own <td bgcolor> row to survive clients that
+   * strip inline styles off <a> tags (see buttonTableHtml).
+   */
+  segments?: AlertBandSegment[];
 }
+
+export type AlertBandSegment =
+  | { kind: "text"; html: string }
+  | { kind: "button"; label: string; href: string; bg: string; radius?: number; border?: BorderSpec };
 
 export interface ButtonBandOpts {
   bg: string;
@@ -151,7 +165,12 @@ export function borderSpecToStyle(border: BorderSpec | undefined, tok: Tokens = 
     .join("");
 }
 
-export function buttonTableHtml(label: string, href: string, bg: string, tok: Tokens = defaultTokens, radiusOverride?: number, border?: BorderSpec): string {
+/**
+ * `wrapClass` defaults to the standard button class on the colored inner <td>. Pass
+ * `null` when the caller already puts that class on an outer wrapper row (e.g.
+ * alertBand's stacked-button row) — the colored <td> here is styling-only then.
+ */
+export function buttonTableHtml(label: string, href: string, bg: string, tok: Tokens = defaultTokens, radiusOverride?: number, border?: BorderSpec, wrapClass: string | null = tok.classes.btnWrap): string {
   const { height, padding, innerPadding, target } = tok.button;
   const r = radiusOverride !== undefined ? radiusOverride : tok.button.radius;
   const radiusStyle = r > 0 ? `border-radius:${r}px;` : "";
@@ -159,9 +178,10 @@ export function buttonTableHtml(label: string, href: string, bg: string, tok: To
   const textColor = isDarkBg(bg, tok) ? tok.color.white : tok.color.black;
   const style = baseStyle({ align: "center", fontWeight: "bold", color: textColor }, tok);
   const safeHref = escapeHtml(href);
+  const classAttr = wrapClass ? ` class="${wrapClass}"` : "";
   return `<table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="width:100%;max-width:100%;">
   <tr>
-    <td class="${tok.classes.btnWrap}" height="${height}" align="center" bgcolor="${bg}"
+    <td${classAttr} height="${height}" align="center" bgcolor="${bg}"
       style="${style} padding:${padding};background-color:${bg};${radiusStyle}${borderStyle}">
       <a href="${safeHref}" target="${target}"
         style="text-decoration:${tok.button.textDecoration};padding:${innerPadding};display:block;${style}background-color:${bg};${radiusStyle}">
@@ -214,19 +234,50 @@ ${indentHtml(content, 14)}
     },
 
     alertBand(opts: AlertBandOpts): string {
-      const { innerHtml, bg, border } = opts;
+      const { innerHtml, segments, bg, border, align = "left" } = opts;
       const textColor = isDarkBg(bg, tok) ? tok.color.white : tok.color.black;
-      const style = baseStyle({ color: textColor }, tok);
       const p = pad();
+      const borderStyle = borderSpecToStyle(border, tok);
+
+      if (segments) {
+        // One <tr> per segment — a real button row (its own <td bgcolor>) instead of a
+        // bare <a> interleaved with text; see AlertBandOpts.segments and buttonTableHtml.
+        const sp = tok.layout.sidePadding;
+        const rowsHtml = segments.map(seg => {
+          if (seg.kind === "button") {
+            const btnTable = buttonTableHtml(seg.label, seg.href, seg.bg, tok, seg.radius, seg.border, null);
+            return `<tr>
+  <td class="${tok.classes.btnWrap}" align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
+${indentHtml(btnTable, 4)}
+  </td>
+</tr>`;
+          }
+          return blockRow(seg.html, { align, color: textColor }, tok);
+        }).join("\n");
+        return `<tr>
+  <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
+    <table align="center" border="0" bgcolor="${bg}" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;${borderStyle}" role="presentation">
+      <tr>
+        <td align="center" style="padding-left:${sp}px;padding-right:${sp}px;">
+          <table align="center" border="0" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;" role="presentation">
+${indentHtml(rowsHtml, 12)}
+          </table>
+        </td>
+      </tr>
+    </table>
+  </td>
+</tr>`;
+      }
+
+      const style = baseStyle({ align, color: textColor }, tok);
       const ph = tok.layout.alertBandPadH;
       const pv = tok.layout.alertBandPadV;
-      const borderStyle = borderSpecToStyle(border, tok);
       return `<tr>
   <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
     <table align="center" border="0" bgcolor="${bg}" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;${borderStyle}" role="presentation">
       <tr>
         <td style="${style} padding-left:${ph}px;padding-right:${ph}px;padding-top:${pv}px;padding-bottom:${pv}px;">
-${indentHtml(innerHtml, 10)}
+${indentHtml(innerHtml!, 10)}
         </td>
       </tr>
     </table>

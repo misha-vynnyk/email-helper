@@ -41,12 +41,14 @@ function pushMerged(result: ComponentNode[], comp: ComponentNode, warn?: WarnFn)
     const newLines = comp.props.lines;
     if (newLines.length === 0) return;  // empty comp contributes nothing — drop it
     const breakIdx = lastLines.length;
-    // Three signals mean "no gap before me":
+    // Four signals mean "no gap before me":
     //  - centered: GDocs' banner/eyebrow convention (a centered headline + subline)
     //  - listItem: structurally certain — set by fromDom.ts only inside a real <ul>/<ol>
     //  - marker pair: BOTH the previous line and this paragraph start with a
     //    bullet/checkmark glyph — a manually-typed checklist (no real <ul>, e.g.
     //    "✓ Partners: ..."). The pair requirement keeps a lone dash-led sentence prose.
+    //  - tightNext: the PREVIOUS paragraph ended with a user-typed § marker — an
+    //    explicit "no gap after me" signal, independent of alignment/structure.
     // A margin-top-based signal ("author explicitly zeroed the space before this
     // paragraph") was tried and reverted: comparing against the merge chain's *opening*
     // margin means one early paragraph with a larger-than-usual margin-top (common right
@@ -56,7 +58,8 @@ function pushMerged(result: ComponentNode[], comp: ComponentNode, warn?: WarnFn)
     // the <br><br> blank-line separation.
     const isMarkerPair = startsWithListMarker(newLines[0]) &&
       startsWithListMarker(lastLines[breakIdx - 1]);
-    const isTight = alignOf(comp.props) === "center" || comp.props.listItem === true || isMarkerPair;
+    const isTight = alignOf(comp.props) === "center" || comp.props.listItem === true ||
+      isMarkerPair || last.props.tightNext === true;
     const compBreaks = comp.props.paraBreaks;
 
     // Build the merged paragraph without mutating the node already in `result`.
@@ -73,6 +76,9 @@ function pushMerged(result: ComponentNode[], comp: ComponentNode, warn?: WarnFn)
         ...last.props,
         lines: [...lastLines, ...newLines],
         paraBreaks: breaks.size ? breaks : undefined,
+        // comp is now the tail of the merged paragraph — its own tightNext (not
+        // last's, which was already consumed above) governs the NEXT merge.
+        tightNext: comp.props.tightNext,
       },
     };
     return;

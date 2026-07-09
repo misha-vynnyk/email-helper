@@ -5,7 +5,7 @@
 import type { Tokens } from "../config/tokens";
 import { tokens as defaultTokens } from "../config/tokens";
 import { isBgRedundant, isDarkBg } from "../ir/color";
-import type { BorderSide, BorderSpec, CellNode, ComponentNode, Paragraph, Run,StructuralNode, TableNode, WarnFn } from "../ir/types";
+import type { BorderSide, BorderSpec, ButtonBandProps,CellNode, ComponentNode, Paragraph, Run,StructuralNode, TableNode, WarnFn } from "../ir/types";
 import { WARN } from "../warnings";
 
 /** Recurses back into classify.ts — threaded in to avoid a circular import. */
@@ -75,6 +75,66 @@ function flattenLines(cell: CellNode, warn?: WarnFn): Run[][] {
 /** All runs of a cell, flattened across lines and nested tables. */
 function flattenRuns(cell: CellNode, warn?: WarnFn): Run[] {
   return flattenLines(cell, warn).flat();
+}
+
+/**
+ * Like flattenLinesWithBreaks, but with two more things pushMerged (classify.ts)
+ * already does for the general flow-paragraph path, ported here so the same
+ * signals work inside a flattened alertBand cell:
+ *   - tightNext: a paragraph ending in § gets a single <br> to what follows,
+ *     not the default <br><br> block boundary.
+ *   - align: the first paragraph's alignment (GDocs CTA boxes are consistently
+ *     aligned throughout, so "first wins" is a fine approximation).
+ * A nested table that itself resolves to a real button (GDocs' h5-in-colored-cell
+ * pattern, e.g. a CTA nested inside a bigger alertBand box) keeps its identity as
+ * a button instead of being flattened to plain text — only nested tables that
+ * DON'T resolve to a button still flatten, same as before (with the same warning).
+ */
+function flattenCellForAlertBand(
+  cell: CellNode,
+  tok: Tokens,
+  warn: WarnFn | undefined,
+  classifyChildren: ClassifyChildrenFn | undefined,
+): {
+  lines: Run[][];
+  paraBreaks: Set<number>;
+  buttons: { atLine: number; props: ButtonBandProps }[];
+  align?: "left" | "center" | "right";
+} {
+  const lines: Run[][] = [];
+  const paraBreaks = new Set<number>();
+  const buttons: { atLine: number; props: ButtonBandProps }[] = [];
+  let align: "left" | "center" | "right" | undefined;
+  let prevTightNext = false;
+  const appendBlock = (blockLines: Run[][], blockBreaks?: Set<number>) => {
+    if (blockLines.length === 0) return;
+    if (lines.length > 0 && !prevTightNext) paraBreaks.add(lines.length);
+    if (blockBreaks) for (const idx of blockBreaks) paraBreaks.add(idx + lines.length);
+    lines.push(...blockLines);
+  };
+  for (const child of cell.children) {
+    if (child.type === "p") {
+      if (align === undefined && child.align) align = child.align;
+      appendBlock(child.lines, child.paraBreaks);
+      prevTightNext = child.tightNext === true;
+    } else if (child.type === "table") {
+      const nestedComponent = classifyTable(child, tok, warn, classifyChildren);
+      if (nestedComponent?.kind === "buttonBand") {
+        buttons.push({ atLine: lines.length, props: nestedComponent.props });
+        prevTightNext = false;
+        continue;
+      }
+      warn?.(WARN.nestedTableFlattened);
+      for (const row of child.rows) {
+        for (const nested of row.cells) {
+          const nestedResult = flattenLinesWithBreaks(nested, undefined /* warn once per table */);
+          appendBlock(nestedResult.lines, nestedResult.paraBreaks);
+        }
+      }
+      prevTightNext = false;
+    }
+  }
+  return { lines, paraBreaks, buttons, align };
 }
 
 function findHref(cell: CellNode): string | null {
@@ -171,17 +231,20 @@ function classifySingleCell(
   if (bg && isDarkBg(bg, tok)) {
     // A white/light outline against a dark bg is a deliberate accent regardless of how
     // close its color is to white — use the raw border here, not the near-white-filtered one.
-    const { lines, paraBreaks } = flattenLinesWithBreaks(cell, warn);
+    // Nested tables that resolve to a real button (a CTA nested inside the banner) survive
+    // as actual buttons — see flattenCellForAlertBand — everything else still flattens.
+    const { lines, paraBreaks, buttons, align } = flattenCellForAlertBand(cell, tok, warn, classifyChildren);
     // Only promote to buttonBand (wraps the ENTIRE cell in one <a>) when the cell is a
-    // single logical line — a real one-line CTA. A multi-line dark box (e.g. a banner
-    // headline + a "fake link" line styled blue/underlined with no real <a> + a footer
-    // line) must stay an alertBand: findHref would happily match the fake-link line and
-    // swallow the whole box — including unrelated text — into one giant link.
-    const href = lines.length <= 1 ? findHref(cell) : null;
+    // single logical line with no nested button of its own — a real one-line CTA. A
+    // multi-line dark box (e.g. a banner headline + a "fake link" line styled
+    // blue/underlined with no real <a> + a footer line) must stay an alertBand: findHref
+    // would happily match the fake-link line and swallow the whole box — including
+    // unrelated text — into one giant link.
+    const href = lines.length <= 1 && buttons.length === 0 ? findHref(cell) : null;
     if (href) {
       return { kind: "buttonBand", props: { runs: lines.flat(), href, bg, border: cell.border } };
     }
-    return { kind: "alertBand", props: { lines, paraBreaks, bg, border: cell.border } };
+    return { kind: "alertBand", props: { lines, paraBreaks, bg, border: cell.border, buttons: buttons.length ? buttons : undefined, align } };
   }
 
   // Pure border-left accent (+ optional light bg) → calloutLeft, using the

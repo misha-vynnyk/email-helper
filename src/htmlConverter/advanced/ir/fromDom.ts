@@ -76,17 +76,26 @@ function mergeRuns(runs: Run[]): Run[] {
   return out;
 }
 
-function splitIntoLines(runs: Run[]): Run[][] {
+/**
+ * Splits runs into lines at each LINE_BREAK. A trailing empty line (from a <br> right
+ * before </p>) is trimmed since renderers skip empty lines — but if that trailing
+ * break came from a § marker (oneBr), its "no gap before what follows" intent must
+ * survive the trim, so it's reported back as tightNext rather than silently dropped.
+ */
+function splitIntoLines(runs: Run[]): { lines: Run[][]; tightNext: boolean } {
   const lines: Run[][] = [[]];
+  let lastBreakWasOneBr = false;
   for (const run of runs) {
     if (run.text === LINE_BREAK) {
+      lastBreakWasOneBr = run.oneBr === true;
       lines.push([]);
     } else {
       lines[lines.length - 1].push(run);
     }
   }
+  const tightNext = lines.length > 1 && lines[lines.length - 1].length === 0 && lastBreakWasOneBr;
   while (lines.length > 1 && lines[lines.length - 1].length === 0) lines.pop();
-  return lines;
+  return { lines, tightNext };
 }
 
 function collectRuns(el: Element | Node, ctx: Ctx, tok: Tokens): Run[] {
@@ -109,7 +118,11 @@ function collectRuns(el: Element | Node, ctx: Ctx, tok: Tokens): Run[] {
     const child = node as Element;
     const tag = child.tagName.toUpperCase();
 
-    if (tag === "BR") { runs.push({ text: LINE_BREAK }); continue; }
+    if (tag === "BR") {
+      const oneBr = child.hasAttribute("data-one-br") ? { oneBr: true as const } : {};
+      runs.push({ text: LINE_BREAK, ...oneBr });
+      continue;
+    }
     // Skip block-level elements that shouldn't appear inside inline context
     if (tag === "TABLE") continue;
 
@@ -174,7 +187,7 @@ function parseParagraph(el: Element, bg: string, tok: Tokens): Paragraph | null 
   const ctx: Ctx = { bold: false, italic: false, underline: false, size, bg };
   const rawRuns = collectRuns(el, ctx, tok);
   const merged = mergeRuns(rawRuns);
-  const rawLines = splitIntoLines(merged);
+  const { lines: rawLines, tightNext } = splitIntoLines(merged);
 
   // An empty line inside one <p> is an author-typed blank line (<br><br> between two
   // sentences without a new paragraph). Renderers skip empty lines, so keeping it as a
@@ -192,7 +205,11 @@ function parseParagraph(el: Element, bg: string, tok: Tokens): Paragraph | null 
   }
 
   if (lines.length === 0) return null;
-  return { type: "p", align, size, headingLevel, lines, paraBreaks: paraBreaks.size ? paraBreaks : undefined };
+  return {
+    type: "p", align, size, headingLevel, lines,
+    paraBreaks: paraBreaks.size ? paraBreaks : undefined,
+    tightNext: tightNext || undefined,
+  };
 }
 
 // ── Image ────────────────────────────────────────────────────────────────────

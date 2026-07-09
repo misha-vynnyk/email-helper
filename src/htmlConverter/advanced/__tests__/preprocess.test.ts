@@ -4,33 +4,33 @@ import { mergeSimilarBlockTags, normalizeSymbols, preprocess,resolveOneBrSymbol 
 
 describe("resolveOneBrSymbol", () => {
   it("replaces § with <br>", () => {
-    expect(resolveOneBrSymbol("text§more")).toBe("text<br>\nmore");
+    expect(resolveOneBrSymbol("text§more")).toBe('text<br data-one-br="1">more');
   });
 
   it("absorbs adjacent <br> before §", () => {
-    expect(resolveOneBrSymbol("text<br>§more")).toBe("text<br>\nmore");
+    expect(resolveOneBrSymbol("text<br>§more")).toBe('text<br data-one-br="1">more');
   });
 
   it("absorbs adjacent <br> after §", () => {
-    expect(resolveOneBrSymbol("text§<br>more")).toBe("text<br>\nmore");
+    expect(resolveOneBrSymbol("text§<br>more")).toBe('text<br data-one-br="1">more');
   });
 
   it("absorbs multiple <br> on both sides of §", () => {
-    expect(resolveOneBrSymbol("text<br><br>§<br><br>more")).toBe("text<br>\nmore");
+    expect(resolveOneBrSymbol("text<br><br>§<br><br>more")).toBe('text<br data-one-br="1">more');
   });
 
   it("handles § inside HTML without breaking tags", () => {
     const result = resolveOneBrSymbol("<p>text§more</p>");
-    expect(result).toContain("<br>");
+    expect(result).toContain("<br");
     expect(result).not.toContain("§");
   });
 
   it("replaces a custom symbol instead of §", () => {
-    expect(resolveOneBrSymbol("text~more", "~")).toBe("text<br>\nmore");
+    expect(resolveOneBrSymbol("text~more", "~")).toBe('text<br data-one-br="1">more');
   });
 
   it("leaves § alone when a custom symbol is configured", () => {
-    expect(resolveOneBrSymbol("text§~more", "~")).toBe("text§<br>\nmore");
+    expect(resolveOneBrSymbol("text§~more", "~")).toBe('text§<br data-one-br="1">more');
   });
 });
 
@@ -89,7 +89,7 @@ describe("preprocess", () => {
   it("converts § to <br>", () => {
     const result = preprocess("<p>line1§line2</p>");
     expect(result).not.toContain("§");
-    expect(result).toContain("<br>");
+    expect(result).toContain("<br");
   });
 
   it("does NOT encode emoji (normalizeSymbols runs after DOM round-trip in index.ts)", () => {
