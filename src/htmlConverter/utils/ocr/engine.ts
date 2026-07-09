@@ -14,6 +14,7 @@ export interface OcrWorker {
 export interface OcrResult {
   data: {
     text: string;
+    confidence?: number;
     lines?: Array<{
       text: string;
       confidence?: number;
