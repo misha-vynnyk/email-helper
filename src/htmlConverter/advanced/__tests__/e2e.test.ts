@@ -148,8 +148,9 @@ describe("convertAdvanced — tables fixture", () => {
     expect(html).toContain("#1a1a2e");
   });
 
-  it("contains calloutLeft for the light accent table", () => {
+  it("contains the plain colored box for the light no-border table", () => {
     expect(html).toContain("#fff3cd");
+    expect(html).not.toContain("border-left:10px solid");
   });
 
   it("contains statsGrid cells", () => {
@@ -626,18 +627,21 @@ describe("convertAdvancedDetailed — warnings", () => {
 });
 
 describe("convertAdvancedDetailed — tok reaches IR construction", () => {
-  // #808080 has luminance ≈0.502: not dark with default darkLuma=0.5 (calloutLeft),
-  // dark with darkLuma=0.6 (alertBand). Verifies profile tokens flow into ir/color.
+  // #808080 has luminance ≈0.502: not dark with default darkLuma=0.5 (black text),
+  // dark with darkLuma=0.6 (white text). Verifies profile tokens flow into ir/color.
+  // Neither case declares a border in the source, so neither should render one.
   const raw = '<table><tr><td style="background-color:#808080;"><p>band</p></td></tr></table>';
 
-  it("default darkLuma → light bg → calloutLeft (border-left)", () => {
+  it("default darkLuma → light bg → black text, no border", () => {
     const { html } = convertAdvancedDetailed(raw);
-    expect(html).toContain("border-left:");
+    expect(html).not.toContain("border-left:");
+    expect(html).toContain("color:#000000;");
   });
 
-  it("darkLuma override → dark bg → alertBand (no border-left)", () => {
+  it("darkLuma override → dark bg → white text, no border", () => {
     const { html } = convertAdvancedDetailed(raw, { color: { darkLuma: 0.6 } });
     expect(html).not.toContain("border-left:");
+    expect(html).toContain("color:#ffffff;");
     expect(html).toContain("#808080");
   });
 });

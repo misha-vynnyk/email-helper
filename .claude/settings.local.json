@@ -80,10 +80,14 @@
       "Read(//private/tmp/repro/**)",
       "Bash(rm -rf /tmp/repro5)",
       "Bash(pkill -f \"chrome-mac-arm64\")",
-      "Bash(rm -f \"/private/tmp/claude-501/-Users-mykhailovynnyk-Documents-projects-email-helper/1199494e-778d-4122-bd11-270ebf6c1817/scratchpad/scratch.test.ts\" *)"
+      "Bash(rm -f \"/private/tmp/claude-501/-Users-mykhailovynnyk-Documents-projects-email-helper/1199494e-778d-4122-bd11-270ebf6c1817/scratchpad/scratch.test.ts\" *)",
+      "Bash(npx tsx *)",
+      "Bash(cp /tmp/check_investor.ts ./check_investor.ts)",
+      "Bash(echo \"EXIT: $?\")"
     ],
     "additionalDirectories": [
-      "/dev"
+      "/dev",
+      "/private/tmp"
     ]
   }
 }

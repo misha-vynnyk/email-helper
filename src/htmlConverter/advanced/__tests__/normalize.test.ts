@@ -84,17 +84,19 @@ describe("normalize", () => {
     expect(spans[2].getAttribute("style")).toContain("font-weight");
   });
 
-  it("strips text-decoration:none but preserves underline", () => {
+  it("preserves text-decoration:none and :underline — both survive", () => {
+    // text-decoration:none must survive normalize so fromDom's isExplicitNonUnderline()
+    // can see an author explicitly cancelling an inherited underline on a nested span.
     const body = normalize(
       '<p>' +
       '<span style="text-decoration: none;">a</span>' +
       '<span style="text-decoration: underline;">b</span>' +
       '</p>',
     );
-    // none → style stripped → bare span removed; only underline span survives
     const spans = Array.from(body.querySelectorAll("span"));
-    expect(spans).toHaveLength(1);
-    expect(spans[0].getAttribute("style")).toContain("underline");
+    expect(spans).toHaveLength(2);
+    expect(spans[0].getAttribute("style")).toContain("none");
+    expect(spans[1].getAttribute("style")).toContain("underline");
   });
 
   it("preserves font-style:normal and :italic — both survive", () => {

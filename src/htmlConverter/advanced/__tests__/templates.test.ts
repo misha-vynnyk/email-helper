@@ -160,15 +160,14 @@ describe("buildTemplates — profile font stacks", () => {
 // ── statsGrid border ──────────────────────────────────────────────────────────
 
 describe("buildTemplates — statsGrid gridBorder", () => {
-  // Fix #5: gridBorder is computed from recordBorderPx + tableBorder (no separate token)
-  it("statsGrid border matches tok.color.tableBorder", () => {
+  // Design principle: never synthesize a border the source document didn't declare.
+  it("renders no border when neither cell nor grid declares a borderColor", () => {
     const html = tmpl.statsGrid([{ innerHtml: "a" }, { innerHtml: "b" }], { n: 2 });
-    expect(html).toContain(tokens.color.tableBorder);
+    expect(html).not.toContain("border:");
   });
 
-  it("custom tableBorder color is reflected in statsGrid", () => {
-    const tok = mergeTokens(tokens, { color: { tableBorder: "#aabbcc" } });
-    const html = buildTemplates(tok).statsGrid([{ innerHtml: "a" }, { innerHtml: "b" }], { n: 2 });
+  it("uses the grid's shared borderColor when provided", () => {
+    const html = tmpl.statsGrid([{ innerHtml: "a" }, { innerHtml: "b" }], { n: 2, borderColor: "#aabbcc" });
     expect(html).toContain("#aabbcc");
   });
 
@@ -271,15 +270,17 @@ describe("buildTemplates — calloutLeft", () => {
     expect(html).not.toMatch(/border:\d+px solid/);
   });
 
-  it("uses default calloutBg when bg not specified", () => {
+  // Design principle: never synthesize a background the source document didn't declare.
+  it("renders no bgcolor/background when bg not specified", () => {
     const html = tmpl.calloutLeft("x", { accentColor: "#aabbcc" });
-    expect(html).toContain(tokens.color.calloutBg);
+    expect(html).not.toContain("bgcolor=");
+    expect(html).not.toContain("background-color:");
   });
 
   it("uses custom bg when provided", () => {
     const html = tmpl.calloutLeft("x", { accentColor: "#aabbcc", bg: "#fff3cd" });
     expect(html).toContain("#fff3cd");
-    expect(html).not.toContain(tokens.color.calloutBg);
+    expect(html).toContain('bgcolor="#fff3cd"');
   });
 });
 

@@ -107,6 +107,14 @@ describe("fromDom — STRONG and I inline tags", () => {
     const p = firstParagraph("<p><u>Underlined</u></p>");
     expect(p.lines[0][0].underline).toBe(true);
   });
+
+  it("nested span with text-decoration:none cancels an inherited underline", () => {
+    const p = firstParagraph(
+      '<p><u><span>underlined </span><span style="text-decoration:none;">not underlined</span></u></p>',
+    );
+    expect(p.lines[0][0].underline).toBe(true);
+    expect(p.lines[0][1].underline).toBeFalsy();
+  });
 });
 
 // ── UL / OL lists ─────────────────────────────────────────────────────────────

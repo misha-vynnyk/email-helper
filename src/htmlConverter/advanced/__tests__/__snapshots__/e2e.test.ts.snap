@@ -259,10 +259,9 @@ exports[`convertAdvanced — tables fixture snapshot — default profile 1`] = `
               </tr>
               <tr>
                 <td align=\\"center\\" style=\\"padding-top:14px;padding-bottom:14px;\\">
-                  <table align=\\"center\\" border=\\"0\\" bgcolor=\\"#fff3cd\\" cellspacing=\\"0\\" cellpadding=\\"0\\" width=\\"100%\\" style=\\"width:100%;max-width:100%;padding:0;margin:0;border-left:10px solid #28b628;\\" role=\\"presentation\\">
+                  <table align=\\"center\\" border=\\"0\\" bgcolor=\\"#fff3cd\\" cellspacing=\\"0\\" cellpadding=\\"0\\" width=\\"100%\\" style=\\"width:100%;max-width:100%;padding:0;margin:0;\\" role=\\"presentation\\">
                     <tr>
-                      <td align=\\"left\\"
-                        style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-left:10px;padding-right:10px;padding-top:14px;padding-bottom:14px;\\">
+                      <td style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-left:10px;padding-right:10px;padding-top:4px;padding-bottom:4px;\\">
                         Tip: you can save 20% by switching to annual billing.
                       </td>
                     </tr>
@@ -462,7 +461,7 @@ exports[`convertAdvanced — tickr-promo fixture snapshot — full document 1`] 
               </tr>
               <tr>
                 <td align=\\"center\\" style=\\"padding-top:14px;padding-bottom:14px;\\">
-                  <table align=\\"center\\" border=\\"0\\" bgcolor=\\"#fff7ed\\" cellspacing=\\"0\\" cellpadding=\\"0\\" width=\\"100%\\" style=\\"width:100%;max-width:100%;padding:0;margin:0;border-left:10px solid #c2410c;\\" role=\\"presentation\\">
+                  <table align=\\"center\\" border=\\"0\\" bgcolor=\\"#fff7ed\\" cellspacing=\\"0\\" cellpadding=\\"0\\" width=\\"100%\\" style=\\"width:100%;max-width:100%;padding:0;margin:0;background-color:#fff7ed;border-left:10px solid #c2410c;\\" role=\\"presentation\\">
                     <tr>
                       <td align=\\"left\\"
                         style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-left:10px;padding-right:10px;padding-top:14px;padding-bottom:14px;\\">
