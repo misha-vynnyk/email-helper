@@ -1,8 +1,9 @@
 import { CheckSquare, Minus, Plus, Square } from "lucide-react";
+import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { ConverterMode,StorageProfile } from "../hooks/useHtmlConverterLogic";
-import { BetaBadge } from "./BetaBadge";
+import type { ConverterMode, StorageProfile } from "../hooks/useHtmlConverterLogic";
+import { BetaBadge, type BetaBadgeHandle } from "./BetaBadge";
 
 interface FileNamingBarProps {
   fileName: string;
@@ -40,6 +41,7 @@ export function FileNamingBar({
   setConverterMode,
 }: FileNamingBarProps) {
   const { t } = useTranslation();
+  const betaRef = useRef<BetaBadgeHandle>(null);
 
   return (
     <div className='flex flex-wrap items-center gap-3'>
@@ -67,11 +69,10 @@ export function FileNamingBar({
       {showApproveNeeded && (
         <button
           onClick={() => setApproveNeeded(!approveNeeded)}
-          className={`flex items-center gap-2 px-5 py-3 rounded-full shadow-soft hover:shadow-md border hover:scale-[1.02] active:scale-95 transition-all duration-200 ${
-            approveNeeded
-              ? "bg-primary border-primary text-primary-foreground shadow-soft-lg transform -translate-y-0.5"
-              : "bg-card border-border/50 text-muted-foreground hover:bg-muted hover:border-border"
-          }`}
+          className={`flex items-center gap-2 px-5 py-3 rounded-full shadow-soft hover:shadow-md border hover:scale-[1.02] active:scale-95 transition-all duration-200 ${approveNeeded
+            ? "bg-primary border-primary text-primary-foreground shadow-soft-lg transform -translate-y-0.5"
+            : "bg-card border-border/50 text-muted-foreground hover:bg-muted hover:border-border"
+            }`}
         >
           <div className={`transition-transform duration-300 ${approveNeeded ? "scale-110" : "scale-100"}`}>
             {approveNeeded ? <CheckSquare size={16} /> : <Square size={16} />}
@@ -86,11 +87,10 @@ export function FileNamingBar({
           <button
             key={value}
             onClick={() => setStorageProfile(value)}
-            className={`px-4 py-2 rounded-full text-sm font-bold transition-all duration-200 ${
-              storageProfile === value
-                ? "bg-primary text-primary-foreground shadow-sm scale-[1.04]"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            }`}
+            className={`px-4 py-2 rounded-full text-sm font-bold transition-all duration-200 ${storageProfile === value
+              ? "bg-primary text-primary-foreground shadow-sm scale-[1.04]"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
           >
             {label}
           </button>
@@ -98,23 +98,23 @@ export function FileNamingBar({
       </div>
 
       {/* Converter mode: Simple / Advanced */}
-      <div className='flex items-center bg-card rounded-full border border-border/50 shadow-soft p-1 gap-1'>
+      <div className='flex items-center bg-card rounded-full border border-border/50 shadow-soft p-1 gap-1 relative'>
         {(["simple", "advanced"] as ConverterMode[]).map((mode) => (
           <button
             key={mode}
             onClick={() => setConverterMode(mode)}
-            className={`px-4 py-2 rounded-full text-sm font-bold transition-all duration-200 ${
-              converterMode === mode
-                ? "bg-primary text-primary-foreground shadow-sm scale-[1.04]"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            }`}
+            onMouseEnter={mode === "advanced" ? () => betaRef.current?.play() : undefined}
+            className={`px-4 py-2 rounded-full text-sm font-bold transition-all duration-200 ${converterMode === mode
+              ? "bg-primary text-primary-foreground shadow-sm scale-[1.04]"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
           >
             {mode === "simple" ? (
               "Simple"
             ) : (
               <span className='inline-flex items-center gap-1.5'>
                 Advanced
-                <BetaBadge />
+                <BetaBadge ref={betaRef} className="absolute -top-[10px] -right-[30px] [--beta-drop:36px]" />
               </span>
             )}
           </button>
@@ -133,11 +133,10 @@ export function FileNamingBar({
           <button
             key={value}
             onClick={() => setExportType(value)}
-            className={`px-4 py-2 rounded-full text-sm font-bold transition-all duration-200 ${
-              exportType === value
-                ? "bg-primary text-primary-foreground shadow-sm scale-[1.04]"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            }`}
+            className={`px-4 py-2 rounded-full text-sm font-bold transition-all duration-200 ${exportType === value
+              ? "bg-primary text-primary-foreground shadow-sm scale-[1.04]"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
           >
             {label}
           </button>
