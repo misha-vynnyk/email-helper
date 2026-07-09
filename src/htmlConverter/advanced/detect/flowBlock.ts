@@ -8,7 +8,7 @@ export function classifyFlow(nodes: StructuralNode[], tok: Tokens = defaultToken
   const result: ComponentNode[] = [];
   for (const node of nodes) {
     if (node.type !== "p") continue;
-    const { lines, align, size, headingLevel, paraBreaks, listItem } = node;
+    const { lines, align, size, headingLevel, paraBreaks, listItem, tightNext } = node;
     if (!lines.some(l => l.length > 0)) continue;
 
     // Heading levels are markers matching the simple converter's conventions:
@@ -24,11 +24,11 @@ export function classifyFlow(nodes: StructuralNode[], tok: Tokens = defaultToken
 
     // h4 → indented quote paragraph (matches simple converter "Відступ" marker)
     if (headingLevel === 4) {
-      result.push({ kind: "paragraph", props: { lines, align, size, variant: "quote", paraBreaks } });
+      result.push({ kind: "paragraph", props: { lines, align, size, variant: "quote", paraBreaks, tightNext } });
       continue;
     }
 
-    result.push({ kind: "paragraph", props: { lines, align, size, paraBreaks, listItem } });
+    result.push({ kind: "paragraph", props: { lines, align, size, paraBreaks, listItem, tightNext } });
   }
   return result;
 }

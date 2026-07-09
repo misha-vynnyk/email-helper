@@ -1,5 +1,71 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+exports[`convertAdvanced — GDocs banner with nested h5 button snapshot — full banner-with-button block 1`] = `
+"<table width=\\"100%\\" border=\\"0\\" cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" style=\\"max-width:100%;\\">
+  <tr>
+    <td align=\\"center\\" valign=\\"top\\">
+      <table class=\\"primary-table-limit content-table\\" bgcolor=\\"#ffffff\\" border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"max-width:600px;\\">
+        <tr>
+          <td class=\\"content-vertical-space\\" align=\\"center\\" style=\\"padding-left:20px;padding-right:20px;\\">
+            <table class=\\"content-inner-table\\" border=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" cellpadding=\\"0\\" width=\\"100%\\" style=\\"width:100%;\\">
+              <tr><td height=\\"16\\" width=\\"100%\\" style=\\"max-width:100%\\" class=\\"md-horizontal-space\\">&#160;</td></tr>
+              <tr>
+                <td align=\\"center\\" style=\\"padding-top:14px;padding-bottom:14px;\\">
+                  <table align=\\"center\\" border=\\"0\\" bgcolor=\\"#1b4332\\" cellspacing=\\"0\\" cellpadding=\\"0\\" width=\\"100%\\" style=\\"width:100%;max-width:100%;padding:0;margin:0;\\" role=\\"presentation\\">
+                    <tr>
+                      <td align=\\"center\\" style=\\"padding-left:20px;padding-right:20px;\\">
+                        <table align=\\"center\\" border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" width=\\"100%\\" style=\\"width:100%;max-width:100%;padding:0;margin:0;\\" role=\\"presentation\\">
+                          <tr>
+                            <td align=\\"center\\"
+                              style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#ffffff; padding-top:14px;padding-bottom:14px;\\">
+                              <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#ffffff;\\">
+                                <b style=\\"color:#52b788;\\">&#36;0.79/SHARE LIMITED ALLOCATION</b>
+                                <br><br>
+                                <b>Limited Allocation at &#36;0.79</b>
+                                <br><br>
+                                <span style=\\"color:#52b788;\\">9,500&#43; investors. &#36;36M&#43; raised. Up to 20% bonus shares.</span>
+                              </span>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td class=\\"btn-edit-p\\" align=\\"center\\" style=\\"padding-top:14px;padding-bottom:14px;\\">
+                              <table cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;max-width:100%;\\">
+                                <tr>
+                                  <td height=\\"51\\" align=\\"center\\" bgcolor=\\"#e07b39\\"
+                                    style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:bold;line-height:1.5;text-align:center;color:#000000; padding:3px 5px;background-color:#e07b39;\\">
+                                    <a href=\\"urlhere\\" target=\\"_blank\\"
+                                      style=\\"text-decoration:none;padding:9px 15px;display:block;font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:bold;line-height:1.5;text-align:center;color:#000000;background-color:#e07b39;\\">
+                                      <span style=\\"color:#ffffff;\\">Lock In Your &#36;0.79 Allocation &#8594;</span>
+                                    </a>
+                                  </td>
+                                </tr>
+                              </table>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td align=\\"center\\"
+                              style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#ffffff; padding-top:14px;padding-bottom:14px;\\">
+                              <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#ffffff;\\">
+                                <span style=\\"color:#52b788;\\">SEC-qualified Reg A&#43; · Open to all investors · &#36;0.79/share</span>
+                              </span>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+              <tr><td height=\\"16\\" width=\\"100%\\" style=\\"max-width:100%\\" class=\\"md-horizontal-space\\">&#160;</td></tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>"
+`;
+
 exports[`convertAdvanced — button-dark fixture snapshot — default profile 1`] = `
 "<table width=\\"100%\\" border=\\"0\\" cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" style=\\"max-width:100%;\\">
   <tr>
@@ -141,7 +207,7 @@ exports[`convertAdvanced — promo-band fixture (alertBand narrowing) snapshot �
                 <td align=\\"center\\" style=\\"padding-top:14px;padding-bottom:14px;\\">
                   <table align=\\"center\\" border=\\"0\\" bgcolor=\\"#0f766e\\" cellspacing=\\"0\\" cellpadding=\\"0\\" width=\\"100%\\" style=\\"width:100%;max-width:100%;padding:0;margin:0;\\" role=\\"presentation\\">
                     <tr>
-                      <td style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#ffffff; padding-left:10px;padding-right:10px;padding-top:4px;padding-bottom:4px;\\">
+                      <td style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#ffffff; padding-left:10px;padding-right:10px;padding-top:4px;padding-bottom:4px;\\">
                         <b style=\\"color:#99f6e4;\\">&#36;0.79/SHARE  ·  REG A&#43;  ·  NO ACCREDITATION REQUIRED</b>
                         <br><br>
                         <a href=\\"urlhere\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration:underline;font-weight:700;color:#0000ff;\\">Lock In Your &#36;0.79 Allocation &#8594;</a>
