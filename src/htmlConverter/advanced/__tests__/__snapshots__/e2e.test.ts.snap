@@ -28,10 +28,10 @@ exports[`convertAdvanced — GDocs banner with nested h5 button snapshot — ful
                             </td>
                           </tr>
                           <tr>
-                            <td class=\\"btn-edit-p\\" align=\\"center\\" style=\\"padding-top:14px;padding-bottom:14px;\\">
+                            <td align=\\"center\\" style=\\"padding-top:14px;padding-bottom:14px;\\">
                               <table cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;max-width:100%;\\">
                                 <tr>
-                                  <td height=\\"51\\" align=\\"center\\" bgcolor=\\"#e07b39\\"
+                                  <td class=\\"btn-edit-p\\" height=\\"51\\" align=\\"center\\" bgcolor=\\"#e07b39\\"
                                     style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:bold;line-height:1.5;text-align:center;color:#000000; padding:3px 5px;background-color:#e07b39;\\">
                                     <a href=\\"urlhere\\" target=\\"_blank\\"
                                       style=\\"text-decoration:none;padding:9px 15px;display:block;font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:bold;line-height:1.5;text-align:center;color:#000000;background-color:#e07b39;\\">

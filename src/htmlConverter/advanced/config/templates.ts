@@ -167,12 +167,9 @@ export function borderSpecToStyle(border: BorderSpec | undefined, tok: Tokens = 
     .join("");
 }
 
-/**
- * `wrapClass` defaults to the standard button class on the colored inner <td>. Pass
- * `null` when the caller already puts that class on an outer wrapper row (e.g.
- * alertBand's stacked-button row) — the colored <td> here is styling-only then.
- */
-export function buttonTableHtml(label: string, href: string, bg: string, tok: Tokens = defaultTokens, radiusOverride?: number, border?: BorderSpec, wrapClass: string | null = tok.classes.btnWrap): string {
+/** Always puts tok.classes.btnWrap on the colored inner <td> — the element the
+ *  destination platform's editor targets to identify/style the button. */
+export function buttonTableHtml(label: string, href: string, bg: string, tok: Tokens = defaultTokens, radiusOverride?: number, border?: BorderSpec): string {
   const { height, padding, innerPadding, target } = tok.button;
   const r = radiusOverride !== undefined ? radiusOverride : tok.button.radius;
   const radiusStyle = r > 0 ? `border-radius:${r}px;` : "";
@@ -180,10 +177,9 @@ export function buttonTableHtml(label: string, href: string, bg: string, tok: To
   const textColor = isDarkBg(bg, tok) ? tok.color.white : tok.color.black;
   const style = baseStyle({ align: "center", fontWeight: "bold", color: textColor }, tok);
   const safeHref = escapeHtml(href);
-  const classAttr = wrapClass ? ` class="${wrapClass}"` : "";
   return `<table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="width:100%;max-width:100%;">
   <tr>
-    <td${classAttr} height="${height}" align="center" bgcolor="${bg}"
+    <td class="${tok.classes.btnWrap}" height="${height}" align="center" bgcolor="${bg}"
       style="${style} padding:${padding};background-color:${bg};${radiusStyle}${borderStyle}">
       <a href="${safeHref}" target="${target}"
         style="text-decoration:${tok.button.textDecoration};padding:${innerPadding};display:block;${style}background-color:${bg};${radiusStyle}">
@@ -247,9 +243,12 @@ ${indentHtml(content, 14)}
         const sp = tok.layout.sidePadding;
         const rowsHtml = segments.map(seg => {
           if (seg.kind === "button") {
-            const btnTable = buttonTableHtml(seg.label, seg.href, seg.bg, tok, seg.radius, seg.border, null);
+            // wrapClass defaults to tok.classes.btnWrap — must land on the colored button
+            // <td> (bgcolor + radius), same convention as the standalone buttonBand case,
+            // not on this plain padding wrapper <td>.
+            const btnTable = buttonTableHtml(seg.label, seg.href, seg.bg, tok, seg.radius, seg.border);
             return `<tr>
-  <td class="${tok.classes.btnWrap}" align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
+  <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
 ${indentHtml(btnTable, 4)}
   </td>
 </tr>`;

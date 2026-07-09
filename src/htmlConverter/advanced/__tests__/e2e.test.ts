@@ -486,13 +486,15 @@ describe("convertAdvanced — GDocs banner with nested h5 button", () => {
   it("gives the button its own bulletproof <td bgcolor> row instead of a bare inline <a>", () => {
     // The colored cell must be a real <td bgcolor="...">, not just an <a> with an
     // inline background-color that Outlook's Word engine would strip.
-    expect(html).toMatch(/<td height="51" align="center" bgcolor="#e07b39"/);
+    expect(html).toMatch(/<td class="btn-edit-p" height="51" align="center" bgcolor="#e07b39"/);
   });
 
-  it("puts the button-row wrapper class on the padding row, not the colored cell", () => {
-    expect(html).toMatch(/<td class="btn-edit-p" align="center" style="padding-top:14px;padding-bottom:14px;">/);
-    // The inner colored cell itself carries no class — only bgcolor/style.
-    expect(html).not.toMatch(/<td class="btn-edit-p"[^>]*bgcolor="#e07b39"/);
+  it("puts the btn-edit-p class on the colored button cell, not the plain padding wrapper", () => {
+    // The destination platform's editor targets btn-edit-p to identify the button —
+    // it must be on the styled/colored <td>, matching the standalone buttonBand case,
+    // not on the outer <td> that only carries padding.
+    expect(html).toMatch(/<td class="btn-edit-p"[^>]*bgcolor="#e07b39"/);
+    expect(html).not.toMatch(/<td class="btn-edit-p" align="center" style="padding-top:14px;padding-bottom:14px;">/);
   });
 
   it("uses the standard block side padding (20px) around the stacked rows, not the old thin alertBand padding", () => {
