@@ -1,3 +1,9 @@
+// Force the test environment even if the shell exports NODE_ENV=production.
+// Jest only defaults NODE_ENV to "test" when it's unset; a pre-set "production"
+// otherwise makes React load its prod build, where `act()` throws. Mutating it
+// here (in the parent process, before workers fork) propagates to every worker.
+process.env.NODE_ENV = "test";
+
 export default {
   preset: "ts-jest",
   testEnvironment: "jsdom",
