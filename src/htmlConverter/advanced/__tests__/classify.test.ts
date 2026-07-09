@@ -32,7 +32,7 @@ describe("classify — paragraph merging", () => {
     const result = classify(nodes);
     expect(result).toHaveLength(1);
     expect(result[0].kind).toBe("paragraph");
-    const lines = result[0].props["lines"] as unknown[][];
+    const lines = (result[0].props as Record<string, unknown>)["lines"] as unknown[][];
     expect(lines).toHaveLength(2);
   });
 
@@ -57,7 +57,7 @@ describe("classify — paragraph merging", () => {
     ];
     const result = classify(nodes);
     expect(result).toHaveLength(1);
-    expect(result[0].props["paraBreaks"]).toBeUndefined();
+    expect((result[0].props as Record<string, unknown>)["paraBreaks"]).toBeUndefined();
   });
 
   // Left/right-aligned adjacent paragraphs are genuine prose (short-paragraph marketing
@@ -69,7 +69,7 @@ describe("classify — paragraph merging", () => {
     ];
     const result = classify(nodes);
     expect(result).toHaveLength(1);
-    const breaks = result[0].props["paraBreaks"] as Set<number>;
+    const breaks = (result[0].props as Record<string, unknown>)["paraBreaks"] as Set<number>;
     expect(breaks.has(1)).toBe(true);
   });
 
@@ -84,8 +84,8 @@ describe("classify — paragraph merging", () => {
     ];
     const result = classify(nodes);
     expect(result).toHaveLength(1);
-    expect(result[0].props["paraBreaks"]).toBeUndefined();
-    const lines = result[0].props["lines"] as unknown[][];
+    expect((result[0].props as Record<string, unknown>)["paraBreaks"]).toBeUndefined();
+    const lines = (result[0].props as Record<string, unknown>)["lines"] as unknown[][];
     expect(lines).toHaveLength(3);
   });
 
@@ -101,7 +101,7 @@ describe("classify — paragraph merging", () => {
     ];
     const result = classify(nodes);
     expect(result).toHaveLength(1);
-    expect(result[0].props["paraBreaks"]).toBeUndefined();
+    expect((result[0].props as Record<string, unknown>)["paraBreaks"]).toBeUndefined();
   });
 
   // The glyph may sit in its own run ("✓ " styled green, text after it black) — the marker
@@ -113,7 +113,7 @@ describe("classify — paragraph merging", () => {
     ] as StructuralNode[];
     const result = classify(nodes);
     expect(result).toHaveLength(1);
-    expect(result[0].props["paraBreaks"]).toBeUndefined();
+    expect((result[0].props as Record<string, unknown>)["paraBreaks"]).toBeUndefined();
   });
 
   // A checklist glyph on only ONE side of the pair is not a list — prose keeps the gap.
@@ -124,7 +124,7 @@ describe("classify — paragraph merging", () => {
     ];
     const result = classify(nodes);
     expect(result).toHaveLength(1);
-    const breaks = result[0].props["paraBreaks"] as Set<number>;
+    const breaks = (result[0].props as Record<string, unknown>)["paraBreaks"] as Set<number>;
     expect(breaks.has(1)).toBe(true);
   });
 
@@ -137,7 +137,7 @@ describe("classify — paragraph merging", () => {
     ];
     const result = classify(nodes);
     expect(result).toHaveLength(1);
-    const breaks = result[0].props["paraBreaks"] as Set<number>;
+    const breaks = (result[0].props as Record<string, unknown>)["paraBreaks"] as Set<number>;
     expect(breaks.has(1)).toBe(true);
   });
 
@@ -173,7 +173,7 @@ describe("classify — recordRow merging", () => {
     const result = classify([t1, t2]);
     expect(result).toHaveLength(1);
     expect(result[0].kind).toBe("recordRow");
-    const rows = result[0].props["rows"] as unknown[];
+    const rows = (result[0].props as Record<string, unknown>)["rows"] as unknown[];
     expect(rows).toHaveLength(4);
   });
 
@@ -244,18 +244,18 @@ describe("classify — heading markers", () => {
     const result = classify([makeHeading(5, "Click me")]);
     expect(result).toHaveLength(1);
     expect(result[0].kind).toBe("buttonBand");
-    expect(result[0].props["bg"]).toBe(tokens.color.button);
+    expect((result[0].props as Record<string, unknown>)["bg"]).toBe(tokens.color.button);
   });
 
   it("h5 button runs contain the text", () => {
     const result = classify([makeHeading(5, "Buy now")]);
-    const runs = result[0].props["runs"] as Array<{ text: string }>;
+    const runs = (result[0].props as Record<string, unknown>)["runs"] as Array<{ text: string }>;
     expect(runs.map(r => r.text).join("")).toContain("Buy now");
   });
 
   it("h5 button uses placeholder href when no href in runs", () => {
     const result = classify([makeHeading(5, "Click")]);
-    expect(result[0].props["href"]).toBe(tokens.placeholderHref);
+    expect((result[0].props as Record<string, unknown>)["href"]).toBe(tokens.placeholderHref);
   });
 
   it("h5 button always uses placeholder href regardless of run href", () => {
@@ -264,28 +264,28 @@ describe("classify — heading markers", () => {
       lines: [[{ text: "Go", href: "https://example.com" }]],
     };
     const result = classify([para]);
-    expect(result[0].props["href"]).toBe(tokens.placeholderHref);
+    expect((result[0].props as Record<string, unknown>)["href"]).toBe(tokens.placeholderHref);
   });
 
   it("h4 → paragraph with variant=quote", () => {
     const result = classify([makeHeading(4, "Quote text")]);
     expect(result).toHaveLength(1);
     expect(result[0].kind).toBe("paragraph");
-    expect(result[0].props["variant"]).toBe("quote");
+    expect((result[0].props as Record<string, unknown>)["variant"]).toBe("quote");
   });
 
   it("h1 → paragraph with size=headline (no buttonBand)", () => {
     const result = classify([makeHeading(1, "Headline")]);
     expect(result).toHaveLength(1);
     expect(result[0].kind).toBe("paragraph");
-    expect(result[0].props["size"]).toBe("headline");
+    expect((result[0].props as Record<string, unknown>)["size"]).toBe("headline");
   });
 
   it("h6 → paragraph with size=small", () => {
     const result = classify([makeHeading(6, "Footer text")]);
     expect(result).toHaveLength(1);
     expect(result[0].kind).toBe("paragraph");
-    expect(result[0].props["size"]).toBe("small");
+    expect((result[0].props as Record<string, unknown>)["size"]).toBe("small");
   });
 
   it("h4 paragraphs are NOT merged with adjacent body paragraphs", () => {
@@ -296,7 +296,7 @@ describe("classify — heading markers", () => {
     ];
     const result = classify(nodes);
     expect(result).toHaveLength(3);
-    expect(result[1].props["variant"]).toBe("quote");
+    expect((result[1].props as Record<string, unknown>)["variant"]).toBe("quote");
   });
 });
 

@@ -1,0 +1,11 @@
+// Centralized non-fatal conversion warning messages (surfaced in the UI log).
+// Kept in one place so wording/typos live in a single spot and duplicated call
+// sites (e.g. nested-table flattening) can't drift apart.
+
+export const WARN = {
+  imageWithoutSrc: "Зображення без src пропущено",
+  nestedTableFlattened:
+    "Вкладену таблицю сплющено до тексту (розмітка внутрішньої таблиці втрачена)",
+  tablesMergedMismatch:
+    "Сусідні таблиці об'єднано в одну, але колір рамки або ширини колонок другої таблиці відрізняються — застосовано значення першої",
+} as const;

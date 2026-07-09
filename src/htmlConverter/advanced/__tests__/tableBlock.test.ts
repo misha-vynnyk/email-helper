@@ -4,6 +4,13 @@ import type { CellNode, Paragraph,TableNode } from "../ir/types";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+// The container kinds (calloutBox/statsGrid) carry `children`; ComponentNode is a
+// discriminated union so a bare `.children` read doesn't narrow. These loose
+// accessors let assertions reach known props/children by string key without casts
+// at each call site — the surrounding `expect(result?.kind)` already fixes the kind.
+type LooseNode = { props: Record<string, unknown>; children?: LooseNode[] };
+const childrenOf = (n: unknown): LooseNode[] => (n as LooseNode)?.children ?? [];
+
 function makeRun(text: string, href?: string) {
   return href ? { text, href } : { text };
 }
@@ -251,7 +258,7 @@ describe("classifyTable — calloutBox fallback child (no classifyChildren)", ()
     // classifyTable called with no 4th arg → classifySingleCell has no classifyChildren
     const result = classifyTable(table);
     expect(result?.kind).toBe("calloutBox");
-    const child = result?.children?.[0];
+    const child = childrenOf(result)[0];
     expect(child?.props["align"]).toBe("center");
     expect(child?.props["bg"]).toBe("#fff7ed");
   });
@@ -271,7 +278,7 @@ describe("classifyTable — multi-cell", () => {
     const result = classifyTable(table);
     expect(result?.kind).toBe("statsGrid");
     expect((result?.props as Record<string, unknown>)["n"]).toBe(3);
-    expect(result?.children).toHaveLength(3);
+    expect(childrenOf(result)).toHaveLength(3);
   });
 
   it("statsGrid children carry each cell's bg (e.g. a highlighted stat tile)", () => {
@@ -280,14 +287,14 @@ describe("classifyTable — multi-cell", () => {
       makeCell({ bg: "#0a2463" }),
     ]]);
     const result = classifyTable(table);
-    expect(result?.children?.[0].props["bg"]).toBe("#f1ede6");
-    expect(result?.children?.[1].props["bg"]).toBe("#0a2463");
+    expect(childrenOf(result)[0].props["bg"]).toBe("#f1ede6");
+    expect(childrenOf(result)[1].props["bg"]).toBe("#0a2463");
   });
 
   it("statsGrid child has no bg prop when the cell is transparent", () => {
     const table = makeTable([[makeCell(), makeCell()]]);
     const result = classifyTable(table);
-    expect(result?.children?.[0].props["bg"]).toBeUndefined();
+    expect(childrenOf(result)[0].props["bg"]).toBeUndefined();
   });
 
   it("multiple rows with 2 columns → recordRow", () => {
@@ -308,8 +315,8 @@ describe("classifyTable — multi-cell", () => {
       makeCell({ border: { top: { color: "#0000ff" } } }),
     ]]);
     const result = classifyTable(table);
-    expect(result?.children?.[0].props["borderColor"]).toBe("#ff0000");
-    expect(result?.children?.[1].props["borderColor"]).toBe("#0000ff");
+    expect(childrenOf(result)[0].props["borderColor"]).toBe("#ff0000");
+    expect(childrenOf(result)[1].props["borderColor"]).toBe("#0000ff");
   });
 
   it("recordRow cells each carry their own borderColor", () => {

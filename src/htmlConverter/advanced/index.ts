@@ -10,6 +10,7 @@ import { fromDom } from "./ir/fromDom";
 import { normalize } from "./normalize";
 import { normalizeSymbols,preprocess } from "./preprocess";
 import { renderAll } from "./render/toEmailHtml";
+import { sanitize } from "./sanitize";
 
 export interface AdvancedConversionResult {
   html: string;
@@ -17,10 +18,21 @@ export interface AdvancedConversionResult {
   warnings: string[];
 }
 
+export interface AdvancedConversionOptions {
+  /**
+   * Run the final HTML through the DOMPurify allowlist (sanitize.ts). Off by default:
+   * output is built from a controlled IR so it's already safe, and DOMPurify reserializes
+   * the markup (injecting <tbody>, normalizing entities). Enable only when the raw input
+   * is untrusted and belt-and-suspenders sanitization is worth the reserialization.
+   */
+  sanitize?: boolean;
+}
+
 export function convertAdvancedDetailed(
   rawHtml: string,
   override: TokensOverride = {},
   oneBrSymbol?: string,
+  options: AdvancedConversionOptions = {},
 ): AdvancedConversionResult {
   const hasOverride = Object.keys(override).length > 0;
   const tok  = hasOverride ? mergeTokens(tokens, override) : tokens;
@@ -39,9 +51,14 @@ export function convertAdvancedDetailed(
   result = normalizeSymbols(result);
   result = cleanEmptyHtmlTags(result);
   result = replaceTripleBrWithSingle(result);
+  if (options.sanitize) result = sanitize(result);
   return { html: result, warnings };
 }
 
-export function convertAdvanced(rawHtml: string, override: TokensOverride = {}): string {
-  return convertAdvancedDetailed(rawHtml, override).html;
+export function convertAdvanced(
+  rawHtml: string,
+  override: TokensOverride = {},
+  options: AdvancedConversionOptions = {},
+): string {
+  return convertAdvancedDetailed(rawHtml, override, undefined, options).html;
 }

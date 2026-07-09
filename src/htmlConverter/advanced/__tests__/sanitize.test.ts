@@ -1,7 +1,7 @@
 // Tests for the optional DOMPurify pass (sanitize.ts).
 // Key invariant: sanitizing convertAdvanced output must not break the email markup.
 
-import { convertAdvanced } from "../index";
+import { convertAdvanced, convertAdvancedDetailed } from "../index";
 import { sanitize } from "../sanitize";
 
 describe("sanitize — strips dangerous content", () => {
@@ -99,5 +99,26 @@ describe("sanitize — round-trip on convertAdvanced output", () => {
     const out = sanitize(convertAdvanced("<p>x</p>"));
     expect(out).not.toContain("<html");
     expect(out).not.toContain("<body");
+  });
+});
+
+// ── Wired into the pipeline via the { sanitize } option ───────────────────────
+
+describe("convertAdvancedDetailed — sanitize option", () => {
+  it("is off by default: output is not reserialized (no <tbody> injected)", () => {
+    const { html } = convertAdvancedDetailed("<p>hello</p>");
+    expect(html).not.toContain("<tbody");
+  });
+
+  it("runs the DOMPurify pass when { sanitize: true }", () => {
+    const { html } = convertAdvancedDetailed("<p>hello</p>", {}, undefined, { sanitize: true });
+    // DOMPurify reserialization injects <tbody> — a reliable marker the pass ran
+    expect(html).toContain("<tbody");
+    expect(html).toContain("hello");
+  });
+
+  it("convertAdvanced forwards the sanitize option", () => {
+    expect(convertAdvanced("<p>x</p>", {}, { sanitize: true })).toContain("<tbody");
+    expect(convertAdvanced("<p>x</p>")).not.toContain("<tbody");
   });
 });

@@ -65,21 +65,104 @@ export type WarnFn = (message: string) => void;
 export type StructuralNode = TableNode | RowNode | CellNode | Paragraph | ImageNode;
 
 // ── Stage 2: Semantic IR (classified, renderable) ────────────────────────────
+//
+// ComponentNode is a discriminated union: each `kind` carries its own typed
+// `props` shape. Producers (detect/*) build these literals under compile-time
+// checking; the renderer (render/toEmailHtml) narrows on `kind` and reads props
+// without casts. Add a kind by extending both the union and the render switch —
+// the exhaustiveness check will flag the missing case.
 
-export type ComponentKind =
-  | "alertBand"
-  | "paragraph"
-  | "buttonBand"
-  | "calloutLeft"
-  | "calloutBox"
-  | "statsGrid"
-  | "recordRow"
-  | "splitRow"
-  | "image"
-  | "spacer";
+export type Align = "left" | "center" | "right";
+export type SizeRole = "body" | "small" | "headline";
 
-export interface ComponentNode {
-  kind: ComponentKind;
-  props: Record<string, unknown>;  // normalized data for house-template
-  children?: ComponentNode[];      // for containers (calloutBox, statsGrid…)
+export interface ParagraphProps {
+  lines: Run[][];
+  size: SizeRole;
+  align?: Align;
+  variant?: "quote";           // h4 marker: extra horizontal indent
+  paraBreaks?: Set<number>;    // line indices rendered as <br><br>
+  listItem?: boolean;
+  /** statsGrid cell paragraphs only: cell background + border color */
+  bg?: string;
+  borderColor?: string;
 }
+
+export interface AlertBandProps {
+  lines: Run[][];
+  bg: string;
+  paraBreaks?: Set<number>;
+  border?: BorderSpec;
+}
+
+export interface ButtonBandProps {
+  runs: Run[];
+  href: string;
+  bg: string;
+  radius?: number;             // 0 = no rounding (GDocs table-cell buttons)
+  border?: BorderSpec;
+}
+
+export interface CalloutLeftProps {
+  lines: Run[][];
+  accentColor: string;
+  paraBreaks?: Set<number>;
+  bg?: string;
+}
+
+export interface CalloutBoxProps {
+  border: BorderSpec;
+  bg?: string;
+}
+
+export interface StatsGridProps {
+  n: number;
+  widths?: number[];
+  borderColor?: string;
+}
+
+export interface RecordCellData {
+  lines: Run[][];
+  align?: Align;
+  bg?: string;
+  border?: BorderSpec;
+  borderColor?: string;
+}
+
+export interface RecordRowData {
+  bg?: string;
+  cells: RecordCellData[];
+}
+
+export interface RecordRowProps {
+  rows: RecordRowData[];
+  widths?: number[];
+  borderColor?: string;
+}
+
+export interface SplitRowProps {
+  left: Run[];
+  right: Run[];
+}
+
+export interface ImageProps {
+  src: string;
+  alt?: string;
+}
+
+export interface SpacerProps {
+  heightPx?: number;
+}
+
+export type ComponentNode =
+  | { kind: "paragraph"; props: ParagraphProps }
+  | { kind: "alertBand"; props: AlertBandProps }
+  | { kind: "buttonBand"; props: ButtonBandProps }
+  | { kind: "calloutLeft"; props: CalloutLeftProps }
+  | { kind: "calloutBox"; props: CalloutBoxProps; children: ComponentNode[] }
+  | { kind: "statsGrid"; props: StatsGridProps; children: ComponentNode[] }
+  | { kind: "recordRow"; props: RecordRowProps }
+  | { kind: "splitRow"; props: SplitRowProps }
+  | { kind: "image"; props: ImageProps }
+  | { kind: "spacer"; props: SpacerProps };
+
+export type ComponentKind = ComponentNode["kind"];

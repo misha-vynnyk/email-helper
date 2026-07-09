@@ -20,7 +20,7 @@ import type { Tokens } from "../config/tokens";
 import { tokens as defaultTokens } from "../config/tokens";
 import { escapeHtml as esc } from "../escape";
 import { isDarkBg } from "../ir/color";
-import type { BorderSpec, ComponentNode, Run } from "../ir/types";
+import type { ComponentNode, Run } from "../ir/types";
 
 type Templates = ReturnType<typeof buildTemplates>;
 
@@ -115,110 +115,86 @@ export function renderNode(
   tmpl: Templates = defaultTemplates,
   tok: Tokens = defaultTokens,
 ): string {
-  const p = node.props as Record<string, unknown>;
-
   switch (node.kind) {
     case "paragraph": {
+      const p = node.props;
       const opts: ParagraphOpts = {
-        innerHtml: renderLines(
-          p["lines"] as Run[][],
-          tok,
-          tok.color.black,
-          p["paraBreaks"] as Set<number> | undefined,
-        ),
-        align: (p["align"] as ParagraphOpts["align"]) ?? "left",
-        size: (p["size"] as ParagraphOpts["size"]) ?? "body",
-        variant: p["variant"] as ParagraphOpts["variant"],
+        innerHtml: renderLines(p.lines, tok, tok.color.black, p.paraBreaks),
+        align: p.align ?? "left",
+        size: p.size ?? "body",
+        variant: p.variant,
       };
       return tmpl.paragraph(opts);
     }
 
     case "alertBand": {
-      const bg = p["bg"] as string;
-      const textColor = isDarkBg(bg, tok) ? tok.color.white : tok.color.black;
+      const p = node.props;
+      const textColor = isDarkBg(p.bg, tok) ? tok.color.white : tok.color.black;
       const opts: AlertBandOpts = {
-        innerHtml: renderLines(
-          p["lines"] as Run[][],
-          tok,
-          textColor,
-          p["paraBreaks"] as Set<number> | undefined,
-        ),
-        bg,
-        border: p["border"] as BorderSpec | undefined,
+        innerHtml: renderLines(p.lines, tok, textColor, p.paraBreaks),
+        bg: p.bg,
+        border: p.border,
       };
       return tmpl.alertBand(opts);
     }
 
     case "buttonBand": {
-      const runs = (p["runs"] ?? p["label"]) as Run[];
-      const bg = p["bg"] as string;
-      const textColor = isDarkBg(bg, tok) ? tok.color.white : tok.color.black;
+      const p = node.props;
+      const textColor = isDarkBg(p.bg, tok) ? tok.color.white : tok.color.black;
       // Strip per-run color and href: button template controls text color/link,
       // and nested <a> inside a button link would produce invalid HTML.
-      const buttonRuns = runs.map(r => ({ ...r, color: undefined, href: undefined }));
+      const buttonRuns = p.runs.map(r => ({ ...r, color: undefined, href: undefined }));
       const opts: ButtonBandOpts = {
         innerHtml: renderRuns(buttonRuns, tok, textColor),
-        href: (p["href"] as string) ?? tok.placeholderHref,
-        bg,
-        radius: p["radius"] as number | undefined,
-        border: p["border"] as BorderSpec | undefined,
+        href: p.href ?? tok.placeholderHref,
+        bg: p.bg,
+        radius: p.radius,
+        border: p.border,
       };
       return tmpl.buttonBand(opts);
     }
 
     case "calloutLeft": {
-      const innerHtml = renderLines(
-        p["lines"] as Run[][],
-        tok,
-        tok.color.black,
-        p["paraBreaks"] as Set<number> | undefined,
-      );
+      const p = node.props;
+      const innerHtml = renderLines(p.lines, tok, tok.color.black, p.paraBreaks);
       const opts: CalloutOpts = {
-        accentColor: (p["accentColor"] as string) ?? tok.color.button,
-        bg: p["bg"] as string | undefined,
+        accentColor: p.accentColor ?? tok.color.button,
+        bg: p.bg,
       };
       return tmpl.calloutLeft(innerHtml, opts);
     }
 
     case "calloutBox": {
-      const childrenHtml = renderAll(node.children ?? [], tmpl, tok);
+      const childrenHtml = renderAll(node.children, tmpl, tok);
       const opts: CalloutBoxOpts = {
-        border: p["border"] as BorderSpec,
-        bg: p["bg"] as string | undefined,
+        border: node.props.border,
+        bg: node.props.bg,
       };
       return tmpl.calloutBox(childrenHtml, opts);
     }
 
     case "statsGrid": {
-      const cells: GridCell[] = (node.children ?? []).map(child => {
-        const cp = child.props as { lines?: Run[][]; bg?: string; borderColor?: string };
+      const cells: GridCell[] = node.children.map(child => {
+        // statsGrid children are always paragraph nodes (built by cellToChild)
+        if (child.kind !== "paragraph") return { innerHtml: "" };
+        const cp = child.props;
         const baseColor = cp.bg && isDarkBg(cp.bg, tok) ? tok.color.white : tok.color.black;
-        return { innerHtml: renderLines(cp.lines ?? [], tok, baseColor), bg: cp.bg, borderColor: cp.borderColor };
+        return { innerHtml: renderLines(cp.lines, tok, baseColor), bg: cp.bg, borderColor: cp.borderColor };
       });
       const opts: GridOpts = {
-        n: (p["n"] as number) || cells.length,
-        widths: p["widths"] as number[] | undefined,
-        borderColor: p["borderColor"] as string | undefined,
+        n: node.props.n || cells.length,
+        widths: node.props.widths,
+        borderColor: node.props.borderColor,
       };
       return tmpl.statsGrid(cells, opts);
     }
 
     case "recordRow": {
-      type RowData = {
-        bg?: string;
-        cells: Array<{
-          lines: Run[][];
-          align?: string;
-          bg?: string;
-          border?: BorderSpec;
-          borderColor?: string;
-        }>;
-      };
-      const rawRows = p["rows"] as RowData[];
+      const p = node.props;
       const opts: RecordOpts = {
-        widths: p["widths"] as number[] | undefined,
-        borderColor: p["borderColor"] as string | undefined,
-        rows: rawRows.map(row => ({
+        widths: p.widths,
+        borderColor: p.borderColor,
+        rows: p.rows.map(row => ({
           bg: row.bg,
           cells: row.cells.map(c => {
             const bg = c.bg ?? row.bg;
@@ -238,22 +214,19 @@ export function renderNode(
 
     case "splitRow": {
       const opts: SplitRowOpts = {
-        leftHtml: renderRuns(p["left"] as Run[], tok, tok.color.black),
-        rightHtml: renderRuns(p["right"] as Run[], tok, tok.color.black),
+        leftHtml: renderRuns(node.props.left, tok, tok.color.black),
+        rightHtml: renderRuns(node.props.right, tok, tok.color.black),
       };
       return tmpl.splitRow(opts);
     }
 
     case "image": {
-      const opts: ImageOpts = {
-        src: p["src"] as string,
-        alt: p["alt"] as string | undefined,
-      };
+      const opts: ImageOpts = { src: node.props.src, alt: node.props.alt };
       return opts.src ? tmpl.image(opts) : "";
     }
 
     case "spacer":
-      return tmpl.spacer(Math.trunc((p["heightPx"] as number) || 0) || tok.layout.spacerPx);
+      return tmpl.spacer(Math.trunc(node.props.heightPx || 0) || tok.layout.spacerPx);
 
     default:
       return "";
