@@ -1,6 +1,7 @@
 import { Code, Settings } from "lucide-react";
 import { Dispatch, SetStateAction,useState } from "react";
 
+import type { BrowserDetectionStatus } from "../hooks/useBrowserDetection";
 import type { UploadMode } from "../hooks/useHtmlConverterLogic";
 import type { UiSettings } from "../hooks/useHtmlConverterSettings";
 import type { ImageAnalysisSettings } from "../types";
@@ -17,9 +18,10 @@ interface HeaderProps {
   unseenLogCount: number;
   uploadMode: UploadMode;
   setUploadMode: Dispatch<SetStateAction<UploadMode>>;
+  browserDetectionStatus: BrowserDetectionStatus;
 }
 
-export function Header({ ui, setUi, imageAnalysis, setImageAnalysis, autoProcess, setAutoProcess, aiBackendStatus, unseenLogCount, uploadMode, setUploadMode }: HeaderProps) {
+export function Header({ ui, setUi, imageAnalysis, setImageAnalysis, autoProcess, setAutoProcess, aiBackendStatus, unseenLogCount, uploadMode, setUploadMode, browserDetectionStatus }: HeaderProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsTab, setSettingsTab] = useState<"ui" | "image">("ui");
 
@@ -81,6 +83,7 @@ export function Header({ ui, setUi, imageAnalysis, setImageAnalysis, autoProcess
             aiBackendStatus={aiBackendStatus}
             uploadMode={uploadMode}
             setUploadMode={setUploadMode}
+            browserDetectionStatus={browserDetectionStatus}
             triggerElement={
               <button
                 className='relative p-2 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-all duration-200 hover:scale-105 active:scale-95'

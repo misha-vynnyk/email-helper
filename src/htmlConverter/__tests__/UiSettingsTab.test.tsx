@@ -15,7 +15,7 @@ import { DEFAULT_UI_SETTINGS, UiSettings } from "../hooks/useHtmlConverterSettin
 function renderTab(overrides: Partial<UiSettings> = {}) {
   const ui: UiSettings = { ...DEFAULT_UI_SETTINGS, ...overrides };
   const setUi = jest.fn();
-  render(<UiSettingsTab ui={ui} setUi={setUi} uploadMode='playwright' setUploadMode={jest.fn()} />);
+  render(<UiSettingsTab ui={ui} setUi={setUi} uploadMode='playwright' setUploadMode={jest.fn()} browserDetectionStatus='skipped' />);
   return { setUi };
 }
 

@@ -4,6 +4,7 @@ import React, { Dispatch, SetStateAction } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+import type { BrowserDetectionStatus } from "../hooks/useBrowserDetection";
 import type { UploadMode } from "../hooks/useHtmlConverterLogic";
 import type { UiSettings } from "../hooks/useHtmlConverterSettings";
 import type { ImageAnalysisSettings } from "../types";
@@ -25,9 +26,10 @@ type SettingsPopoverProps = {
   aiBackendStatus: "checking" | "online" | "offline" | "ollama_offline";
   uploadMode: UploadMode;
   setUploadMode: Dispatch<SetStateAction<UploadMode>>;
+  browserDetectionStatus: BrowserDetectionStatus;
 };
 
-export const SettingsPopover: React.FC<SettingsPopoverProps> = ({ open, onOpenChange, triggerElement, settingsTab, setSettingsTab, ui, setUi, imageAnalysis, setImageAnalysis, autoProcess, setAutoProcess, aiBackendStatus, uploadMode, setUploadMode }) => {
+export const SettingsPopover: React.FC<SettingsPopoverProps> = ({ open, onOpenChange, triggerElement, settingsTab, setSettingsTab, ui, setUi, imageAnalysis, setImageAnalysis, autoProcess, setAutoProcess, aiBackendStatus, uploadMode, setUploadMode, browserDetectionStatus }) => {
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>{triggerElement}</PopoverTrigger>
@@ -58,7 +60,7 @@ export const SettingsPopover: React.FC<SettingsPopoverProps> = ({ open, onOpenCh
 
           <div className='p-4 max-h-[60vh] overflow-y-auto'>
             <TabsContent value='ui' className='m-0 border-none p-0 outline-none'>
-              <UiSettingsTab ui={ui} setUi={setUi} uploadMode={uploadMode} setUploadMode={setUploadMode} />
+              <UiSettingsTab ui={ui} setUi={setUi} uploadMode={uploadMode} setUploadMode={setUploadMode} browserDetectionStatus={browserDetectionStatus} />
             </TabsContent>
             <TabsContent value='image' className='m-0 border-none p-0 outline-none'>
               <ImageSettingsTab ui={ui} setUi={setUi} imageAnalysis={imageAnalysis} setImageAnalysis={setImageAnalysis} autoProcess={autoProcess} setAutoProcess={setAutoProcess} aiBackendStatus={aiBackendStatus} />

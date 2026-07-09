@@ -6,6 +6,7 @@ import { useAppDiagnostics } from "./internal/useAppDiagnostics";
 import { useEditorSync } from "./internal/useEditorSync";
 import { useHtmlExport } from "./internal/useHtmlExport";
 import { useUploadHistory } from "./internal/useUploadHistory";
+import { useBrowserDetection } from "./useBrowserDetection";
 import { useHtmlConverterSettings } from "./useHtmlConverterSettings";
 
 export type StorageProfile = "default" | "alphaone" | "ttt";
@@ -89,6 +90,18 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
   useEffect(() => {
     localStorage.setItem(uploadModeKey, uploadMode);
   }, [uploadMode, uploadModeKey]);
+
+  // Auto-detect Brave for the Playwright upload path; fill the manual override
+  // setting the first time detection succeeds so users don't have to hunt for
+  // the executable themselves unless auto-detect genuinely can't find it.
+  // Electron-only: on dev machines (no electronAPI) automation/config.json
+  // already carries the right path, so there's nothing for this to surface.
+  const browserDetection = useBrowserDetection(uploadMode === "playwright" && isElectron);
+  useEffect(() => {
+    if (browserDetection.status !== "found" || !browserDetection.path) return;
+    const foundPath = browserDetection.path;
+    settings.setUi((prev) => (prev.browserExecutablePath ? prev : { ...prev, browserExecutablePath: foundPath }));
+  }, [browserDetection.status, browserDetection.path, settings]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.CONVERTER_MODE, converterMode);
@@ -253,6 +266,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
       storageProfile,
       exportType,
       uploadMode,
+      browserDetectionStatus: browserDetection.status,
       converterMode,
       log,
       unseenLogCount,
