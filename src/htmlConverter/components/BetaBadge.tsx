@@ -3,13 +3,14 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useSta
 type BadgeState = "idle" | "falling" | "fallen" | "rising";
 
 export interface BetaBadgeHandle {
-  /** Play the detach → sway ×2 → drop → rest → rise sequence (no-op unless idle). */
+  /** Play the detach → swing to vertical ×2 → drop → rest → rise sequence (no-op unless idle). */
   play: () => void;
 }
 
 /**
- * "Beta" pill that, when triggered, detaches from its right edge, swings twice,
- * falls to the bottom of its container, lies there for 3s, then rises back.
+ * "Beta" pill that, when triggered, detaches from its right edge and swings on
+ * that hinge past vertical (twice, damping out), then falls to the bottom of
+ * its container, lies there for 3s, then rises back.
  *
  * Trigger sources:
  *  - hovering the badge itself (onMouseEnter) — used where the badge is the target;
@@ -37,7 +38,7 @@ export const BetaBadge = forwardRef<BetaBadgeHandle, { className?: string }>(
       if (e.animationName === "beta-badge-fall") {
         // Landed at the bottom → lie there for 3s, then rise back to place.
         setState("fallen");
-        riseTimeoutRef.current = setTimeout(() => setState("rising"), 3000);
+        riseTimeoutRef.current = setTimeout(() => setState("rising"), 2000);
       } else if (e.animationName === "beta-badge-rise") {
         setState("idle");
       }
@@ -66,7 +67,7 @@ export const BetaBadge = forwardRef<BetaBadgeHandle, { className?: string }>(
         <style>{`
           .beta-badge {
             /* Глибина падіння — на низ контейнера. Перевизначай per-usage. */
-            --beta-drop: 16px;
+            --beta-drop: 26px;
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
           }
 
@@ -75,14 +76,16 @@ export const BetaBadge = forwardRef<BetaBadgeHandle, { className?: string }>(
             transform: rotate(0deg) translateY(0);
           }
 
-          /* Відрив справа → двічі колихнутися → падіння на низ контейнера */
+          /* Відрив справа → двічі гойднутися (до вертикалі й трохи за неї) → падіння на низ.
+             Timing-function задано per-keyframe (нижче) — гойдання, вільне падіння й удар
+             мають різну фізичну природу, тож "linear" тут лише fallback. */
           .beta-badge-falling {
-            animation: beta-badge-fall 1.6s ease-in-out forwards;
+            animation: beta-badge-fall 1.8s linear forwards;
           }
 
           /* Лежить на дні (кадр = 100% падіння), чекає 3с перед підйомом */
           .beta-badge-fallen {
-            transform: rotate(6deg) translateY(var(--beta-drop));
+            transform: rotate(0deg) translateY(var(--beta-drop));
             box-shadow: 0 6px 9px rgba(0, 0, 0, 0.3);
           }
 
@@ -91,21 +94,42 @@ export const BetaBadge = forwardRef<BetaBadgeHandle, { className?: string }>(
             animation: beta-badge-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
           }
 
+          /*
+           * Physically-motivated phases (each keyframe's animation-timing-function
+           * governs the segment TO THE NEXT keyframe — CSS applies it per-interval).
+           * The badge is pinned only at its left edge (origin-left) once the hinge
+           * tears — under gravity its stable hanging position is VERTICAL (rotate(90deg)),
+           * not flat. Released from flat (0deg), it swings down past vertical the same
+           * way a dropped trapdoor does:
+           *   0%–24%   swing 1: accelerates down through vertical (ease-in-quad — torque,
+           *            and so angular speed, is greatest passing 90deg) and overshoots to
+           *            ~120deg before gravity decelerates it (ease-out) into the peak.
+           *   24%–48%  swing back down through vertical to a rebound low, then a second,
+           *            smaller swing back up past vertical (~100deg) — amplitude damped.
+           *   48%–58%  settle dip: the hinge is failing, energy bleeding off.
+           *   58%–80%  hinge fully gives way → free fall, accelerating (ease-in-quad ≈
+           *            gravity, position ∝ t²) while de-rotating back toward flat, as if
+           *            straightening out as it drops (no more hinge torque to fight).
+           *   80%–96%  impact: energy absorption (ease-out) with a slight overshoot past
+           *            rest, then a small elastic rebound back up.
+           *   96%–100% final settle, ending exactly at .beta-badge-fallen's transform so
+           *            the animation → static-class handoff doesn't pop.
+           */
           @keyframes beta-badge-fall {
-            0%   { transform: rotate(0deg)  translateY(0);                            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15); }
-            /* відрив і два колихання правого краю (origin-left → права частина гойдається) */
-            10%  { transform: rotate(20deg) translateY(0);                            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.20); }
-            22%  { transform: rotate(5deg)  translateY(0);                            box-shadow: 0 2px 3px rgba(0, 0, 0, 0.18); }
-            34%  { transform: rotate(16deg) translateY(0);                            box-shadow: 0 3px 5px rgba(0, 0, 0, 0.22); }
-            46%  { transform: rotate(9deg)  translateY(0);                            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.20); }
-            /* зрив із кріплення і падіння на низ, з легким приземленням */
-            72%  { transform: rotate(24deg) translateY(calc(var(--beta-drop) * 0.7)); box-shadow: 0 6px 10px rgba(0, 0, 0, 0.30); }
-            88%  { transform: rotate(2deg)  translateY(calc(var(--beta-drop) + 3px)); box-shadow: 0 7px 12px rgba(0, 0, 0, 0.32); }
-            100% { transform: rotate(6deg)  translateY(var(--beta-drop));             box-shadow: 0 6px 9px rgba(0, 0, 0, 0.30); }
+            0%   { transform: rotate(0deg)    translateY(0);                             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15); animation-timing-function: cubic-bezier(0.11, 0, 0.5, 0); }
+            14%  { transform: rotate(95deg)   translateY(0);                             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.24); animation-timing-function: cubic-bezier(0.5, 1, 0.89, 1); }
+            24%  { transform: rotate(120deg)  translateY(0);                             box-shadow: 0 4px 7px rgba(0, 0, 0, 0.26); animation-timing-function: cubic-bezier(0.37, 0, 0.63, 1); }
+            36%  { transform: rotate(90deg)   translateY(0);                             box-shadow: 0 3px 5px rgba(0, 0, 0, 0.21); animation-timing-function: cubic-bezier(0.37, 0, 0.63, 1); }
+            48%  { transform: rotate(100deg)  translateY(0);                             box-shadow: 0 3px 5px rgba(0, 0, 0, 0.22); animation-timing-function: cubic-bezier(0.37, 0, 0.63, 1); }
+            58%  { transform: rotate(70deg)   translateY(0);                             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.19); animation-timing-function: cubic-bezier(0.11, 0, 0.5, 0); }
+            80%  { transform: rotate(40deg)   translateY(calc(var(--beta-drop) * 0.6));  box-shadow: 0 10px 14px rgba(0, 0, 0, 0.34); animation-timing-function: cubic-bezier(0.5, 1, 0.89, 1); }
+            90%  { transform: rotate(-6deg)   translateY(calc(var(--beta-drop) + 4px));  box-shadow: 0 3px 4px rgba(0, 0, 0, 0.38); animation-timing-function: cubic-bezier(0.37, 0, 0.63, 1); }
+            96%  { transform: rotate(4deg)    translateY(calc(var(--beta-drop) - 2px));  box-shadow: 0 5px 7px rgba(0, 0, 0, 0.30); animation-timing-function: cubic-bezier(0.5, 1, 0.89, 1); }
+            100% { transform: rotate(0deg)    translateY(var(--beta-drop));              box-shadow: 0 6px 9px rgba(0, 0, 0, 0.30); }
           }
 
           @keyframes beta-badge-rise {
-            0%   { transform: rotate(6deg)  translateY(var(--beta-drop)); box-shadow: 0 6px 9px rgba(0, 0, 0, 0.30); }
+            0%   { transform: rotate(0deg)  translateY(var(--beta-drop)); box-shadow: 0 6px 9px rgba(0, 0, 0, 0.30); }
             55%  { transform: rotate(-5deg) translateY(-2px);            box-shadow: 0 2px 3px rgba(0, 0, 0, 0.18); }
             78%  { transform: rotate(2deg)  translateY(0);               box-shadow: 0 1.5px 2px rgba(0, 0, 0, 0.16); }
             100% { transform: rotate(0deg)  translateY(0);               box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15); }
