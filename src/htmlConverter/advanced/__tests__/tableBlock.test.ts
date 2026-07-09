@@ -1,4 +1,3 @@
-import { mergeTokens,tokens } from "../config/tokens";
 import { classifyTable } from "../detect/tableBlock";
 import type { CellNode, Paragraph,TableNode } from "../ir/types";
 
@@ -65,17 +64,13 @@ describe("classifyTable — single-cell", () => {
     expect((result?.props as Record<string, unknown>)["href"]).toBe("https://example.com");
   });
 
-  it("classifies light accent cell as calloutLeft", () => {
+  // No border declared in the source → don't invent one; a light-bg cell with no
+  // border info renders as a plain colored box (alertBand), not a bordered callout.
+  it("classifies light bg cell with no border as alertBand, no accent color needed", () => {
     const table = makeTable([[makeCell({ bg: "#f5f5f5" })]]);
     const result = classifyTable(table);
-    expect(result?.kind).toBe("calloutLeft");
-  });
-
-  it("calloutLeft accentColor comes from tok.color.button, not module singleton", () => {
-    const customTok = mergeTokens(tokens, { color: { button: "#ff0000" } });
-    const table = makeTable([[makeCell({ bg: "#f5f5f5" })]]);
-    const result = classifyTable(table, customTok);
-    expect((result?.props as Record<string, unknown>)["accentColor"]).toBe("#ff0000");
+    expect(result?.kind).toBe("alertBand");
+    expect((result?.props as Record<string, unknown>)["border"]).toBeUndefined();
   });
 
   // Fix #1: h5-marked cell with a border but no bg must not become a bg-less buttonBand
@@ -128,7 +123,7 @@ describe("classifyTable — single-cell", () => {
     const result = classifyTable(table);
     // Single physical cell → calloutLeft or alertBand or null, never statsGrid
     expect(result?.kind).not.toBe("statsGrid");
-    expect(result?.kind).toBe("calloutLeft");
+    expect(result?.kind).toBe("alertBand");
   });
 });
 

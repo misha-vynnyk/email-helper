@@ -183,8 +183,13 @@ export function renderNode(
     case "buttonBand": {
       const p = node.props;
       const textColor = isDarkBg(p.bg, tok) ? tok.color.white : tok.color.black;
-      // Strip per-run color and href: button template controls text color/link,
-      // and nested <a> inside a button link would produce invalid HTML.
+      // Strip per-run color and href: this button comes from GDocs' h5-in-colored-cell
+      // marker convention (see classifySingleCell's hasButtonMarker branch) — the h5's own
+      // heading style carries a baked-in default color (often grey) that's an artifact of
+      // the heading style, not an author choice about the button's text. Unlike
+      // buildAlertBandSegments' nested-button case (a hand-styled banner where the author
+      // picked a real color to contrast against a hand-picked bg), trusting it here would
+      // print near-invisible grey text on an arbitrary button background.
       const buttonRuns = p.runs.map(r => ({ ...r, color: undefined, href: undefined }));
       const opts: ButtonBandOpts = {
         innerHtml: renderRuns(buttonRuns, tok, textColor),
@@ -200,7 +205,7 @@ export function renderNode(
       const p = node.props;
       const innerHtml = renderLines(p.lines, tok, tok.color.black, p.paraBreaks);
       const opts: CalloutOpts = {
-        accentColor: p.accentColor ?? tok.color.button,
+        accentColor: p.accentColor,
         bg: p.bg,
       };
       return tmpl.calloutLeft(innerHtml, opts);
@@ -221,7 +226,7 @@ export function renderNode(
         if (child.kind !== "paragraph") return { innerHtml: "" };
         const cp = child.props;
         const baseColor = cp.bg && isDarkBg(cp.bg, tok) ? tok.color.white : tok.color.black;
-        return { innerHtml: renderLines(cp.lines, tok, baseColor), bg: cp.bg, borderColor: cp.borderColor };
+        return { innerHtml: renderLines(cp.lines, tok, baseColor), bg: cp.bg, borderColor: cp.borderColor, align: cp.align };
       });
       const opts: GridOpts = {
         n: node.props.n || cells.length,

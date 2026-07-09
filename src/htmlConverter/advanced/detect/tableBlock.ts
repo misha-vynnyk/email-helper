@@ -185,7 +185,13 @@ function cellToChild(cell: CellNode, warn?: WarnFn): ComponentNode {
 // ── Column widths ─────────────────────────────────────────────────────────────
 
 /**
- * Convert raw <colgroup> widths to integer percentages summing to 100.
+ * Convert raw <colgroup> widths to integer percentages summing to 100, using
+ * the largest-remainder method: floor each share, then hand out the leftover
+ * points to the columns with the biggest fractional part. Dumping the whole
+ * remainder into the last column (as a plain floor would) skews near-equal
+ * GDocs pixel widths — e.g. 156/155/155/156 (a rounding artifact of GDocs'
+ * pt→px export, not an intentional layout) previously became 25/24/24/27
+ * instead of the intended 25/25/25/25.
  * Returns undefined when widths are missing/mismatched (e.g. colspan rows or
  * cols without a width attribute) — callers fall back to the equal split.
  */
@@ -193,8 +199,13 @@ function toWidthPercents(colWidths: number[] | undefined, ncells: number): numbe
   if (!colWidths || colWidths.length !== ncells || ncells < 2) return undefined;
   const total = colWidths.reduce((s, w) => s + w, 0);
   if (total <= 0) return undefined;
-  const pcts = colWidths.map(w => Math.floor((w / total) * 100));
-  pcts[pcts.length - 1] = 100 - pcts.slice(0, -1).reduce((s, p) => s + p, 0);
+  const shares = colWidths.map(w => (w / total) * 100);
+  const pcts = shares.map(s => Math.floor(s));
+  let remainder = 100 - pcts.reduce((s, p) => s + p, 0);
+  const order = shares
+    .map((s, i) => ({ i, frac: s - Math.floor(s) }))
+    .sort((a, b) => b.frac - a.frac);
+  for (let k = 0; k < remainder; k++) pcts[order[k % order.length].i] += 1;
   return pcts;
 }
 
@@ -266,13 +277,11 @@ function classifySingleCell(
     return { kind: "calloutBox", props: { border, bg }, children };
   }
 
-  // Light bg with no border info in the document → generic accent callout (house default color)
+  // Light bg with no border declared in the source → keep the bg as a plain colored box.
+  // Never synthesize an accent border the document never had.
   {
     const { lines, paraBreaks } = flattenLinesWithBreaks(cell, warn);
-    return {
-      kind: "calloutLeft",
-      props: { lines, paraBreaks, bg, accentColor: tok.color.button },
-    };
+    return { kind: "alertBand", props: { lines, paraBreaks, bg: bg! } };
   }
 }
 

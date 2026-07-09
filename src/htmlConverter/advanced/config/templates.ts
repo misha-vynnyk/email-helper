@@ -64,15 +64,17 @@ export interface GridCell {
   innerHtml: string;
   /** Optional highlight background (e.g. a featured stat tile) — text color adapts via isDarkBg */
   bg?: string;
-  /** This cell's own border color; falls back to GridOpts.borderColor, then tok.color.tableBorder */
+  /** This cell's own border color; falls back to GridOpts.borderColor; no border drawn when both are absent */
   borderColor?: string;
+  /** Text alignment from the source cell — defaults to center. */
+  align?: "left" | "center" | "right";
 }
 
 export interface GridOpts {
   n: number;
   /** Integer column widths in %, summing to 100 (from GDocs <colgroup>); equal split when absent */
   widths?: number[];
-  /** Cell border color from the source document; falls back to tok.color.tableBorder */
+  /** Cell border color from the source document; no border drawn when absent */
   borderColor?: string;
 }
 
@@ -89,14 +91,14 @@ export interface SplitRowOpts {
 export interface RecordOpts {
   /** Integer column widths in %, summing to 100 (from GDocs <colgroup>); equal split when absent */
   widths?: number[];
-  /** Cell border color from the source document; falls back to tok.color.tableBorder */
+  /** Cell border color from the source document; no border drawn when absent */
   borderColor?: string;
   rows: Array<{
     bg?: string;
     /**
      * `border` (full per-side spec from the source doc) takes precedence when present and draws
-     * every declared side; `borderColor` falls back to RecordOpts.borderColor, then
-     * tok.color.tableBorder, and only ever draws a single bottom rule.
+     * every declared side; `borderColor` falls back to RecordOpts.borderColor and draws a single
+     * bottom rule; no border is drawn when neither is present.
      */
     cells: Array<{ innerHtml: string; align?: string; bg?: string; border?: BorderSpec; borderColor?: string }>;
   }>;
@@ -286,14 +288,16 @@ ${indentHtml(innerHtml!, 10)}
     },
 
     calloutLeft(innerHtml: string, opts: CalloutOpts): string {
-      const { accentColor, bg = tok.color.calloutBg } = opts;
+      const { accentColor, bg } = opts;
       const style = baseStyle({}, tok);
       const p = pad();
       const px = tok.layout.calloutPadX;
       const accent = tok.layout.calloutAccentPx;
+      const bgAttr = bg ? ` bgcolor="${bg}"` : "";
+      const bgStyle = bg ? `background-color:${bg};` : "";
       return `<tr>
   <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
-    <table align="center" border="0" bgcolor="${bg}" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;border-left:${accent}px solid ${accentColor};" role="presentation">
+    <table align="center" border="0"${bgAttr} cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;${bgStyle}border-left:${accent}px solid ${accentColor};" role="presentation">
       <tr>
         <td align="left"
           style="${style} padding-left:${px}px;padding-right:${px}px;padding-top:${p}px;padding-bottom:${p}px;">
@@ -350,12 +354,13 @@ ${indentHtml(buttonTableHtml(innerHtml, href, bg, tok, radius, border), 4)}
         .map((cell, i) => {
           const w = widths?.[i] ?? (i === cells.length - 1 ? 100 - pct * (cells.length - 1) : pct);
           const textColor = cell.bg && isDarkBg(cell.bg, tok) ? tok.color.white : tok.color.black;
-          const cellStyle = baseStyle({ align: "center", fontSize: tok.font.smallPx, color: textColor }, tok);
+          const cellStyle = baseStyle({ align: cell.align ?? "center", fontSize: tok.font.smallPx, color: textColor }, tok);
           const bgAttr = cell.bg ? ` bgcolor="${cell.bg}"` : "";
           const bgStyle = cell.bg ? `background-color:${cell.bg};` : "";
-          const cellBorder = `${tok.layout.recordBorderPx}px solid ${cell.borderColor ?? borderColor ?? tok.color.tableBorder}`;
+          const effectiveBorderColor = cell.borderColor ?? borderColor;
+          const borderCss = effectiveBorderColor ? `border:${tok.layout.recordBorderPx}px solid ${effectiveBorderColor};` : "";
           return `<td valign="top" align="center" class="${tok.classes.inlineCell}" width="${w}%"${bgAttr}
-  style="display:inline-block;width:${w}%;max-width:100%;min-width:${tok.layout.gridMinWidth}px;border:${cellBorder};${bgStyle}">
+  style="display:inline-block;width:${w}%;max-width:100%;min-width:${tok.layout.gridMinWidth}px;${borderCss}${bgStyle}">
   <table border="0" cellspacing="0" cellpadding="0" role="presentation" width="100%" style="width:100%;">
     <tr>
       <td${bgAttr ? `${bgAttr}\n       ` : ""} style="${cellStyle} padding:${cy}px ${cx}px;${bgStyle}">
@@ -465,7 +470,7 @@ ${indentHtml(cellsHtml, 8)}
               // (no top declared) has nothing to double against, so every row keeps its rule,
               // matching the split-border technique already used by statsGrid.
               const hasExplicitBorder = cell.border && Object.values(cell.border).some(Boolean);
-              const cellBorder = cell.borderColor ?? borderColor ?? tok.color.tableBorder;
+              const effectiveBorderColor = cell.borderColor ?? borderColor;
               const drawBottom = Boolean(cell.border?.bottom) && (isLastRow || !cell.border?.top);
               const drawRight = Boolean(cell.border?.right) && (isLastCol || !cell.border?.left);
               const borderStyle = hasExplicitBorder
@@ -479,7 +484,9 @@ ${indentHtml(cellsHtml, 8)}
                   tok,
                   tok.layout.recordBorderPx,
                 )
-                : `border-bottom:${tok.layout.recordBorderPx}px solid ${cellBorder};`;
+                : effectiveBorderColor
+                  ? `border-bottom:${tok.layout.recordBorderPx}px solid ${effectiveBorderColor};`
+                  : "";
               // Inner <span> repeats the font styling, matching the text-cell convention used by
               // paragraph/etc — some clients don't reliably inherit font styles from the <td>.
               return `<td align="${align}"${bgAttr}${widthAttr}

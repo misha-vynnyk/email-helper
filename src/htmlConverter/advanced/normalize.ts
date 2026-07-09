@@ -17,9 +17,10 @@ const ALWAYS_STRIP = new Set([
 
 const STRIP_WHEN: Array<[string, string]> = [
   ["background-color", "transparent"],
-  ["text-decoration", "none"],
   ["border", "none"],
 ];
+// text-decoration: none is kept even when explicit — fromDom's isExplicitNonUnderline()
+// reads it to detect an author cancelling an inherited underline on a nested span.
 
 function cleanStyle(style: string): string {
   const kept: string[] = [];

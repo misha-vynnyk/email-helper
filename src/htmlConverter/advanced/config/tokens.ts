@@ -9,8 +9,6 @@ export interface Tokens {
   color: {
     rootBackground: string;
     warning: string;
-    calloutBg: string;
-    tableBorder: string;
     blackSnap: number;
     whiteSnap: number;
     neutralTol: number;
@@ -83,8 +81,6 @@ export const tokens: Tokens = {
   color: {
     rootBackground: "#ffffff",
     warning: "#cc0000",
-    calloutBg: "#f5f5f5",
-    tableBorder: "#E4E4E4",
     // Colour-classification thresholds (used only by ir/color.ts — not rendered directly)
     blackSnap: 48,
     whiteSnap: 48,
