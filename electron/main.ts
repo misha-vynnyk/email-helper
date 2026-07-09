@@ -1,4 +1,3 @@
-import { execSync } from "child_process";
 import { app, BrowserWindow, dialog, ipcMain, Notification,shell } from "electron";
 import fsSync from "fs";
 import fs from "fs/promises";
@@ -14,46 +13,6 @@ let serverInstance: Server | null = null;
 async function startEmbeddedServer(): Promise<number> {
   // Expose userData path so Express routes can persist settings across restarts
   process.env.ELECTRON_USER_DATA = app.getPath("userData");
-
-  // In a packaged macOS/Linux app launched from Finder/Dock/desktop, PATH is
-  // stripped — homebrew, nvm, volta, fnm paths are all absent.
-  // Strategy:
-  //   1. Ask the user's login shell ("which node") — covers nvm, volta, fnm, etc.
-  //   2. Prepend well-known static paths as a fast fallback (homebrew, /usr/local).
-  // We set NODE_EXEC_PATH so storageUpload.js's getNodeExec() picks it up, and
-  // we also patch process.env.PATH so all other child processes benefit.
-  if (process.platform === "darwin" || process.platform === "linux") {
-    // Fast static fallback paths (no subprocess needed)
-    const staticPaths =
-      process.platform === "darwin"
-        ? ["/opt/homebrew/bin", "/opt/homebrew/sbin", "/usr/local/bin"]
-        : ["/usr/local/bin", "/usr/bin"];
-    const current = process.env.PATH ?? "";
-    const missing = staticPaths.filter((p) => !current.split(":").includes(p));
-    if (missing.length > 0) {
-      process.env.PATH = [...missing, current].join(":");
-    }
-
-    // Login-shell lookup — reliably finds nvm/volta/fnm managed node binaries.
-    if (!process.env.NODE_EXEC_PATH) {
-      try {
-        const shell = process.env.SHELL || "/bin/zsh";
-        const found = execSync(`${shell} -l -c "which node" 2>/dev/null`, { timeout: 5000 })
-          .toString()
-          .trim();
-        if (found && fsSync.existsSync(found)) {
-          process.env.NODE_EXEC_PATH = found;
-          // Also ensure its directory is in PATH for other tools (npx, etc.)
-          const dir = path.dirname(found);
-          if (!process.env.PATH!.split(":").includes(dir)) {
-            process.env.PATH = `${dir}:${process.env.PATH}`;
-          }
-        }
-      } catch {
-        // Login shell failed (rare). Static paths above are still in effect.
-      }
-    }
-  }
 
   // path resolves to <project-root>/server/index.js both in dev and packaged
   const serverPath = path.join(__dirname, "../../server/index.js");

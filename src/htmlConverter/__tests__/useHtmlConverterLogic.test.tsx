@@ -4,6 +4,9 @@ import { useHtmlConverterLogic } from "../hooks/useHtmlConverterLogic";
 import { DEFAULT_UI_SETTINGS } from "../hooks/useHtmlConverterSettings";
 
 // Mocks
+jest.mock("../hooks/useBrowserDetection", () => ({
+  useBrowserDetection: () => ({ status: "skipped", path: null }),
+}));
 jest.mock("../hooks/useHtmlConverterSettings", () => ({
   useHtmlConverterSettings: () => ({
     ui: DEFAULT_UI_SETTINGS,

@@ -23,6 +23,7 @@
     "dist:mac": "electron-vite build && electron-builder --mac",
     "dist:win": "electron-vite build && electron-builder --win",
     "dist": "electron-vite build && electron-builder",
+    "release": "node scripts/release.js",
     "preview": "vite preview",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist",

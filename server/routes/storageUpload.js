@@ -22,40 +22,53 @@ function resolveAutomationPath(...segments) {
 }
 
 // Returns the path to the Node.js executable for spawning child scripts.
-// When the server is embedded inside Electron, process.execPath is the Electron
-// binary — using it to run .js scripts would fail. Instead:
-//   1. prefer npm_node_execpath (set by npm, points to the actual node binary)
-//   2. fall back to process.execPath only in a pure Node.js process
-//   3. search common installation paths (covers packaged app + missing PATH)
-//   4. last resort: bare "node" (works only if PATH is already correct)
+//   1. prefer npm_node_execpath (set by npm in dev — points to the real node binary)
+//   2. plain (non-Electron) process → process.execPath is already node
+//   3. packaged Electron app → process.execPath (the Electron binary itself),
+//      paired with ELECTRON_RUN_AS_NODE=1 from getNodeExecEnv() below.
+// End users of the packaged app generally do NOT have Node.js installed system-wide,
+// so searching PATH / well-known install locations (the previous approach) silently
+// fell through to a bare "node" that cmd.exe/sh couldn't find. Electron always bundles
+// its own Node runtime — ELECTRON_RUN_AS_NODE makes that binary behave as plain node,
+// with zero dependency on anything installed outside the app itself.
 function getNodeExec() {
   const npmNode = process.env.npm_node_execpath;
   if (npmNode && fs.existsSync(npmNode)) return npmNode;
-  if (!process.versions.electron) return process.execPath;
-
-  // In a packaged Electron app PATH is stripped — homebrew/nvm paths are absent
-  // on macOS/Linux, and there's no system PATH lookup at all on Windows unless
-  // Node was installed system-wide and the app happened to inherit that PATH.
-  // Search well-known locations before falling back to bare "node".
-  const candidates = process.platform === "win32"
-    ? [
-        process.env.NODE_EXEC_PATH,                                              // explicit override via env var
-        path.join(process.env.ProgramFiles || "C:\\Program Files", "nodejs\\node.exe"),
-        path.join(process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)", "nodejs\\node.exe"),
-        path.join(process.env.APPDATA || "", "npm\\node.exe"),
-      ]
-    : [
-        process.env.NODE_EXEC_PATH,    // explicit override via env var
-        "/opt/homebrew/bin/node",      // homebrew on Apple Silicon
-        "/usr/local/bin/node",         // homebrew on Intel / nvm
-        "/usr/bin/node",               // system node (rare on macOS)
-        "/opt/local/bin/node",         // MacPorts
-      ];
-  for (const p of candidates) {
-    try { if (p && fs.existsSync(p)) return p; } catch {}
-  }
-  return "node";
+  return process.execPath;
 }
+
+// Extra env vars that must be merged into the child's env for the executable
+// returned by getNodeExec() to run the target script as plain Node instead of
+// (for the Electron-binary case) launching another GUI instance.
+function getNodeExecEnv() {
+  if (process.env.npm_node_execpath) return {};
+  if (!process.versions.electron) return {};
+  return { ELECTRON_RUN_AS_NODE: "1" };
+}
+
+/**
+ * GET /api/storage-upload/browser-status
+ * Detects whether a usable Brave/Chromium executable can be found for the
+ * Playwright upload path (BRAVE_EXECUTABLE_PATH env, automation/config.json,
+ * or well-known per-OS install locations — same resolution order the upload
+ * script itself uses). Lets the UI auto-fill the manual override setting when
+ * detection succeeds, and show a clear "not found" state when it doesn't.
+ */
+router.get("/api/storage-upload/browser-status", (_req, res) => {
+  try {
+    const configLibPath = resolveAutomationPath("scripts", "lib", "config.js");
+    if (!fs.existsSync(configLibPath) || !automationConfig) {
+      return res.json({ found: false, path: null });
+    }
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- dynamic runtime path, not statically importable
+    const { findBraveExecutable } = require(configLibPath);
+    const candidate = findBraveExecutable(automationConfig);
+    const found = !!candidate && fs.existsSync(candidate);
+    return res.json({ found, path: found ? candidate : null });
+  } catch (error) {
+    return res.json({ found: false, path: null, error: error.message });
+  }
+});
 
 // Configure multer for temporary file storage
 const upload = multer({
@@ -214,7 +227,7 @@ router.post("/api/storage-upload/finalize", async (req, res) => {
     args.push("--finalize");
     const command = `"${getNodeExec()}" "${runUploadPath}" ${args.map((a) => `"${String(a).replace(/"/g, '\\"')}"`).join(" ")}`;
 
-    const finalizeEnv = { ...process.env };
+    const finalizeEnv = { ...process.env, ...getNodeExecEnv() };
     if (browserExecutablePath) finalizeEnv.BRAVE_EXECUTABLE_PATH = browserExecutablePath;
 
     exec(command, { timeout: 60000, maxBuffer: 2 * 1024 * 1024, env: finalizeEnv }, (error, stdout, stderr) => {
@@ -300,7 +313,7 @@ router.post("/api/storage-upload", async (req, res) => {
     // Execute automation script with extended timeout (login may require manual steps)
     // Reset PORT_ID to "0" so the automation script uses the canonical Brave profile paths
     // (BravePlaywright-AlfaOne, not BravePlaywright-AlfaOne-2) regardless of which server instance is running.
-    const childEnv = { ...process.env, PORT_ID: "0" };
+    const childEnv = { ...process.env, ...getNodeExecEnv(), PORT_ID: "0" };
     const trimmedBrowserPath = typeof browserExecutablePath === "string" ? browserExecutablePath.trim() : "";
     if (trimmedBrowserPath) childEnv.BRAVE_EXECUTABLE_PATH = trimmedBrowserPath;
     exec(command, { timeout: 900000, maxBuffer: 10 * 1024 * 1024, env: childEnv }, (error, stdout, stderr) => {

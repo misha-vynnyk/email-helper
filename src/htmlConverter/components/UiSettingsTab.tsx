@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useElectronAPI } from "@/hooks/useElectronAPI";
 
+import type { BrowserDetectionStatus } from "../hooks/useBrowserDetection";
 import type { UploadMode } from "../hooks/useHtmlConverterLogic";
 import type { UiSettings } from "../hooks/useHtmlConverterSettings";
 import { DEFAULT_UI_SETTINGS } from "../hooks/useHtmlConverterSettings";
@@ -16,6 +17,7 @@ type UiSettingsTabProps = {
   setUi: Dispatch<SetStateAction<UiSettings>>;
   uploadMode: UploadMode;
   setUploadMode: Dispatch<SetStateAction<UploadMode>>;
+  browserDetectionStatus: BrowserDetectionStatus;
 };
 
 type RowProps = {
@@ -40,7 +42,7 @@ const Row: React.FC<RowProps> = ({ id, label, hint, badge, checked, onCheckedCha
   </div>
 );
 
-export const UiSettingsTab: React.FC<UiSettingsTabProps> = ({ ui, setUi, uploadMode, setUploadMode }) => {
+export const UiSettingsTab: React.FC<UiSettingsTabProps> = ({ ui, setUi, uploadMode, setUploadMode, browserDetectionStatus }) => {
   const electronAPI = useElectronAPI();
 
   const set = (key: keyof UiSettings, value: boolean) =>
@@ -124,43 +126,44 @@ export const UiSettingsTab: React.FC<UiSettingsTabProps> = ({ ui, setUi, uploadM
         </div>
       </section>
 
-      {/* ── Папка для збереження файлів ───────────────────────────────────── */}
-      <div className='h-px bg-border' />
-      <section className='space-y-3'>
-        <h3 className='text-xs font-semibold uppercase tracking-widest text-muted-foreground'>Папка для збереження</h3>
-        <div className='flex gap-2 items-center'>
-          <Input
-            value={ui.downloadFolder}
-            onChange={(e) => setUi((prev) => ({ ...prev, downloadFolder: e.target.value }))}
-            placeholder={electronAPI ? "Оберіть папку або введіть шлях..." : "Введіть шлях до папки..."}
-            className='h-8 text-xs flex-1 font-mono'
-          />
-          {electronAPI && (
-            <button
-              onClick={async () => {
-                const folder = await electronAPI.openFolderDialog();
-                if (folder) setUi((prev) => ({ ...prev, downloadFolder: folder }));
-              }}
-              className='h-8 px-2 flex items-center gap-1.5 rounded-lg border border-input bg-background hover:bg-muted text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0'
-              title='Обрати папку'>
-              <FolderOpen size={14} />
-            </button>
-          )}
-          {ui.downloadFolder && (
-            <button
-              onClick={() => setUi((prev) => ({ ...prev, downloadFolder: "" }))}
-              className='h-8 px-2 rounded-lg border border-input bg-background hover:bg-destructive/10 hover:text-destructive text-xs text-muted-foreground transition-colors shrink-0'
-              title='Очистити'>
-              ✕
-            </button>
-          )}
-        </div>
-        {!ui.downloadFolder && (
-          <p className='text-[11px] text-muted-foreground'>
-            {electronAPI ? "Без папки — файли збережуться через діалог браузера" : "Без шляху — стандартне завантаження браузером"}
-          </p>
-        )}
-      </section>
+      {/* ── Папка для збереження файлів (тільки в Electron) ─────────────────
+          electronAPI.saveToPath() — єдиний спосіб записати файл напряму за
+          шляхом; у звичайному браузері такого API немає (завжди діалог
+          збереження або стандартна папка завантажень), тож поле там марне. */}
+      {electronAPI && (
+        <>
+          <div className='h-px bg-border' />
+          <section className='space-y-3'>
+            <h3 className='text-xs font-semibold uppercase tracking-widest text-muted-foreground'>Папка для збереження</h3>
+            <div className='flex gap-2 items-center'>
+              <Input
+                value={ui.downloadFolder}
+                onChange={(e) => setUi((prev) => ({ ...prev, downloadFolder: e.target.value }))}
+                placeholder='Оберіть папку або введіть шлях...'
+                className='h-8 text-xs flex-1 font-mono'
+              />
+              <button
+                onClick={async () => {
+                  const folder = await electronAPI.openFolderDialog();
+                  if (folder) setUi((prev) => ({ ...prev, downloadFolder: folder }));
+                }}
+                className='h-8 px-2 flex items-center gap-1.5 rounded-lg border border-input bg-background hover:bg-muted text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0'
+                title='Обрати папку'>
+                <FolderOpen size={14} />
+              </button>
+              {ui.downloadFolder && (
+                <button
+                  onClick={() => setUi((prev) => ({ ...prev, downloadFolder: "" }))}
+                  className='h-8 px-2 rounded-lg border border-input bg-background hover:bg-destructive/10 hover:text-destructive text-xs text-muted-foreground transition-colors shrink-0'
+                  title='Очистити'>
+                  ✕
+                </button>
+              )}
+            </div>
+            {!ui.downloadFolder && <p className='text-[11px] text-muted-foreground'>Без папки — файли збережуться через діалог збереження</p>}
+          </section>
+        </>
+      )}
 
       {/* ── Завантаження (Electron) ────────────────────────────────────────── */}
       {electronAPI && (
@@ -203,8 +206,10 @@ export const UiSettingsTab: React.FC<UiSettingsTabProps> = ({ ui, setUi, uploadM
         </>
       )}
 
-      {/* ── Шлях до браузера (Playwright) ─────────────────────────────────── */}
-      {uploadMode === "playwright" && (
+      {/* ── Шлях до браузера (Playwright, тільки в Electron) ────────────────
+          Web/dev режим (без electronAPI) на dev-машинах бере шлях напряму з
+          automation/config.json — там ця ручна підказка не потрібна. */}
+      {uploadMode === "playwright" && electronAPI && (
         <>
           <div className='h-px bg-border' />
           <section className='space-y-3'>
@@ -213,20 +218,18 @@ export const UiSettingsTab: React.FC<UiSettingsTabProps> = ({ ui, setUi, uploadM
               <Input
                 value={ui.browserExecutablePath}
                 onChange={(e) => setUi((prev) => ({ ...prev, browserExecutablePath: e.target.value }))}
-                placeholder={electronAPI ? "Автоматично, або оберіть вручну..." : "Автоматично, або введіть шлях до brave.exe..."}
+                placeholder='Автоматично, або оберіть вручну...'
                 className='h-8 text-xs flex-1 font-mono'
               />
-              {electronAPI && (
-                <button
-                  onClick={async () => {
-                    const filePath = await electronAPI.openFileDialog([{ name: "Brave Browser", extensions: ["exe", "app", "*"] }]);
-                    if (filePath) setUi((prev) => ({ ...prev, browserExecutablePath: filePath }));
-                  }}
-                  className='h-8 px-2 flex items-center gap-1.5 rounded-lg border border-input bg-background hover:bg-muted text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0'
-                  title='Обрати brave.exe'>
-                  <FolderOpen size={14} />
-                </button>
-              )}
+              <button
+                onClick={async () => {
+                  const filePath = await electronAPI.openFileDialog([{ name: "Brave Browser", extensions: ["exe", "app", "*"] }]);
+                  if (filePath) setUi((prev) => ({ ...prev, browserExecutablePath: filePath }));
+                }}
+                className='h-8 px-2 flex items-center gap-1.5 rounded-lg border border-input bg-background hover:bg-muted text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0'
+                title='Обрати браузер'>
+                <FolderOpen size={14} />
+              </button>
               {ui.browserExecutablePath && (
                 <button
                   onClick={() => setUi((prev) => ({ ...prev, browserExecutablePath: "" }))}
@@ -236,9 +239,20 @@ export const UiSettingsTab: React.FC<UiSettingsTabProps> = ({ ui, setUi, uploadM
                 </button>
               )}
             </div>
-            <p className='text-[11px] text-muted-foreground'>
-              Заповни, якщо Brave не знайдено автоматично (типово на Windows) — застосунок покаже помилку "Не знайдено браузер Brave", коли шлях невірний.
-            </p>
+            {browserDetectionStatus === "checking" && (
+              <p className='text-[11px] text-muted-foreground'>Перевіряю, чи встановлено Brave...</p>
+            )}
+            {browserDetectionStatus === "found" && (
+              <p className='text-[11px] text-success'>✓ Brave знайдено автоматично.</p>
+            )}
+            {browserDetectionStatus === "not-found" && (
+              <p className='text-[11px] text-destructive'>⚠ Браузер не знайдено автоматично — вкажи шлях вручну вище.</p>
+            )}
+            {browserDetectionStatus === "skipped" && (
+              <p className='text-[11px] text-muted-foreground'>
+                Заповни, якщо Brave не знайдено автоматично — застосунок покаже помилку "Не знайдено браузер Brave", коли шлях невірний.
+              </p>
+            )}
           </section>
         </>
       )}
