@@ -280,6 +280,12 @@ describe("fromDom — link-color span whitespace stripping", () => {
     expect(run?.href).toBe(tokens.placeholderHref);
   });
 
+  it("named-color blue + underlined span is detected as a link (name resolved to hex first)", () => {
+    const p = firstParagraph('<p><span style="color:blue;text-decoration:underline;">Named link</span></p>');
+    const run = p.lines[0].find((r) => r.text === "Named link");
+    expect(run?.href).toBe(tokens.placeholderHref);
+  });
+
   // Regression: color alone is too weak a signal — GDocs authors use blue for plain
   // emphasis/headings too (e.g. a promo banner's readable-blue line with no link intent).
   // Requiring underline as well avoids turning that into an accidental clickable link.

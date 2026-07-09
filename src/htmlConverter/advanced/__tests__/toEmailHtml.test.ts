@@ -466,7 +466,9 @@ describe("renderNode — image", () => {
   });
 
   it("returns empty string when src is missing", () => {
-    const node: ComponentNode = { kind: "image", props: {} };
+    // Malformed node (src is required by ImageProps) — cast to exercise the
+    // runtime src guard that shields render from IR built outside the type system.
+    const node = { kind: "image", props: {} } as unknown as ComponentNode;
     expect(renderNode(node, tmpl, tokens)).toBe("");
   });
 });
@@ -546,36 +548,17 @@ describe("renderNode — buttonBand", () => {
     expect(result).toContain("#ff0000");
   });
 
-  it("uses label fallback when runs is absent (p['runs'] ?? p['label'])", () => {
-    const node: ComponentNode = {
-      kind: "buttonBand",
-      props: { label: [{ text: "Fallback" }], href: "http://x.com", bg: "#000000" },
-    };
-    const result = renderNode(node, tmpl, tokens);
-    expect(result).toContain("Fallback");
-  });
-
-  it("renderNode does not forward subtitleHtml from props (subtitle tested at template level)", () => {
-    const node: ComponentNode = {
-      kind: "buttonBand",
-      props: {
-        runs: [{ text: "Buy now" }],
-        href: "https://example.com",
-        bg: "#28b628",
-        subtitleHtml: "<em>Note</em>",
-      },
-    };
-    const result = renderNode(node, tmpl, tokens);
-    // renderNode does not read subtitleHtml from props — subtitle is a template-level concern
-    expect(result).not.toContain(`padding-top:${tokens.layout.buttonSubtitlePadTop}px`);
-  });
+  // Note: the former `label` fallback and the `subtitleHtml` pass-through tests were
+  // removed — ButtonBandProps now requires `runs` and has no `label`/`subtitleHtml`
+  // fields, so both behaviors are guaranteed by the type system at the classify→render
+  // boundary. Subtitle rendering is still covered at the template level in templates.test.
 });
 
 // ── renderNode — unknown kind returns empty string ────────────────────────────
 
 describe("renderNode — unknown kind", () => {
   it("returns empty string for unhandled component kind", () => {
-    const node = { kind: "nonexistent" as ComponentNode["kind"], props: {} };
+    const node = { kind: "nonexistent", props: {} } as unknown as ComponentNode;
     const result = renderNode(node, tmpl, tokens);
     expect(result).toBe("");
   });

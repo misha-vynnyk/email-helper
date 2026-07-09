@@ -6,6 +6,7 @@ import type { Tokens } from "../config/tokens";
 import { tokens as defaultTokens } from "../config/tokens";
 import { isBgRedundant, isDarkBg } from "../ir/color";
 import type { BorderSide, BorderSpec, CellNode, ComponentNode, Paragraph, Run,StructuralNode, TableNode, WarnFn } from "../ir/types";
+import { WARN } from "../warnings";
 
 /** Recurses back into classify.ts — threaded in to avoid a circular import. */
 export type ClassifyChildrenFn = (nodes: StructuralNode[]) => ComponentNode[];
@@ -32,49 +33,14 @@ function hasMeaningfulBorder(border: BorderSpec | undefined, tok: Tokens): boole
 // ── Cell content helpers ──────────────────────────────────────────────────────
 
 /**
- * Collect runs from a cell, descending into nested tables (their cells'
- * paragraphs are flattened in document order). Nested-table flattening is
- * reported via `warn` — the layout is lost, only the text survives.
- */
-function flattenRuns(cell: CellNode, warn?: WarnFn): Run[] {
-  const runs: Run[] = [];
-  for (const child of cell.children) {
-    if (child.type === "p") {
-      runs.push(...child.lines.flat());
-    } else if (child.type === "table") {
-      warn?.("Вкладену таблицю сплющено до тексту (розмітка внутрішньої таблиці втрачена)");
-      for (const row of child.rows) {
-        for (const nested of row.cells) {
-          runs.push(...flattenRuns(nested, undefined /* warn once per table */));
-        }
-      }
-    }
-  }
-  return runs;
-}
-
-/** Paragraph lines of a cell, including lines from nested tables (flattened). */
-function flattenLines(cell: CellNode, warn?: WarnFn): Run[][] {
-  const lines: Run[][] = [];
-  for (const child of cell.children) {
-    if (child.type === "p") {
-      lines.push(...child.lines);
-    } else if (child.type === "table") {
-      warn?.("Вкладену таблицю сплющено до тексту (розмітка внутрішньої таблиці втрачена)");
-      for (const row of child.rows) {
-        for (const nested of row.cells) {
-          lines.push(...flattenLines(nested, undefined));
-        }
-      }
-    }
-  }
-  return lines;
-}
-
-/**
- * Same as flattenLines, but also tracks which line indices start a new source
- * paragraph — lets the caller render a <br><br> at those boundaries instead of
- * silently gluing separate paragraphs (e.g. a quote + its attribution) together.
+ * Core cell flattener: paragraph lines of a cell in document order, descending
+ * into nested tables (whose layout is lost — only the text survives, reported
+ * via `warn`). Also tracks which line indices start a new source paragraph, so
+ * callers can render a <br><br> at those boundaries instead of silently gluing
+ * separate paragraphs (e.g. a quote + its attribution) together.
+ *
+ * flattenLines / flattenRuns are thin projections of this — one recursion, one
+ * nested-table warning, three shapes.
  */
 function flattenLinesWithBreaks(cell: CellNode, warn?: WarnFn): { lines: Run[][]; paraBreaks: Set<number> } {
   const lines: Run[][] = [];
@@ -89,16 +55,26 @@ function flattenLinesWithBreaks(cell: CellNode, warn?: WarnFn): { lines: Run[][]
     if (child.type === "p") {
       appendBlock(child.lines, child.paraBreaks);
     } else if (child.type === "table") {
-      warn?.("Вкладену таблицю сплющено до тексту (розмітка внутрішньої таблиці втрачена)");
+      warn?.(WARN.nestedTableFlattened);
       for (const row of child.rows) {
         for (const nested of row.cells) {
-          const nestedResult = flattenLinesWithBreaks(nested, undefined);
+          const nestedResult = flattenLinesWithBreaks(nested, undefined /* warn once per table */);
           appendBlock(nestedResult.lines, nestedResult.paraBreaks);
         }
       }
     }
   }
   return { lines, paraBreaks };
+}
+
+/** Paragraph lines of a cell, including lines from nested tables (flattened). */
+function flattenLines(cell: CellNode, warn?: WarnFn): Run[][] {
+  return flattenLinesWithBreaks(cell, warn).lines;
+}
+
+/** All runs of a cell, flattened across lines and nested tables. */
+function flattenRuns(cell: CellNode, warn?: WarnFn): Run[] {
+  return flattenLines(cell, warn).flat();
 }
 
 function findHref(cell: CellNode): string | null {

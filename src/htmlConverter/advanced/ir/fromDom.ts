@@ -7,6 +7,7 @@ import type { Tokens } from "../config/tokens";
 import { tokens as defaultTokens } from "../config/tokens";
 import { canonicalizeBg,canonicalizeText } from "./color";
 import { getAlign, isBold, isExplicitNonBold, isExplicitNonItalic, isExplicitNonUnderline, isItalic, isUnderline, parseStyle, ptToSizeRole } from "./style";
+import { WARN } from "../warnings";
 import type { BorderSide, BorderSpec, CellNode, ImageNode, Paragraph, RowNode, Run,StructuralNode, TableNode, WarnFn } from "./types";
 
 // ── Inline run collection ─────────────────────────────────────────────────────
@@ -139,7 +140,10 @@ function collectRuns(el: Element | Node, ctx: Ctx, tok: Tokens): Run[] {
     // placeholder link. Both signals are required — color alone is too weak a signal (GDocs
     // authors use blue for plain emphasis/headings too) and produced false-positive links
     // (e.g. a promo banner's blue "readable" text becoming clickable for no reason).
-    if (tag === "SPAN" && rawColor && !childCtx.href && childCtx.underline && isLinkColor(rawColor)) {
+    // Test the canonicalized color (childCtx.color), not the raw CSS value, so named/rgb()
+    // blues resolve to hex first — isLinkColor's parser only understands hex/rgb, not names.
+    if (tag === "SPAN" && rawColor && !childCtx.href && childCtx.underline &&
+        isLinkColor(childCtx.color ?? rawColor)) {
       childCtx.href = tok.placeholderHref;
     }
 
@@ -196,7 +200,7 @@ function parseParagraph(el: Element, bg: string, tok: Tokens): Paragraph | null 
 function parseImage(el: Element, warn?: WarnFn): ImageNode | null {
   const src = el.getAttribute("src");
   if (!src) {
-    warn?.("Зображення без src пропущено");
+    warn?.(WARN.imageWithoutSrc);
     return null;
   }
   const alt = el.getAttribute("alt") ?? undefined;
