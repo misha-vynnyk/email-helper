@@ -62,7 +62,28 @@
       "Bash(node \"/private/tmp/claude-501/-Users-mykhailovynnyk-Documents-projects-email-helper/e876771e-7f47-449a-8dcb-28979da0cf7a/scratchpad/check-beta-badges.js\")",
       "Bash(find ~/Library/Caches/ms-playwright/chromium-1228 -name \"*.app\" -o -name \"Chromium\" -o -name \"chrome\" 2>/dev/null | head -10)",
       "Bash(grep -o '.\\\\{80\\\\}\\\\$11\\\\.8M.\\\\{40\\\\}' /Users/mykhailovynnyk/Documents/projects/email-helper/src/htmlConverter/advanced/__tests__/fixtures/raw/tickr-promo.html)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(python3 -c ' *)",
+      "Bash(grep -n 'Everyone is talking\\\\|1.75 trillion\\\\|I get it\\\\|But while that story\\\\|Mode Mobile built\\\\|When Starlink\\\\|numbers are real\\\\|Nasdaq $MODE\\\\|Pre-IPO shares are still' /Users/mykhailovynnyk/Documents/projects/email-helper/src/htmlConverter/advanced/__tests__/__snapshots__/e2e.test.ts.snap)",
+      "Bash(grep -rn \"toBe\\(\\\\`<tr>\" /Users/mykhailovynnyk/Documents/projects/email-helper/src/htmlConverter/advanced/__tests__/)",
+      "Bash(grep -n '<td\\\\\\\\\\\\\\\\\"*$\\\\|<td$' /Users/mykhailovynnyk/Documents/projects/email-helper/src/htmlConverter/advanced/__tests__/__snapshots__/e2e.test.ts.snap)",
+      "Bash(git -C /Users/mykhailovynnyk/Documents/projects/email-helper status --short)",
+      "Bash(perl -0pi -e 's/result\\\\[\\(\\\\d\\)\\\\]\\\\.props\\\\[/\\(result[$1].props as Record<string, unknown>\\)[/g' src/htmlConverter/advanced/__tests__/classify.test.ts)",
+      "Bash(perl -0pi -e 's/result\\\\?\\\\.children\\\\?\\\\.\\\\[/childrenOf\\(result\\)[/g; s/result\\\\?\\\\.children\\\\b/childrenOf\\(result\\)/g' src/htmlConverter/advanced/__tests__/tableBlock.test.ts)",
+      "Bash(grep -E \"^ts-node$|^tsx$\")",
+      "Bash(BR_DIAG_OUT=/tmp/br-diag/current npx jest src/htmlConverter/advanced/__tests__/__br_diag.test.ts)",
+      "Read(//tmp/br-diag/**)",
+      "Bash(cp /Users/mykhailovynnyk/Documents/projects/email-helper/src/htmlConverter/advanced/__tests__/__br_diag.test.ts /tmp/before-refactor/src/htmlConverter/advanced/__tests__/__br_diag.test.ts)",
+      "Read(//private/tmp/before-refactor/**)",
+      "Bash(BR_DIAG_OUT=/tmp/br-diag/before npx jest src/htmlConverter/advanced/__tests__/__br_diag.test.ts)",
+      "Bash(cp /Users/mykhailovynnyk/Documents/projects/email-helper/src/htmlConverter/advanced/__tests__/__br_diag2.test.ts /tmp/before-refactor/src/htmlConverter/advanced/__tests__/__br_diag2.test.ts)",
+      "Read(//private/tmp/repro/**)",
+      "Bash(rm -rf /tmp/repro5)",
+      "Bash(pkill -f \"chrome-mac-arm64\")",
+      "Bash(rm -f \"/private/tmp/claude-501/-Users-mykhailovynnyk-Documents-projects-email-helper/1199494e-778d-4122-bd11-270ebf6c1817/scratchpad/scratch.test.ts\" *)"
+    ],
+    "additionalDirectories": [
+      "/dev"
     ]
   }
 }
