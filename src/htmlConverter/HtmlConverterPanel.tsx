@@ -87,6 +87,7 @@ export default function HtmlConverterPanel() {
         imageAnalysisSettings={imageAnalysis}
         uploadHistory={state.uploadHistory}
         uploadMode={state.uploadMode}
+        browserExecutablePath={ui.browserExecutablePath}
       />
     </div>
   );

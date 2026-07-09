@@ -53,7 +53,7 @@ function validateConfigPaths() {
     const platform = process.platform;
     const issues = [];
 
-    let browserPath = config.browser.executablePath;
+    let browserPath = process.env.BRAVE_EXECUTABLE_PATH || config.browser.executablePath;
     if (browserPath && !fs.existsSync(browserPath)) {
       if (platform === "darwin") {
         const mac = "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser";

@@ -64,13 +64,26 @@ try {
       configUpdated = true;
     }
   } else if (platform === "win32") {
-    // Windows paths
-    const bravePathWin = path.join(process.env.ProgramFiles || "C:\\Program Files", "BraveSoftware\\Brave-Browser\\Application\\brave.exe");
+    // Windows paths. Brave's installer defaults to a per-user install under
+    // %LOCALAPPDATA%, and only lands in Program Files for a system-wide install —
+    // so probe both before falling back to the Program Files default.
+    const braveEnvPath = process.env.BRAVE_EXECUTABLE_PATH;
+    const winCandidates = [
+      braveEnvPath,
+      path.join(process.env.LOCALAPPDATA || "", "BraveSoftware\\Brave-Browser\\Application\\brave.exe"),
+      path.join(process.env.ProgramFiles || "C:\\Program Files", "BraveSoftware\\Brave-Browser\\Application\\brave.exe"),
+      path.join(process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)", "BraveSoftware\\Brave-Browser\\Application\\brave.exe"),
+    ];
+    const resolvedBravePathWin = winCandidates.find((p) => p && fs.existsSync(p)) || null;
 
-    if (!fs.existsSync(bravePathWin) && !process.env.BRAVE_EXECUTABLE_PATH) {
-      console.warn(`⚠️  Brave Browser executable not found at: ${bravePathWin}`);
-      console.warn("   Set BRAVE_EXECUTABLE_PATH environment variable if Brave is installed elsewhere");
+    if (!resolvedBravePathWin) {
+      console.warn(`⚠️  Brave Browser executable not found in any known location.`);
+      console.warn("   Set BRAVE_EXECUTABLE_PATH environment variable if Brave is installed elsewhere,");
+      console.warn("   or configure it in the app's Settings once it's running.");
       console.warn("   Example: set BRAVE_EXECUTABLE_PATH=C:\\\\Path\\\\To\\\\brave.exe\n");
+    } else if (config.browser.executablePath !== resolvedBravePathWin) {
+      config.browser.executablePath = resolvedBravePathWin;
+      configUpdated = true;
     }
 
     // Store as {{APP_DATA}} templates — loadConfig() resolves at runtime per user.
@@ -94,8 +107,6 @@ try {
       config.browserProfiles.ttt.userDataDir = tttBraveDirWin;
       configUpdated = true;
     }
-
-    config.browser.executablePath = bravePathWin;
   } else if (platform === "linux") {
     // Linux paths
     const bravePath = "/usr/bin/brave-browser";

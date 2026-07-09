@@ -38,9 +38,10 @@ interface ImageProcessorProps {
   imageAnalysisSettings?: ImageAnalysisSettings;
   uploadHistory?: UploadSession[];
   uploadMode?: UploadMode;
+  browserExecutablePath?: string;
 }
 
-export default function ImageProcessor({ editorRef, onLog, visible, onVisibilityChange, triggerExtract = 0, fileName = "", onHistoryAdd, onReplaceUrls, onUploadedUrlsChange, onUploadedAltsChange, onResetReplacement, hasOutput = false, autoProcess: autoProcessProp, storageProvider = "default", imageAnalysisSettings, uploadHistory, uploadMode }: ImageProcessorProps) {
+export default function ImageProcessor({ editorRef, onLog, visible, onVisibilityChange, triggerExtract = 0, fileName = "", onHistoryAdd, onReplaceUrls, onUploadedUrlsChange, onUploadedAltsChange, onResetReplacement, hasOutput = false, autoProcess: autoProcessProp, storageProvider = "default", imageAnalysisSettings, uploadHistory, uploadMode, browserExecutablePath }: ImageProcessorProps) {
   // 1. Conversion Logic
   const {
     images,
@@ -85,6 +86,7 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
     showSnackbar,
     uploadHistory,
     uploadMode,
+    browserExecutablePath,
   });
 
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);

@@ -1,6 +1,7 @@
 "use strict";
 
 const http = require("http");
+const fs = require("fs");
 const { spawn: spawnChild, execFile } = require("child_process");
 const { chromium } = require("playwright-core");
 
@@ -40,21 +41,30 @@ async function isCdpAvailable(port) {
 }
 
 // Spawns Brave as a detached process so it outlives this script.
+// Returns a Promise that rejects if the OS fails to start the process (e.g. bad
+// path, no exec permission) — spawn() reports that asynchronously via an 'error'
+// event, and without a listener Node treats it as an uncaught exception that
+// kills this script mid-flight with no useful message reaching the caller.
 function launchBraveDetached(executablePath, userDataDir, debugPort) {
-  const args = [
-    `--user-data-dir=${userDataDir}`,
-    `--remote-debugging-port=${debugPort}`,
-    "--remote-allow-origins=*",
-    "--disable-features=DownloadBubble,DownloadBubbleV2",
-    "--disable-component-update",
-    "--no-first-run",
-    "--no-default-browser-check",
-    "--disable-component-extensions-with-background-pages",
-    "--no-restore-session-state", // skip session restore — prevents phantom windows
-  ];
-  const child = spawnChild(executablePath, args, { detached: true, stdio: "ignore" });
-  child.unref();
-  return child;
+  return new Promise((resolve, reject) => {
+    const args = [
+      `--user-data-dir=${userDataDir}`,
+      `--remote-debugging-port=${debugPort}`,
+      "--remote-allow-origins=*",
+      "--disable-features=DownloadBubble,DownloadBubbleV2",
+      "--disable-component-update",
+      "--no-first-run",
+      "--no-default-browser-check",
+      "--disable-component-extensions-with-background-pages",
+      "--no-restore-session-state", // skip session restore — prevents phantom windows
+    ];
+    const child = spawnChild(executablePath, args, { detached: true, stdio: "ignore" });
+    child.once("error", (err) => reject(err));
+    child.once("spawn", () => {
+      child.unref();
+      resolve(child);
+    });
+  });
 }
 
 // Brings Brave to the OS foreground on macOS.
@@ -173,8 +183,12 @@ async function connectOrLaunch(executablePath, debugPort, userDataDir, storageBa
     const actualCdpUrl = `http://127.0.0.1:${actualPort}`;
     console.log("🚀 Launching new Brave instance...");
 
+    if (!executablePath || !fs.existsSync(executablePath)) {
+      throw new Error(`ERROR:BROWSER_NOT_FOUND:${executablePath || "(empty path)"}`);
+    }
+
     try {
-      launchBraveDetached(executablePath, userDataDir, actualPort);
+      await launchBraveDetached(executablePath, userDataDir, actualPort);
       console.log(`📂 USER DATA DIR: ${userDataDir}`);
 
       let cdpReady = false;
@@ -215,6 +229,9 @@ async function connectOrLaunch(executablePath, debugPort, userDataDir, storageBa
       if (msg.includes("user data directory is already in use")) {
         console.error("❌ Error: This Brave profile is already in use by another window.");
         console.error("💡 Please close all Brave windows (Playwright profile) and try again.");
+      } else if (err && err.code === "ENOENT") {
+        console.error(`❌ Failed to start Brave — executable not found or not runnable: ${executablePath}`);
+        throw new Error(`ERROR:BROWSER_NOT_FOUND:${executablePath}`);
       } else {
         console.error(`❌ Failed to launch Brave: ${msg}`);
       }
