@@ -42,9 +42,10 @@ interface UseImageUploaderProps {
   showSnackbar: (message: string, severity?: "success" | "info" | "warning" | "error") => void;
   uploadHistory?: UploadSession[];
   uploadMode?: UploadMode;
+  browserExecutablePath?: string;
 }
 
-export function useImageUploader({ images, imagesSessionId, storageProvider, format, onLog, onUploadedUrlsChange, onReplaceUrls, onUploadedAltsChange, showSnackbar, uploadHistory, uploadMode = "playwright" }: UseImageUploaderProps) {
+export function useImageUploader({ images, imagesSessionId, storageProvider, format, onLog, onUploadedUrlsChange, onReplaceUrls, onUploadedAltsChange, showSnackbar, uploadHistory, uploadMode = "playwright", browserExecutablePath }: UseImageUploaderProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [lastUploadedUrls, setLastUploadedUrls] = useState<Record<string, string>>({});
   const [lastUploadedSessionId, setLastUploadedSessionId] = useState<number | null>(null);
@@ -225,6 +226,7 @@ export function useImageUploader({ images, imagesSessionId, storageProvider, for
                     category,
                     folderName,
                     skipConfirmation: true,
+                    browserExecutablePath: browserExecutablePath || undefined,
                   }),
                   signal: uploadAbortControllerRef.current.signal,
                 }),
@@ -323,7 +325,7 @@ export function useImageUploader({ images, imagesSessionId, storageProvider, for
           fetch(`${getApiBase()}/api/storage-upload/finalize`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ provider: storageProvider }),
+            body: JSON.stringify({ provider: storageProvider, browserExecutablePath: browserExecutablePath || undefined }),
           }).catch((e) => onLog?.(`⚠️ finalize failed: ${e.message}`));
         }
 
@@ -331,7 +333,7 @@ export function useImageUploader({ images, imagesSessionId, storageProvider, for
         uploadAbortControllerRef.current = null;
       }
     },
-    [images, imagesSessionId, isUploading, storageProvider, format, onLog, onUploadedUrlsChange, onUploadedAltsChange, uploadHistory, uploadMode]
+    [images, imagesSessionId, isUploading, storageProvider, format, onLog, onUploadedUrlsChange, onUploadedAltsChange, uploadHistory, uploadMode, browserExecutablePath]
   );
 
   const handleReplaceInOutput = useCallback(() => {

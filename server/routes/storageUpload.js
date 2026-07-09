@@ -33,15 +33,24 @@ function getNodeExec() {
   if (npmNode && fs.existsSync(npmNode)) return npmNode;
   if (!process.versions.electron) return process.execPath;
 
-  // In a packaged Electron app PATH is stripped — homebrew/nvm paths are absent.
+  // In a packaged Electron app PATH is stripped — homebrew/nvm paths are absent
+  // on macOS/Linux, and there's no system PATH lookup at all on Windows unless
+  // Node was installed system-wide and the app happened to inherit that PATH.
   // Search well-known locations before falling back to bare "node".
-  const candidates = [
-    process.env.NODE_EXEC_PATH,    // explicit override via env var
-    "/opt/homebrew/bin/node",      // homebrew on Apple Silicon
-    "/usr/local/bin/node",         // homebrew on Intel / nvm
-    "/usr/bin/node",               // system node (rare on macOS)
-    "/opt/local/bin/node",         // MacPorts
-  ];
+  const candidates = process.platform === "win32"
+    ? [
+        process.env.NODE_EXEC_PATH,                                              // explicit override via env var
+        path.join(process.env.ProgramFiles || "C:\\Program Files", "nodejs\\node.exe"),
+        path.join(process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)", "nodejs\\node.exe"),
+        path.join(process.env.APPDATA || "", "npm\\node.exe"),
+      ]
+    : [
+        process.env.NODE_EXEC_PATH,    // explicit override via env var
+        "/opt/homebrew/bin/node",      // homebrew on Apple Silicon
+        "/usr/local/bin/node",         // homebrew on Intel / nvm
+        "/usr/bin/node",               // system node (rare on macOS)
+        "/opt/local/bin/node",         // MacPorts
+      ];
   for (const p of candidates) {
     try { if (p && fs.existsSync(p)) return p; } catch {}
   }
@@ -190,6 +199,7 @@ router.post("/api/storage-upload/prepare-from-url", async (req, res) => {
  */
 router.post("/api/storage-upload/finalize", async (req, res) => {
   const providerKey = String(req.body?.provider || "default").toLowerCase();
+  const browserExecutablePath = typeof req.body?.browserExecutablePath === "string" ? req.body.browserExecutablePath.trim() : "";
   try {
     const runUploadPath = resolveAutomationPath("run-upload.js");
     if (!fs.existsSync(runUploadPath)) {
@@ -204,7 +214,10 @@ router.post("/api/storage-upload/finalize", async (req, res) => {
     args.push("--finalize");
     const command = `"${getNodeExec()}" "${runUploadPath}" ${args.map((a) => `"${String(a).replace(/"/g, '\\"')}"`).join(" ")}`;
 
-    exec(command, { timeout: 60000, maxBuffer: 2 * 1024 * 1024 }, (error, stdout, stderr) => {
+    const finalizeEnv = { ...process.env };
+    if (browserExecutablePath) finalizeEnv.BRAVE_EXECUTABLE_PATH = browserExecutablePath;
+
+    exec(command, { timeout: 60000, maxBuffer: 2 * 1024 * 1024, env: finalizeEnv }, (error, stdout, stderr) => {
       if (error) {
         return res.status(500).json({
           success: false,
@@ -231,7 +244,7 @@ router.post("/api/storage-upload/finalize", async (req, res) => {
  * - provider: storage provider key (default, alphaone, ttt)
  */
 router.post("/api/storage-upload", async (req, res) => {
-  const { filePath, category, folderName, skipConfirmation = true, provider = "default" } = req.body;
+  const { filePath, category, folderName, skipConfirmation = true, provider = "default", browserExecutablePath } = req.body;
 
   // Validation
   if (!filePath || !fs.existsSync(filePath)) {
@@ -288,6 +301,8 @@ router.post("/api/storage-upload", async (req, res) => {
     // Reset PORT_ID to "0" so the automation script uses the canonical Brave profile paths
     // (BravePlaywright-AlfaOne, not BravePlaywright-AlfaOne-2) regardless of which server instance is running.
     const childEnv = { ...process.env, PORT_ID: "0" };
+    const trimmedBrowserPath = typeof browserExecutablePath === "string" ? browserExecutablePath.trim() : "";
+    if (trimmedBrowserPath) childEnv.BRAVE_EXECUTABLE_PATH = trimmedBrowserPath;
     exec(command, { timeout: 900000, maxBuffer: 10 * 1024 * 1024, env: childEnv }, (error, stdout, stderr) => {
       if (stdout) console.log(stdout.trim());
       if (stderr) console.error(stderr.trim());
@@ -326,6 +341,10 @@ router.post("/api/storage-upload", async (req, res) => {
           statusCode = 499;
           errorMessage = "Браузер було закрито — завантаження скасовано.";
           cancelled = true;
+        } else if (stderrText.includes("ERROR:BROWSER_NOT_FOUND")) {
+          const pathMatch = stderrText.match(/ERROR:BROWSER_NOT_FOUND:(.+)/);
+          const badPath = pathMatch ? pathMatch[1].trim() : "(невідомий шлях)";
+          errorMessage = `Не знайдено браузер Brave за шляхом: ${badPath}. Вкажіть правильний шлях до Brave у Налаштуваннях (розділ "Завантаження").`;
         } else if (stderrText.includes("connectOverCDP") && (stderrText.includes("127.0.0.1:9222") || stderrText.includes("127.0.0.1:9223"))) {
           errorMessage = "Brave CDP порт недоступний. Закрий BravePlaywright/BravePlaywright-AlfaOne або дай скрипту запустити Brave з потрібним портом, і повтори upload.";
         } else if (stderrText.includes("ECONNREFUSED") && stderrText.includes("127.0.0.1:")) {

@@ -203,6 +203,46 @@ export const UiSettingsTab: React.FC<UiSettingsTabProps> = ({ ui, setUi, uploadM
         </>
       )}
 
+      {/* ── Шлях до браузера (Playwright) ─────────────────────────────────── */}
+      {uploadMode === "playwright" && (
+        <>
+          <div className='h-px bg-border' />
+          <section className='space-y-3'>
+            <h3 className='text-xs font-semibold uppercase tracking-widest text-muted-foreground'>Браузер для завантаження (Brave)</h3>
+            <div className='flex gap-2 items-center'>
+              <Input
+                value={ui.browserExecutablePath}
+                onChange={(e) => setUi((prev) => ({ ...prev, browserExecutablePath: e.target.value }))}
+                placeholder={electronAPI ? "Автоматично, або оберіть вручну..." : "Автоматично, або введіть шлях до brave.exe..."}
+                className='h-8 text-xs flex-1 font-mono'
+              />
+              {electronAPI && (
+                <button
+                  onClick={async () => {
+                    const filePath = await electronAPI.openFileDialog([{ name: "Brave Browser", extensions: ["exe", "app", "*"] }]);
+                    if (filePath) setUi((prev) => ({ ...prev, browserExecutablePath: filePath }));
+                  }}
+                  className='h-8 px-2 flex items-center gap-1.5 rounded-lg border border-input bg-background hover:bg-muted text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0'
+                  title='Обрати brave.exe'>
+                  <FolderOpen size={14} />
+                </button>
+              )}
+              {ui.browserExecutablePath && (
+                <button
+                  onClick={() => setUi((prev) => ({ ...prev, browserExecutablePath: "" }))}
+                  className='h-8 px-2 rounded-lg border border-input bg-background hover:bg-destructive/10 hover:text-destructive text-xs text-muted-foreground transition-colors shrink-0'
+                  title='Очистити'>
+                  ✕
+                </button>
+              )}
+            </div>
+            <p className='text-[11px] text-muted-foreground'>
+              Заповни, якщо Brave не знайдено автоматично (типово на Windows) — застосунок покаже помилку "Не знайдено браузер Brave", коли шлях невірний.
+            </p>
+          </section>
+        </>
+      )}
+
     </div>
   );
 };
