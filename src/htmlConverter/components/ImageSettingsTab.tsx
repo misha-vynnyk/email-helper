@@ -1,5 +1,6 @@
 import React, { Dispatch, SetStateAction, useCallback,useEffect, useState } from "react";
 
+import { LocalOnlyBadge } from "@/components/LocalOnlyBadge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -451,6 +452,7 @@ export const ImageSettingsTab: React.FC<ImageSettingsTabProps> = ({ ui, setUi, i
               <div className='flex items-center justify-between px-3 py-2.5 bg-muted/20'>
                 <div className='flex items-center gap-2'>
                   <span className='text-sm font-medium'>Ollama AI</span>
+                  <LocalOnlyBadge />
                   {imageAnalysis.useAiBackend && (
                     <span
                       className='flex items-center gap-1 text-[11px] font-medium px-1.5 py-0.5 rounded-full border'

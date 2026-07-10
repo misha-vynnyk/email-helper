@@ -1,5 +1,7 @@
 import { Play as ProcessIcon, Replace as ReplaceIcon,Upload as UploadIcon } from "lucide-react";
 
+import { LocalOnlyBadge } from "../../components/LocalOnlyBadge";
+
 interface ImageProcessorActionsProps {
   pendingCount: number;
   autoProcess: boolean;
@@ -36,9 +38,10 @@ export function ImageProcessorActions({
         </button>
       )}
 
-      <button onClick={() => setUploadDialogOpen(true)} disabled={doneCount === 0} className='flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg font-semibold text-sm transition-all hover:-translate-y-px hover:shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none disabled:active:scale-100'>
+      <button onClick={() => setUploadDialogOpen(true)} disabled={doneCount === 0} className='relative flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg font-semibold text-sm transition-all hover:-translate-y-px hover:shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none disabled:active:scale-100'>
         <UploadIcon size={16} />
         Upload to Storage ({doneCount})
+        <LocalOnlyBadge className='!bg-background/20 !border-primary-foreground/40 !text-primary-foreground' />
       </button>
 
       {lastUploadedCount > 0 && (
