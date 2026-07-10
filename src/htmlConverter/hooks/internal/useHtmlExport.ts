@@ -227,6 +227,7 @@ export function useHtmlExport({
         }
         const result = await electronAPI.saveToPath(content, folder, fullName);
         if (result.saved) addLog(`📥 Збережено: ${fullName}`);
+        else if (result.canceled) addLog(`⏹️ Збереження скасовано: ${fullName} вже існує`);
         else addLog(`❌ Помилка збереження: ${result.error ?? "невідома помилка"}`);
         return;
       }
