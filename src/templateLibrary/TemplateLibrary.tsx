@@ -6,6 +6,7 @@
 import { Ban as BlockIcon, FolderOpen as FolderOpenIcon, Plus as AddIcon, RefreshCw as RefreshIcon, Search as SearchIcon, SearchX as SearchOffIcon, Settings as SettingsIcon,X as ClearIcon } from "lucide-react";
 import React, { useEffect, useState } from "react";
 
+import { LocalOnlyBadge } from "../components/LocalOnlyBadge";
 import { TemplateCategory } from "../types/template";
 import PreviewSettings, { loadPreviewConfig, PreviewConfig } from "./components/PreviewSettings";
 import TemplateStorageModal from "./components/TemplateStorageModal";
@@ -122,6 +123,7 @@ export default function TemplateLibrary() {
           <div>
             <h2 className='text-xl md:text-2xl font-extrabold text-foreground tracking-tight flex items-center gap-2'>
               <span className='text-2xl'>📚</span> HTML Template Library
+              <LocalOnlyBadge />
             </h2>
             <p className='text-sm font-medium text-muted-foreground mt-1.5 flex flex-wrap gap-x-2'>
               <span>
