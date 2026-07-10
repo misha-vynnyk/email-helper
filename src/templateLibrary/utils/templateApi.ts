@@ -4,7 +4,7 @@
  * Frontend client for interacting with the Template Manager backend
  */
 
-import { getApiBase } from "../../config/api";
+import { getApiBase, isApiAvailable } from "../../config/api";
 import { AddTemplatePayload, AllowedRootPayload, EmailTemplate, ImportFolderPayload, TemplateStats, UpdateTemplatePayload } from "../../types/template";
 
 const apiBase = () => `${getApiBase()}/api/templates`;
@@ -17,10 +17,20 @@ const handleConnectionError = (error: unknown): Error => {
   return error instanceof Error ? error : new Error(String(error));
 };
 
+// Fails fast with a clear message on builds without a backend (e.g. GitHub Pages),
+// instead of letting fetch() hit a relative /api/... URL and surface a raw
+// "Failed to fetch" / JSON-parse error.
+const ensureApiAvailable = (): void => {
+  if (!isApiAvailable()) {
+    throw new Error("Бібліотека шаблонів потребує backend.\n\nЗапустіть: npm run dev\nабо налаштуйте VITE_API_URL на існуючий backend.");
+  }
+};
+
 /**
  * List all templates in the library
  */
 export async function listTemplates(): Promise<EmailTemplate[]> {
+  ensureApiAvailable();
   try {
     const response = await fetch(`${apiBase()}/list`);
     if (!response.ok) {
@@ -37,6 +47,7 @@ export async function listTemplates(): Promise<EmailTemplate[]> {
  * Add a new template from a file path
  */
 export async function addTemplate(payload: AddTemplatePayload): Promise<EmailTemplate> {
+  ensureApiAvailable();
   const response = await fetch(`${apiBase()}/add`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -53,6 +64,7 @@ export async function addTemplate(payload: AddTemplatePayload): Promise<EmailTem
  * Get template HTML content
  */
 export async function getTemplateContent(id: string): Promise<string> {
+  ensureApiAvailable();
   const response = await fetch(`${apiBase()}/${id}/content`);
   if (!response.ok) {
     const error = await response.json();
@@ -65,6 +77,7 @@ export async function getTemplateContent(id: string): Promise<string> {
  * Update template metadata
  */
 export async function updateTemplate(id: string, payload: UpdateTemplatePayload): Promise<EmailTemplate> {
+  ensureApiAvailable();
   const response = await fetch(`${apiBase()}/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -81,6 +94,7 @@ export async function updateTemplate(id: string, payload: UpdateTemplatePayload)
  * Remove template from library (does not delete the file)
  */
 export async function removeTemplate(id: string): Promise<void> {
+  ensureApiAvailable();
   const response = await fetch(`${apiBase()}/${id}`, {
     method: "DELETE",
   });
@@ -94,6 +108,7 @@ export async function removeTemplate(id: string): Promise<void> {
  * Import all HTML files from a folder
  */
 export async function importFolder(payload: ImportFolderPayload): Promise<EmailTemplate[]> {
+  ensureApiAvailable();
   const response = await fetch(`${apiBase()}/import-folder`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -110,6 +125,7 @@ export async function importFolder(payload: ImportFolderPayload): Promise<EmailT
  * Sync template metadata with file system
  */
 export async function syncTemplate(id: string): Promise<EmailTemplate> {
+  ensureApiAvailable();
   const response = await fetch(`${apiBase()}/${id}/sync`, {
     method: "POST",
   });
@@ -124,6 +140,7 @@ export async function syncTemplate(id: string): Promise<EmailTemplate> {
  * Get library statistics
  */
 export async function getStats(): Promise<TemplateStats> {
+  ensureApiAvailable();
   const response = await fetch(`${apiBase()}/stats/summary`);
   if (!response.ok) {
     const error = await response.json();
@@ -136,6 +153,7 @@ export async function getStats(): Promise<TemplateStats> {
  * Get allowed root directories
  */
 export async function getAllowedRoots(): Promise<string[]> {
+  ensureApiAvailable();
   const response = await fetch(`${apiBase()}/settings/allowed-roots`);
   if (!response.ok) {
     const error = await response.json();
@@ -148,6 +166,7 @@ export async function getAllowedRoots(): Promise<string[]> {
  * Add an allowed root directory
  */
 export async function addAllowedRoot(payload: AllowedRootPayload): Promise<string[]> {
+  ensureApiAvailable();
   const response = await fetch(`${apiBase()}/settings/allowed-roots`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -165,6 +184,7 @@ export async function addAllowedRoot(payload: AllowedRootPayload): Promise<strin
  * Remove an allowed root directory
  */
 export async function removeAllowedRoot(payload: AllowedRootPayload): Promise<{ allowedRoots: string[]; removedTemplates: number; message: string }> {
+  ensureApiAvailable();
   const response = await fetch(`${apiBase()}/settings/allowed-roots`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
@@ -195,6 +215,7 @@ export async function syncAllTemplates(
   scannedRoots: number;
   message: string;
 }> {
+  ensureApiAvailable();
   try {
     const response = await fetch(`${apiBase()}/sync-all`, {
       method: "POST",
