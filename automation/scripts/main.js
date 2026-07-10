@@ -66,8 +66,11 @@ const UPLOAD_BUFFER_MS = 60000; // upload attempts + retries + tab close
   let timeoutId;
   let browser;
   let config;
+  let exiting = false;
 
   const safeExit = async (code) => {
+    if (exiting) return;
+    exiting = true;
     if (timeoutId) clearTimeout(timeoutId);
     try {
       if (browser) await browser.disconnect();
@@ -105,6 +108,17 @@ const UPLOAD_BUFFER_MS = 60000; // upload attempts + retries + tab close
 
     let context, page;
     ({ browser, context, page } = await connectOrLaunch(resolvedBrowser.executablePath, debugPort, userDataDir, consoleBaseUrl));
+
+    // CDP connection can drop without any pending page/context call ever rejecting
+    // (e.g. user closes the browser window while we're just sitting in a setTimeout).
+    // Relying only on string-matching Playwright error messages misses that case —
+    // this event fires reliably on any platform whenever the browser disconnects,
+    // whether the user closed it, we killed it, or it crashed.
+    browser.on("disconnected", () => {
+      if (exiting) return;
+      console.error("ERROR:BROWSER_CLOSED (browser closed unexpectedly)");
+      safeExit(1);
+    });
 
     // === Finalize: close storage tab and exit ===
     if (isFinalize) {
