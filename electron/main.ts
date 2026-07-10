@@ -68,9 +68,24 @@ function registerIpcHandlers(): void {
     if (Notification.isSupported()) new Notification({ title, body }).show();
   });
 
-  ipcMain.handle("file:saveToPath", async (_event, { content, folderPath, fileName }: { content: string; folderPath: string; fileName: string }) => {
+  ipcMain.handle("file:saveToPath", async (event, { content, folderPath, fileName }: { content: string; folderPath: string; fileName: string }) => {
     try {
       const fullPath = path.join(folderPath, fileName);
+
+      if (fsSync.existsSync(fullPath)) {
+        const mainWin = BrowserWindow.fromWebContents(event.sender);
+        const { response } = await dialog.showMessageBox(mainWin ?? undefined, {
+          type: "warning",
+          buttons: ["Замінити", "Скасувати"],
+          defaultId: 1,
+          cancelId: 1,
+          title: "Файл вже існує",
+          message: `Файл "${fileName}" вже існує в цій папці.`,
+          detail: "Замінити його новою версією?",
+        });
+        if (response !== 0) return { saved: false, canceled: true };
+      }
+
       await fs.writeFile(fullPath, content, "utf8");
       return { saved: true, filePath: fullPath };
     } catch (err) {
