@@ -241,6 +241,29 @@ describe("classifyTable — meaningless (near-white) border", () => {
   });
 });
 
+// GDocs represents a divider under a text block as a 1×1 table with only
+// border-bottom set — that's a rule, not a boxed callout.
+describe("classifyTable — bottom-only border (GDocs divider idiom)", () => {
+  it("classifies a border-bottom-only, no-bg cell as textDivider", () => {
+    const table = makeTable([[makeCell({
+      border: { bottom: { color: "#111111" } },
+      children: [makePara("Some plain text")],
+    })]]);
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("textDivider");
+    expect((result?.props as Record<string, unknown>)["ruleColor"]).toBe("#111111");
+  });
+
+  it("still classifies calloutBox when a bottom-only border cell also has a bg", () => {
+    const table = makeTable([[makeCell({
+      bg: "#fff7ed",
+      border: { bottom: { color: "#111111" } },
+    })]]);
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("calloutBox");
+  });
+});
+
 // Fix #9: without classifyChildren, calloutBox's fallback child must match cellToChild
 describe("classifyTable — calloutBox fallback child (no classifyChildren)", () => {
   it("fallback child uses align='center' and carries bg, same as cellToChild", () => {
@@ -475,5 +498,147 @@ describe("classifyTable — edge cases", () => {
   it("returns null for empty table", () => {
     const table: TableNode = { type: "table", rows: [] };
     expect(classifyTable(table)).toBeNull();
+  });
+});
+
+// ── § inside nested blocks (calloutLeft) ────────────────────────────────────────
+// flattenLinesWithBreaks used to ignore tightNext/tightBefore entirely — every
+// paragraph-to-paragraph transition inside a bordered/accented cell always got a
+// <br><br>, with no way to signal a single-<br> gap via §.
+
+function makeParaTight(text: string, extra: Partial<Pick<Paragraph, "tightNext" | "tightBefore">>): Paragraph {
+  return { type: "p", size: "body", lines: [[makeRun(text)]], ...extra };
+}
+
+describe("classifyTable — calloutLeft honors § (tightNext/tightBefore)", () => {
+  it("without §, two paragraphs in a calloutLeft cell get a paraBreak (<br><br>)", () => {
+    const cell = makeCell({
+      border: { left: { color: "#c2410c" } },
+      children: [makePara("First"), makePara("Second")],
+    });
+    const result = classifyTable(makeTable([[cell]]));
+    expect(result?.kind).toBe("calloutLeft");
+    const paraBreaks = (result?.props as Record<string, unknown>)["paraBreaks"] as Set<number>;
+    expect(paraBreaks.has(1)).toBe(true);
+  });
+
+  it("trailing § (tightNext) on the first paragraph suppresses the paraBreak", () => {
+    const cell = makeCell({
+      border: { left: { color: "#c2410c" } },
+      children: [makeParaTight("First", { tightNext: true }), makePara("Second")],
+    });
+    const result = classifyTable(makeTable([[cell]]));
+    const paraBreaks = (result?.props as Record<string, unknown>)["paraBreaks"] as Set<number>;
+    expect(paraBreaks.has(1)).toBe(false);
+  });
+
+  it("leading § (tightBefore) on the second paragraph suppresses the paraBreak", () => {
+    const cell = makeCell({
+      border: { left: { color: "#c2410c" } },
+      children: [makePara("First"), makeParaTight("Second", { tightBefore: true })],
+    });
+    const result = classifyTable(makeTable([[cell]]));
+    const paraBreaks = (result?.props as Record<string, unknown>)["paraBreaks"] as Set<number>;
+    expect(paraBreaks.has(1)).toBe(false);
+  });
+});
+
+// ── Cell alignment from the inner <p> (F3/F9 — GDocs puts text-align on the paragraph) ─
+
+describe("classifyTable — cell alignment read from the inner paragraph", () => {
+  function alignedPara(text: string, align: "left" | "center" | "right"): Paragraph {
+    return { type: "p", size: "body", align, lines: [[makeRun(text)]] };
+  }
+
+  it("statsGrid cell uses the first paragraph's align instead of always centering", () => {
+    // 3 cells so the two-cell splitRow (letterhead) pattern can't match
+    const table = makeTable([[
+      makeCell({ children: [alignedPara("Revenue", "left")] }),
+      makeCell({ children: [alignedPara("42", "right")] }),
+      makeCell(),
+    ]]);
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("statsGrid");
+    expect(childrenOf(result)[0].props["align"]).toBe("left");
+    expect(childrenOf(result)[1].props["align"]).toBe("right");
+    expect(childrenOf(result)[2].props["align"]).toBe("center");
+  });
+
+  it("statsGrid cell still defaults to center when neither the cell nor its paragraph declares align", () => {
+    const table = makeTable([[makeCell(), makeCell()]]);
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("statsGrid");
+    expect(childrenOf(result)[0].props["align"]).toBe("center");
+  });
+
+  it("recordRow cell uses the paragraph's align (mixed text-left / numbers-center survives)", () => {
+    const table = makeTable([
+      [makeCell(), makeCell({ children: [alignedPara("Users", "center")] })],
+      [makeCell(), makeCell({ children: [alignedPara("490M", "center")] })],
+    ]);
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("recordRow");
+    const rows = (result?.props as Record<string, unknown>)["rows"] as Array<{ cells: Array<{ align?: string }> }>;
+    expect(rows[0].cells[0].align).toBe("left");
+    expect(rows[0].cells[1].align).toBe("center");
+    expect(rows[1].cells[1].align).toBe("center");
+  });
+});
+
+// ── Nested colored band inside a dark box survives (F10) ─────────────────────
+
+describe("classifyTable — dark bordered box keeps a nested colored band", () => {
+  const fullBorder = {
+    top: { color: "#000000" }, right: { color: "#000000" },
+    bottom: { color: "#000000" }, left: { color: "#000000" },
+  };
+
+  it("keeps the nested band's bg as a bands segment instead of flattening it to text", () => {
+    const nestedCta = makeTable([[makeCell({ bg: "#0a2463", children: [makePara("INVEST AT $0.50 →")] })]]);
+    const outer = makeCell({
+      bg: "#000000",
+      border: fullBorder,
+      children: [makePara("SERIES A · REG A+"), nestedCta],
+    });
+    const warn = jest.fn();
+    const result = classifyTable(makeTable([[outer]]), undefined, warn);
+    expect(result?.kind).toBe("alertBand");
+    const bands = (result?.props as Record<string, unknown>)["bands"] as Array<{ atLine: number; props: { bg: string } }>;
+    expect(bands).toHaveLength(1);
+    expect(bands[0].props.bg).toBe("#0a2463");
+    expect(bands[0].atLine).toBe(1);
+    // The band survived — no "nested table flattened" warning for it
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("a nested band alone does not promote the outer cell to one giant buttonBand", () => {
+    const nestedCta = makeTable([[makeCell({ bg: "#0a2463", children: [makePara("CTA", "https://example.com")] })]]);
+    const outer = makeCell({ bg: "#000000", border: fullBorder, children: [nestedCta] });
+    const result = classifyTable(makeTable([[outer]]));
+    expect(result?.kind).toBe("alertBand");
+  });
+});
+
+// ── Multi-line content joined with spaces when forced onto one line (F2) ─────
+
+describe("classifyTable — multi-line labels don't glue words together", () => {
+  it("h5 button label lines are space-separated", () => {
+    const h5: Paragraph = {
+      type: "p", size: "small", headingLevel: 5,
+      lines: [[makeRun("Click")], [makeRun("Here")]],
+    };
+    const result = classifyTable(makeTable([[makeCell({ bg: "#28b628", children: [h5] })]]));
+    expect(result?.kind).toBe("buttonBand");
+    const runs = (result?.props as Record<string, unknown>)["runs"] as Array<{ text: string }>;
+    expect(runs.map(r => r.text).join("")).toBe("Click Here");
+  });
+
+  it("splitRow columns join their lines with a space", () => {
+    const twoLines: Paragraph = { type: "p", size: "body", lines: [[makeRun("MEDIA &")], [makeRun("INVESTOR RELATIONS")]] };
+    const right: CellNode = makeCell({ align: "right", children: [twoLines] });
+    const result = classifyTable(makeTable([[makeCell(), right]]));
+    expect(result?.kind).toBe("splitRow");
+    const rightRuns = (result?.props as Record<string, unknown>)["right"] as Array<{ text: string }>;
+    expect(rightRuns.map(r => r.text).join("")).toBe("MEDIA & INVESTOR RELATIONS");
   });
 });

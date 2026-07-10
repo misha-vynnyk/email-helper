@@ -4,16 +4,21 @@
 const ALWAYS_STRIP = new Set([
   "white-space", "vertical-align", "font-variant",
   "overflow", "overflow-wrap",
-  "font-family", "line-height",
-  "margin", "margin-bottom", "margin-left", "margin-right",
+  "font-family", "font-size", "line-height",
+  "margin", "margin-left", "margin-right",
   "padding", "padding-top", "padding-bottom", "padding-left", "padding-right",
   "border-collapse", "border-spacing",
 ]);
-// margin-top is kept (not stripped) — fromDom reads it as a signal for adjacent-paragraph
-// merging (§4): margin-top:0 is GDocs' explicit "no space before this paragraph" marker.
-// border / border-top / border-bottom / border-left / border-right are kept —
-// fromDom reads their color for classification (§4) and box rendering; GDocs
-// widths are still ignored at render time (house tokens control px).
+// Document metrics are stripped — vertical rhythm and text sizes come exclusively from
+// the token system; the § marker is the author's channel for tight spacing. Two
+// deliberate exceptions:
+//   - margin-top / margin-bottom are KEPT: fromDom reads them ONLY for the pairwise
+//     zero-gap signal (explicit margin-bottom:0 + margin-top:0 across a paragraph
+//     boundary → single <br>). Their VALUES are never rendered. A chain-relative
+//     margin comparison was tried and reverted — see pushMerged in classify.ts —
+//     the pairwise absolute-zero rule has no chain memory and can't cascade.
+//   - border / border-<side> are kept — fromDom reads their color (and declared
+//     width, quantized to whole px) for classification (§4) and box rendering.
 
 const STRIP_WHEN: Array<[string, string]> = [
   ["background-color", "transparent"],
@@ -55,12 +60,20 @@ function cleanEl(el: Element): void {
   }
 }
 
+function isOneBr(node: ChildNode | null): boolean {
+  return node?.nodeName === "BR" && (node as Element).hasAttribute("data-one-br");
+}
+
 function cleanBrNoise(body: HTMLElement): void {
   // Strip leading/trailing <br> from block elements (GDocs artifact: <p><br>text</p>).
   // Without this, parseParagraph produces a leading empty line that shifts paraBreak indices.
+  // A <br data-one-br> is never stripped here even at a block boundary — that's the
+  // ONLY position where fromDom.ts's splitIntoLines can turn it into `tightNext` (a
+  // trailing break with nothing after it is otherwise silently trimmed as empty), so
+  // stripping it here would silently discard every § the user places at a paragraph edge.
   body.querySelectorAll("p, h1, h2, h3, h4, h5, h6, li").forEach(el => {
-    while (el.firstChild?.nodeName === "BR") el.firstChild.remove();
-    while (el.lastChild?.nodeName === "BR") el.lastChild.remove();
+    while (el.firstChild?.nodeName === "BR" && !isOneBr(el.firstChild)) el.firstChild.remove();
+    while (el.lastChild?.nodeName === "BR" && !isOneBr(el.lastChild)) el.lastChild.remove();
   });
 
   // Unwrap <span> elements that contain only <br> tags (and optional whitespace text).
@@ -73,6 +86,58 @@ function cleanBrNoise(body: HTMLElement): void {
     )) {
       span.replaceWith(...Array.from(span.childNodes));
     }
+  });
+}
+
+const INLINE_WRAPPER_TAGS = new Set(["SPAN", "B", "STRONG", "EM", "I", "U", "A"]);
+
+function isWhitespaceText(node: Node): boolean {
+  return node.nodeType === Node.TEXT_NODE && !(node.textContent?.trim());
+}
+
+function previousMeaningfulSibling(node: Node): Node | null {
+  let sib = node.previousSibling;
+  while (sib && isWhitespaceText(sib)) sib = sib.previousSibling;
+  return sib;
+}
+
+function nextMeaningfulSibling(node: Node): Node | null {
+  let sib = node.nextSibling;
+  while (sib && isWhitespaceText(sib)) sib = sib.nextSibling;
+  return sib;
+}
+
+/** Walks up through inline-formatting ancestors (span/b/em/…) while `node` is the
+ *  first (or last) non-whitespace child at each level — the point where a real
+ *  document-order sibling would sit. */
+function outermostWhileEdge(node: Node, edgeSibling: (n: Node) => Node | null): Node {
+  let cur = node;
+  for (;;) {
+    const parent = cur.parentNode as Element | null;
+    if (!parent || !INLINE_WRAPPER_TAGS.has(parent.tagName)) return cur;
+    if (edgeSibling(cur) !== null) return cur;
+    cur = parent;
+  }
+}
+
+/**
+ * GDocs wraps each differently-styled run in its own <span>, so a § the author types
+ * right next to an already-existing <br> often ends up one level deeper than that
+ * <br> — e.g. "text</span><br><span>§text" puts the marker inside the second span,
+ * not directly beside the plain <br>. preprocess.ts's string-adjacency regex can't
+ * see across that span boundary, so both breaks survive and render as a double break
+ * instead of the single one the user asked for. Collapse that sibling plain <br> here,
+ * once there's a real DOM tree to walk across the span boundary.
+ */
+function collapseAdjacentPlainBr(body: HTMLElement): void {
+  body.querySelectorAll("br[data-one-br]").forEach(marker => {
+    const leadingEdge = outermostWhileEdge(marker, previousMeaningfulSibling);
+    const prev = previousMeaningfulSibling(leadingEdge);
+    if (prev && prev.nodeName === "BR" && !isOneBr(prev as ChildNode)) prev.parentNode?.removeChild(prev);
+
+    const trailingEdge = outermostWhileEdge(marker, nextMeaningfulSibling);
+    const next = nextMeaningfulSibling(trailingEdge);
+    if (next && next.nodeName === "BR" && !isOneBr(next as ChildNode)) next.parentNode?.removeChild(next);
   });
 }
 
@@ -93,6 +158,7 @@ export function normalize(rawHtml: string): HTMLBodyElement {
   });
 
   cleanBrNoise(body);
+  collapseAdjacentPlainBr(body);
 
   return body as HTMLBodyElement;
 }

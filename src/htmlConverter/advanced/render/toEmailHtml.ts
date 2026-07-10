@@ -16,12 +16,13 @@ import {
   type RecordOpts,
   type SplitRowOpts,
   templates as defaultTemplates,
+  type TextDividerOpts,
 } from "../config/templates";
 import type { Tokens } from "../config/tokens";
 import { tokens as defaultTokens } from "../config/tokens";
 import { escapeHtml as esc } from "../escape";
 import { isDarkBg } from "../ir/color";
-import type { AlertBandProps,ComponentNode, Run } from "../ir/types";
+import type { AlertBandProps, ButtonBandProps, ComponentNode, Run } from "../ir/types";
 
 type Templates = ReturnType<typeof buildTemplates>;
 
@@ -134,9 +135,7 @@ function buildAlertBandSegments(
     const html = renderLines(groupLines, tok, textColor, groupBreaks);
     if (html) segments.push({ kind: "text", html });
   };
-  const sortedButtons = [...(p.buttons ?? [])].sort((a, b) => a.atLine - b.atLine);
-  for (const { atLine, props: btn } of sortedButtons) {
-    flushTextGroup(atLine);
+  const pushButton = (btn: ButtonBandProps) => {
     const btnTextColor = isDarkBg(btn.bg, tok) ? tok.color.white : tok.color.black;
     // Unlike renderNode's standalone buttonBand case, keep each run's own color here:
     // this button is nested inside a hand-styled banner where the author already chose
@@ -146,7 +145,27 @@ function buildAlertBandSegments(
     const buttonRuns = btn.runs.map(r => ({ ...r, href: undefined }));
     const label = renderRuns(buttonRuns, tok, btnTextColor);
     segments.push({ kind: "button", label, href: btn.href ?? tok.placeholderHref, bg: btn.bg, radius: btn.radius, border: btn.border });
-    groupStart = atLine;
+  };
+  const nested = [
+    ...(p.buttons ?? []).map(b => ({ atLine: b.atLine, kind: "button" as const, btn: b.props })),
+    ...(p.bands ?? []).map(b => ({ atLine: b.atLine, kind: "band" as const, band: b.props })),
+  ].sort((a, b) => a.atLine - b.atLine);
+  for (const item of nested) {
+    flushTextGroup(item.atLine);
+    if (item.kind === "button") {
+      pushButton(item.btn);
+    } else {
+      // Nested colored band (e.g. a dark pseudo-button cell inside a dark bordered box):
+      // its own bg survives as a separate row instead of flattening to plain text.
+      const band = item.band;
+      const bandTextColor = isDarkBg(band.bg, tok) ? tok.color.white : tok.color.black;
+      const html = renderLines(band.lines, tok, bandTextColor, band.paraBreaks);
+      segments.push({ kind: "band", html, bg: band.bg, border: band.border, align: band.align });
+      // Double nesting (the inner band has buttons of its own) — keep those CTAs too,
+      // appended right after the band's text.
+      for (const b of band.buttons ?? []) pushButton(b.props);
+    }
+    groupStart = item.atLine;
   }
   flushTextGroup(p.lines.length);
   return segments;
@@ -167,6 +186,8 @@ export function renderNode(
         align: p.align ?? "left",
         size: p.size ?? "body",
         variant: p.variant,
+        tightAfter: p.tightAfter,
+        tightBefore: p.tightBefore,
       };
       return tmpl.paragraph(opts);
     }
@@ -174,7 +195,7 @@ export function renderNode(
     case "alertBand": {
       const p = node.props;
       const textColor = isDarkBg(p.bg, tok) ? tok.color.white : tok.color.black;
-      const opts: AlertBandOpts = p.buttons?.length
+      const opts: AlertBandOpts = p.buttons?.length || p.bands?.length
         ? { segments: buildAlertBandSegments(p, tok, textColor), bg: p.bg, border: p.border, align: p.align }
         : { innerHtml: renderLines(p.lines, tok, textColor, p.paraBreaks), bg: p.bg, border: p.border, align: p.align };
       return tmpl.alertBand(opts);
@@ -206,6 +227,7 @@ export function renderNode(
       const innerHtml = renderLines(p.lines, tok, tok.color.black, p.paraBreaks);
       const opts: CalloutOpts = {
         accentColor: p.accentColor,
+        accentWidthPx: p.accentWidthPx,
         bg: p.bg,
       };
       return tmpl.calloutLeft(innerHtml, opts);
@@ -218,6 +240,13 @@ export function renderNode(
         bg: node.props.bg,
       };
       return tmpl.calloutBox(childrenHtml, opts);
+    }
+
+    case "textDivider": {
+      const p = node.props;
+      const innerHtml = renderLines(p.lines, tok, tok.color.black, p.paraBreaks);
+      const opts: TextDividerOpts = { align: p.align, ruleColor: p.ruleColor };
+      return tmpl.textDivider(innerHtml, opts);
     }
 
     case "statsGrid": {
@@ -268,10 +297,17 @@ export function renderNode(
     }
 
     case "image": {
-      const opts: ImageOpts = { src: node.props.src, alt: node.props.alt };
+      const opts: ImageOpts = {
+        src: node.props.src,
+        alt: node.props.alt,
+        tightBefore: node.props.tightBefore,
+        tightAfter: node.props.tightAfter,
+      };
       return opts.src ? tmpl.image(opts) : "";
     }
 
+    // No classify/detect path ever produces kind:"spacer" — this branch is reachable
+    // only from manually-built IR (tests, future callers). Kept for completeness.
     case "spacer":
       return tmpl.spacer(Math.trunc(node.props.heightPx || 0) || tok.layout.spacerPx);
 

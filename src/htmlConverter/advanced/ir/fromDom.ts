@@ -6,7 +6,7 @@ import { isLinkColor } from "../../utils/colorUtils";
 import type { Tokens } from "../config/tokens";
 import { tokens as defaultTokens } from "../config/tokens";
 import { canonicalizeBg,canonicalizeText } from "./color";
-import { getAlign, isBold, isExplicitNonBold, isExplicitNonItalic, isExplicitNonUnderline, isItalic, isUnderline, parseStyle, ptToSizeRole } from "./style";
+import { getAlign, isBold, isExplicitNonBold, isExplicitNonItalic, isExplicitNonUnderline, isItalic, isUnderline, parseStyle } from "./style";
 import { WARN } from "../warnings";
 import type { BorderSide, BorderSpec, CellNode, ImageNode, Paragraph, RowNode, Run,StructuralNode, TableNode, WarnFn } from "./types";
 
@@ -17,33 +17,19 @@ interface Ctx {
   italic: boolean;
   underline: boolean;
   color?: string;
-  size: "body" | "small" | "headline";
   href?: string;
   bg: string;
 }
 
 const LINE_BREAK = "\n";
 
+// Size role comes ONLY from the tag — inline font-size on spans is document noise
+// (GDocs serializes the full computed style on every run) and is deliberately never
+// read: px values are always the size tokens (body/small/headline/cell in tokens.ts).
 function sizeFromTag(tag: string): "body" | "small" | "headline" {
   if (tag === "H1" || tag === "H2") return "headline";
   if (tag === "H5" || tag === "H6") return "small";
   return "body";
-}
-
-function sizeFromStyle(style: Record<string, string>, tok: Tokens): "body" | "small" | "headline" | null {
-  const fs = style["font-size"];
-  if (!fs) return null;
-  if (fs.endsWith("pt")) {
-    const role = ptToSizeRole(fs, tok);
-    return role; // "body" or "small"
-  }
-  if (fs.endsWith("px")) {
-    const px = parseFloat(fs);
-    if (px <= tok.font.smallPx + 2) return "small";
-    if (px >= tok.font.headlinePx - 2) return "headline";
-    return "body";
-  }
-  return null;
 }
 
 function makeRun(text: string, ctx: Ctx): Run {
@@ -81,12 +67,19 @@ function mergeRuns(runs: Run[]): Run[] {
  * before </p>) is trimmed since renderers skip empty lines — but if that trailing
  * break came from a § marker (oneBr), its "no gap before what follows" intent must
  * survive the trim, so it's reported back as tightNext rather than silently dropped.
+ * Symmetrically, a LEADING empty line (a <br> right after <p>) is reported as
+ * tightBefore when it's a § marker — "no gap before ME", the mirror signal for
+ * when the author places § at the start of the next paragraph instead of the end
+ * of the previous one.
  */
-function splitIntoLines(runs: Run[]): { lines: Run[][]; tightNext: boolean } {
+function splitIntoLines(runs: Run[]): { lines: Run[][]; tightNext: boolean; tightBefore: boolean } {
   const lines: Run[][] = [[]];
+  let firstBreakWasOneBr = false;
   let lastBreakWasOneBr = false;
+  let sawBreak = false;
   for (const run of runs) {
     if (run.text === LINE_BREAK) {
+      if (!sawBreak) { firstBreakWasOneBr = run.oneBr === true; sawBreak = true; }
       lastBreakWasOneBr = run.oneBr === true;
       lines.push([]);
     } else {
@@ -94,8 +87,9 @@ function splitIntoLines(runs: Run[]): { lines: Run[][]; tightNext: boolean } {
     }
   }
   const tightNext = lines.length > 1 && lines[lines.length - 1].length === 0 && lastBreakWasOneBr;
+  const tightBefore = lines.length > 1 && lines[0].length === 0 && firstBreakWasOneBr;
   while (lines.length > 1 && lines[lines.length - 1].length === 0) lines.pop();
-  return { lines, tightNext };
+  return { lines, tightNext, tightBefore };
 }
 
 function collectRuns(el: Element | Node, ctx: Ctx, tok: Tokens): Run[] {
@@ -160,9 +154,6 @@ function collectRuns(el: Element | Node, ctx: Ctx, tok: Tokens): Run[] {
       childCtx.href = tok.placeholderHref;
     }
 
-    const sizeOverride = sizeFromStyle(style, tok);
-    if (sizeOverride) childCtx.size = sizeOverride;
-
     runs.push(...collectRuns(child, childCtx, tok));
   }
 
@@ -170,6 +161,11 @@ function collectRuns(el: Element | Node, ctx: Ctx, tok: Tokens): Run[] {
 }
 
 // ── Paragraph ────────────────────────────────────────────────────────────────
+
+// Explicit "0" (any unit) — absence of a declaration is NOT zero.
+function isZeroLength(value: string | undefined): boolean {
+  return value !== undefined && parseFloat(value) === 0;
+}
 
 function parseParagraph(el: Element, bg: string, tok: Tokens): Paragraph | null {
   const tag = el.tagName.toUpperCase();
@@ -184,10 +180,10 @@ function parseParagraph(el: Element, bg: string, tok: Tokens): Paragraph | null 
   // font-weight:700 spans. GDocs HTML always encodes weight explicitly; and Chrome's
   // DOM serializer drops font-weight:400 (initial value) before we can detect it, so
   // relying on "cancel heading bold via font-weight:400 span" is unreliable in-browser.
-  const ctx: Ctx = { bold: false, italic: false, underline: false, size, bg };
+  const ctx: Ctx = { bold: false, italic: false, underline: false, bg };
   const rawRuns = collectRuns(el, ctx, tok);
   const merged = mergeRuns(rawRuns);
-  const { lines: rawLines, tightNext } = splitIntoLines(merged);
+  const { lines: rawLines, tightNext, tightBefore } = splitIntoLines(merged);
 
   // An empty line inside one <p> is an author-typed blank line (<br><br> between two
   // sentences without a new paragraph). Renderers skip empty lines, so keeping it as a
@@ -209,6 +205,12 @@ function parseParagraph(el: Element, bg: string, tok: Tokens): Paragraph | null 
     type: "p", align, size, headingLevel, lines,
     paraBreaks: paraBreaks.size ? paraBreaks : undefined,
     tightNext: tightNext || undefined,
+    tightBefore: tightBefore || undefined,
+    // Pairwise zero-gap signal halves (see pushMerged): the author explicitly zeroed
+    // this paragraph's outer spacing in the document — the only structural way to tell
+    // "Enter with no visible gap" apart from a normally-spaced paragraph boundary.
+    zeroTopMargin: isZeroLength(style["margin-top"]) || undefined,
+    zeroBottomMargin: isZeroLength(style["margin-bottom"]) || undefined,
   };
 }
 
@@ -256,6 +258,12 @@ function extractBorderColorToken(v: string, tok: Tokens): string | undefined {
   return words.find(w => canonicalizeBg(w, tok) !== null);
 }
 
+// Author-declared border widths survive into the IR quantized to whole px —
+// fractional pt values (GDocs emits 0.5pt/0.75pt/1.25pt/1.75pt) render unreliably in
+// email clients, but rounded integer px are stable and preserve the thin-line vs
+// heavy-bar intent. Clamped to [1, 12] so a typo'd huge width can't blow up a layout.
+const BORDER_WIDTH_MAX_PX = 12;
+
 function parseBorderSide(value: string | undefined, tok: Tokens): BorderSide | undefined {
   if (!value) return undefined;
   const v = value.trim().toLowerCase();
@@ -263,12 +271,17 @@ function parseBorderSide(value: string | undefined, tok: Tokens): BorderSide | u
   const colorToken = extractBorderColorToken(v, tok);
   if (!colorToken) return undefined;
   // A declared width of 0 means no visible border, even if a color is present.
-  const widthMatch = v.match(/([\d.]+)\s*(?:pt|px)/);
+  const widthMatch = v.match(/([\d.]+)\s*(pt|px)/);
   const width = widthMatch ? parseFloat(widthMatch[1]) : 1;
   if (width <= 0) return undefined;
   const color = canonicalizeBg(colorToken, tok);
   if (!color) return undefined;
-  return { color };
+  const side: BorderSide = { color };
+  if (widthMatch) {
+    const px = widthMatch[2] === "pt" ? width * (96 / 72) : width;
+    side.widthPx = Math.min(BORDER_WIDTH_MAX_PX, Math.max(1, Math.round(px)));
+  }
+  return side;
 }
 
 function parseBorderSpec(style: Record<string, string>, tok: Tokens): BorderSpec | undefined {
@@ -336,17 +349,36 @@ export function fromDom(
 ): StructuralNode[] {
   const nodes: StructuralNode[] = [];
 
+  // Top-level <br> tracking: GDocs serializes an author-typed blank line between
+  // paragraphs as a bare <br/> at block level. The <br> itself renders nothing
+  // (rhythm comes from blockPadY / paraBreaks), but it IS an explicit "I want a gap
+  // here" — recorded as gapBefore on the next paragraph so pushMerged doesn't tight-
+  // merge across it. A top-level <br data-one-br> is the opposite explicit signal
+  // (a § typed on its own line between paragraphs) — recorded as tightBefore.
+  let pendingGap = false;
+  let pendingTight = false;
+  const applyPending = (p: Paragraph) => {
+    if (pendingGap) p.gapBefore = true;
+    if (pendingTight) p.tightBefore = true;
+    pendingGap = pendingTight = false;
+  };
+
   for (const child of Array.from(root.childNodes)) {
     if (child.nodeType !== Node.ELEMENT_NODE) continue;
     const el = child as Element;
     const tag = el.tagName.toUpperCase();
 
     if (tag === "META" || tag === "STYLE" || tag === "SCRIPT") continue;
-    if (tag === "BR") continue; // top-level <br> = paragraph break, spacing via blockPadY
+    if (tag === "BR") {
+      if (el.hasAttribute("data-one-br")) pendingTight = true;
+      else pendingGap = true;
+      continue;
+    }
 
     if (tag === "IMG") {
       const img = parseImage(el, warn);
       if (img) nodes.push(img);
+      pendingGap = pendingTight = false;
       continue;
     }
 
@@ -354,7 +386,10 @@ export function fromDom(
       const { before, after } = extractImages(el, warn);
       nodes.push(...before);
       const p = parseParagraph(el, bg, tok);
-      if (p) nodes.push(p);
+      if (p) {
+        applyPending(p);
+        nodes.push(p);
+      }
       nodes.push(...after);
       continue;
     }
@@ -363,12 +398,14 @@ export function fromDom(
         tag === "ARTICLE" || tag === "HEADER" || tag === "FOOTER" ||
         tag === "FIGURE" || tag === "MAIN" || tag === "ASIDE") {
       nodes.push(...fromDom(el, bg, tok, warn));
+      pendingGap = pendingTight = false;
       continue;
     }
 
     if (tag === "TABLE") {
       const table = parseTable(el, bg, tok, warn);
       if (table) nodes.push(table);
+      pendingGap = pendingTight = false;
       continue;
     }
 
@@ -383,6 +420,7 @@ export function fromDom(
           // Adjacent list items always merge with a single <br>, never a paragraph gap —
           // structurally certain here (we're inside <ul>/<ol>), no heuristic needed.
           p.listItem = true;
+          applyPending(p);
           nodes.push(p);
         }
       }
@@ -393,7 +431,10 @@ export function fromDom(
     const { before, after } = extractImages(el, warn);
     nodes.push(...before);
     const p = parseParagraph(el, bg, tok);
-    if (p) nodes.push(p);
+    if (p) {
+      applyPending(p);
+      nodes.push(p);
+    }
     nodes.push(...after);
   }
 

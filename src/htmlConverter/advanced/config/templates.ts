@@ -17,6 +17,10 @@ export interface ParagraphOpts {
   align?: "left" | "center" | "right";
   size: "body" | "small" | "headline";
   variant?: "quote";  // h4 marker: extra horizontal indent
+  /** § between this and the previous/next paragraph couldn't merge (different
+   *  size/align/variant) — zero the corresponding padding to approximate a single-<br> gap. */
+  tightAfter?: boolean;
+  tightBefore?: boolean;
 }
 
 export interface AlertBandOpts {
@@ -38,7 +42,9 @@ export interface AlertBandOpts {
 
 export type AlertBandSegment =
   | { kind: "text"; html: string }
-  | { kind: "button"; label: string; href: string; bg: string; radius?: number; border?: BorderSpec };
+  | { kind: "button"; label: string; href: string; bg: string; radius?: number; border?: BorderSpec }
+  /** Nested colored band (its own bg/border) rendered as a separate row inside the outer band. */
+  | { kind: "band"; html: string; bg: string; border?: BorderSpec; align?: "left" | "center" | "right" };
 
 export interface ButtonBandOpts {
   bg: string;
@@ -52,12 +58,19 @@ export interface ButtonBandOpts {
 
 export interface CalloutOpts {
   accentColor: string;
+  /** Author-declared left-border width in px; tok.layout.calloutAccentPx when absent. */
+  accentWidthPx?: number;
   bg?: string;
 }
 
 export interface CalloutBoxOpts {
   border: BorderSpec;
   bg?: string;
+}
+
+export interface TextDividerOpts {
+  align?: "left" | "center" | "right";
+  ruleColor: string;
 }
 
 export interface GridCell {
@@ -81,6 +94,9 @@ export interface GridOpts {
 export interface ImageOpts {
   src: string;
   alt?: string;
+  /** § next to the image — zero the corresponding padding (see ImageProps). */
+  tightBefore?: boolean;
+  tightAfter?: boolean;
 }
 
 export interface SplitRowOpts {
@@ -134,8 +150,12 @@ export function baseStyle(
   return `font-family:${tok.font.stack};font-size:${fontSize}px;font-style:normal;font-weight:${fontWeight};line-height:${tok.font.lineHeight};text-align:${align};color:${color};${extraStyle}`;
 }
 
-export function blockRow(innerHtml: string, opts: Parameters<typeof baseStyle>[0] & { padY?: number } = {}, tok: Tokens = defaultTokens): string {
-  const { padY = tok.layout.blockPadY, extraStyle, ...coreOpts } = opts;
+export function blockRow(
+  innerHtml: string,
+  opts: Parameters<typeof baseStyle>[0] & { padY?: number; padTop?: number; padBottom?: number } = {},
+  tok: Tokens = defaultTokens,
+): string {
+  const { padY = tok.layout.blockPadY, padTop = padY, padBottom = padY, extraStyle, ...coreOpts } = opts;
   const align = coreOpts.align ?? "left";
   // spanStyle has no extraStyle and no padding — matches simple converter's inner <span> style
   const spanStyle = baseStyle(coreOpts, tok);
@@ -145,7 +165,7 @@ export function blockRow(innerHtml: string, opts: Parameters<typeof baseStyle>[0
   const tag = coreOpts.fontWeight === "bold" ? tok.tags.bold : tok.tags.blockWrap;
   return `<tr>
   <td align="${align}"
-    style="${spanStyle}${tdExtra} padding-top:${padY}px;padding-bottom:${padY}px;">
+    style="${spanStyle}${tdExtra} padding-top:${padTop}px;padding-bottom:${padBottom}px;">
     <${tag} style="${spanStyle}">
 ${indentHtml(innerHtml, 6)}
     </${tag}>
@@ -153,7 +173,9 @@ ${indentHtml(innerHtml, 6)}
 </tr>`;
 }
 
-/** Per-side `border-<side>:<width>px solid <color>;` — only sides present in `border` are drawn. */
+/** Per-side `border-<side>:<width>px solid <color>;` — only sides present in `border` are
+ *  drawn. Each side's author-declared width (BorderSide.widthPx) wins; `widthPx`/token is
+ *  the fallback for sides whose source declaration had no width. */
 export function borderSpecToStyle(border: BorderSpec | undefined, tok: Tokens = defaultTokens, widthPx?: number): string {
   if (!border) return "";
   const bw = widthPx ?? tok.layout.calloutBoxBorderPx;
@@ -163,7 +185,7 @@ export function borderSpecToStyle(border: BorderSpec | undefined, tok: Tokens = 
   ];
   return sides
     .filter(([key]) => border[key])
-    .map(([key, prop]) => `${prop}:${bw}px solid ${border[key]!.color};`)
+    .map(([key, prop]) => `${prop}:${border[key]!.widthPx ?? bw}px solid ${border[key]!.color};`)
     .join("");
 }
 
@@ -223,12 +245,14 @@ ${indentHtml(content, 14)}
     },
 
     paragraph(opts: ParagraphOpts): string {
-      const { innerHtml, align = "left", size, variant } = opts;
+      const { innerHtml, align = "left", size, variant, tightAfter, tightBefore } = opts;
       const fontSize = size === "headline" ? tok.font.headlinePx : size === "small" ? tok.font.smallPx : tok.font.bodyPx;
       const fontWeight = size === "headline" ? "bold" : "normal";
       const qp = variant === "quote" ? tok.layout.quotePadX : 0;
       const extraStyle = qp ? `padding-left:${qp}px;padding-right:${qp}px;` : "";
-      return blockRow(innerHtml, { align, fontSize, fontWeight, extraStyle }, tok);
+      const padTop = tightBefore ? 0 : undefined;
+      const padBottom = tightAfter ? 0 : undefined;
+      return blockRow(innerHtml, { align, fontSize, fontWeight, extraStyle, padTop, padBottom }, tok);
     },
 
     alertBand(opts: AlertBandOpts): string {
@@ -250,6 +274,26 @@ ${indentHtml(content, 14)}
             return `<tr>
   <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
 ${indentHtml(btnTable, 4)}
+  </td>
+</tr>`;
+          }
+          if (seg.kind === "band") {
+            // Nested colored band — same inner-table markup as the plain (non-segment)
+            // alertBand below, so the inner bg/border survive as their own row.
+            const bandColor = isDarkBg(seg.bg, tok) ? tok.color.white : tok.color.black;
+            const bandStyle = baseStyle({ align: seg.align ?? "left", color: bandColor }, tok);
+            const bandBorder = borderSpecToStyle(seg.border, tok);
+            const bh = tok.layout.alertBandPadH;
+            const bv = tok.layout.alertBandPadV;
+            return `<tr>
+  <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
+    <table align="center" border="0" bgcolor="${seg.bg}" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;${bandBorder}" role="presentation">
+      <tr>
+        <td style="${bandStyle} padding-left:${bh}px;padding-right:${bh}px;padding-top:${bv}px;padding-bottom:${bv}px;">
+${indentHtml(seg.html, 10)}
+        </td>
+      </tr>
+    </table>
   </td>
 </tr>`;
           }
@@ -291,7 +335,7 @@ ${indentHtml(innerHtml!, 10)}
       const style = baseStyle({}, tok);
       const p = pad();
       const px = tok.layout.calloutPadX;
-      const accent = tok.layout.calloutAccentPx;
+      const accent = opts.accentWidthPx ?? tok.layout.calloutAccentPx;
       const bgAttr = bg ? ` bgcolor="${bg}"` : "";
       const bgStyle = bg ? `background-color:${bg};` : "";
       return `<tr>
@@ -332,6 +376,23 @@ ${indentHtml(childrenHtml, 12)}
 </tr>`;
     },
 
+    // Plain flowing text (no box/padding) followed by a thin rule row — GDocs' 1×1
+    // table-with-border-bottom idiom for a divider, not a boxed callout. A literal
+    // <hr> is avoided: cleanEmptyHtmlTags (shared with the simple converter's
+    // typed-<hr> feature) rewrites every <hr> in the final HTML to force
+    // "<br><br><hr><br>" spacing around it, which would inject unwanted blank
+    // lines inside this <td>. border-bottom directly on a <td> renders reliably
+    // in every major client, including Outlook's Word engine — no <hr> needed.
+    textDivider(innerHtml: string, opts: TextDividerOpts): string {
+      const { align = "left", ruleColor } = opts;
+      const textRow = blockRow(innerHtml, { align }, tok);
+      const p = pad();
+      return `${textRow}
+<tr>
+  <td height="1" style="font-size:1px;line-height:1px;border-bottom:1px solid ${ruleColor};padding-bottom:${p}px;">&#160;</td>
+</tr>`;
+    },
+
     buttonBand(opts: ButtonBandOpts): string {
       const { innerHtml, href, bg, subtitleHtml, radius, border } = opts;
       const p = pad();
@@ -353,7 +414,7 @@ ${indentHtml(buttonTableHtml(innerHtml, href, bg, tok, radius, border), 4)}
         .map((cell, i) => {
           const w = widths?.[i] ?? (i === cells.length - 1 ? 100 - pct * (cells.length - 1) : pct);
           const textColor = cell.bg && isDarkBg(cell.bg, tok) ? tok.color.white : tok.color.black;
-          const cellStyle = baseStyle({ align: cell.align ?? "center", fontSize: tok.font.smallPx, color: textColor }, tok);
+          const cellStyle = baseStyle({ align: cell.align ?? "center", fontSize: tok.font.cellPx, color: textColor }, tok);
           const bgAttr = cell.bg ? ` bgcolor="${cell.bg}"` : "";
           const bgStyle = cell.bg ? `background-color:${cell.bg};` : "";
           const effectiveBorderColor = cell.borderColor ?? borderColor;
@@ -415,12 +476,13 @@ ${indentHtml(cellsHtml, 8)}
     },
 
     image(opts: ImageOpts): string {
-      const { src, alt = "Image" } = opts;
-      const p = pad();
+      const { src, alt = "Image", tightBefore, tightAfter } = opts;
+      const padTop = tightBefore ? 0 : pad();
+      const padBottom = tightAfter ? 0 : pad();
       // Content width inside side padding (600 − 2×20 = 560) — matches simple wrapImg
       const w = tok.layout.containerMaxWidth - 2 * tok.layout.sidePadding;
       return `<tr>
-  <td class="${tok.classes.imgBg}" align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
+  <td class="${tok.classes.imgBg}" align="center" style="padding-top:${padTop}px;padding-bottom:${padBottom}px;">
     <a href="${tok.placeholderHref}" target="${tok.button.target}">
       <img alt="${escapeHtml(alt)}" height="auto" src="${escapeHtml(src)}" width="${w}"
         style="border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;max-width:${w}px;font-size:13px;"/>
@@ -457,7 +519,7 @@ ${indentHtml(cellsHtml, 8)}
               const bg = cell.bg ?? row.bg;
               const bgAttr = bg ? ` bgcolor="${bg}"` : "";
               const textColor = bg && isDarkBg(bg, tok) ? tok.color.white : rowTextColor;
-              const style = baseStyle({ fontSize: tok.font.smallPx, color: textColor }, tok);
+              const style = baseStyle({ fontSize: tok.font.cellPx, color: textColor }, tok);
               const align = cell.align ?? "left";
               const w = rowWidths?.[i] ?? (i === ncols - 1 ? 100 - colPct * (ncols - 1) : colPct);
               const widthAttr = ncols > 1 ? ` width="${w}%"` : "";

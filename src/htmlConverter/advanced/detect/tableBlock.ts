@@ -5,7 +5,8 @@
 import type { Tokens } from "../config/tokens";
 import { tokens as defaultTokens } from "../config/tokens";
 import { isBgRedundant, isDarkBg } from "../ir/color";
-import type { BorderSide, BorderSpec, ButtonBandProps,CellNode, ComponentNode, Paragraph, Run,StructuralNode, TableNode, WarnFn } from "../ir/types";
+import { joinLinesWithSpace } from "../ir/runs";
+import type { AlertBandProps, BorderSide, BorderSpec, ButtonBandProps,CellNode, ComponentNode, Paragraph, Run,StructuralNode, TableNode, WarnFn } from "../ir/types";
 import { WARN } from "../warnings";
 
 /** Recurses back into classify.ts — threaded in to avoid a circular import. */
@@ -37,7 +38,10 @@ function hasMeaningfulBorder(border: BorderSpec | undefined, tok: Tokens): boole
  * into nested tables (whose layout is lost — only the text survives, reported
  * via `warn`). Also tracks which line indices start a new source paragraph, so
  * callers can render a <br><br> at those boundaries instead of silently gluing
- * separate paragraphs (e.g. a quote + its attribution) together.
+ * separate paragraphs (e.g. a quote + its attribution) together — UNLESS the
+ * author bridged that boundary with a § marker (tightNext on the block ending
+ * the boundary, or tightBefore on the block starting it), in which case it
+ * collapses to a single <br>, same convention as pushMerged / flattenCellForAlertBand.
  *
  * flattenLines / flattenRuns are thin projections of this — one recursion, one
  * nested-table warning, three shapes.
@@ -45,23 +49,26 @@ function hasMeaningfulBorder(border: BorderSpec | undefined, tok: Tokens): boole
 function flattenLinesWithBreaks(cell: CellNode, warn?: WarnFn): { lines: Run[][]; paraBreaks: Set<number> } {
   const lines: Run[][] = [];
   const paraBreaks = new Set<number>();
-  const appendBlock = (blockLines: Run[][], blockBreaks?: Set<number>) => {
+  let prevTightNext = false;
+  const appendBlock = (blockLines: Run[][], blockBreaks: Set<number> | undefined, tightBefore: boolean) => {
     if (blockLines.length === 0) return;
-    if (lines.length > 0) paraBreaks.add(lines.length);
+    if (lines.length > 0 && !prevTightNext && !tightBefore) paraBreaks.add(lines.length);
     if (blockBreaks) for (const idx of blockBreaks) paraBreaks.add(idx + lines.length);
     lines.push(...blockLines);
   };
   for (const child of cell.children) {
     if (child.type === "p") {
-      appendBlock(child.lines, child.paraBreaks);
+      appendBlock(child.lines, child.paraBreaks, child.tightBefore === true);
+      prevTightNext = child.tightNext === true;
     } else if (child.type === "table") {
       warn?.(WARN.nestedTableFlattened);
       for (const row of child.rows) {
         for (const nested of row.cells) {
           const nestedResult = flattenLinesWithBreaks(nested, undefined /* warn once per table */);
-          appendBlock(nestedResult.lines, nestedResult.paraBreaks);
+          appendBlock(nestedResult.lines, nestedResult.paraBreaks, false);
         }
       }
+      prevTightNext = false;
     }
   }
   return { lines, paraBreaks };
@@ -72,23 +79,26 @@ function flattenLines(cell: CellNode, warn?: WarnFn): Run[][] {
   return flattenLinesWithBreaks(cell, warn).lines;
 }
 
-/** All runs of a cell, flattened across lines and nested tables. */
+/** All runs of a cell, flattened across lines and nested tables — with a space
+ *  between lines so multi-line content doesn't glue words together. */
 function flattenRuns(cell: CellNode, warn?: WarnFn): Run[] {
-  return flattenLines(cell, warn).flat();
+  return joinLinesWithSpace(flattenLines(cell, warn));
 }
 
 /**
  * Like flattenLinesWithBreaks, but with two more things pushMerged (classify.ts)
  * already does for the general flow-paragraph path, ported here so the same
  * signals work inside a flattened alertBand cell:
- *   - tightNext: a paragraph ending in § gets a single <br> to what follows,
- *     not the default <br><br> block boundary.
+ *   - tightNext/tightBefore: a paragraph ending — or the next one starting — with
+ *     § gets a single <br> to what follows, not the default <br><br> block boundary.
  *   - align: the first paragraph's alignment (GDocs CTA boxes are consistently
  *     aligned throughout, so "first wins" is a fine approximation).
  * A nested table that itself resolves to a real button (GDocs' h5-in-colored-cell
  * pattern, e.g. a CTA nested inside a bigger alertBand box) keeps its identity as
- * a button instead of being flattened to plain text — only nested tables that
- * DON'T resolve to a button still flatten, same as before (with the same warning).
+ * a button instead of being flattened to plain text; one that resolves to its own
+ * colored band (a dark pseudo-button cell inside a dark bordered box) keeps its
+ * identity as a nested band row — only nested tables that resolve to NEITHER still
+ * flatten, same as before (with the same warning).
  */
 function flattenCellForAlertBand(
   cell: CellNode,
@@ -99,23 +109,25 @@ function flattenCellForAlertBand(
   lines: Run[][];
   paraBreaks: Set<number>;
   buttons: { atLine: number; props: ButtonBandProps }[];
+  bands: { atLine: number; props: AlertBandProps }[];
   align?: "left" | "center" | "right";
 } {
   const lines: Run[][] = [];
   const paraBreaks = new Set<number>();
   const buttons: { atLine: number; props: ButtonBandProps }[] = [];
+  const bands: { atLine: number; props: AlertBandProps }[] = [];
   let align: "left" | "center" | "right" | undefined;
   let prevTightNext = false;
-  const appendBlock = (blockLines: Run[][], blockBreaks?: Set<number>) => {
+  const appendBlock = (blockLines: Run[][], blockBreaks: Set<number> | undefined, tightBefore: boolean) => {
     if (blockLines.length === 0) return;
-    if (lines.length > 0 && !prevTightNext) paraBreaks.add(lines.length);
+    if (lines.length > 0 && !prevTightNext && !tightBefore) paraBreaks.add(lines.length);
     if (blockBreaks) for (const idx of blockBreaks) paraBreaks.add(idx + lines.length);
     lines.push(...blockLines);
   };
   for (const child of cell.children) {
     if (child.type === "p") {
       if (align === undefined && child.align) align = child.align;
-      appendBlock(child.lines, child.paraBreaks);
+      appendBlock(child.lines, child.paraBreaks, child.tightBefore === true);
       prevTightNext = child.tightNext === true;
     } else if (child.type === "table") {
       const nestedComponent = classifyTable(child, tok, warn, classifyChildren);
@@ -124,17 +136,22 @@ function flattenCellForAlertBand(
         prevTightNext = false;
         continue;
       }
+      if (nestedComponent?.kind === "alertBand") {
+        bands.push({ atLine: lines.length, props: nestedComponent.props });
+        prevTightNext = false;
+        continue;
+      }
       warn?.(WARN.nestedTableFlattened);
       for (const row of child.rows) {
         for (const nested of row.cells) {
           const nestedResult = flattenLinesWithBreaks(nested, undefined /* warn once per table */);
-          appendBlock(nestedResult.lines, nestedResult.paraBreaks);
+          appendBlock(nestedResult.lines, nestedResult.paraBreaks, false);
         }
       }
       prevTightNext = false;
     }
   }
-  return { lines, paraBreaks, buttons, align };
+  return { lines, paraBreaks, buttons, bands, align };
 }
 
 function findHref(cell: CellNode): string | null {
@@ -163,10 +180,10 @@ function hasMeaningfulContent(cell: CellNode): boolean {
  * not the <td> — cell.align only covers an explicit `align`/`text-align` on the
  * cell itself, so fall back to the first paragraph child's align.
  */
-function cellAlign(cell: CellNode): "left" | "center" | "right" {
+function cellAlign(cell: CellNode, fallback: "left" | "center" | "right" = "left"): "left" | "center" | "right" {
   if (cell.align) return cell.align;
   const firstPara = cell.children.find((c): c is Paragraph => c.type === "p");
-  return firstPara?.align ?? "left";
+  return firstPara?.align ?? fallback;
 }
 
 function cellToChild(cell: CellNode, warn?: WarnFn): ComponentNode {
@@ -174,7 +191,9 @@ function cellToChild(cell: CellNode, warn?: WarnFn): ComponentNode {
     kind: "paragraph",
     props: {
       lines: flattenLines(cell, warn),
-      align: cell.align ?? "center",
+      // "center" fallback: stats cards read best centered when the author left the
+      // cell unaligned — but an explicit alignment on the cell OR its first <p> wins.
+      align: cellAlign(cell, "center"),
       size: "small" as const,
       bg: cell.bg,
       borderColor: firstBorderColor(cell.border),
@@ -244,18 +263,40 @@ function classifySingleCell(
     // close its color is to white — use the raw border here, not the near-white-filtered one.
     // Nested tables that resolve to a real button (a CTA nested inside the banner) survive
     // as actual buttons — see flattenCellForAlertBand — everything else still flattens.
-    const { lines, paraBreaks, buttons, align } = flattenCellForAlertBand(cell, tok, warn, classifyChildren);
+    const { lines, paraBreaks, buttons, bands, align } = flattenCellForAlertBand(cell, tok, warn, classifyChildren);
     // Only promote to buttonBand (wraps the ENTIRE cell in one <a>) when the cell is a
-    // single logical line with no nested button of its own — a real one-line CTA. A
-    // multi-line dark box (e.g. a banner headline + a "fake link" line styled
+    // single logical line with no nested button/band of its own — a real one-line CTA.
+    // A multi-line dark box (e.g. a banner headline + a "fake link" line styled
     // blue/underlined with no real <a> + a footer line) must stay an alertBand: findHref
     // would happily match the fake-link line and swallow the whole box — including
     // unrelated text — into one giant link.
-    const href = lines.length <= 1 && buttons.length === 0 ? findHref(cell) : null;
+    const href = lines.length <= 1 && buttons.length === 0 && bands.length === 0 ? findHref(cell) : null;
     if (href) {
-      return { kind: "buttonBand", props: { runs: lines.flat(), href, bg, border: cell.border } };
+      return { kind: "buttonBand", props: { runs: joinLinesWithSpace(lines), href, bg, border: cell.border } };
     }
-    return { kind: "alertBand", props: { lines, paraBreaks, bg, border: cell.border, buttons: buttons.length ? buttons : undefined, align } };
+    return {
+      kind: "alertBand",
+      props: {
+        lines, paraBreaks, bg, border: cell.border,
+        buttons: buttons.length ? buttons : undefined,
+        bands: bands.length ? bands : undefined,
+        align,
+      },
+    };
+  }
+
+  // Pure border-bottom, no fill → GDocs' idiom for a horizontal rule under a text
+  // block (a 1×1 layout table with only border-bottom set), not a boxed callout.
+  // Render as plain flowing text with a real <hr> beneath it instead of calloutBox's
+  // padded box — a bg here means the author meant an actual colored panel, not a rule,
+  // so that case still falls through to the generic border handling below.
+  const isBottomRuleOnly = Boolean(border?.bottom) && !border?.top && !border?.right && !border?.left;
+  if (isBottomRuleOnly && !bg) {
+    const { lines, paraBreaks } = flattenLinesWithBreaks(cell, warn);
+    return {
+      kind: "textDivider",
+      props: { lines, paraBreaks, align: cellAlign(cell), ruleColor: border!.bottom!.color },
+    };
   }
 
   // Pure border-left accent (+ optional light bg) → calloutLeft, using the
@@ -265,7 +306,7 @@ function classifySingleCell(
     const { lines, paraBreaks } = flattenLinesWithBreaks(cell, warn);
     return {
       kind: "calloutLeft",
-      props: { lines, paraBreaks, bg, accentColor: border!.left!.color },
+      props: { lines, paraBreaks, bg, accentColor: border!.left!.color, accentWidthPx: border!.left!.widthPx },
     };
   }
 
@@ -293,7 +334,8 @@ function rowCells(cells: CellNode[], warn?: WarnFn) {
   // <br>, not the double break flattenLinesWithBreaks uses for alertBand/calloutLeft.
   return cells.map(c => ({
     lines: flattenLines(c, warn),
-    align: c.align ?? "left",
+    // GDocs puts text-align on the inner <p>, not the <td> — cellAlign covers both.
+    align: cellAlign(c),
     bg: c.bg,
     // Full per-side spec (drives a box border when the source doc declared one) plus the
     // single-color fallback used for the plain bottom-rule case.

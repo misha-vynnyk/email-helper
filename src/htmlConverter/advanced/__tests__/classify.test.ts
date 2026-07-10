@@ -8,7 +8,7 @@ function makePara(
   text: string,
   size: Paragraph["size"] = "body",
   align: Paragraph["align"] = "left",
-  extra: Partial<Pick<Paragraph, "listItem">> = {},
+  extra: Partial<Pick<Paragraph, "listItem" | "tightNext" | "tightBefore">> = {},
 ): Paragraph {
   return { type: "p", size, align, lines: [[{ text }]], ...extra };
 }
@@ -46,6 +46,61 @@ describe("classify — paragraph merging", () => {
     const nodes: StructuralNode[] = [makePara("left", "body", "left"), makePara("center", "body", "center")];
     const result = classify(nodes);
     expect(result).toHaveLength(2);
+  });
+
+  // § between paragraphs whose size/align/variant differ can't merge into one block (they
+  // can't share a single <span>'s formatting), but the "no gap" intent should still
+  // collapse the padding between the two separate blocks to ~ a single-<br> gap.
+  it("§ (tightNext) between mismatched-size paragraphs: stays 2 blocks, padding collapses", () => {
+    const nodes: StructuralNode[] = [
+      makePara("Headline", "headline", "left", { tightNext: true }),
+      makePara("Body", "body", "left"),
+    ];
+    const result = classify(nodes);
+    expect(result).toHaveLength(2);
+    expect((result[0].props as Record<string, unknown>)["tightAfter"]).toBe(true);
+    expect((result[1].props as Record<string, unknown>)["tightBefore"]).toBe(true);
+  });
+
+  it("§ (tightNext) between mismatched-align paragraphs: stays 2 blocks, padding collapses", () => {
+    const nodes: StructuralNode[] = [
+      makePara("Eyebrow", "body", "center", { tightNext: true }),
+      makePara("Body", "body", "left"),
+    ];
+    const result = classify(nodes);
+    expect(result).toHaveLength(2);
+    expect((result[0].props as Record<string, unknown>)["tightAfter"]).toBe(true);
+    expect((result[1].props as Record<string, unknown>)["tightBefore"]).toBe(true);
+  });
+
+  it("without § (no tightNext), mismatched paragraphs get neither tight flag", () => {
+    const nodes: StructuralNode[] = [makePara("big", "headline"), makePara("small", "body")];
+    const result = classify(nodes);
+    expect((result[0].props as Record<string, unknown>)["tightAfter"]).toBeUndefined();
+    expect((result[1].props as Record<string, unknown>)["tightBefore"]).toBeUndefined();
+  });
+
+  // Mirror of tightNext: the author placed § at the START of the SECOND paragraph
+  // instead of the end of the first one — same intent, other end of the boundary.
+  it("leading § (tightBefore) merges same-style paragraphs with NO paraBreak (single <br>)", () => {
+    const nodes: StructuralNode[] = [
+      makePara("Line one", "body", "left"),
+      makePara("Line two", "body", "left", { tightBefore: true }),
+    ];
+    const result = classify(nodes);
+    expect(result).toHaveLength(1);
+    expect((result[0].props as Record<string, unknown>)["paraBreaks"]).toBeUndefined();
+  });
+
+  it("leading § (tightBefore) between mismatched-size paragraphs: stays 2 blocks, padding collapses", () => {
+    const nodes: StructuralNode[] = [
+      makePara("Headline", "headline", "left"),
+      makePara("Body", "body", "left", { tightBefore: true }),
+    ];
+    const result = classify(nodes);
+    expect(result).toHaveLength(2);
+    expect((result[0].props as Record<string, unknown>)["tightAfter"]).toBe(true);
+    expect((result[1].props as Record<string, unknown>)["tightBefore"]).toBe(true);
   });
 
   // Bug fix: GDocs encodes a centered banner/eyebrow group (headline + subline) as two
@@ -311,5 +366,121 @@ describe("classify — empty input", () => {
     const emptyTable: TableNode = { type: "table", rows: [] };
     const result = classify([emptyTable]);
     expect(result).toHaveLength(0);
+  });
+});
+
+// ── § around images (F4) ──────────────────────────────────────────────────────
+
+describe("classify — § around images", () => {
+  const img: StructuralNode = { type: "img", src: "https://example.com/banner.png" };
+
+  it("paragraph ending with § before an image zeroes the gap on both sides", () => {
+    const result = classify([makePara("intro", "body", "left", { tightNext: true }), img]);
+    expect(result).toHaveLength(2);
+    expect((result[0].props as Record<string, unknown>)["tightAfter"]).toBe(true);
+    expect((result[1].props as Record<string, unknown>)["tightBefore"]).toBe(true);
+  });
+
+  it("paragraph starting with § after an image zeroes the image's bottom padding", () => {
+    const result = classify([img, makePara("caption", "body", "left", { tightBefore: true })]);
+    expect(result).toHaveLength(2);
+    expect((result[0].props as Record<string, unknown>)["tightAfter"]).toBe(true);
+    expect((result[1].props as Record<string, unknown>)["tightBefore"]).toBe(true);
+  });
+
+  it("image without § keeps full padding on both sides", () => {
+    const result = classify([makePara("intro"), img, makePara("outro")]);
+    expect((result[1].props as Record<string, unknown>)["tightBefore"]).toBeUndefined();
+    expect((result[1].props as Record<string, unknown>)["tightAfter"]).toBeUndefined();
+  });
+});
+
+// ── Multi-line h5 flow button label (F2) ──────────────────────────────────────
+
+describe("classify — h5 flow button label", () => {
+  it("joins multi-line labels with a space instead of gluing words", () => {
+    const h5: Paragraph = {
+      type: "p", size: "small", headingLevel: 5,
+      lines: [[{ text: "Click" }], [{ text: "Here" }]],
+    };
+    const result = classify([h5]);
+    expect(result[0].kind).toBe("buttonBand");
+    const runs = (result[0].props as Record<string, unknown>)["runs"] as Array<{ text: string }>;
+    expect(runs.map(r => r.text).join("")).toBe("Click Here");
+  });
+});
+
+// ── Pairwise zero-margin merge signal + gapBefore veto ────────────────────────
+
+describe("classify — pairwise zero-margin signal", () => {
+  function marginPara(
+    text: string,
+    extra: Partial<Pick<Paragraph, "zeroTopMargin" | "zeroBottomMargin" | "gapBefore" | "tightNext">> = {},
+  ): Paragraph {
+    return { type: "p", size: "body", align: "left", lines: [[{ text }]], ...extra };
+  }
+
+  it("merges a zero-bottom + zero-top pair with a single <br> (no paraBreak)", () => {
+    const result = classify([
+      marginPara("one", { zeroBottomMargin: true }),
+      marginPara("two", { zeroTopMargin: true }),
+    ]);
+    expect(result).toHaveLength(1);
+    expect((result[0].props as Record<string, unknown>)["paraBreaks"]).toBeUndefined();
+  });
+
+  it("one-sided zero keeps the <br><br> paragraph gap", () => {
+    const result = classify([
+      marginPara("one", { zeroBottomMargin: true }),
+      marginPara("two"),
+    ]);
+    const breaks = (result[0].props as Record<string, unknown>)["paraBreaks"] as Set<number>;
+    expect(breaks.has(1)).toBe(true);
+  });
+
+  it("gapBefore (author-typed blank line) vetoes the zero-margin pair", () => {
+    const result = classify([
+      marginPara("one", { zeroBottomMargin: true }),
+      marginPara("two", { zeroTopMargin: true, gapBefore: true }),
+    ]);
+    const breaks = (result[0].props as Record<string, unknown>)["paraBreaks"] as Set<number>;
+    expect(breaks.has(1)).toBe(true);
+  });
+
+  it("gapBefore also vetoes the centered-merge convention", () => {
+    const result = classify([
+      makePara("HEADLINE", "body", "center"),
+      { ...makePara("subline", "body", "center"), gapBefore: true } as Paragraph,
+    ]);
+    const breaks = (result[0].props as Record<string, unknown>)["paraBreaks"] as Set<number>;
+    expect(breaks.has(1)).toBe(true);
+  });
+
+  it("§ outranks gapBefore on the same boundary", () => {
+    const result = classify([
+      marginPara("one", { tightNext: true }),
+      marginPara("two", { gapBefore: true }),
+    ]);
+    expect(result).toHaveLength(1);
+    expect((result[0].props as Record<string, unknown>)["paraBreaks"]).toBeUndefined();
+  });
+
+  it("cross-style zero-margin pair zeroes the boundary paddings (tightAfter/tightBefore)", () => {
+    const headline: Paragraph = { type: "p", size: "headline", align: "left", lines: [[{ text: "Head" }]], zeroBottomMargin: true };
+    const body: Paragraph = { type: "p", size: "body", align: "left", lines: [[{ text: "Body" }]], zeroTopMargin: true };
+    const result = classify([headline, body]);
+    expect(result).toHaveLength(2);
+    expect((result[0].props as Record<string, unknown>)["tightAfter"]).toBe(true);
+    expect((result[1].props as Record<string, unknown>)["tightBefore"]).toBe(true);
+  });
+
+  it("the merged tail's zeroBottomMargin governs the NEXT merge", () => {
+    const result = classify([
+      marginPara("one", { zeroBottomMargin: true }),
+      marginPara("two", { zeroTopMargin: true, zeroBottomMargin: true }),
+      marginPara("three", { zeroTopMargin: true }),
+    ]);
+    expect(result).toHaveLength(1);
+    expect((result[0].props as Record<string, unknown>)["paraBreaks"]).toBeUndefined();
   });
 });

@@ -18,15 +18,17 @@ describe("normalize", () => {
     expect(getStyle(body, "p")).toContain("color");
   });
 
-  it("strips margin shorthand and margin-bottom/left/right, but keeps margin-top", () => {
-    // margin-top survives — fromDom reads it as the adjacent-paragraph merge signal (§4).
+  it("strips margin shorthand and left/right, keeps margin-top/bottom (pairwise zero-gap signal)", () => {
+    // margin-top/margin-bottom survive — fromDom reads them ONLY to detect the explicit
+    // 0+0 pair across a paragraph boundary (single-<br> merge); values are never rendered.
     const body = normalize(
       '<p style="margin: 0; margin-top: 4pt; margin-bottom: 4pt; margin-left: 1pt; color: red;">hi</p>',
     );
     const style = getStyle(body, "p");
-    expect(style).not.toContain("margin-bottom");
     expect(style).not.toContain("margin-left");
+    expect(style).not.toContain("margin: 0");
     expect(style).toContain("margin-top");
+    expect(style).toContain("margin-bottom");
     expect(style).toContain("color");
   });
 
@@ -38,10 +40,10 @@ describe("normalize", () => {
   });
 
   it("strips white-space", () => {
-    const body = normalize('<p style="white-space: nowrap; font-size: 14px;">hi</p>');
+    const body = normalize('<p style="white-space: nowrap; color: red;">hi</p>');
     const style = getStyle(body, "p");
     expect(style).not.toContain("white-space");
-    expect(style).toContain("font-size");
+    expect(style).toContain("color");
   });
 
   it("strips border-collapse but keeps border (needed for classification/color)", () => {
@@ -118,9 +120,9 @@ describe("normalize", () => {
     expect(getStyle(body, "span")).toContain("color");
   });
 
-  it("preserves font-size", () => {
+  it("strips font-size — text sizes come only from the size tokens (body/small/headline/cell)", () => {
     const body = normalize('<p style="font-size: 18px;">hi</p>');
-    expect(getStyle(body, "p")).toContain("font-size");
+    expect(body.querySelector("p")?.hasAttribute("style")).toBe(false);
   });
 
   it("removes style attr entirely when nothing survives stripping", () => {
@@ -158,5 +160,48 @@ describe("normalize", () => {
   it("removes dir attribute", () => {
     const body = normalize('<p dir="ltr">hi</p>');
     expect(body.querySelector("p")?.hasAttribute("dir")).toBe(false);
+  });
+});
+
+// A § marker becomes <br data-one-br="1"> before normalize() runs (see preprocess.ts).
+// Regression coverage for the bug where cleanBrNoise silently discarded it.
+describe("normalize — § marker (<br data-one-br>) survival", () => {
+  it("keeps a trailing one-br marker at the end of a <p> (its only meaningful position)", () => {
+    const body = normalize('<p>First paragraph<br data-one-br="1"></p><p>Second paragraph</p>');
+    const marker = body.querySelector("p br[data-one-br]");
+    expect(marker).not.toBeNull();
+    expect(marker?.parentElement?.tagName).toBe("P");
+  });
+
+  it("keeps a leading one-br marker at the start of a <p>", () => {
+    const body = normalize('<p>First paragraph</p><p><br data-one-br="1">Second paragraph</p>');
+    expect(body.querySelectorAll("br[data-one-br]")).toHaveLength(1);
+  });
+
+  it("still strips a genuine unmarked leading/trailing GDocs artifact <br>", () => {
+    const body = normalize("<p><br>Real content</p>");
+    expect(body.querySelector("p br")).toBeNull();
+  });
+
+  it("collapses a plain <br> that sits across a span boundary from the marker (GDocs run split)", () => {
+    // "text</span><br><span>§text" — the marker ends up one level deeper than the
+    // plain <br> it's meant to replace; both must not survive as two breaks.
+    const body = normalize('<p><span>Line one</span><br><span><br data-one-br="1">Line two</span></p>');
+    const brs = body.querySelectorAll("p br");
+    expect(brs).toHaveLength(1);
+    expect(brs[0].hasAttribute("data-one-br")).toBe(true);
+  });
+
+  it("collapses a plain <br> that follows the marker's span (reverse order)", () => {
+    const body = normalize('<p><span>Line one<br data-one-br="1"></span><br><span>Line two</span></p>');
+    const brs = body.querySelectorAll("p br");
+    expect(brs).toHaveLength(1);
+    expect(brs[0].hasAttribute("data-one-br")).toBe(true);
+  });
+
+  it("does not touch an unrelated plain <br> elsewhere in the same paragraph", () => {
+    const body = normalize('<p>A<br>B<span><br data-one-br="1">C</span></p>');
+    const brs = body.querySelectorAll("p br");
+    expect(brs).toHaveLength(2);
   });
 });

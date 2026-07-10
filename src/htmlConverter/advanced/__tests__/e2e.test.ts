@@ -75,21 +75,73 @@ describe("convertAdvanced — plain-text fixture", () => {
 
 // ── paragraph-gap regression ──────────────────────────────────────────────────
 
-describe("convertAdvanced — paragraph gaps survive a large-margin opener", () => {
-  // Regression: the margin-top "reduction relative to the chain's opening value" heuristic
-  // made one large-margin paragraph (common right after a heading/image) mark every
-  // following ordinary paragraph as tight, collapsing a whole section's <br><br>s to <br>.
-  it("keeps <br><br> between ordinary left-aligned prose paragraphs", () => {
+describe("convertAdvanced — paragraph gaps and the pairwise zero-margin signal", () => {
+  // Regression (kept from the reverted chain-relative margin heuristic): one
+  // large-margin opener must NOT make the following normally-spaced paragraphs
+  // collapse. The pairwise rule reads only explicit 0+0 boundaries — a non-zero
+  // margin on either side of a boundary keeps the <br><br>, and there is no chain
+  // memory to cascade.
+  it("keeps <br><br> between normally-spaced prose paragraphs after a large-margin opener", () => {
     const input = `
       <div>
-        <p style="margin-top:18pt;margin-bottom:0pt;text-align:left"><span style="font-size:11pt">Everyone is talking about SpaceX.</span></p>
-        <p style="margin-top:0pt;margin-bottom:0pt;text-align:left"><span style="font-size:11pt">I get it. It's a great story.</span></p>
-        <p style="margin-top:0pt;margin-bottom:0pt;text-align:left"><span style="font-size:11pt">But there's a bigger one.</span></p>
-        <p style="margin-top:0pt;margin-bottom:0pt;text-align:left"><span style="font-size:11pt">Let me explain why.</span></p>
+        <p style="margin-top:18pt;margin-bottom:4pt;text-align:left"><span style="font-size:11pt">Everyone is talking about SpaceX.</span></p>
+        <p style="margin-top:4pt;margin-bottom:4pt;text-align:left"><span style="font-size:11pt">I get it. It's a great story.</span></p>
+        <p style="margin-top:4pt;margin-bottom:4pt;text-align:left"><span style="font-size:11pt">But there's a bigger one.</span></p>
+        <p style="margin-top:4pt;margin-bottom:4pt;text-align:left"><span style="font-size:11pt">Let me explain why.</span></p>
       </div>`;
     const { html } = convertAdvancedDetailed(input);
     const doubles = (html.match(/<br><br>/g) ?? []).length;
     expect(doubles).toBe(3); // a blank line between each of the 4 paragraphs
+  });
+
+  // GDocs' DEFAULT paragraph spacing is 0pt before/after — there, Enter produces NO
+  // visible gap in the document, i.e. Enter IS the author's line break. An explicit
+  // margin-bottom:0 + margin-top:0 pair across the boundary reproduces that look
+  // with a single <br> instead of inventing a <br><br> the author never saw.
+  it("merges explicitly zero-spaced paragraphs (GDocs default spacing) with a single <br>", () => {
+    const input = `
+      <div>
+        <p style="margin-top:0pt;margin-bottom:0pt;text-align:left">Line one typed with Enter.</p>
+        <p style="margin-top:0pt;margin-bottom:0pt;text-align:left">Line two right below it.</p>
+      </div>`;
+    const { html } = convertAdvancedDetailed(input);
+    expect(html).not.toContain("<br><br>");
+    const gap = html.slice(html.indexOf("Enter."), html.indexOf("Line two") + 8);
+    expect(gap).toContain("<br>");
+  });
+
+  it("one-sided zero margin is NOT enough — both sides of the boundary must be explicit zeros", () => {
+    const input = `
+      <div>
+        <p style="margin-top:0pt;margin-bottom:0pt;text-align:left">First paragraph.</p>
+        <p style="margin-top:4pt;margin-bottom:0pt;text-align:left">Second paragraph.</p>
+      </div>`;
+    const { html } = convertAdvancedDetailed(input);
+    expect(html).toContain("<br><br>");
+  });
+
+  // An author-typed blank line between paragraphs serializes as a bare top-level
+  // <br/> — an explicit "I want a gap here" that outranks the zero-margin pair.
+  it("a blank line (top-level <br>) between zero-spaced paragraphs keeps the <br><br>", () => {
+    const input = `
+      <div>
+        <p style="margin-top:0pt;margin-bottom:0pt;text-align:left">Above the blank line.</p>
+        <br />
+        <p style="margin-top:0pt;margin-bottom:0pt;text-align:left">Below the blank line.</p>
+      </div>`;
+    const { html } = convertAdvancedDetailed(input);
+    expect(html).toContain("<br><br>");
+  });
+
+  it("§ still outranks everything, including a blank line on the same boundary", () => {
+    const input = `
+      <div>
+        <p style="margin-top:4pt;margin-bottom:4pt;text-align:left">Above.§</p>
+        <br />
+        <p style="margin-top:4pt;margin-bottom:4pt;text-align:left">Below.</p>
+      </div>`;
+    const { html } = convertAdvancedDetailed(input);
+    expect(html).not.toContain("<br><br>");
   });
 
   // Regression: an author-typed blank line INSIDE one <p> (Shift+Enter twice → two <br>s,
@@ -729,9 +781,11 @@ describe("convertAdvanced — tickr-promo fixture", () => {
     expect(html).toContain("border-left:");
   });
 
-  it("calloutLeft accent uses the source document's own border color, not the house green default", () => {
-    // Source declares border-left:solid #c2410c 1.75pt on the quote cell
-    expect(html).toContain("border-left:10px solid #c2410c");
+  it("calloutLeft accent uses the source document's own border color AND width, not house defaults", () => {
+    // Source declares border-left:solid #c2410c 1.75pt on the quote cell —
+    // 1.75pt × 96/72 ≈ 2.33 → quantized to 2px (not the 10px calloutAccentPx token)
+    expect(html).toContain("border-left:2px solid #c2410c");
+    expect(html).not.toContain("border-left:10px solid");
     expect(html).not.toContain("border-left:10px solid #28b628");
   });
 
@@ -741,10 +795,11 @@ describe("convertAdvanced — tickr-promo fixture", () => {
   });
 
   it("wraps the black-bordered CTA section in a frame instead of dropping the border", () => {
-    // Source declares a full #111111 frame with no background — previously this
+    // Source declares a full #111111 1.25pt frame with no background — previously this
     // border was silently dropped because normalize.ts stripped all border CSS
     // and single-cell classification returned null for cells without a bg.
-    expect(html).toMatch(/border-top:1px solid #000000;border-right:1px solid #000000;border-bottom:1px solid #000000;border-left:1px solid #000000;/);
+    // 1.25pt × 96/72 ≈ 1.67 → quantized to 2px.
+    expect(html).toMatch(/border-top:2px solid #000000;border-right:2px solid #000000;border-bottom:2px solid #000000;border-left:2px solid #000000;/);
   });
 
   it("renders a 4-cell statsGrid with widths summing to 100%", () => {

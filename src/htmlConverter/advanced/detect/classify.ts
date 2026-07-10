@@ -41,7 +41,7 @@ function pushMerged(result: ComponentNode[], comp: ComponentNode, warn?: WarnFn)
     const newLines = comp.props.lines;
     if (newLines.length === 0) return;  // empty comp contributes nothing — drop it
     const breakIdx = lastLines.length;
-    // Four signals mean "no gap before me":
+    // Six signals mean "no gap before me":
     //  - centered: GDocs' banner/eyebrow convention (a centered headline + subline)
     //  - listItem: structurally certain — set by fromDom.ts only inside a real <ul>/<ol>
     //  - marker pair: BOTH the previous line and this paragraph start with a
@@ -49,17 +49,30 @@ function pushMerged(result: ComponentNode[], comp: ComponentNode, warn?: WarnFn)
     //    "✓ Partners: ..."). The pair requirement keeps a lone dash-led sentence prose.
     //  - tightNext: the PREVIOUS paragraph ended with a user-typed § marker — an
     //    explicit "no gap after me" signal, independent of alignment/structure.
-    // A margin-top-based signal ("author explicitly zeroed the space before this
-    // paragraph") was tried and reverted: comparing against the merge chain's *opening*
-    // margin means one early paragraph with a larger-than-usual margin-top (common right
-    // after a heading/image) makes every ordinary paragraph after it look like a
-    // "reduction" forever, collapsing an entire section's <br><br>s to <br>.
-    // Anything else is genuine prose (common in short-paragraph marketing copy) and keeps
-    // the <br><br> blank-line separation.
+    //  - tightBefore: THIS paragraph's raw HTML instead STARTED with §  — same intent,
+    //    placed at the other end of the boundary (author habit varies).
+    //  - zero-margin pair: the source doc explicitly declared margin-bottom:0 on the
+    //    previous paragraph AND margin-top:0 on this one — the author configured the
+    //    doc so Enter produces no visible gap, i.e. Enter IS their line break. Both
+    //    sides must be explicit zeros; this pairwise absolute rule replaces the
+    //    reverted chain-relative margin comparison (comparing against the merge
+    //    chain's *opening* margin meant one early paragraph with a larger-than-usual
+    //    margin-top made every paragraph after it look like a "reduction" forever,
+    //    collapsing an entire section's <br><br>s to <br> — pairwise zeros have no
+    //    chain memory, so they can't cascade).
+    // gapBefore (an author-typed blank line — top-level <br> — right before this
+    // paragraph) vetoes the convention-based signals: the author explicitly asked for
+    // a gap there. Only § (tightNext/tightBefore) outranks it, being the explicit
+    // tight marker. Anything else is genuine prose (common in short-paragraph
+    // marketing copy) and keeps the <br><br> blank-line separation.
     const isMarkerPair = startsWithListMarker(newLines[0]) &&
       startsWithListMarker(lastLines[breakIdx - 1]);
-    const isTight = alignOf(comp.props) === "center" || comp.props.listItem === true ||
-      isMarkerPair || last.props.tightNext === true;
+    const isZeroMarginPair = last.props.zeroBottomMargin === true &&
+      comp.props.zeroTopMargin === true;
+    const isTight = last.props.tightNext === true || comp.props.tightBefore === true ||
+      (comp.props.gapBefore !== true &&
+        (alignOf(comp.props) === "center" || comp.props.listItem === true ||
+          isMarkerPair || isZeroMarginPair));
     const compBreaks = comp.props.paraBreaks;
 
     // Build the merged paragraph without mutating the node already in `result`.
@@ -76,12 +89,37 @@ function pushMerged(result: ComponentNode[], comp: ComponentNode, warn?: WarnFn)
         ...last.props,
         lines: [...lastLines, ...newLines],
         paraBreaks: breaks.size ? breaks : undefined,
-        // comp is now the tail of the merged paragraph — its own tightNext (not
-        // last's, which was already consumed above) governs the NEXT merge.
+        // comp is now the tail of the merged paragraph — its own tightNext /
+        // zeroBottomMargin (not last's, which were already consumed above) govern
+        // the NEXT merge.
         tightNext: comp.props.tightNext,
+        zeroBottomMargin: comp.props.zeroBottomMargin,
       },
     };
     return;
+  }
+
+  // The full merge above requires matching size/variant/align — a § between a headline
+  // and body text (or center- and left-aligned paragraphs) can't share one <span>'s
+  // formatting, so it falls through here instead. The two blocks stay separate, but the
+  // author's "no gap" intent (either end of the boundary — see isTight above) still
+  // collapses the padding between them to roughly a single-<br> gap instead of the
+  // default double block padding. Same signals as the full merge: § (either end) wins
+  // outright; the zero-margin pair applies unless an author-typed blank line
+  // (gapBefore) sits on the boundary.
+  if (comp.kind === "paragraph" && last?.kind === "paragraph" &&
+      (last.props.tightNext === true || comp.props.tightBefore === true ||
+        (comp.props.gapBefore !== true &&
+          last.props.zeroBottomMargin === true && comp.props.zeroTopMargin === true))) {
+    result[result.length - 1] = { ...last, props: { ...last.props, tightAfter: true } };
+    comp = { ...comp, props: { ...comp.props, tightBefore: true } };
+  }
+
+  // § at the start of a paragraph that follows an image ("[image] §text") — the image
+  // can't merge with text, but the "no gap" intent still applies: zero the image's
+  // bottom padding; the paragraph's own tightBefore already zeroes its top padding.
+  if (comp.kind === "paragraph" && last?.kind === "image" && comp.props.tightBefore === true) {
+    result[result.length - 1] = { ...last, props: { ...last.props, tightAfter: true } };
   }
 
   if (comp.kind === "recordRow" && last?.kind === "recordRow") {
@@ -128,7 +166,16 @@ export function classify(nodes: StructuralNode[], tok: Tokens = defaultTokens, w
         pushMerged(result, comp, warn);
       }
     } else if (node.type === "img") {
-      result.push({ kind: "image", props: { src: node.src, alt: node.alt } });
+      const comp: ComponentNode = { kind: "image", props: { src: node.src, alt: node.alt } };
+      // § at the end of the paragraph right before this image ("text§ [image]") —
+      // mirror of the image-then-paragraph case in pushMerged: zero the paragraph's
+      // bottom padding and the image's top padding.
+      const last = result[result.length - 1];
+      if (last?.kind === "paragraph" && last.props.tightNext === true) {
+        result[result.length - 1] = { ...last, props: { ...last.props, tightAfter: true } };
+        comp.props.tightBefore = true;
+      }
+      result.push(comp);
     }
   }
 
