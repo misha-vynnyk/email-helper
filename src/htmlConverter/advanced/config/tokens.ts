@@ -27,7 +27,7 @@ export interface Tokens {
     bodyPx: number;
     headlinePx: number;
     smallPx: number;
-    smallMaxPt: number;
+    cellPx: number;
     linkWeight: number;
     linkDecoration: string;
   };
@@ -98,10 +98,13 @@ export const tokens: Tokens = {
     // Pulled from shared config — one place to update for all converters and profiles
     stack: config.fontFamily,  // "'Roboto', Arial, Helvetica, sans-serif"
     lineHeight: 1.5,
+    // Font sizes NEVER come from the source document — only these tokens, chosen by
+    // role: body (default paragraph), headline (h1/h2), small (h5/h6 — footer,
+    // disclaimers), cell (text inside statsGrid/recordRow table cells).
     bodyPx: 18,   // matches Simple converter default paragraph size
     headlinePx: 22,   // matches Simple converter h1 / centerHeadline size
     smallPx: 12,   // matches Simple converter h6 / smallText size
-    smallMaxPt: 9,    // GDocs pt ≤ this → "small" role, otherwise "body"
+    cellPx: 14,   // table-cell text (statsGrid cards, recordRow data cells)
     linkWeight: 700,
     linkDecoration: "underline",
   },

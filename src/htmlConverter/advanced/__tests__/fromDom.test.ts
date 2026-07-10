@@ -443,3 +443,137 @@ describe("fromDom — cell borders", () => {
     expect(table.rows[0].cells[0].border).toBeUndefined();
   });
 });
+
+// § becomes <br data-one-br="1"> upstream (preprocess.ts) before fromDom ever sees it.
+describe("fromDom — § marker (tightNext / tightBefore)", () => {
+  it("sets tightNext when a paragraph ends with a one-br marker", () => {
+    const p = firstParagraph('<p>Line one<br data-one-br="1"></p>');
+    expect(p.tightNext).toBe(true);
+    expect(p.tightBefore).toBeUndefined();
+    expect(p.lines).toHaveLength(1); // trailing empty line trimmed
+  });
+
+  it("sets tightBefore when a paragraph starts with a one-br marker", () => {
+    const p = firstParagraph('<p><br data-one-br="1">Line two</p>');
+    expect(p.tightBefore).toBe(true);
+    expect(p.tightNext).toBeUndefined();
+    expect(p.lines).toHaveLength(1);
+  });
+
+  it("does NOT set tightNext for a plain (unmarked) trailing <br>", () => {
+    const p = firstParagraph("<p>Line one<br></p>");
+    expect(p.tightNext).toBeUndefined();
+  });
+
+  it("does NOT set tightBefore for a plain (unmarked) leading <br>", () => {
+    const p = firstParagraph("<p><br>Line two</p>");
+    expect(p.tightBefore).toBeUndefined();
+  });
+
+  it("a mid-paragraph one-br marker sets neither flag (both ends have real content)", () => {
+    const p = firstParagraph('<p>Line one<br data-one-br="1">Line two</p>');
+    expect(p.tightNext).toBeUndefined();
+    expect(p.tightBefore).toBeUndefined();
+    expect(p.lines).toHaveLength(2);
+  });
+});
+
+// ── Border widths (quantized from the document, F11) ─────────────────────────
+
+describe("fromDom — border widths from the document", () => {
+  function borderTop(html: string) {
+    const table = nodes(html)[0] as TableNode;
+    return table.rows[0].cells[0].border?.top;
+  }
+
+  it("quantizes pt widths to whole px (1.75pt → 2px)", () => {
+    const side = borderTop('<table><tr><td style="border: solid #c2410c 1.75pt;">x</td></tr></table>');
+    expect(side?.widthPx).toBe(2);
+  });
+
+  it("keeps thin GDocs gridlines at the 1px minimum (0.5pt → 1px)", () => {
+    const side = borderTop('<table><tr><td style="border: solid #cccccc 0.5pt;">x</td></tr></table>');
+    expect(side?.widthPx).toBe(1);
+  });
+
+  it("passes px widths through rounded (3px → 3)", () => {
+    const side = borderTop('<table><tr><td style="border: 3px solid #000000;">x</td></tr></table>');
+    expect(side?.widthPx).toBe(3);
+  });
+
+  it("clamps oversized widths to 12px", () => {
+    const side = borderTop('<table><tr><td style="border: 40px solid #000000;">x</td></tr></table>');
+    expect(side?.widthPx).toBe(12);
+  });
+
+  it("leaves widthPx undefined when the source declares no width (token fallback)", () => {
+    const side = borderTop('<table><tr><td style="border: solid #000000;">x</td></tr></table>');
+    expect(side?.color).toBe("#000000");
+    expect(side?.widthPx).toBeUndefined();
+  });
+
+  it("still drops a zero-width border entirely", () => {
+    const side = borderTop('<table><tr><td style="border: 0pt solid #000000;">x</td></tr></table>');
+    expect(side).toBeUndefined();
+  });
+});
+
+// ── Inline font-size is never a size signal (sizes come only from tokens) ────
+
+describe("fromDom — inline font-size is ignored", () => {
+  it("a 9pt span does NOT demote the paragraph to small", () => {
+    expect(firstParagraph('<p><span style="font-size:9pt">tiny print</span></p>').size).toBe("body");
+  });
+
+  it("a large span does NOT promote the paragraph to headline", () => {
+    expect(firstParagraph('<p><span style="font-size:24pt">big</span></p>').size).toBe("body");
+  });
+
+  it("heading tags still decide the role regardless of span sizes", () => {
+    expect(firstParagraph('<h1><span style="font-size:9pt">x</span></h1>').size).toBe("headline");
+  });
+});
+
+// ── Pairwise zero-margin signal + top-level <br> gap/tight markers ────────────
+
+describe("fromDom — explicit zero margins", () => {
+  it("records explicit margin-top:0 and margin-bottom:0", () => {
+    const p = firstParagraph('<p style="margin-top:0pt;margin-bottom:0pt">hi</p>');
+    expect(p.zeroTopMargin).toBe(true);
+    expect(p.zeroBottomMargin).toBe(true);
+  });
+
+  it("non-zero margins do NOT set the flags", () => {
+    const p = firstParagraph('<p style="margin-top:4pt;margin-bottom:1.5pt">hi</p>');
+    expect(p.zeroTopMargin).toBeUndefined();
+    expect(p.zeroBottomMargin).toBeUndefined();
+  });
+
+  it("absence of a margin declaration is NOT zero", () => {
+    const p = firstParagraph("<p>hi</p>");
+    expect(p.zeroTopMargin).toBeUndefined();
+    expect(p.zeroBottomMargin).toBeUndefined();
+  });
+});
+
+describe("fromDom — top-level <br> between paragraphs", () => {
+  it("marks the next paragraph with gapBefore (author-typed blank line)", () => {
+    const result = nodes("<p>one</p><br /><p>two</p>");
+    const [, p2] = result as Paragraph[];
+    expect(p2.gapBefore).toBe(true);
+    expect((result[0] as Paragraph).gapBefore).toBeUndefined();
+  });
+
+  it("a top-level <br data-one-br> (§ on its own line) marks the next paragraph tightBefore", () => {
+    const result = nodes('<p>one</p><br data-one-br="1"><p>two</p>');
+    const [, p2] = result as Paragraph[];
+    expect(p2.tightBefore).toBe(true);
+    expect(p2.gapBefore).toBeUndefined();
+  });
+
+  it("a table between the <br> and the paragraph consumes the pending gap", () => {
+    const result = nodes('<p>one</p><br /><table><tr><td style="background-color:#f5f5f5">x</td></tr></table><p>two</p>');
+    const last = result[result.length - 1] as Paragraph;
+    expect(last.gapBefore).toBeUndefined();
+  });
+});

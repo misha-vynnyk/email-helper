@@ -511,6 +511,22 @@ describe("renderNode — calloutLeft", () => {
   });
 });
 
+// ── renderNode — textDivider ──────────────────────────────────────────────────
+
+describe("renderNode — textDivider", () => {
+  it("renders plain flowing text followed by a border-bottom rule row, no boxing/<hr>", () => {
+    const node: ComponentNode = {
+      kind: "textDivider",
+      props: { lines: [[{ text: "eyebrow copy" }]], ruleColor: "#111111" },
+    };
+    const result = renderNode(node, tmpl, tokens);
+    expect(result).toContain("eyebrow copy");
+    expect(result).toContain("border-bottom:1px solid #111111;");
+    expect(result).not.toContain("<hr");
+    expect(result).not.toContain("padding-left:");
+  });
+});
+
 // ── renderNode — buttonBand ───────────────────────────────────────────────────
 
 describe("renderNode — buttonBand", () => {
@@ -574,5 +590,48 @@ describe("renderLines — edge cases", () => {
   it("returns empty string when all lines are empty", () => {
     const lines: Run[][] = [[], [], []];
     expect(renderLines(lines, tokens)).toBe("");
+  });
+});
+
+// ── renderNode — alertBand with nested bands (F10) ────────────────────────────
+
+describe("renderNode — alertBand nested bands", () => {
+  it("renders a nested band as its own colored row inside the outer band", () => {
+    const node: ComponentNode = {
+      kind: "alertBand",
+      props: {
+        lines: [[{ text: "SERIES A · REG A+" }]],
+        bg: "#000000",
+        bands: [{ atLine: 1, props: { lines: [[{ text: "INVEST AT $0.50 →" }]], bg: "#0a2463" } }],
+      },
+    };
+    const html = renderNode(node, tmpl, tokens);
+    expect(html).toContain('bgcolor="#000000"');
+    expect(html).toContain('bgcolor="#0a2463"');
+    expect(html).toContain("INVEST AT $0.50");
+    // Dark inner band → white text td style present on the band row
+    expect(html).toContain("SERIES A");
+  });
+
+  it("keeps the double-nested band's own buttons as button rows", () => {
+    const node: ComponentNode = {
+      kind: "alertBand",
+      props: {
+        lines: [[{ text: "HEAD" }]],
+        bg: "#000000",
+        bands: [{
+          atLine: 1,
+          props: {
+            lines: [[{ text: "BAND TEXT" }]],
+            bg: "#0a2463",
+            buttons: [{ atLine: 1, props: { runs: [{ text: "GO" }], href: "urlhere", bg: "#28b628" } }],
+          },
+        }],
+      },
+    };
+    const html = renderNode(node, tmpl, tokens);
+    expect(html).toContain("BAND TEXT");
+    expect(html).toContain("GO");
+    expect(html).toContain('bgcolor="#28b628"');
   });
 });

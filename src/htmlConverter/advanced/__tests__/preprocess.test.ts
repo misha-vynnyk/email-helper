@@ -1,4 +1,4 @@
-import { mergeSimilarBlockTags, normalizeSymbols, preprocess,resolveOneBrSymbol } from "../preprocess";
+import { normalizeSymbols, preprocess,resolveOneBrSymbol } from "../preprocess";
 
 // ── resolveOneBrSymbol ────────────────────────────────────────────────────────
 
@@ -54,35 +54,6 @@ describe("normalizeSymbols", () => {
   });
 });
 
-// ── mergeSimilarBlockTags ─────────────────────────────────────────────────────
-
-describe("mergeSimilarBlockTags", () => {
-  it("merges two adjacent identical <p> tags", () => {
-    const input = '<p dir="ltr">First</p><p dir="ltr">Second</p>';
-    const result = mergeSimilarBlockTags(input);
-    expect(result).toContain("First");
-    expect(result).toContain("Second");
-    expect(result).toContain("<br>");
-    // Only one opening <p> should remain
-    const pCount = (result.match(/<p /g) ?? []).length;
-    expect(pCount).toBe(1);
-  });
-
-  it("does NOT merge <p> tags with different attributes", () => {
-    const input = '<p style="text-align:left">A</p><p style="text-align:center">B</p>';
-    const result = mergeSimilarBlockTags(input);
-    // Two different p tags should stay separate
-    const pCount = (result.match(/<p /g) ?? []).length;
-    expect(pCount).toBe(2);
-  });
-
-  it("does not touch content when no adjacent identical tags", () => {
-    const input = "<p>A</p><h1>B</h1>";
-    const result = mergeSimilarBlockTags(input);
-    expect(result).toBe(input);
-  });
-});
-
 // ── preprocess pipeline ───────────────────────────────────────────────────────
 
 describe("preprocess", () => {
@@ -101,7 +72,6 @@ describe("preprocess", () => {
   });
 
   it("does NOT merge adjacent paragraphs (handled by classify.ts pushMerged instead)", () => {
-    // mergeSimilarBlockTags is intentionally excluded from the pipeline;
     // paragraph merging with paraBreaks tracking happens in classify.ts
     const input = '<p dir="ltr">A</p><p dir="ltr">B</p>';
     const result = preprocess(input);
