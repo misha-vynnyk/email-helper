@@ -5,7 +5,7 @@ Email template builder: блоки, превʼю, HTML Converter, конверт
 **Демо (лише інтерфейс):** https://misha-vynnyk.github.io/email-helper/
 Повний функціонал (бекенд, automation/upload, робота з файлами на диску) — тільки локально або в десктоп-збірці.
 
-Потрібно: Node.js 18+, npm.
+Потрібно: Node.js 18+, npm. Ollama для AI-аналізу зображень (бажано, але не обовʼязково). Браузер Brave для automation/upload (локально). 
 
 ---
 
@@ -20,7 +20,7 @@ npm run dev     # http://localhost:5173
 
 Зупинити: `Ctrl+C`.
 
-**AI-аналіз зображень** (ALT-тексти, розумні назви — потребує Ollama з Gemma 3):
+**AI-аналіз зображень** (ALT-тексти, розумні назви — потребує Ollama з моделлю яка підтримує vision):
 
 ```bash
 npm run dev:ai
@@ -60,6 +60,11 @@ npm run automation:upload -- ./image.png [category] [--provider default|alphaone
 - **Збірка веб:** `npm run build` · **Деплой на GitHub Pages:** `npm run deploy`
 - **Десктоп (Electron):** `npm run dist:mac` / `npm run dist:win`
 - **Тести:** `npm test`
+
+## Credits
+
+- **HTML to Table Converter** — [@katerynakey](https://github.com/katerynakey)
+- **Storage Automation** — [@stan1slav0](https://github.com/stan1slav0)
 
 ---
 
