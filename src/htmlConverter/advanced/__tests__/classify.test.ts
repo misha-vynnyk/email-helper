@@ -410,38 +410,47 @@ describe("classify — h5 flow button label", () => {
   });
 });
 
-// ── Pairwise zero-margin merge signal + gapBefore veto ────────────────────────
+// ── Pairwise margin-sum boundary rule + gapBefore ────────────────────────────
 
-describe("classify — pairwise zero-margin signal", () => {
+describe("classify — margin-sum boundary rule", () => {
   function marginPara(
     text: string,
-    extra: Partial<Pick<Paragraph, "zeroTopMargin" | "zeroBottomMargin" | "gapBefore" | "tightNext">> = {},
+    extra: Partial<Pick<Paragraph, "marginTopPt" | "marginBottomPt" | "gapBefore" | "tightNext">> = {},
   ): Paragraph {
     return { type: "p", size: "body", align: "left", lines: [[{ text }]], ...extra };
   }
 
-  it("merges a zero-bottom + zero-top pair with a single <br> (no paraBreak)", () => {
+  it("merges a small-margin boundary (4pt + 4pt < threshold) with a single <br>", () => {
     const result = classify([
-      marginPara("one", { zeroBottomMargin: true }),
-      marginPara("two", { zeroTopMargin: true }),
+      marginPara("one", { marginTopPt: 4, marginBottomPt: 4 }),
+      marginPara("two", { marginTopPt: 4, marginBottomPt: 4 }),
     ]);
     expect(result).toHaveLength(1);
     expect((result[0].props as Record<string, unknown>)["paraBreaks"]).toBeUndefined();
   });
 
-  it("one-sided zero keeps the <br><br> paragraph gap", () => {
+  it("keeps the <br><br> gap when the boundary sum reaches the threshold (4pt + 14pt)", () => {
     const result = classify([
-      marginPara("one", { zeroBottomMargin: true }),
+      marginPara("disclaimer one", { marginTopPt: 14, marginBottomPt: 4 }),
+      marginPara("disclaimer two", { marginTopPt: 14, marginBottomPt: 4 }),
+    ]);
+    const breaks = (result[0].props as Record<string, unknown>)["paraBreaks"] as Set<number>;
+    expect(breaks.has(1)).toBe(true);
+  });
+
+  it("undeclared margins on either side → conservative <br><br> gap", () => {
+    const result = classify([
+      marginPara("one", { marginBottomPt: 0 }),
       marginPara("two"),
     ]);
     const breaks = (result[0].props as Record<string, unknown>)["paraBreaks"] as Set<number>;
     expect(breaks.has(1)).toBe(true);
   });
 
-  it("gapBefore (author-typed blank line) vetoes the zero-margin pair", () => {
+  it("gapBefore (author-typed blank line) forces the gap even across a zero-margin boundary", () => {
     const result = classify([
-      marginPara("one", { zeroBottomMargin: true }),
-      marginPara("two", { zeroTopMargin: true, gapBefore: true }),
+      marginPara("one", { marginTopPt: 0, marginBottomPt: 0 }),
+      marginPara("two", { marginTopPt: 0, marginBottomPt: 0, gapBefore: true }),
     ]);
     const breaks = (result[0].props as Record<string, unknown>)["paraBreaks"] as Set<number>;
     expect(breaks.has(1)).toBe(true);
@@ -465,22 +474,25 @@ describe("classify — pairwise zero-margin signal", () => {
     expect((result[0].props as Record<string, unknown>)["paraBreaks"]).toBeUndefined();
   });
 
-  it("cross-style zero-margin pair zeroes the boundary paddings (tightAfter/tightBefore)", () => {
-    const headline: Paragraph = { type: "p", size: "headline", align: "left", lines: [[{ text: "Head" }]], zeroBottomMargin: true };
-    const body: Paragraph = { type: "p", size: "body", align: "left", lines: [[{ text: "Body" }]], zeroTopMargin: true };
+  it("cross-style small-margin boundary zeroes the paddings (tightAfter/tightBefore)", () => {
+    const headline: Paragraph = { type: "p", size: "headline", align: "left", lines: [[{ text: "Head" }]], marginTopPt: 4, marginBottomPt: 4 };
+    const body: Paragraph = { type: "p", size: "body", align: "left", lines: [[{ text: "Body" }]], marginTopPt: 4, marginBottomPt: 4 };
     const result = classify([headline, body]);
     expect(result).toHaveLength(2);
     expect((result[0].props as Record<string, unknown>)["tightAfter"]).toBe(true);
     expect((result[1].props as Record<string, unknown>)["tightBefore"]).toBe(true);
   });
 
-  it("the merged tail's zeroBottomMargin governs the NEXT merge", () => {
+  it("the merged tail's margin-bottom governs the NEXT merge", () => {
     const result = classify([
-      marginPara("one", { zeroBottomMargin: true }),
-      marginPara("two", { zeroTopMargin: true, zeroBottomMargin: true }),
-      marginPara("three", { zeroTopMargin: true }),
+      marginPara("one", { marginTopPt: 0, marginBottomPt: 0 }),
+      marginPara("two", { marginTopPt: 0, marginBottomPt: 14 }),
+      marginPara("three", { marginTopPt: 0, marginBottomPt: 0 }),
     ]);
+    // one+two merge (0+0), but two's 14pt bottom vs three's 0 top → 14 ≥ threshold → gap
     expect(result).toHaveLength(1);
-    expect((result[0].props as Record<string, unknown>)["paraBreaks"]).toBeUndefined();
+    const breaks = (result[0].props as Record<string, unknown>)["paraBreaks"] as Set<number>;
+    expect(breaks.has(2)).toBe(true);
+    expect(breaks.has(1)).toBe(false);
   });
 });

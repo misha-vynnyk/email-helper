@@ -6,6 +6,7 @@ import type { Tokens } from "../config/tokens";
 import { tokens as defaultTokens } from "../config/tokens";
 import { isBgRedundant, isDarkBg } from "../ir/color";
 import { joinLinesWithSpace } from "../ir/runs";
+import { isGapBoundary } from "../ir/spacing";
 import type { AlertBandProps, BorderSide, BorderSpec, ButtonBandProps,CellNode, ComponentNode, Paragraph, Run,StructuralNode, TableNode, WarnFn } from "../ir/types";
 import { WARN } from "../warnings";
 
@@ -36,61 +37,59 @@ function hasMeaningfulBorder(border: BorderSpec | undefined, tok: Tokens): boole
 /**
  * Core cell flattener: paragraph lines of a cell in document order, descending
  * into nested tables (whose layout is lost — only the text survives, reported
- * via `warn`). Also tracks which line indices start a new source paragraph, so
- * callers can render a <br><br> at those boundaries instead of silently gluing
- * separate paragraphs (e.g. a quote + its attribution) together — UNLESS the
- * author bridged that boundary with a § marker (tightNext on the block ending
- * the boundary, or tightBefore on the block starting it), in which case it
- * collapses to a single <br>, same convention as pushMerged / flattenCellForAlertBand.
+ * via `warn`). Also tracks which line indices start a new source paragraph so
+ * callers can render the boundary — a <br><br> gap or a single-<br> line break,
+ * decided by the same isGapBoundary rule pushMerged uses (§ wins, blank line
+ * forces the gap, small margin sums mean adjacent lines).
  *
  * flattenLines / flattenRuns are thin projections of this — one recursion, one
  * nested-table warning, three shapes.
  */
-function flattenLinesWithBreaks(cell: CellNode, warn?: WarnFn): { lines: Run[][]; paraBreaks: Set<number> } {
+function flattenLinesWithBreaks(cell: CellNode, tok: Tokens, warn?: WarnFn): { lines: Run[][]; paraBreaks: Set<number> } {
   const lines: Run[][] = [];
   const paraBreaks = new Set<number>();
-  let prevTightNext = false;
-  const appendBlock = (blockLines: Run[][], blockBreaks: Set<number> | undefined, tightBefore: boolean) => {
+  let prevP: Paragraph | null = null;
+  const appendBlock = (blockLines: Run[][], blockBreaks: Set<number> | undefined, gap: boolean) => {
     if (blockLines.length === 0) return;
-    if (lines.length > 0 && !prevTightNext && !tightBefore) paraBreaks.add(lines.length);
+    if (lines.length > 0 && gap) paraBreaks.add(lines.length);
     if (blockBreaks) for (const idx of blockBreaks) paraBreaks.add(idx + lines.length);
     lines.push(...blockLines);
   };
   for (const child of cell.children) {
     if (child.type === "p") {
-      appendBlock(child.lines, child.paraBreaks, child.tightBefore === true);
-      prevTightNext = child.tightNext === true;
+      appendBlock(child.lines, child.paraBreaks, isGapBoundary(prevP ?? {}, child, tok));
+      prevP = child;
     } else if (child.type === "table") {
       warn?.(WARN.nestedTableFlattened);
       for (const row of child.rows) {
         for (const nested of row.cells) {
-          const nestedResult = flattenLinesWithBreaks(nested, undefined /* warn once per table */);
-          appendBlock(nestedResult.lines, nestedResult.paraBreaks, false);
+          const nestedResult = flattenLinesWithBreaks(nested, tok, undefined /* warn once per table */);
+          appendBlock(nestedResult.lines, nestedResult.paraBreaks, isGapBoundary(prevP ?? {}, {}, tok));
+          prevP = null;
         }
       }
-      prevTightNext = false;
     }
   }
   return { lines, paraBreaks };
 }
 
 /** Paragraph lines of a cell, including lines from nested tables (flattened). */
-function flattenLines(cell: CellNode, warn?: WarnFn): Run[][] {
-  return flattenLinesWithBreaks(cell, warn).lines;
+function flattenLines(cell: CellNode, tok: Tokens, warn?: WarnFn): Run[][] {
+  return flattenLinesWithBreaks(cell, tok, warn).lines;
 }
 
 /** All runs of a cell, flattened across lines and nested tables — with a space
  *  between lines so multi-line content doesn't glue words together. */
-function flattenRuns(cell: CellNode, warn?: WarnFn): Run[] {
-  return joinLinesWithSpace(flattenLines(cell, warn));
+function flattenRuns(cell: CellNode, tok: Tokens, warn?: WarnFn): Run[] {
+  return joinLinesWithSpace(flattenLines(cell, tok, warn));
 }
 
 /**
  * Like flattenLinesWithBreaks, but with two more things pushMerged (classify.ts)
  * already does for the general flow-paragraph path, ported here so the same
  * signals work inside a flattened alertBand cell:
- *   - tightNext/tightBefore: a paragraph ending — or the next one starting — with
- *     § gets a single <br> to what follows, not the default <br><br> block boundary.
+ *   - boundary rule via isGapBoundary (§ / blank line / margin sum), same as
+ *     flattenLinesWithBreaks;
  *   - align: the first paragraph's alignment (GDocs CTA boxes are consistently
  *     aligned throughout, so "first wins" is a fine approximation).
  * A nested table that itself resolves to a real button (GDocs' h5-in-colored-cell
@@ -117,45 +116,45 @@ function flattenCellForAlertBand(
   const buttons: { atLine: number; props: ButtonBandProps }[] = [];
   const bands: { atLine: number; props: AlertBandProps }[] = [];
   let align: "left" | "center" | "right" | undefined;
-  let prevTightNext = false;
-  const appendBlock = (blockLines: Run[][], blockBreaks: Set<number> | undefined, tightBefore: boolean) => {
+  let prevP: Paragraph | null = null;
+  const appendBlock = (blockLines: Run[][], blockBreaks: Set<number> | undefined, gap: boolean) => {
     if (blockLines.length === 0) return;
-    if (lines.length > 0 && !prevTightNext && !tightBefore) paraBreaks.add(lines.length);
+    if (lines.length > 0 && gap) paraBreaks.add(lines.length);
     if (blockBreaks) for (const idx of blockBreaks) paraBreaks.add(idx + lines.length);
     lines.push(...blockLines);
   };
   for (const child of cell.children) {
     if (child.type === "p") {
       if (align === undefined && child.align) align = child.align;
-      appendBlock(child.lines, child.paraBreaks, child.tightBefore === true);
-      prevTightNext = child.tightNext === true;
+      appendBlock(child.lines, child.paraBreaks, isGapBoundary(prevP ?? {}, child, tok));
+      prevP = child;
     } else if (child.type === "table") {
       const nestedComponent = classifyTable(child, tok, warn, classifyChildren);
       if (nestedComponent?.kind === "buttonBand") {
         buttons.push({ atLine: lines.length, props: nestedComponent.props });
-        prevTightNext = false;
+        prevP = null;
         continue;
       }
       if (nestedComponent?.kind === "alertBand") {
         bands.push({ atLine: lines.length, props: nestedComponent.props });
-        prevTightNext = false;
+        prevP = null;
         continue;
       }
       warn?.(WARN.nestedTableFlattened);
       for (const row of child.rows) {
         for (const nested of row.cells) {
-          const nestedResult = flattenLinesWithBreaks(nested, undefined /* warn once per table */);
-          appendBlock(nestedResult.lines, nestedResult.paraBreaks, false);
+          const nestedResult = flattenLinesWithBreaks(nested, tok, undefined /* warn once per table */);
+          appendBlock(nestedResult.lines, nestedResult.paraBreaks, isGapBoundary(prevP ?? {}, {}, tok));
+          prevP = null;
         }
       }
-      prevTightNext = false;
     }
   }
   return { lines, paraBreaks, buttons, bands, align };
 }
 
-function findHref(cell: CellNode): string | null {
-  for (const line of flattenLines(cell)) {
+function findHref(cell: CellNode, tok: Tokens): string | null {
+  for (const line of flattenLines(cell, tok)) {
     for (const run of line) {
       if (run.href) return run.href;
     }
@@ -171,8 +170,8 @@ function hasButtonMarker(cell: CellNode): boolean {
 }
 
 /** True if the cell has at least one non-empty run (ignores <br>-only cells). */
-function hasMeaningfulContent(cell: CellNode): boolean {
-  return flattenRuns(cell).some(r => r.text.trim() !== "");
+function hasMeaningfulContent(cell: CellNode, tok: Tokens): boolean {
+  return flattenRuns(cell, tok).some(r => r.text.trim() !== "");
 }
 
 /**
@@ -186,11 +185,11 @@ function cellAlign(cell: CellNode, fallback: "left" | "center" | "right" = "left
   return firstPara?.align ?? fallback;
 }
 
-function cellToChild(cell: CellNode, warn?: WarnFn): ComponentNode {
+function cellToChild(cell: CellNode, tok: Tokens, warn?: WarnFn): ComponentNode {
   return {
     kind: "paragraph",
     props: {
-      lines: flattenLines(cell, warn),
+      lines: flattenLines(cell, tok, warn),
       // "center" fallback: stats cards read best centered when the author left the
       // cell unaligned — but an explicit alignment on the cell OR its first <p> wins.
       align: cellAlign(cell, "center"),
@@ -254,7 +253,7 @@ function classifySingleCell(
   if (hasButtonMarker(cell) && bg && bg !== tok.color.rootBackground) {
     return {
       kind: "buttonBand",
-      props: { runs: flattenRuns(cell, warn), href: tok.placeholderHref, bg, radius: 0 },
+      props: { runs: flattenRuns(cell, tok, warn), href: tok.placeholderHref, bg, radius: 0 },
     };
   }
 
@@ -270,7 +269,7 @@ function classifySingleCell(
     // blue/underlined with no real <a> + a footer line) must stay an alertBand: findHref
     // would happily match the fake-link line and swallow the whole box — including
     // unrelated text — into one giant link.
-    const href = lines.length <= 1 && buttons.length === 0 && bands.length === 0 ? findHref(cell) : null;
+    const href = lines.length <= 1 && buttons.length === 0 && bands.length === 0 ? findHref(cell, tok) : null;
     if (href) {
       return { kind: "buttonBand", props: { runs: joinLinesWithSpace(lines), href, bg, border: cell.border } };
     }
@@ -292,7 +291,7 @@ function classifySingleCell(
   // so that case still falls through to the generic border handling below.
   const isBottomRuleOnly = Boolean(border?.bottom) && !border?.top && !border?.right && !border?.left;
   if (isBottomRuleOnly && !bg) {
-    const { lines, paraBreaks } = flattenLinesWithBreaks(cell, warn);
+    const { lines, paraBreaks } = flattenLinesWithBreaks(cell, tok, warn);
     return {
       kind: "textDivider",
       props: { lines, paraBreaks, align: cellAlign(cell), ruleColor: border!.bottom!.color },
@@ -303,7 +302,7 @@ function classifySingleCell(
   // document's own border color instead of the house default.
   const isLeftAccentOnly = Boolean(border?.left) && !border?.top && !border?.right && !border?.bottom;
   if (isLeftAccentOnly) {
-    const { lines, paraBreaks } = flattenLinesWithBreaks(cell, warn);
+    const { lines, paraBreaks } = flattenLinesWithBreaks(cell, tok, warn);
     return {
       kind: "calloutLeft",
       props: { lines, paraBreaks, bg, accentColor: border!.left!.color, accentWidthPx: border!.left!.widthPx },
@@ -314,26 +313,26 @@ function classifySingleCell(
   // calloutBox. Recurse into children (via classify.ts) so nested content — e.g. a
   // button table inside a bordered CTA box — survives instead of being flattened to text.
   if (border) {
-    const children = classifyChildren?.(cell.children) ?? [cellToChild(cell, warn)];
+    const children = classifyChildren?.(cell.children) ?? [cellToChild(cell, tok, warn)];
     return { kind: "calloutBox", props: { border, bg }, children };
   }
 
   // Light bg with no border declared in the source → keep the bg as a plain colored box.
   // Never synthesize an accent border the document never had.
   {
-    const { lines, paraBreaks } = flattenLinesWithBreaks(cell, warn);
+    const { lines, paraBreaks } = flattenLinesWithBreaks(cell, tok, warn);
     return { kind: "alertBand", props: { lines, paraBreaks, bg: bg! } };
   }
 }
 
 // ── Multi-row helper ──────────────────────────────────────────────────────────
 
-function rowCells(cells: CellNode[], warn?: WarnFn) {
+function rowCells(cells: CellNode[], tok: Tokens, warn?: WarnFn) {
   // Same convention as cellToChild/statsGrid: adjacent <p>s inside a record cell are a
   // label/sublabel or headline/body pair, not distinct paragraphs — join with a single
   // <br>, not the double break flattenLinesWithBreaks uses for alertBand/calloutLeft.
   return cells.map(c => ({
-    lines: flattenLines(c, warn),
+    lines: flattenLines(c, tok, warn),
     // GDocs puts text-align on the inner <p>, not the <td> — cellAlign covers both.
     align: cellAlign(c),
     bg: c.bg,
@@ -374,20 +373,20 @@ export function classifyTable(
     if (
       cells.length === 2 &&
       cells.every(c => !hasMeaningfulBorder(c.border, tok) && (!c.bg || isNearWhiteOrRoot(c.bg, tok))) &&
-      cells.every(hasMeaningfulContent) &&
+      cells.every(c => hasMeaningfulContent(c, tok)) &&
       cellAlign(cells[0]) !== "right" &&
       cellAlign(cells[1]) === "right"
     ) {
       return {
         kind: "splitRow",
-        props: { left: flattenRuns(cells[0], warn), right: flattenRuns(cells[1], warn) },
+        props: { left: flattenRuns(cells[0], tok, warn), right: flattenRuns(cells[1], tok, warn) },
       };
     }
 
     // GDocs button pattern: [empty-spacer] [colored-cell-with-h5] [empty-spacer]
     // When only 1 cell has meaningful content, classify that cell directly instead of
     // treating the whole row as a stats grid.
-    const meaningfulCells = cells.filter(hasMeaningfulContent);
+    const meaningfulCells = cells.filter(c => hasMeaningfulContent(c, tok));
     if (meaningfulCells.length === 1) {
       const comp = classifySingleCell(meaningfulCells[0], tok, warn, classifyChildren);
       if (comp) return comp;
@@ -398,7 +397,7 @@ export function classifyTable(
     return {
       kind: "statsGrid",
       props: { n: cells.length, widths: toWidthPercents(node.colWidths, cells.length), borderColor },
-      children: cells.map(c => cellToChild(c, warn)),
+      children: cells.map(c => cellToChild(c, tok, warn)),
     };
   }
 
@@ -416,7 +415,7 @@ export function classifyTable(
         borderColor,
         rows: rows.map(r => ({
           bg: r.cells.every(c => c.bg === r.cells[0].bg) ? r.cells[0].bg : undefined,
-          cells: rowCells(r.cells, warn),
+          cells: rowCells(r.cells, tok, warn),
         })),
       },
     };
