@@ -49,6 +49,7 @@ export interface Tokens {
     recordCellPadX: number;
     recordBorderPx: number;
     buttonSubtitlePadTop: number;
+    gapMarginThresholdPt: number;
   };
   button: {
     radius: number;
@@ -126,6 +127,12 @@ export const tokens: Tokens = {
     recordCellPadX: 6,   // recordRow cell padding left/right
     recordBorderPx: 1,   // recordRow cell border width (all declared sides)
     buttonSubtitlePadTop: 8,   // gap above buttonBand subtitle line
+    // Paragraph-boundary spacing rule: prev margin-bottom + cur margin-top (pt, from the
+    // source doc) below this → the boundary is a line break (<br>); at/above → a real
+    // gap (<br><br>). GDocs authors' "paragraph style" spacing (0–4pt per side) reads
+    // as tight lines; deliberate section spacing (14pt+) reads as a gap. Blank lines
+    // (top-level <br>) and § override this in either direction.
+    gapMarginThresholdPt: 10,
   },
   button: { radius: 10, height: 51, padding: "3px 5px", innerPadding: "9px 15px", target: "_blank", textDecoration: "none" },
   tags: { bold: "b", italic: "em", underline: "u", colorWrap: "span", blockWrap: "span" },

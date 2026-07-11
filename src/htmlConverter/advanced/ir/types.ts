@@ -30,15 +30,16 @@ export interface Paragraph {
                               // § marker — the mirror of tightNext, for when the author places
                               // § at the start of the next paragraph instead of the end of the
                               // previous one. "no gap before ME".
-  zeroTopMargin?: boolean;    // source <p> explicitly declared margin-top:0 — one half of the
-                              // pairwise zero-gap signal (see pushMerged): the author set the
-                              // doc's paragraph spacing to nothing, so Enter LOOKS like a plain
-                              // line break. Absence of a margin declaration is NOT zero.
-  zeroBottomMargin?: boolean; // mirror: explicit margin-bottom:0 on the source <p>
-  gapBefore?: boolean;        // an author-typed blank line (top-level <br> between blocks)
+  marginTopPt?: number;       // explicit margin-top declared on the source <p>, in pt.
+                              // Together with the previous paragraph's marginBottomPt it decides
+                              // whether the boundary is a line break or a gap (pairwise sum vs
+                              // tok.layout.gapMarginThresholdPt — see isGapBoundary). Undefined
+                              // when the source declared nothing (≠ zero) — unknown → gap.
+  marginBottomPt?: number;    // mirror: explicit margin-bottom on the source <p>, in pt
+  gapBefore?: boolean;        // an author-typed blank line (top-level <br> or an empty <p>)
                               // immediately precedes this paragraph — an explicit "I want a gap
-                              // here", vetoes convention-based tight merging (except §, which
-                              // is the stronger explicit marker)
+                              // here", overrides the margin rule and convention-based tight
+                              // merging (except §, which is the stronger explicit marker)
 }
 
 export interface ImageNode {
@@ -123,8 +124,8 @@ export interface ParagraphProps {
   tightAfter?: boolean;
   /** Input-only merge signals propagated from the source Paragraph (fromDom.ts) —
    *  consumed by pushMerged, never read at render time. See Paragraph for semantics. */
-  zeroTopMargin?: boolean;
-  zeroBottomMargin?: boolean;
+  marginTopPt?: number;
+  marginBottomPt?: number;
   gapBefore?: boolean;
   /** statsGrid cell paragraphs only: cell background + border color */
   bg?: string;

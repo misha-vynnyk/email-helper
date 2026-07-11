@@ -2,6 +2,7 @@
 
 import type { Tokens } from "../config/tokens";
 import { tokens as defaultTokens } from "../config/tokens";
+import { isGapBoundary } from "../ir/spacing";
 import type { ComponentNode, ParagraphProps, Run,StructuralNode, TableNode, WarnFn } from "../ir/types";
 import { WARN } from "../warnings";
 import { classifyFlow } from "./flowBlock";
@@ -27,7 +28,7 @@ function startsWithListMarker(line: Run[] | undefined): boolean {
   return /^\d{1,2}[.)]\s/.test(trimmed);
 }
 
-function pushMerged(result: ComponentNode[], comp: ComponentNode, warn?: WarnFn): void {
+function pushMerged(result: ComponentNode[], comp: ComponentNode, tok: Tokens, warn?: WarnFn): void {
   const last = result[result.length - 1];
 
   // align defaults to "left" at render time — treat undefined and "left" as equal here
@@ -41,38 +42,25 @@ function pushMerged(result: ComponentNode[], comp: ComponentNode, warn?: WarnFn)
     const newLines = comp.props.lines;
     if (newLines.length === 0) return;  // empty comp contributes nothing — drop it
     const breakIdx = lastLines.length;
-    // Six signals mean "no gap before me":
-    //  - centered: GDocs' banner/eyebrow convention (a centered headline + subline)
-    //  - listItem: structurally certain — set by fromDom.ts only inside a real <ul>/<ol>
-    //  - marker pair: BOTH the previous line and this paragraph start with a
-    //    bullet/checkmark glyph — a manually-typed checklist (no real <ul>, e.g.
-    //    "✓ Partners: ..."). The pair requirement keeps a lone dash-led sentence prose.
-    //  - tightNext: the PREVIOUS paragraph ended with a user-typed § marker — an
-    //    explicit "no gap after me" signal, independent of alignment/structure.
-    //  - tightBefore: THIS paragraph's raw HTML instead STARTED with §  — same intent,
-    //    placed at the other end of the boundary (author habit varies).
-    //  - zero-margin pair: the source doc explicitly declared margin-bottom:0 on the
-    //    previous paragraph AND margin-top:0 on this one — the author configured the
-    //    doc so Enter produces no visible gap, i.e. Enter IS their line break. Both
-    //    sides must be explicit zeros; this pairwise absolute rule replaces the
-    //    reverted chain-relative margin comparison (comparing against the merge
-    //    chain's *opening* margin meant one early paragraph with a larger-than-usual
-    //    margin-top made every paragraph after it look like a "reduction" forever,
-    //    collapsing an entire section's <br><br>s to <br> — pairwise zeros have no
-    //    chain memory, so they can't cascade).
-    // gapBefore (an author-typed blank line — top-level <br> — right before this
-    // paragraph) vetoes the convention-based signals: the author explicitly asked for
-    // a gap there. Only § (tightNext/tightBefore) outranks it, being the explicit
-    // tight marker. Anything else is genuine prose (common in short-paragraph
-    // marketing copy) and keeps the <br><br> blank-line separation.
+    // Boundary decision, in priority order:
+    //  1. § on either end (tightNext on the previous paragraph / tightBefore on this
+    //     one) → line break; the explicit marker always wins.
+    //  2. Structural/convention signals (unless an author-typed blank line — gapBefore —
+    //     sits on the boundary): centered (GDocs banner/eyebrow convention), listItem
+    //     (structurally certain, real <ul>/<ol>), marker pair (BOTH lines start with a
+    //     bullet/checkmark glyph — a hand-typed checklist; the pair requirement keeps a
+    //     lone dash-led sentence prose) → line break.
+    //  3. isGapBoundary (ir/spacing.ts): blank line → gap; margin sum below the
+    //     threshold token → line break; margins undeclared → gap. This pairwise rule
+    //     replaced both the reverted chain-relative margin heuristic (one large-margin
+    //     opener collapsed a whole section — pairwise sums have no chain memory) and
+    //     the interim zero-margin-pair rule (0+0 is just a sum below the threshold).
     const isMarkerPair = startsWithListMarker(newLines[0]) &&
       startsWithListMarker(lastLines[breakIdx - 1]);
-    const isZeroMarginPair = last.props.zeroBottomMargin === true &&
-      comp.props.zeroTopMargin === true;
     const isTight = last.props.tightNext === true || comp.props.tightBefore === true ||
       (comp.props.gapBefore !== true &&
-        (alignOf(comp.props) === "center" || comp.props.listItem === true ||
-          isMarkerPair || isZeroMarginPair));
+        (alignOf(comp.props) === "center" || comp.props.listItem === true || isMarkerPair)) ||
+      !isGapBoundary(last.props, comp.props, tok);
     const compBreaks = comp.props.paraBreaks;
 
     // Build the merged paragraph without mutating the node already in `result`.
@@ -90,10 +78,10 @@ function pushMerged(result: ComponentNode[], comp: ComponentNode, warn?: WarnFn)
         lines: [...lastLines, ...newLines],
         paraBreaks: breaks.size ? breaks : undefined,
         // comp is now the tail of the merged paragraph — its own tightNext /
-        // zeroBottomMargin (not last's, which were already consumed above) govern
+        // marginBottomPt (not last's, which were already consumed above) govern
         // the NEXT merge.
         tightNext: comp.props.tightNext,
-        zeroBottomMargin: comp.props.zeroBottomMargin,
+        marginBottomPt: comp.props.marginBottomPt,
       },
     };
     return;
@@ -102,15 +90,12 @@ function pushMerged(result: ComponentNode[], comp: ComponentNode, warn?: WarnFn)
   // The full merge above requires matching size/variant/align — a § between a headline
   // and body text (or center- and left-aligned paragraphs) can't share one <span>'s
   // formatting, so it falls through here instead. The two blocks stay separate, but the
-  // author's "no gap" intent (either end of the boundary — see isTight above) still
-  // collapses the padding between them to roughly a single-<br> gap instead of the
-  // default double block padding. Same signals as the full merge: § (either end) wins
-  // outright; the zero-margin pair applies unless an author-typed blank line
-  // (gapBefore) sits on the boundary.
+  // author's "no gap" intent still collapses the padding between them to roughly a
+  // single-<br> gap instead of the default double block padding. Same boundary rule as
+  // the full merge (isGapBoundary): § wins outright, blank line forces the gap, small
+  // margin sums mean the author saw these as adjacent lines.
   if (comp.kind === "paragraph" && last?.kind === "paragraph" &&
-      (last.props.tightNext === true || comp.props.tightBefore === true ||
-        (comp.props.gapBefore !== true &&
-          last.props.zeroBottomMargin === true && comp.props.zeroTopMargin === true))) {
+      !isGapBoundary(last.props, comp.props, tok)) {
     result[result.length - 1] = { ...last, props: { ...last.props, tightAfter: true } };
     comp = { ...comp, props: { ...comp.props, tightBefore: true } };
   }
@@ -151,19 +136,19 @@ export function classify(nodes: StructuralNode[], tok: Tokens = defaultTokens, w
     if (node.type === "table") {
       const component = classifyTable(node as TableNode, tok, warn, classifyChildren);
       if (component) {
-        pushMerged(result, component, warn);
+        pushMerged(result, component, tok, warn);
       } else {
         for (const row of (node as TableNode).rows) {
           for (const cell of row.cells) {
             for (const comp of classify(cell.children, tok, warn)) {
-              pushMerged(result, comp, warn);
+              pushMerged(result, comp, tok, warn);
             }
           }
         }
       }
     } else if (node.type === "p") {
       for (const comp of classifyFlow([node], tok)) {
-        pushMerged(result, comp, warn);
+        pushMerged(result, comp, tok, warn);
       }
     } else if (node.type === "img") {
       const comp: ComponentNode = { kind: "image", props: { src: node.src, alt: node.alt } };

@@ -162,9 +162,13 @@ function collectRuns(el: Element | Node, ctx: Ctx, tok: Tokens): Run[] {
 
 // ── Paragraph ────────────────────────────────────────────────────────────────
 
-// Explicit "0" (any unit) — absence of a declaration is NOT zero.
-function isZeroLength(value: string | undefined): boolean {
-  return value !== undefined && parseFloat(value) === 0;
+// Declared length → pt (GDocs always emits pt; px input is converted). Undefined when
+// the source declared nothing — a missing declaration is unknown, NOT zero.
+function lengthToPt(value: string | undefined): number | undefined {
+  if (value === undefined) return undefined;
+  const n = parseFloat(value);
+  if (isNaN(n)) return undefined;
+  return value.trim().endsWith("px") ? n * (72 / 96) : n;
 }
 
 function parseParagraph(el: Element, bg: string, tok: Tokens): Paragraph | null {
@@ -206,11 +210,11 @@ function parseParagraph(el: Element, bg: string, tok: Tokens): Paragraph | null 
     paraBreaks: paraBreaks.size ? paraBreaks : undefined,
     tightNext: tightNext || undefined,
     tightBefore: tightBefore || undefined,
-    // Pairwise zero-gap signal halves (see pushMerged): the author explicitly zeroed
-    // this paragraph's outer spacing in the document — the only structural way to tell
-    // "Enter with no visible gap" apart from a normally-spaced paragraph boundary.
-    zeroTopMargin: isZeroLength(style["margin-top"]) || undefined,
-    zeroBottomMargin: isZeroLength(style["margin-bottom"]) || undefined,
+    // Halves of the pairwise margin-sum boundary rule (see ir/spacing.ts): the values
+    // are never rendered — they only decide whether the boundary to the neighboring
+    // paragraph is a line break (<br>) or a gap (<br><br>).
+    marginTopPt: lengthToPt(style["margin-top"]),
+    marginBottomPt: lengthToPt(style["margin-bottom"]),
   };
 }
 
@@ -385,12 +389,18 @@ export function fromDom(
     if (/^H[1-6]$/.test(tag) || tag === "P") {
       const { before, after } = extractImages(el, warn);
       nodes.push(...before);
+      if (before.length > 0) pendingGap = pendingTight = false;
       const p = parseParagraph(el, bg, tok);
       if (p) {
         applyPending(p);
         nodes.push(p);
+      } else if (before.length === 0 && after.length === 0) {
+        // An empty <p> (no text, no images) is an author-typed blank line, same
+        // intent as a top-level <br> — record it as a gap for the next paragraph.
+        pendingGap = true;
       }
       nodes.push(...after);
+      if (after.length > 0) pendingGap = pendingTight = false;
       continue;
     }
 

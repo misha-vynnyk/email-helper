@@ -81,17 +81,31 @@ describe("convertAdvanced — paragraph gaps and the pairwise zero-margin signal
   // collapse. The pairwise rule reads only explicit 0+0 boundaries — a non-zero
   // margin on either side of a boundary keeps the <br><br>, and there is no chain
   // memory to cascade.
-  it("keeps <br><br> between normally-spaced prose paragraphs after a large-margin opener", () => {
+  it("keeps <br><br> between generously-spaced prose paragraphs after a large-margin opener", () => {
+    // Boundary sums here are 6+6 = 12pt ≥ threshold → real gaps; the 18pt opener is a
+    // margin-TOP and never contributes to a boundary sum, so it can't cascade.
     const input = `
       <div>
-        <p style="margin-top:18pt;margin-bottom:4pt;text-align:left"><span style="font-size:11pt">Everyone is talking about SpaceX.</span></p>
-        <p style="margin-top:4pt;margin-bottom:4pt;text-align:left"><span style="font-size:11pt">I get it. It's a great story.</span></p>
-        <p style="margin-top:4pt;margin-bottom:4pt;text-align:left"><span style="font-size:11pt">But there's a bigger one.</span></p>
-        <p style="margin-top:4pt;margin-bottom:4pt;text-align:left"><span style="font-size:11pt">Let me explain why.</span></p>
+        <p style="margin-top:18pt;margin-bottom:6pt;text-align:left"><span style="font-size:11pt">Everyone is talking about SpaceX.</span></p>
+        <p style="margin-top:6pt;margin-bottom:6pt;text-align:left"><span style="font-size:11pt">I get it. It's a great story.</span></p>
+        <p style="margin-top:6pt;margin-bottom:6pt;text-align:left"><span style="font-size:11pt">But there's a bigger one.</span></p>
+        <p style="margin-top:6pt;margin-bottom:6pt;text-align:left"><span style="font-size:11pt">Let me explain why.</span></p>
       </div>`;
     const { html } = convertAdvancedDetailed(input);
     const doubles = (html.match(/<br><br>/g) ?? []).length;
     expect(doubles).toBe(3); // a blank line between each of the 4 paragraphs
+  });
+
+  it("merges small-margin prose boundaries (4pt+4pt < threshold) with a single <br>", () => {
+    const input = `
+      <div>
+        <p style="margin-top:4pt;margin-bottom:4pt;text-align:left">First line of the stack.</p>
+        <p style="margin-top:4pt;margin-bottom:4pt;text-align:left">Second line of the stack.</p>
+      </div>`;
+    const { html } = convertAdvancedDetailed(input);
+    expect(html).not.toContain("<br><br>");
+    const gap = html.slice(html.indexOf("stack."), html.indexOf("Second"));
+    expect(gap).toContain("<br>");
   });
 
   // GDocs' DEFAULT paragraph spacing is 0pt before/after — there, Enter produces NO
@@ -110,12 +124,18 @@ describe("convertAdvanced — paragraph gaps and the pairwise zero-margin signal
     expect(gap).toContain("<br>");
   });
 
-  it("one-sided zero margin is NOT enough — both sides of the boundary must be explicit zeros", () => {
+  it("a large one-sided margin (0 + 14pt) still reads as a gap — the SUM decides", () => {
     const input = `
       <div>
         <p style="margin-top:0pt;margin-bottom:0pt;text-align:left">First paragraph.</p>
-        <p style="margin-top:4pt;margin-bottom:0pt;text-align:left">Second paragraph.</p>
+        <p style="margin-top:14pt;margin-bottom:0pt;text-align:left">Second paragraph.</p>
       </div>`;
+    const { html } = convertAdvancedDetailed(input);
+    expect(html).toContain("<br><br>");
+  });
+
+  it("undeclared margins keep the conservative <br><br> (non-GDocs input)", () => {
+    const input = "<div><p>First paragraph.</p><p>Second paragraph.</p></div>";
     const { html } = convertAdvancedDetailed(input);
     expect(html).toContain("<br><br>");
   });
@@ -355,7 +375,13 @@ describe("convertAdvanced — promo-band fixture (alertBand narrowing)", () => {
   });
 
   it("keeps the 3 lines visually separated (not glued onto one line)", () => {
-    expect(html).toContain("<br><br>");
+    // Source margins are 3–4pt per side (< threshold) — adjacent lines in the doc,
+    // so each line gets its own <br>, not a <br><br> paragraph gap.
+    const gap1 = html.slice(html.indexOf("REQUIRED"), html.indexOf("Lock In"));
+    const gap2 = html.slice(html.indexOf("Allocation"), html.indexOf("Up to 20%"));
+    expect(gap1).toContain("<br>");
+    expect(gap2).toContain("<br>");
+    expect(html).not.toContain("<br><br>");
   });
 
   it("does not emit a warning", () => {

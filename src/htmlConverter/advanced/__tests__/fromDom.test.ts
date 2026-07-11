@@ -536,23 +536,28 @@ describe("fromDom — inline font-size is ignored", () => {
 
 // ── Pairwise zero-margin signal + top-level <br> gap/tight markers ────────────
 
-describe("fromDom — explicit zero margins", () => {
-  it("records explicit margin-top:0 and margin-bottom:0", () => {
-    const p = firstParagraph('<p style="margin-top:0pt;margin-bottom:0pt">hi</p>');
-    expect(p.zeroTopMargin).toBe(true);
-    expect(p.zeroBottomMargin).toBe(true);
-  });
-
-  it("non-zero margins do NOT set the flags", () => {
+describe("fromDom — declared paragraph margins (pt)", () => {
+  it("records explicit margin-top/margin-bottom values in pt", () => {
     const p = firstParagraph('<p style="margin-top:4pt;margin-bottom:1.5pt">hi</p>');
-    expect(p.zeroTopMargin).toBeUndefined();
-    expect(p.zeroBottomMargin).toBeUndefined();
+    expect(p.marginTopPt).toBe(4);
+    expect(p.marginBottomPt).toBe(1.5);
   });
 
-  it("absence of a margin declaration is NOT zero", () => {
+  it("records explicit zeros as 0 (distinct from undeclared)", () => {
+    const p = firstParagraph('<p style="margin-top:0pt;margin-bottom:0pt">hi</p>');
+    expect(p.marginTopPt).toBe(0);
+    expect(p.marginBottomPt).toBe(0);
+  });
+
+  it("converts px margins to pt (16px → 12pt)", () => {
+    const p = firstParagraph('<p style="margin-top:16px">hi</p>');
+    expect(p.marginTopPt).toBe(12);
+  });
+
+  it("absence of a margin declaration stays undefined (unknown ≠ zero)", () => {
     const p = firstParagraph("<p>hi</p>");
-    expect(p.zeroTopMargin).toBeUndefined();
-    expect(p.zeroBottomMargin).toBeUndefined();
+    expect(p.marginTopPt).toBeUndefined();
+    expect(p.marginBottomPt).toBeUndefined();
   });
 });
 
