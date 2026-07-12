@@ -114,7 +114,7 @@ export function FileNamingBar({
             ) : (
               <span className='inline-flex items-center gap-1.5'>
                 Advanced
-                <BetaBadge ref={betaRef} className="absolute -top-[10px] -right-[30px] [--beta-drop:36px]" />
+                <BetaBadge detachFrom="right" ref={betaRef} className="absolute -top-[10px] -right-[30px] [--beta-drop:36px]" />
               </span>
             )}
           </button>
