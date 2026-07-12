@@ -15,6 +15,16 @@
 
 ---
 
+## Technical Wiki — always use this
+
+A synthesized, cross-referenced knowledge base for this project — decisions, status, and audits that aren't derivable from code alone (this file covers stack/architecture; the wiki covers "why" and current status) — is maintained externally in Obsidian at `/Users/mykhailovynnyk/Documents/Obsidian/LoWiki/email-helper/`. Start at its `index.md`; maintenance rules are in the vault-level `/Users/mykhailovynnyk/Documents/Obsidian/LoWiki/CLAUDE.md`.
+
+**This is a standing instruction, not a one-off reference:**
+- Before non-trivial work in this repo, check `/Users/mykhailovynnyk/Documents/Obsidian/LoWiki/email-helper/index.md` for existing context (and `/Users/mykhailovynnyk/Documents/Obsidian/LoWiki/concepts/index.md` for general, non-project-specific principles) before re-deriving it from scratch.
+- When work surfaces something worth keeping — a decision, a status change, a finding that contradicts an existing wiki page — ingest it per the vault's own `CLAUDE.md` rules as part of finishing the task, not as a separate follow-up someone has to ask for.
+
+---
+
 ## Tech Stack
 
 ### Frontend
