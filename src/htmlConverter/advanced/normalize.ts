@@ -12,11 +12,12 @@ const ALWAYS_STRIP = new Set([
 // Document metrics are stripped — vertical rhythm and text sizes come exclusively from
 // the token system; the § marker is the author's channel for tight spacing. Two
 // deliberate exceptions:
-//   - margin-top / margin-bottom are KEPT: fromDom reads them ONLY for the pairwise
-//     zero-gap signal (explicit margin-bottom:0 + margin-top:0 across a paragraph
-//     boundary → single <br>). Their VALUES are never rendered. A chain-relative
-//     margin comparison was tried and reverted — see pushMerged in classify.ts —
-//     the pairwise absolute-zero rule has no chain memory and can't cascade.
+//   - margin-top / margin-bottom are KEPT: fromDom reads them ONLY for the paragraph-
+//     boundary rule (ir/spacing.ts isGapBoundary) — prev margin-bottom + cur margin-top,
+//     both explicitly declared, summed and compared against the gapMarginThresholdPt
+//     token to decide line break vs. gap. Their VALUES are never rendered. A chain-
+//     relative margin comparison was tried and reverted — see pushMerged in classify.ts —
+//     the pairwise sum rule has no chain memory and can't cascade.
 //   - border / border-<side> are kept — fromDom reads their color (and declared
 //     width, quantized to whole px) for classification (§4) and box rendering.
 
