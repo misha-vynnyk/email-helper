@@ -88,11 +88,18 @@
       "Bash(awk 'NR>=433 && NR<=440 {n=0; for\\(i=1;i<=length\\($0\\);i++\\){c=substr\\($0,i,1\\); if\\(c==\" \"\\) n++; else break} print NR\": indent=\"n\" -> [\"substr\\($0,1,60\\)\"]\"}' src/htmlConverter/advanced/__tests__/__snapshots__/e2e.test.ts.snap)",
       "Bash(echo \"tsc exit: $?\")",
       "Bash(echo \"tsc: $?\")",
-      "Bash(grep -vE \"^\\\\s+[+-]\\\\s*$\")"
+      "Bash(grep -vE \"^\\\\s+[+-]\\\\s*$\")",
+      "Bash(find \"/Users/mykhailovynnyk/Documents/Obsidian/LoWiki\" -not -path \"*/.obsidian/*\" | sort)",
+      "Read(//Users/mykhailovynnyk/Documents/Obsidian/LoWiki/**)",
+      "Bash(mkdir -p \"/Users/mykhailovynnyk/Documents/Obsidian/LoWiki/concepts/pages\")",
+      "Bash(wc -l \"/Users/mykhailovynnyk/Documents/Obsidian/LoWiki/raw/ryanmcdermottclean-code-javascript Clean Code concepts adapted for JavaScript.md\" \"/Users/mykhailovynnyk/Documents/Obsidian/LoWiki/raw/stackNavigatorclean-code-javascript-ua bathtub Концепції чистого коду, адаптовані під JavaScript.md\" *)",
+      "Read(//Users/mykhailovынnyk/Documents/Obsidian/LoWiki/raw/**)",
+      "Bash(brew install *)"
     ],
     "additionalDirectories": [
       "/dev",
-      "/private/tmp"
+      "/private/tmp",
+      "/Users/mykhailovynnyk/Documents/Obsidian/LoWiki/concepts"
     ]
   }
 }

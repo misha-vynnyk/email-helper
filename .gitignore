@@ -60,6 +60,14 @@ server/ollama-settings.json
 # Local ideas / notes (not tracked)
 idea/
 
+# Personal Claude Code memory-compiler tool + its captured conversation logs
+# (own nested git repo, not project source — see AGENTS.md inside it)
+claude-memory-compiler/
+
+# Hooks config wiring Claude Code to the personal memory-compiler above —
+# paths only resolve on machines that have claude-memory-compiler/ cloned locally
+.claude/settings.json
+
 # OS files
 Thumbs.db
 .DS_Store
