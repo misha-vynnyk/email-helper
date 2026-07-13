@@ -1,16 +1,6 @@
 import { getApiBase, isApiAvailable } from "../../config/api";
-import { ConversionSettings, ImageFormat } from "../types";
-import { detectImageFormat } from "./imageFormatDetector";
-
-/**
- * Get format to use for conversion (original or specified)
- */
-function getConversionFormat(file: File, settings: ConversionSettings): ImageFormat {
-  if (settings.preserveFormat) {
-    return detectImageFormat(file);
-  }
-  return settings.format;
-}
+import { ConversionSettings } from "../types";
+import { getConversionFormat } from "./imageFormatDetector";
 
 export interface ServerConversionResponse {
   success: boolean;
@@ -27,7 +17,7 @@ export async function convertImageServer(file: File, settings: ConversionSetting
   formData.append("image", file);
 
   // Get format to use (original or specified)
-  const outputFormat = getConversionFormat(file, settings);
+  const outputFormat = getConversionFormat(file.name, file.type, settings.preserveFormat, settings.format);
   formData.append("format", outputFormat);
 
   formData.append("quality", settings.quality.toString());

@@ -1,22 +1,6 @@
-import { encode as encodeAvif } from "@jsquash/avif";
-import type { EncodeOptions as AvifEncodeOptions } from "@jsquash/avif/meta";
-import { encode as encodeJpeg } from "@jsquash/jpeg";
-import { encode as encodePng } from "@jsquash/png";
-import { encode as encodeWebp } from "@jsquash/webp";
-import type { EncodeOptions as WebpEncodeOptions } from "@jsquash/webp/meta";
-
-import { ConversionResult, ConversionSettings, ImageFormat } from "../types";
-import { detectImageFormat } from "./imageFormatDetector";
-
-/**
- * Get format to use for conversion (original or specified)
- */
-function getConversionFormat(file: File, settings: ConversionSettings): ImageFormat {
-  if (settings.preserveFormat) {
-    return detectImageFormat(file);
-  }
-  return settings.format;
-}
+import { ConversionResult, ConversionSettings } from "../types";
+import { getConversionFormat } from "./imageFormatDetector";
+import { encodeAtQuality } from "./jsquashEncode";
 
 /**
  * Convert image using Canvas API (client-side)
@@ -99,7 +83,7 @@ export async function convertImageClient(file: File, settings: ConversionSetting
         canvas.height = height;
 
         // Get format to use (original or specified)
-        const outputFormat = getConversionFormat(file, settings);
+        const outputFormat = getConversionFormat(file.name, file.type, settings.preserveFormat, settings.format);
 
         // Handle background based on format
         if (outputFormat === "jpeg") {
@@ -116,47 +100,7 @@ export async function convertImageClient(file: File, settings: ConversionSetting
 
         // Get ImageData to pass to WebAssembly encoders
         const imageData = ctx.getImageData(0, 0, width, height);
-        let buffer: ArrayBuffer;
-
-        switch (outputFormat) {
-          case "jpeg":
-            buffer = await encodeJpeg(imageData, { quality: settings.quality });
-            break;
-          case "webp": {
-            // For max compression, increase the "method" (effort) parameter (max 6, default 4)
-            // For lossless, set lossless: 1
-            const webpOptions: Partial<WebpEncodeOptions> = { quality: settings.quality };
-            if (settings.compressionMode === "lossless") {
-              webpOptions.lossless = 1;
-              webpOptions.quality = 100; // Force 100% quality for lossless
-            } else if (settings.compressionMode === "maximum-compression") {
-              webpOptions.method = 6;
-            }
-            buffer = await encodeWebp(imageData, webpOptions);
-            break;
-          }
-          case "avif": {
-            // avif lossless requires both quality and qualityAlpha to be 100
-            // and often lossless: true (if supported by the specific encoder version)
-            // For max compression, decrease speed (0 = slowest/best, 10 = fastest, default 6)
-            const avifOptions: Omit<Partial<AvifEncodeOptions>, "bitDepth"> = { quality: settings.quality };
-            if (settings.compressionMode === "lossless") {
-              avifOptions.lossless = true;
-              avifOptions.quality = 100;
-              avifOptions.qualityAlpha = 100;
-            } else if (settings.compressionMode === "maximum-compression") {
-              avifOptions.speed = 4; // Slower but better compression
-            }
-            buffer = await encodeAvif(imageData, avifOptions);
-            break;
-          }
-          case "png":
-            buffer = await encodePng(imageData);
-            break;
-          default:
-            buffer = await encodeJpeg(imageData, { quality: settings.quality });
-            break;
-        }
+        const buffer = await encodeAtQuality(imageData, outputFormat, settings.quality, settings.compressionMode);
 
         const blob = new Blob([buffer], { type: `image/${outputFormat}` });
 
@@ -178,28 +122,12 @@ export async function convertImageClient(file: File, settings: ConversionSetting
 }
 
 /**
- * Check if format is supported by browser
- */
-export function isFormatSupported(format: string): boolean {
-  const canvas = document.createElement("canvas");
-  const mimeType = `image/${format}`;
-  return canvas.toDataURL(mimeType).startsWith(`data:${mimeType}`);
-}
-
-/**
  * Format file size for display
  */
 export function formatFileSize(bytes: number): string {
-  if (bytes === 0) return "0 Bytes";
+  if (bytes === 0) return "0 B";
   const k = 1024;
-  const sizes = ["Bytes", "KB", "MB", "GB"];
+  const sizes = ["B", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
-}
-
-/**
- * Calculate compression ratio
- */
-export function calculateCompressionRatio(original: number, converted: number): number {
-  return Math.round(((original - converted) / original) * 100);
 }

@@ -37,6 +37,11 @@ export function useImageConverterLogic() {
   // 3. Worker Pool
   const { workerPool, USE_WORKERS } = useWorkerPool();
 
+  // Bumped every time conversion-affecting settings actually change; lets an
+  // in-flight conversion (captured at the old version) recognize its result is
+  // stale and drop it instead of overwriting a fresh run — see useConversionQueue.
+  const settingsVersionRef = useRef(0);
+
   // 4. Conversion Queue
   const { convertFile, convertAll, convertSelected, enqueueFiles } = useConversionQueue({
     settings,
@@ -44,9 +49,10 @@ export function useImageConverterLogic() {
     setFiles,
     workerPool,
     USE_WORKERS,
+    settingsVersionRef,
   });
 
-  // Reset done/error files when conversion-affecting settings change
+  // Reset done/error/processing files when conversion-affecting settings change
   const prevConversionFingerprintRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -69,16 +75,20 @@ export function useImageConverterLogic() {
 
     if (fingerprint === prevConversionFingerprintRef.current) return;
     prevConversionFingerprintRef.current = fingerprint;
+    settingsVersionRef.current += 1;
 
+    // "processing" must be reset too — otherwise a file mid-conversion under the
+    // old settings keeps running and silently lands as "done" with stale output;
+    // the settingsVersionRef bump above makes that stale result a no-op instead.
     const filesToReset = filesRef.current.filter(
-      (f) => f.status === "done" || f.status === "error"
+      (f) => f.status === "done" || f.status === "error" || f.status === "processing"
     );
 
     if (filesToReset.length === 0) return;
 
     setFiles((prev) =>
       prev.map((f) => {
-        if (f.status !== "done" && f.status !== "error") return f;
+        if (f.status !== "done" && f.status !== "error" && f.status !== "processing") return f;
         if (f.convertedUrl) URL.revokeObjectURL(f.convertedUrl);
         return {
           ...f,

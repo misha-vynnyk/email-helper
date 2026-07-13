@@ -4,12 +4,20 @@
  */
 
 import { logger } from '../../utils/logger';
-import { ConversionSettings } from '../types';
+import { TIMING } from '../constants/limits';
+import { ConversionSettings, ImageFormat, ResizeOptions } from '../types';
 // Import worker - Vite will handle this correctly in production
 // Using ?worker suffix tells Vite to bundle this as a worker
 import WorkerConstructor from './imageWorker.ts?worker';
 
-interface WorkerTask {
+export interface QualityEstimate {
+  quality: number;
+  ssim: number;
+  estimatedSize: number;
+}
+
+interface ConvertTask {
+  kind: 'convert';
   id: string;
   file: File;
   settings: ConversionSettings;
@@ -17,6 +25,20 @@ interface WorkerTask {
   reject: (error: Error) => void;
   onProgress?: (progress: number) => void;
 }
+
+interface EstimateTask {
+  kind: 'estimate';
+  id: string;
+  file: File;
+  format: ImageFormat;
+  resize: ResizeOptions;
+  backgroundColor: string;
+  targetSimilarity: number;
+  resolve: (result: QualityEstimate) => void;
+  reject: (error: Error) => void;
+}
+
+type WorkerTask = ConvertTask | EstimateTask;
 
 interface WorkerWithState {
   worker: Worker;
@@ -68,13 +90,45 @@ export class WorkerPool {
     await this.init();
 
     return new Promise<Blob>((resolve, reject) => {
-      const task: WorkerTask = {
+      const task: ConvertTask = {
+        kind: 'convert',
         id: `task-${Date.now()}-${Math.random()}`,
         file,
         settings,
         resolve,
         reject,
         onProgress,
+      };
+
+      this.queue.push(task);
+      this.processQueue();
+    });
+  }
+
+  /**
+   * Binary-search the lowest quality that's still perceptually indistinguishable
+   * (by SSIM) from the original, for the "Auto" quality mode.
+   */
+  async estimateQuality(
+    file: File,
+    format: ImageFormat,
+    resize: ResizeOptions,
+    backgroundColor: string,
+    targetSimilarity: number
+  ): Promise<QualityEstimate> {
+    await this.init();
+
+    return new Promise<QualityEstimate>((resolve, reject) => {
+      const task: EstimateTask = {
+        kind: 'estimate',
+        id: `task-${Date.now()}-${Math.random()}`,
+        file,
+        format,
+        resize,
+        backgroundColor,
+        targetSimilarity,
+        resolve,
+        reject,
       };
 
       this.queue.push(task);
@@ -112,6 +166,12 @@ export class WorkerPool {
     return new Promise<void>((resolve) => {
       let resolved = false;
 
+      const cleanup = () => {
+        worker.removeEventListener('message', handleMessage);
+        worker.removeEventListener('error', handleError);
+        clearTimeout(timeoutId);
+      };
+
       const handleMessage = (e: MessageEvent) => {
         const response = e.data;
 
@@ -119,17 +179,25 @@ export class WorkerPool {
 
         switch (response.type) {
           case 'progress':
-            if (task.onProgress) {
+            if (task.kind === 'convert' && task.onProgress) {
               task.onProgress(response.progress);
             }
             break;
 
           case 'success':
-            if (!resolved) {
+            if (!resolved && task.kind === 'convert') {
               resolved = true;
-              worker.removeEventListener('message', handleMessage);
-              worker.removeEventListener('error', handleError);
+              cleanup();
               task.resolve(response.blob);
+              resolve();
+            }
+            break;
+
+          case 'quality-estimated':
+            if (!resolved && task.kind === 'estimate') {
+              resolved = true;
+              cleanup();
+              task.resolve({ quality: response.quality, ssim: response.ssim, estimatedSize: response.estimatedSize });
               resolve();
             }
             break;
@@ -137,8 +205,7 @@ export class WorkerPool {
           case 'error':
             if (!resolved) {
               resolved = true;
-              worker.removeEventListener('message', handleMessage);
-              worker.removeEventListener('error', handleError);
+              cleanup();
               task.reject(new Error(response.error || 'Worker error'));
               resolve(); // Resolve the promise to continue processing queue
             }
@@ -149,12 +216,23 @@ export class WorkerPool {
       const handleError = (error: ErrorEvent) => {
         if (!resolved) {
           resolved = true;
-          worker.removeEventListener('message', handleMessage);
-          worker.removeEventListener('error', handleError);
+          cleanup();
           task.reject(new Error(error.message || 'Worker error'));
           resolve();
         }
       };
+
+      // A worker that never posts back (stuck WASM encode, dropped message) would
+      // otherwise keep `busy` true forever and shrink the pool one task at a time.
+      // Terminate and replace it so the rest of the queue can keep moving.
+      const timeoutId = setTimeout(() => {
+        if (resolved) return;
+        resolved = true;
+        cleanup();
+        this.replaceWorker(worker);
+        task.reject(new Error(`Conversion timed out after ${TIMING.CONVERSION_TIMEOUT_MS / 1000}s`));
+        resolve();
+      }, TIMING.CONVERSION_TIMEOUT_MS);
 
       worker.addEventListener('message', handleMessage);
       worker.addEventListener('error', handleError);
@@ -163,20 +241,32 @@ export class WorkerPool {
       const reader = new FileReader();
       reader.onload = () => {
         const fileData = reader.result as ArrayBuffer;
-        worker.postMessage({
-          type: 'convert',
-          id: task.id,
-          fileData,
-          fileName: task.file.name,
-          fileType: task.file.type,
-          settings: task.settings,
-        }, [fileData]);
+        if (task.kind === 'convert') {
+          worker.postMessage({
+            type: 'convert',
+            id: task.id,
+            fileData,
+            fileName: task.file.name,
+            fileType: task.file.type,
+            settings: task.settings,
+          }, [fileData]);
+        } else {
+          worker.postMessage({
+            type: 'estimate-quality',
+            id: task.id,
+            fileData,
+            fileType: task.file.type,
+            format: task.format,
+            resize: task.resize,
+            backgroundColor: task.backgroundColor,
+            targetSimilarity: task.targetSimilarity,
+          }, [fileData]);
+        }
       };
       reader.onerror = () => {
         if (!resolved) {
           resolved = true;
-          worker.removeEventListener('message', handleMessage);
-          worker.removeEventListener('error', handleError);
+          cleanup();
           task.reject(new Error('Failed to read file'));
           resolve();
         }
@@ -186,10 +276,26 @@ export class WorkerPool {
   }
 
   /**
-   * Check if Web Workers are supported
+   * Terminate a worker that timed out and replace it in the pool so capacity
+   * isn't permanently lost.
    */
-  static isSupported(): boolean {
-    return typeof Worker !== 'undefined' && typeof OffscreenCanvas !== 'undefined';
+  private replaceWorker(oldWorker: Worker): void {
+    const idx = this.workers.findIndex((w) => w.worker === oldWorker);
+
+    try {
+      oldWorker.terminate();
+    } catch {
+      // ignore
+    }
+
+    if (idx === -1) return;
+
+    try {
+      this.workers[idx] = { worker: new this.WorkerClass(), busy: false };
+    } catch (error) {
+      logger.error('WorkerPool', 'Failed to recreate worker after timeout', error);
+      this.workers.splice(idx, 1);
+    }
   }
 
   /**
@@ -200,14 +306,4 @@ export class WorkerPool {
     this.workers = [];
     this.queue = [];
   }
-}
-
-// Export singleton instance
-let workerPool: WorkerPool | null = null;
-
-export function getWorkerPool(): WorkerPool {
-  if (!workerPool) {
-    workerPool = new WorkerPool(3); // 3 workers by default
-  }
-  return workerPool;
 }
