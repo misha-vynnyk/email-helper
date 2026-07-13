@@ -127,8 +127,8 @@ export default function FileUploadZone({ files, addFiles, removeFile, downloadFi
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={files.map((f) => f.id)} strategy={rectSortingStrategy}>
               <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3'>
-                {files.map((file, i) => (
-                  <SortableImageItem key={file.id} file={file} index={i} onDownload={() => downloadFile(file.id)} onRemove={() => removeFile(file.id)} onToggleSelection={() => toggleSelection(file.id)} />
+                {files.map((file) => (
+                  <SortableImageItem key={file.id} file={file} onDownload={() => downloadFile(file.id)} onRemove={() => removeFile(file.id)} onToggleSelection={() => toggleSelection(file.id)} />
                 ))}
 
                 {/* Add More Minimalist Button */}

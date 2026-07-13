@@ -106,30 +106,3 @@ function dataUrlToBlob(dataUrl: string): Blob {
   return new Blob([u8arr], { type: mime });
 }
 
-/**
- * Get EXIF orientation value
- */
-export function getExifOrientation(exifData: string | null): number | null {
-  if (!exifData) return null;
-
-  try {
-    const exifObj = piexif.load(`data:image/jpeg;base64,${exifData}`);
-    return exifObj['0th']?.[piexif.ImageIFD.Orientation] || null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Remove EXIF data (for privacy)
- */
-export async function removeExif(blob: Blob): Promise<Blob> {
-  try {
-    const dataUrl = await blobToDataUrl(blob);
-    const newDataUrl = piexif.remove(dataUrl);
-    return dataUrlToBlob(newDataUrl);
-  } catch (error) {
-    logger.warn('ExifPreserver', 'Failed to remove EXIF, returning original', error);
-    return blob;
-  }
-}

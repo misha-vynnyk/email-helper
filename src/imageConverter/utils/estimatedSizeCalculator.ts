@@ -1,4 +1,5 @@
 import { ConversionSettings } from "../types";
+import { formatFileSize } from "./clientConverter";
 
 /**
  * Estimate the output file size based on settings
@@ -76,9 +77,14 @@ export function estimateOutputSize(
 
   estimatedRatio *= baseRatio;
 
-  // Quality impact (for lossy formats)
-  if (settings.format !== "png" && !settings.autoQuality) {
-    const qualityFactor = settings.quality / 100;
+  // Quality impact (for lossy formats). When Auto Quality is on, the real
+  // per-image quality is only known after the SSIM search runs (see
+  // qualityOptimizer.ts) — assume a typical "balanced" outcome here so the
+  // estimate still reflects quality at all, rather than skipping this
+  // adjustment and silently ignoring quality entirely.
+  if (settings.format !== "png") {
+    const ASSUMED_AUTO_QUALITY = 85;
+    const qualityFactor = (settings.autoQuality ? ASSUMED_AUTO_QUALITY : settings.quality) / 100;
 
     if (settings.format === "gif") {
       // GIF quality has less impact than other formats
@@ -165,15 +171,7 @@ export function estimateOutputSize(
   return Math.max(minSize, Math.min(maxSize, estimated));
 }
 
-/**
- * Format file size for display
- */
-export function formatFileSize(bytes: number): string {
-  if (bytes === 0) return "0 B";
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-}
+export { formatFileSize };
 
 /**
  * Calculate estimated compression ratio

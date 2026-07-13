@@ -11,7 +11,6 @@ import ImageGridItem from "./ImageGridItem";
 
 interface SortableImageItemProps {
   file: ImageFile;
-  index: number;
   onDownload: () => void;
   onRemove: () => void;
   onToggleSelection: () => void;
@@ -19,7 +18,6 @@ interface SortableImageItemProps {
 
 export default function SortableImageItem({
   file,
-  index,
   onDownload,
   onRemove,
   onToggleSelection,
@@ -51,7 +49,6 @@ export default function SortableImageItem({
         onDownload={onDownload}
         onRemove={onRemove}
         onToggleSelection={onToggleSelection}
-        index={index}
         dragListeners={listeners}
       />
     </div>

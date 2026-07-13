@@ -23,7 +23,6 @@ interface ImageGridItemProps {
   onDownload: () => void;
   onRemove: () => void;
   onToggleSelection: () => void;
-  index: number;
   dragListeners?: SyntheticListenerMap;
 }
 

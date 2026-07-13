@@ -1,10 +1,10 @@
 /**
  * File Manager Hook
  * Handles file add/remove/clear/reorder/selection/download operations.
- * Extracted from ImageConverterContext.
  */
 
 import { useCallback, useRef, useState } from "react";
+import { toast } from "react-toastify";
 
 import { MAX_FILE_SIZE_CLIENT, MAX_FILE_SIZE_SERVER } from "../../constants";
 import { ConversionSettings, ImageFile } from "../../types";
@@ -26,8 +26,7 @@ export function useFileManager(settings: ConversionSettings) {
       const { validFiles, errors } = validateImageFiles(newFiles, maxFileSize);
 
       if (errors.length > 0) {
-        // Caller can handle errors via return
-        console.warn("Invalid files:", errors);
+        toast.warn(errors.length === 1 ? errors[0] : `${errors.length} files skipped — ${errors[0]}${errors.length > 1 ? ` (+${errors.length - 1} more)` : ""}`);
       }
 
       const imageFiles: ImageFile[] = validFiles.map((file) => ({
@@ -103,7 +102,7 @@ export function useFileManager(settings: ConversionSettings) {
       const file = filesRef.current.find((f) => f.id === id);
       if (!file?.convertedBlob) return;
 
-      const usedFormat = settings.preserveFormat ? detectImageFormat(file.file) : settings.format;
+      const usedFormat = settings.preserveFormat ? detectImageFormat(file.file.name, file.file.type) : settings.format;
       const extension = getExtensionForFormat(usedFormat);
       const filename = file.file.name.replace(/\.[^/.]+$/, "") + extension;
 

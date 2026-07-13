@@ -51,11 +51,3 @@ export interface ConversionResult {
   blob: Blob;
   size: number;
 }
-
-export interface BatchConversionStats {
-  totalFiles: number;
-  completed: number;
-  failed: number;
-  originalTotalSize: number;
-  convertedTotalSize: number;
-}

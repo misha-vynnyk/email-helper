@@ -1,7 +1,6 @@
 /**
  * Worker Pool Hook
  * Manages Web Worker pool lifecycle.
- * Extracted from ImageConverterContext.
  */
 
 import { useEffect, useRef } from "react";
