@@ -355,7 +355,6 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
                       analysisLabel={analysisLabel}
                       editingTag={editingTag}
                       useAiBackend={imageAnalysisSettings?.useAiBackend}
-                      warningFileSizeKB={ui.warningFileSizeKB}
                       onNameChange={(fileId: string, value: string) => setCustomNames((prev) => ({ ...prev, [fileId]: value }))}
                       onAltChange={(fileId: string, newAltString: string) => setCustomAlts((prev) => ({ ...prev, [fileId]: newAltString }))}
                       onEditingTagChange={setEditingTag}

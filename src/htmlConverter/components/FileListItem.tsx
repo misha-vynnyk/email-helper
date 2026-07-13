@@ -5,7 +5,7 @@
  * This is a "dumb" presentational component — all state lives in the parent.
  */
 
-import { AlertTriangle,GripVertical, X } from "lucide-react";
+import { GripVertical, X } from "lucide-react";
 import React from "react";
 
 import { normalizeCustomNameInput } from "../utils/imageAnalysis";
@@ -45,8 +45,6 @@ export interface FileListItemProps {
   editingTag: { fileId: string; tagIdx: number } | null;
   /** Whether the AI backend is used (for text labels) */
   useAiBackend?: boolean;
-  /** File size threshold in KB to show a warning */
-  warningFileSizeKB?: number;
 
   // --- Callbacks ---
   onNameChange: (fileId: string, value: string) => void;
@@ -106,7 +104,7 @@ function addTag(altString: string, newTag: string): string {
 // Component
 // ---------------------------------------------------------------------------
 
-export default function FileListItem({ file, index, uploading, draggedIndex, customName, customAltString, aiState, analysisEnabled, analysisLabel, editingTag, useAiBackend, warningFileSizeKB = 1024, onNameChange, onAltChange, onEditingTagChange, onAnalyze, onDragStart, onDragOver, onDragEnd, onRemove }: FileListItemProps) {
+export default function FileListItem({ file, index, uploading, draggedIndex, customName, customAltString, aiState, analysisEnabled, analysisLabel, editingTag, useAiBackend, onNameChange, onAltChange, onEditingTagChange, onAnalyze, onDragStart, onDragOver, onDragEnd, onRemove }: FileListItemProps) {
   const isDragged = draggedIndex === index;
   const altTags = getAltTags(customAltString);
 
@@ -127,13 +125,6 @@ export default function FileListItem({ file, index, uploading, draggedIndex, cus
         <div className='flex items-center gap-3 pt-1 flex-1'>
           {/* Drag Handle */}
           <GripVertical className={`text-muted-foreground ${uploading ? "cursor-default" : "cursor-grab active:cursor-grabbing"}`} size={20} />
-
-          {/* Warning Icon if file is too large */}
-          {warningFileSizeKB && file.size && file.size > warningFileSizeKB * 1024 && (
-            <div title={`Увага: файл завеликий (${(file.size / 1024).toFixed(0)} KB). Рекомендовано до ${warningFileSizeKB} KB.`} className='flex text-warning cursor-help'>
-              <AlertTriangle size={20} />
-            </div>
-          )}
 
           {/* Thumbnail */}
           {file.path && (

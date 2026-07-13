@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef,useState } from "react";
 
+import { useDebounce } from "@/hooks/useDebounce";
+
 import { getApiBase, isApiAvailable } from "../../config/api";
 import { IMAGE_DEFAULTS,STORAGE_KEYS } from "../constants";
 import type { ImageFormat, ImageSettings,ProcessedImage } from "../types";
@@ -45,6 +47,11 @@ export function useImageConversion({ editorRef, onLog, onVisibilityChange, autoP
   const [quality, setQuality] = useState(savedSettings.quality);
   const [maxWidth, setMaxWidth] = useState(savedSettings.maxWidth);
   const [autoProcess, setAutoProcess] = useState(autoProcessProp ?? false);
+
+  // Sliders fire on every drag tick; debounce so a rapid drag doesn't fire an
+  // abort+reprocess cycle per tick (see "Re-process on settings change" below).
+  const debouncedQuality = useDebounce(quality, 300);
+  const debouncedMaxWidth = useDebounce(maxWidth, 300);
 
   // Session tracking to invalidate old uploads
   const [sessionId, setSessionId] = useState(0);
@@ -159,7 +166,24 @@ export function useImageConversion({ editorRef, onLog, onVisibilityChange, autoP
       }
     }
 
-    // Client-side conversion
+    // Client-side conversion. Measure the real original size via fetch first —
+    // relying on img.src only works for data: URIs, everything else (plain
+    // http(s)/blob: sources) needs an actual byte count from a response body.
+    let originalSize = 0;
+    if (src.startsWith("data:")) {
+      const base64 = src.split(",")[1];
+      originalSize = base64 ? Math.ceil((base64.length * 3) / 4) : 0;
+    } else {
+      try {
+        const origResponse = await fetch(src, { signal });
+        if (origResponse.ok) {
+          originalSize = (await origResponse.blob()).size;
+        }
+      } catch {
+        // CORS-blocked or network error — fall back to 0, still attempt the conversion below
+      }
+    }
+
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.crossOrigin = "anonymous";
@@ -200,12 +224,6 @@ export function useImageConversion({ editorRef, onLog, onVisibilityChange, autoP
           }
 
           ctx.drawImage(img, 0, 0, width, height);
-
-          let originalSize = 0;
-          if (img.src.startsWith("data:")) {
-            const base64 = img.src.split(",")[1];
-            originalSize = base64 ? Math.ceil((base64.length * 3) / 4) : 0;
-          }
 
           canvas.toBlob(
             (blob) => {
@@ -300,11 +318,14 @@ export function useImageConversion({ editorRef, onLog, onVisibilityChange, autoP
   useEffect(() => {
     abortConversions();
     setImages((prev) => {
-      const hasProcessed = prev.some((img) => img.status === "done" || img.status === "error");
+      // "processing" must be reset too: abortConversions() only cancels the in-flight
+      // request, whose catch block sees AbortError and returns without touching status —
+      // leaving that image stuck on "processing" forever if we don't reset it here.
+      const hasProcessed = prev.some((img) => img.status === "done" || img.status === "error" || img.status === "processing");
       if (!hasProcessed) return prev;
-      return prev.map((img) => (img.status === "done" || img.status === "error" ? { ...img, status: "pending" as const, convertedBlob: undefined, convertedSize: undefined, error: undefined } : img));
+      return prev.map((img) => (img.status === "done" || img.status === "error" || img.status === "processing" ? { ...img, status: "pending" as const, convertedBlob: undefined, convertedSize: undefined, error: undefined } : img));
     });
-  }, [quality, maxWidth, abortConversions]);
+  }, [debouncedQuality, debouncedMaxWidth, abortConversions]);
 
   // Auto process
   useEffect(() => {
