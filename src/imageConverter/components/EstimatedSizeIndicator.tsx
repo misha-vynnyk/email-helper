@@ -106,8 +106,8 @@ export default function EstimatedSizeIndicator({
         <div className='mt-3 p-2 bg-black/10 rounded-lg border border-white/10'>
            <p className='text-[8px] font-medium leading-relaxed opacity-80'>
               {isGif && isLikelyAnimated
-                ? "⚠️ Motion Graphics Index: Animation complexity may yield variable results (±30%)."
-                : "⚠️ Calibration Note: AI estimation based on modern codec logic. Margin: ±15%."}
+                ? "⚠️ Rough estimate — animated GIF compression varies a lot by frame count and palette (±30%)."
+                : "⚠️ Rough estimate from format/quality only, not measured from an actual conversion (±15%)."}
            </p>
         </div>
       </div>

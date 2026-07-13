@@ -10,10 +10,3 @@ export const DEFAULT_AUTO_CONVERT = true;
 export const DEFAULT_PRESERVE_FORMAT = false; // Convert to specified format by default
 export const DEFAULT_AUTO_QUALITY = false; // Manual quality by default
 export const DEFAULT_PRESERVE_EXIF = false; // Don't preserve EXIF by default (privacy)
-
-// GIF Optimization constants
-export const DEFAULT_GIF_TARGET_SIZE = undefined;
-export const GIF_MIN_LOSSY = 10;
-export const GIF_MAX_LOSSY = 200;
-export const GIF_TARGET_SIZE_TOLERANCE = 0.05; // 5%
-export const GIF_MAX_OPTIMIZATION_ITERATIONS = 10;

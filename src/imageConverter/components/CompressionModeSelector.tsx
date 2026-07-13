@@ -4,6 +4,7 @@
  */
 
 import { CheckCircle2,Gauge, LucideIcon, Minimize2, ShieldCheck, Sparkles } from "lucide-react";
+import { useEffect } from "react";
 
 import { CompressionMode,ConversionSettings } from "../types";
 
@@ -11,10 +12,6 @@ interface CompressionModeSelectorProps {
   settings: ConversionSettings;
   updateSettings: (s: Partial<ConversionSettings>) => void;
 }
-
-
-
-
 export default function CompressionModeSelector({ settings, updateSettings }: CompressionModeSelectorProps) {
   const compressionModes: { id: CompressionMode; label: string; icon: LucideIcon; desc: string }[] = [
     { id: "balanced", label: "Balanced", icon: Gauge, desc: "Size vs Quality" },
@@ -24,6 +21,16 @@ export default function CompressionModeSelector({ settings, updateSettings }: Co
   ];
 
   const isLosslessAvailable = settings.format === "png" || settings.format === "webp";
+
+  // If the user was on Lossless and then switches format away from PNG/WebP,
+  // fall back to Balanced — otherwise compressionMode stays "lossless" while
+  // the UI itself shows it as unavailable, and useConversionQueue still force-
+  // applies quality:100 for a mode the format no longer supports.
+  useEffect(() => {
+    if (settings.compressionMode === "lossless" && !isLosslessAvailable) {
+      updateSettings({ compressionMode: "balanced" });
+    }
+  }, [isLosslessAvailable, settings.compressionMode, updateSettings]);
 
   return (
     <div className='space-y-4'>

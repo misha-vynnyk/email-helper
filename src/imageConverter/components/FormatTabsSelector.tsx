@@ -10,7 +10,6 @@ interface FormatTabsSelectorProps {
   onChange: (format: ImageFormat) => void;
   preserveFormat: boolean;
   onPreserveFormatChange: (preserve: boolean) => void;
-  disabled?: boolean;
 }
 
 const FORMAT_INFO: Record<ImageFormat, { label: string; description: string; recommended?: boolean }> = {
@@ -26,7 +25,6 @@ export default function FormatTabsSelector({
   onChange,
   preserveFormat,
   onPreserveFormatChange,
-  disabled = false,
 }: FormatTabsSelectorProps) {
   const formats: ImageFormat[] = ["jpeg", "webp", "avif", "png", "gif"];
 
@@ -35,11 +33,10 @@ export default function FormatTabsSelector({
       <div className='flex flex-wrap gap-2'>
         {/* Original Format Option */}
         <button
-          onClick={() => !disabled && onPreserveFormatChange(true)}
-          disabled={disabled}
+          onClick={() => onPreserveFormatChange(true)}
           className={`
             relative px-5 py-2.5 text-xs font-black uppercase tracking-widest rounded-2xl border-2 transition-all duration-300
-            hover:-translate-y-1 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed
+            hover:-translate-y-1 active:scale-95
             ${preserveFormat
               ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20 scale-105 z-10"
               : "bg-white dark:bg-slate-900 text-muted-foreground border-transparent hover:border-slate-300 dark:hover:border-slate-700 shadow-sm"
@@ -57,15 +54,12 @@ export default function FormatTabsSelector({
             <button
               key={format}
               onClick={() => {
-                if (!disabled) {
-                  onPreserveFormatChange(false);
-                  onChange(format);
-                }
+                onPreserveFormatChange(false);
+                onChange(format);
               }}
-              disabled={disabled}
               className={`
                 relative px-5 py-2.5 text-xs font-black uppercase tracking-widest rounded-2xl border-2 transition-all duration-300
-                hover:-translate-y-1 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed
+                hover:-translate-y-1 active:scale-95
                 ${isSelected
                   ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/20 scale-105 z-10"
                   : "bg-white dark:bg-slate-900 text-muted-foreground border-transparent hover:border-slate-300 dark:hover:border-slate-700 shadow-sm"

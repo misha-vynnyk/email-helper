@@ -57,7 +57,7 @@ export default function ProcessingModeToggle({ settings, updateSettings }: Proce
       </div>
       
       <p className='text-[9px] text-muted-foreground/60 px-1'>
-        {settings.processingMode === "client" ? "Local Browser Node" : "Cloud Optimization Cluster"}
+        {settings.processingMode === "client" ? "Runs in your browser, no upload needed" : "Uploads to the server for processing"}
       </p>
     </div>
   );
