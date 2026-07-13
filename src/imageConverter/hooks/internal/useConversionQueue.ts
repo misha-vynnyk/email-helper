@@ -1,7 +1,6 @@
 /**
  * Conversion Queue Hook
  * Manages parallel conversion processing with queue, retry, and caching.
- * Extracted from ImageConverterContext (the core conversion logic).
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -14,7 +13,6 @@ import { extractExif, insertExif } from "../../utils/exifPreserver";
 import { imageCache } from "../../utils/imageCache";
 import { convertImageServer } from "../../utils/imageConverterApi";
 import { detectImageFormat } from "../../utils/imageFormatDetector";
-import { performanceMonitor } from "../../utils/performanceMonitor";
 import { calculateOptimalQuality } from "../../utils/qualityOptimizer";
 import { WorkerPool } from "../../workers/workerPool";
 
@@ -24,6 +22,10 @@ interface UseConversionQueueProps {
   setFiles: React.Dispatch<React.SetStateAction<ImageFile[]>>;
   workerPool: React.MutableRefObject<WorkerPool | null>;
   USE_WORKERS: boolean;
+  /** Bumped whenever conversion-affecting settings change; lets an in-flight
+   *  conversion detect it was started under stale settings and drop its result
+   *  instead of overwriting whatever the current (re-triggered) run produces. */
+  settingsVersionRef: React.MutableRefObject<number>;
 }
 
 export function useConversionQueue({
@@ -32,6 +34,7 @@ export function useConversionQueue({
   setFiles,
   workerPool,
   USE_WORKERS,
+  settingsVersionRef,
 }: UseConversionQueueProps) {
   const [conversionQueue, setConversionQueue] = useState<string[]>([]);
   const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
@@ -44,6 +47,8 @@ export function useConversionQueue({
       if (!fileToConvert) return;
       if (fileToConvert.status === "done" || fileToConvert.status === "processing") return;
 
+      const versionAtStart = settingsVersionRef.current;
+
       // Mark processing
       setFiles((prev) =>
         prev.map((f) =>
@@ -54,10 +59,9 @@ export function useConversionQueue({
       );
 
       try {
-        const startTime = performanceMonitor.startConversion(id);
         let effectiveSettings = settingsRef.current;
 
-        const inputFormat = detectImageFormat(fileToConvert.file);
+        const inputFormat = detectImageFormat(fileToConvert.file.name, fileToConvert.file.type);
 
         // Apply preserve format if enabled
         if (effectiveSettings.preserveFormat) {
@@ -69,11 +73,6 @@ export function useConversionQueue({
 
         // Force server for GIF input or GIF output
         if (inputFormat === "gif" || effectiveSettings.format === "gif") {
-          effectiveSettings = { ...effectiveSettings, processingMode: "server" };
-        }
-
-        // Force server for GIF output
-        if (effectiveSettings.format === "gif") {
           effectiveSettings = { ...effectiveSettings, processingMode: "server" };
         }
 
@@ -91,8 +90,14 @@ export function useConversionQueue({
           case "balanced":
           default:
             if (effectiveSettings.autoQuality) {
-              const qualityRec = await calculateOptimalQuality(fileToConvert.file);
+              const qualityRec = await calculateOptimalQuality(fileToConvert.file, {
+                format: effectiveSettings.format,
+                resize: effectiveSettings.resize,
+                backgroundColor: effectiveSettings.backgroundColor,
+                workerPool: USE_WORKERS ? workerPool.current : null,
+              });
               effectiveSettings = { ...effectiveSettings, quality: qualityRec.quality };
+              logger.info("ImageConverter", `Auto quality for ${fileToConvert.file.name}: ${qualityRec.quality}% — ${qualityRec.reason}`);
             }
             break;
         }
@@ -143,18 +148,14 @@ export function useConversionQueue({
         onProgress(5);
         const cachedBlob = await imageCache.get(cacheKey);
         let result: ConversionResult;
-        let usedCache = false;
 
         if (cachedBlob) {
-          performanceMonitor.recordCacheHit();
-          usedCache = true;
           result = { blob: cachedBlob, size: cachedBlob.size };
           for (let p = 10; p <= 100; p += 10) {
             onProgress(p);
             await new Promise((resolve) => setTimeout(resolve, 30));
           }
         } else {
-          performanceMonitor.recordCacheMiss();
           onProgress(10);
 
           if (effectiveSettings.processingMode === "client") {
@@ -225,21 +226,13 @@ export function useConversionQueue({
         }
 
         const convertedUrl = URL.createObjectURL(result.blob);
-        const usedFormat = effectiveSettings.preserveFormat
-          ? detectImageFormat(fileToConvert.file)
-          : effectiveSettings.format;
 
-        if (!usedCache) {
-          performanceMonitor.recordConversion(
-            id,
-            fileToConvert.file.name,
-            fileToConvert.originalSize,
-            result.size,
-            startTime,
-            effectiveSettings.processingMode,
-            usedFormat,
-            effectiveSettings.quality
-          );
+        if (settingsVersionRef.current !== versionAtStart) {
+          // Settings changed while this ran under the old ones — the reset
+          // effect already reverted this file to "pending" (and re-queued it
+          // if autoConvert is on). Drop this stale result instead of
+          // clobbering whatever the fresh run produces.
+          return;
         }
 
         setFiles((prev) =>
@@ -258,6 +251,11 @@ export function useConversionQueue({
         );
       } catch (error) {
         logger.error("ImageConverter", "Conversion error", error);
+
+        if (settingsVersionRef.current !== versionAtStart) {
+          // Stale run under old settings — a fresh attempt is already queued.
+          return;
+        }
 
         const currentFile = filesRef.current.find((f) => f.id === id);
         const retryCount = (currentFile?.retryCount || 0) + 1;

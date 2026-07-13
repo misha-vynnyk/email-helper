@@ -3,9 +3,18 @@
  * Props-based. Tailwind styling.
  */
 
-import { Lock,SlidersHorizontal, Sparkles } from "lucide-react";
+import { Lock,SlidersHorizontal, Sparkles, Unlock } from "lucide-react";
+import { useEffect, useState } from "react";
+
+import { useDebounce } from "@/hooks/useDebounce";
 
 import { CompressionMode } from "../types";
+
+// Below this, output gets visibly degraded (blocky/blurry) for most images.
+// The range stays reachable — just gated behind an explicit unlock — so someone
+// who genuinely wants extreme compression still can, but can't get there by
+// an accidental drag.
+const EXTREME_QUALITY_THRESHOLD = 20;
 
 interface QualityControlProps {
   autoQuality: boolean;
@@ -43,8 +52,36 @@ export default function QualityControl({
   disabled = false,
 }: QualityControlProps) {
   const isControlledByCompressionMode = compressionMode !== "balanced";
-  const effectiveQuality = isControlledByCompressionMode ? getCompressionModeQuality(compressionMode) : quality;
+
+  // Local, instantly-updating slider value — the drag thumb and % label follow
+  // every tick immediately. Only the debounced value is pushed up to settings,
+  // so a fast drag doesn't fire an abort+reprocess cycle (and a burst of worker
+  // conversions) on every intermediate tick.
+  const [localQuality, setLocalQuality] = useState(quality);
+  useEffect(() => setLocalQuality(quality), [quality]);
+  const debouncedQuality = useDebounce(localQuality, 300);
+  useEffect(() => {
+    if (debouncedQuality !== quality) onQualityChange(debouncedQuality);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedQuality]);
+
+  const effectiveQuality = isControlledByCompressionMode ? getCompressionModeQuality(compressionMode) : localQuality;
   const qualityLevel = getQualityLevel(effectiveQuality);
+
+  // Auto-unlocked if a previously saved quality is already below the floor —
+  // an old choice stays visible/valid, only new drags below it need the toggle.
+  const [extremeUnlocked, setExtremeUnlocked] = useState(quality < EXTREME_QUALITY_THRESHOLD);
+  const sliderMin = extremeUnlocked ? 1 : EXTREME_QUALITY_THRESHOLD;
+
+  const toggleExtremeUnlocked = () => {
+    setExtremeUnlocked((prev) => {
+      const next = !prev;
+      if (!next && localQuality < EXTREME_QUALITY_THRESHOLD) {
+        setLocalQuality(EXTREME_QUALITY_THRESHOLD);
+      }
+      return next;
+    });
+  };
 
   return (
     <div className='flex flex-col gap-4'>
@@ -105,23 +142,36 @@ export default function QualityControl({
             <div className='space-y-3 px-1'>
               <div className='flex items-center justify-between'>
                 <span className='text-[10px] uppercase font-black tracking-widest text-muted-foreground'>Intensity</span>
-                <span className='text-lg font-black text-primary tabular-nums'>{quality}%</span>
+                <span className='text-lg font-black text-primary tabular-nums'>{localQuality}%</span>
               </div>
               <div className='relative h-6 flex items-center group'>
                 <input
                   type='range'
-                  min={1}
+                  min={sliderMin}
                   max={100}
-                  value={quality}
-                  onChange={(e) => onQualityChange(Math.max(1, Math.min(100, Number(e.target.value))))}
+                  value={localQuality}
+                  onChange={(e) => setLocalQuality(Math.max(sliderMin, Math.min(100, Number(e.target.value))))}
                   disabled={disabled}
                   className='w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full appearance-none cursor-pointer accent-primary group-hover:h-2 transition-all'
                 />
               </div>
               <div className='flex justify-between text-[9px] font-bold uppercase tracking-tighter text-muted-foreground/60'>
-                <span>Max Compression</span>
+                <span>{extremeUnlocked ? "Max Compression" : `Max Compression (${EXTREME_QUALITY_THRESHOLD}%)`}</span>
                 <span>Max Quality</span>
               </div>
+              <button
+                type='button'
+                onClick={toggleExtremeUnlocked}
+                disabled={disabled}
+                className={`flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-tight transition-colors disabled:opacity-50 ${
+                  extremeUnlocked ? "text-destructive" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {extremeUnlocked ? <Unlock size={11} /> : <Lock size={11} />}
+                {extremeUnlocked
+                  ? `Extreme compression unlocked (<${EXTREME_QUALITY_THRESHOLD}%)`
+                  : `Unlock extreme compression (<${EXTREME_QUALITY_THRESHOLD}%)`}
+              </button>
             </div>
           )}
         </div>

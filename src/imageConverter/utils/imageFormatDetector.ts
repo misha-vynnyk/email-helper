@@ -6,11 +6,13 @@
 import { ImageFormat } from '../types';
 
 /**
- * Detect image format from file
+ * Detect image format from a file's name/MIME type. Takes plain strings
+ * (rather than a File) so it can also be called from a Web Worker message,
+ * which only carries the name/type across, not the File object itself.
  */
-export function detectImageFormat(file: File): ImageFormat {
-  const mimeType = file.type.toLowerCase();
-  const fileName = file.name.toLowerCase();
+export function detectImageFormat(fileName: string, fileType: string): ImageFormat {
+  const mimeType = fileType.toLowerCase();
+  const name = fileName.toLowerCase();
 
   // Check MIME type first
   if (mimeType.includes("jpeg") || mimeType.includes("jpg")) return "jpeg";
@@ -20,7 +22,7 @@ export function detectImageFormat(file: File): ImageFormat {
   if (mimeType.includes("gif")) return "gif";
 
   // Fallback to file extension
-  const extension = fileName.split(".").pop()?.toLowerCase();
+  const extension = name.split(".").pop()?.toLowerCase();
   if (extension === "jpg" || extension === "jpeg") return "jpeg";
   if (extension === "png") return "png";
   if (extension === "webp") return "webp";
@@ -29,6 +31,11 @@ export function detectImageFormat(file: File): ImageFormat {
 
   // Default to jpeg if unknown
   return "jpeg";
+}
+
+/** Resolve the format to actually convert to: original (if preserveFormat) or the target format. */
+export function getConversionFormat(fileName: string, fileType: string, preserveFormat: boolean, targetFormat: ImageFormat): ImageFormat {
+  return preserveFormat ? detectImageFormat(fileName, fileType) : targetFormat;
 }
 
 /**
