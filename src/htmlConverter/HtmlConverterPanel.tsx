@@ -11,7 +11,6 @@ import { Header } from "./components/Header";
 import UploadHistory from "./components/UploadHistory";
 import { useEditorHotkeys } from "./hooks/internal/useEditorHotkeys";
 import { useMarkerHighlighter } from "./hooks/internal/useMarkerHighlighter";
-import { useAiLogger } from "./hooks/useAiLogger";
 import { useHtmlConverterLogic } from "./hooks/useHtmlConverterLogic";
 import { useIsDesktop } from "./hooks/useIsDesktop";
 import ImageProcessor from "./ImageProcessor";
@@ -32,9 +31,6 @@ export default function HtmlConverterPanel() {
   });
 
   const { ui, setUi, imageAnalysis, setImageAnalysis, aiBackendStatus } = settings;
-
-  // AI Logger Hook
-  const { aiLogs, aiConnected } = useAiLogger(ui.showAiTerminal);
 
   // Editor enhancements (opt-in via settings)
   useMarkerHighlighter({ editorRef, enabled: ui.editorMarkerHighlight, oneBrSymbol: ui.oneBrSymbol });
@@ -126,8 +122,8 @@ export default function HtmlConverterPanel() {
     />
   );
 
-  const diagnostics = ((ui.showInputHtml && state.inputHtml) || (ui.showLogsPanel && state.log.length > 0) || ui.showAiTerminal) && (
-    <DiagnosticsPanel logs={state.log} inputHtml={state.inputHtml} handleCopy={actions.handleCopy} aiLogs={aiLogs} aiConnected={aiConnected} showAiTerminal={ui.showAiTerminal} />
+  const diagnostics = ((ui.showInputHtml && state.inputHtml) || (ui.showLogsPanel && state.log.length > 0)) && (
+    <DiagnosticsPanel logs={state.log} inputHtml={state.inputHtml} handleCopy={actions.handleCopy} />
   );
 
   return (

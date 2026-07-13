@@ -15,8 +15,6 @@ export type UiSettings = {
   approveNeededValue: boolean;
   ocrSimpleMode: "custom" | "fast" | "balanced" | "banner" | "max";
   autoCloseUploadDialog: boolean;
-  warningFileSizeKB: number;
-  showAiTerminal: boolean;
   downloadFolder: string;
   oneBrSymbol: string;
   editorSelectionToolbar: boolean;
@@ -35,8 +33,6 @@ export const DEFAULT_UI_SETTINGS: UiSettings = {
   approveNeededValue: false,
   ocrSimpleMode: "custom",
   autoCloseUploadDialog: true,
-  warningFileSizeKB: 1024,
-  showAiTerminal: false,
   downloadFolder: "",
   oneBrSymbol: SYMBOLS.ONE_BR,
   editorSelectionToolbar: false,

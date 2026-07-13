@@ -56,7 +56,6 @@ export const UiSettingsTab: React.FC<UiSettingsTabProps> = ({ ui, setUi, uploadM
         <h3 className='text-xs font-semibold uppercase tracking-widest text-muted-foreground'>Панелі</h3>
         <div className='space-y-3'>
           <Row id='showLogsPanel'     label='Лог операцій'           checked={ui.showLogsPanel}     onCheckedChange={(v) => set("showLogsPanel", v)} />
-          <Row id='showAiTerminal'    label='Термінал AI'             checked={ui.showAiTerminal}    onCheckedChange={(v) => set("showAiTerminal", v)} />
           <Row id='showInputHtml'     label='Вхідний HTML'            checked={ui.showInputHtml}     onCheckedChange={(v) => set("showInputHtml", v)} />
           <Row id='showUploadHistory' label='Історія завантажень'     checked={ui.showUploadHistory} onCheckedChange={(v) => set("showUploadHistory", v)} />
         </div>
@@ -71,25 +70,6 @@ export const UiSettingsTab: React.FC<UiSettingsTabProps> = ({ ui, setUi, uploadM
           <Row id='rememberUiLayout'      label='Запамʼятовувати layout'          hint='Вимкни, щоб скидати вигляд при перезавантаженні'   checked={ui.rememberUiLayout}      onCheckedChange={(v) => set("rememberUiLayout", v)} />
           <Row id='autoCloseUploadDialog' label='Авто-закриття після завантаження' checked={ui.autoCloseUploadDialog} onCheckedChange={(v) => set("autoCloseUploadDialog", v)} />
           <Row id='showApproveNeeded'     label='Показувати "Approve Needed"'      checked={ui.showApproveNeeded}     onCheckedChange={(v) => set("showApproveNeeded", v)} />
-        </div>
-
-        <div className='flex items-center justify-between pt-1'>
-          <Label htmlFor='warningSize' className='text-sm'>Попередження про розмір файлу</Label>
-          <div className='flex items-center gap-1.5'>
-            <Input
-              id='warningSize'
-              type='number'
-              value={ui.warningFileSizeKB}
-              onChange={(e) => {
-                const val = parseInt(e.target.value, 10);
-                if (!isNaN(val)) setUi((prev) => ({ ...prev, warningFileSizeKB: val }));
-              }}
-              min={0}
-              step={100}
-              className='h-8 w-20 text-xs text-center'
-            />
-            <span className='text-xs text-muted-foreground'>KB</span>
-          </div>
         </div>
       </section>
 
