@@ -4,7 +4,7 @@
 
 import { escapeHtml } from "../escape";
 import { isDarkBg } from "../ir/color";
-import type { BorderSpec, Run } from "../ir/types";
+import type { Align,BorderSpec, Run } from "../ir/types";
 import type { Tokens } from "./tokens";
 import { tokens as defaultTokens } from "./tokens";
 
@@ -86,6 +86,8 @@ export interface CalloutBoxOpts {
    * through `childrenHtml` so F10-style nested CTAs keep working.
    */
   innerHtml?: string;
+  /** The single paragraph's own alignment (only meaningful alongside innerHtml); "left" when absent. */
+  align?: Align;
 }
 
 export interface TextDividerOpts {
@@ -434,7 +436,7 @@ ${wrapClose}`;
     // Full/partial frame around recursively-rendered children (e.g. a bordered CTA box
     // that contains its own buttonBand) — only the sides present in `border` are drawn.
     calloutBox(childrenHtml: string | undefined, opts: CalloutBoxOpts): string {
-      const { border, bg, innerHtml } = opts;
+      const { border, bg, innerHtml, align = "left" } = opts;
       const borderStyle = borderSpecToStyle(border, tok);
       const p = pad();
       const px = tok.layout.calloutPadX;
@@ -452,7 +454,7 @@ ${wrapClose}`;
       if (innerHtml !== undefined) {
         const style = baseStyle({}, tok);
         return `${wrapOpen}
-        <td align="left"
+        <td align="${align}"
           style="${style} padding-top:${p}px;padding-bottom:${p}px;padding-left:${px}px;padding-right:${px}px;">
 ${indentHtml(innerHtml, 10)}
         </td>
