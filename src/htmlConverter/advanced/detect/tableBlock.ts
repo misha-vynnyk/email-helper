@@ -231,6 +231,7 @@ function cellToChild(cell: CellNode, tok: Tokens, warn?: WarnFn): ComponentNode 
       align: cellAlign(cell, "center"),
       size: "small" as const,
       bg: cell.bg,
+      border: cell.border,
       borderColor: firstBorderColor(cell.border),
     },
   };
@@ -424,6 +425,39 @@ export function classifyTable(
         kind: "splitRow",
         props: { left: flattenRuns(cells[0], tok, warn), right: flattenRuns(cells[1], tok, warn) },
       };
+    }
+
+    // GDocs "accent bar via empty colored column" idiom: a narrow, contentless cell with
+    // a solid non-white bg sitting next to the real content — visually a left/right accent
+    // border, just expressed as its own <td> column instead of the border-left CSS form
+    // that classifySingleCell's isLeftAccentOnly branch already recognizes. Detected only
+    // when the empty cell is meaningfully narrower than the content cell AND the content
+    // cell has no border of its own (an already-bordered content cell means this 2-col
+    // shape is something else — don't guess) — synthesize the equivalent border onto a
+    // clone of the content cell so the SAME calloutLeft/calloutBox routes below render it,
+    // instead of silently dropping the bar the way the plain "1 meaningful cell" path would.
+    if (cells.length === 2 && node.colWidths?.length === 2) {
+      const emptyIdx = cells.findIndex(c => !hasMeaningfulContent(c, tok));
+      if (emptyIdx !== -1) {
+        const emptyCell = cells[emptyIdx];
+        const contentCell = cells[1 - emptyIdx];
+        const totalWidth = node.colWidths[0] + node.colWidths[1];
+        const emptyWidth = node.colWidths[emptyIdx];
+        const isNarrowBar = totalWidth > 0 && emptyWidth <= 40 && emptyWidth / totalWidth <= 0.15;
+        if (
+          isNarrowBar &&
+          emptyCell.bg && !isNearWhiteOrRoot(emptyCell.bg, tok) &&
+          !hasMeaningfulBorder(contentCell.border, tok)
+        ) {
+          const accentSide = emptyIdx === 0 ? "left" : "right";
+          const syntheticCell: CellNode = {
+            ...contentCell,
+            border: { ...contentCell.border, [accentSide]: { color: emptyCell.bg } },
+          };
+          const comp = classifySingleCell(syntheticCell, tok, warn, classifyChildren);
+          if (comp) return comp;
+        }
+      }
     }
 
     // GDocs button pattern: [empty-spacer] [colored-cell-with-h5] [empty-spacer]

@@ -274,6 +274,14 @@ describe("renderNode — calloutBox", () => {
     expect((result.match(/<table/g) ?? []).length).toBe(1);
   });
 
+  // Regression: this flattened shortcut's <td style> used to hold bare text with no
+  // wrapping <span> — same client font-inheritance reasoning as recordRow/statsGrid.
+  it("wraps the flattened shortcut's text in a font-styled <span>", () => {
+    const node = makeBox([{ kind: "paragraph", props: { lines: [[{ text: "Note text" }]], size: "body" } }]);
+    const result = renderNode(node, tmpl, tokens);
+    expect(result).toMatch(/<span style="font-family:[^"]*">\s*Note text\s*<\/span>/);
+  });
+
   it("multiple children still use the general children-recursion path (nested table)", () => {
     const node = makeBox([
       { kind: "paragraph", props: { lines: [[{ text: "Line one" }]], size: "body" } },
@@ -308,6 +316,11 @@ describe("renderNode — calloutBox", () => {
     const result = renderNode(node, tmpl, tokens);
     expect(result).toContain('align="center"');
     expect(result).not.toContain('align="left"');
+    // Regression: the HTML `align` attribute alone isn't enough — most email clients honor
+    // the CSS text-align on the inner <td style>, which used to stay hardcoded to "left"
+    // even when the align attribute above was correctly "center".
+    expect(result).toContain("text-align:center");
+    expect(result).not.toContain("text-align:left");
   });
 
   it("keeps an attached list on the single-paragraph shortcut, instead of dropping it", () => {
@@ -364,6 +377,15 @@ describe("renderNode — statsGrid", () => {
     const outerWidths = widths.filter(w => w < 100);
     const total = outerWidths.reduce((s, w) => s + w, 0);
     expect(total).toBe(100);
+  });
+
+  // Regression: each cell's <td style> used to hold bare text with no wrapping <span> —
+  // some clients don't reliably inherit font styles from the <td> onto its text content,
+  // same reasoning already covered for recordRow (see e2e.test.ts's "wraps cell text in a
+  // font-styled <span>" test).
+  it("wraps cell text in a font-styled <span>, matching the recordRow convention", () => {
+    const html = renderNode(makeGrid(2), tmpl, tokens);
+    expect(html).toMatch(/<span style="font-family:[^"]*">\s*cell0\s*<\/span>/);
   });
 });
 
@@ -518,6 +540,14 @@ describe("renderNode — alertBand", () => {
     expect(result).toContain("Footer");
     expect(result).toContain("<br><br>");
   });
+
+  // Regression: the plain-text (non-segments) path's <td style> used to hold bare text
+  // with no wrapping <span> — same client font-inheritance reasoning as recordRow/statsGrid.
+  it("wraps its text in a font-styled <span>, matching the recordRow/statsGrid convention", () => {
+    const node: ComponentNode = { kind: "alertBand", props: { lines: [[{ text: "hi" }]], bg: "#000000" } };
+    const result = renderNode(node, tmpl, tokens);
+    expect(result).toMatch(/<span style="font-family:[^"]*">\s*hi\s*<\/span>/);
+  });
 });
 
 // ── renderNode — image ────────────────────────────────────────────────────────
@@ -577,6 +607,17 @@ describe("renderNode — calloutLeft", () => {
     expect(result).toContain("tip");
     expect(result).toContain("#ff9900");
     expect(result).toContain("border-left:");
+  });
+
+  // Regression: the plain-text (non-segments) path's <td style> used to hold bare text
+  // with no wrapping <span> — same client font-inheritance reasoning as recordRow/statsGrid.
+  it("wraps its text in a font-styled <span>, matching the recordRow/statsGrid convention", () => {
+    const node: ComponentNode = {
+      kind: "calloutLeft",
+      props: { lines: [[{ text: "tip" }]], accentColor: "#ff9900" },
+    };
+    const result = renderNode(node, tmpl, tokens);
+    expect(result).toMatch(/<span style="font-family:[^"]*">\s*tip\s*<\/span>/);
   });
 });
 

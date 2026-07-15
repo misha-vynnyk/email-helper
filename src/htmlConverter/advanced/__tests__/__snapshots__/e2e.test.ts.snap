@@ -201,9 +201,11 @@ exports[`convertAdvanced — promo-band fixture (alertBand narrowing) snapshot �
                   <table align=\\"center\\" border=\\"0\\" bgcolor=\\"#0f766e\\" cellspacing=\\"0\\" cellpadding=\\"0\\" width=\\"100%\\" style=\\"width:100%;max-width:100%;padding:0;margin:0;\\" role=\\"presentation\\">
                     <tr>
                       <td style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#ffffff; padding-left:10px;padding-right:10px;padding-top:4px;padding-bottom:4px;\\">
-                        <b style=\\"color:#99f6e4;\\">&#36;0.79/SHARE  ·  REG A&#43;  ·  NO ACCREDITATION REQUIRED</b> <br>
-                        <a href=\\"urlhere\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration:underline;font-weight:700;color:#0000ff;\\">Lock In Your &#36;0.79 Allocation &#8594;</a> <br>
-                        <span style=\\"color:#99f6e4;\\">Up to 20% bonus shares  ·  9,500&#43; investors already in</span>
+                        <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#ffffff;\\">
+                          <b style=\\"color:#99f6e4;\\">&#36;0.79/SHARE  ·  REG A&#43;  ·  NO ACCREDITATION REQUIRED</b> <br>
+                          <a href=\\"urlhere\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration:underline;font-weight:700;color:#0000ff;\\">Lock In Your &#36;0.79 Allocation &#8594;</a> <br>
+                          <span style=\\"color:#99f6e4;\\">Up to 20% bonus shares  ·  9,500&#43; investors already in</span>
+                        </span>
                       </td>
                     </tr>
                   </table>
@@ -242,7 +244,9 @@ exports[`convertAdvanced — tables fixture snapshot — default profile 1`] = `
                   <table align=\\"center\\" border=\\"0\\" bgcolor=\\"#1a1a2e\\" cellspacing=\\"0\\" cellpadding=\\"0\\" width=\\"100%\\" style=\\"width:100%;max-width:100%;padding:0;margin:0;\\" role=\\"presentation\\">
                     <tr>
                       <td style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#ffffff; padding-left:10px;padding-right:10px;padding-top:4px;padding-bottom:4px;\\">
-                        <b>Important notice: your account needs attention.</b>
+                        <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#ffffff;\\">
+                          <b>Important notice: your account needs attention.</b>
+                        </span>
                       </td>
                     </tr>
                   </table>
@@ -253,7 +257,9 @@ exports[`convertAdvanced — tables fixture snapshot — default profile 1`] = `
                   <table align=\\"center\\" border=\\"0\\" bgcolor=\\"#fff3cd\\" cellspacing=\\"0\\" cellpadding=\\"0\\" width=\\"100%\\" style=\\"width:100%;max-width:100%;padding:0;margin:0;\\" role=\\"presentation\\">
                     <tr>
                       <td style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-left:10px;padding-right:10px;padding-top:4px;padding-bottom:4px;\\">
-                        Tip: you can save 20% by switching to annual billing.
+                        <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+                          Tip: you can save 20% by switching to annual billing.
+                        </span>
                       </td>
                     </tr>
                   </table>
@@ -268,9 +274,11 @@ exports[`convertAdvanced — tables fixture snapshot — default profile 1`] = `
                         style=\\"display:inline-block;width:33%;max-width:100%;min-width:100px;border:1px solid #e4e4e4;\\">
                         <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;\\">
                           <tr>
-                            <td style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000; padding:10px 6px;\\">
-                              <b>12,500</b> <br>
-                              <span style=\\"color:#666666;\\">Active users</span>
+                            <td style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000; padding-top:10px;padding-right:6px;padding-bottom:10px;padding-left:6px;\\">
+                              <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;\\">
+                                <b>12,500</b> <br>
+                                <span style=\\"color:#666666;\\">Active users</span>
+                              </span>
                             </td>
                           </tr>
                         </table>
@@ -279,9 +287,11 @@ exports[`convertAdvanced — tables fixture snapshot — default profile 1`] = `
                         style=\\"display:inline-block;width:33%;max-width:100%;min-width:100px;border:1px solid #e4e4e4;\\">
                         <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;\\">
                           <tr>
-                            <td style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000; padding:10px 6px;\\">
-                              <b>98.7%</b> <br>
-                              <span style=\\"color:#666666;\\">Uptime</span>
+                            <td style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000; padding-top:10px;padding-right:6px;padding-bottom:10px;padding-left:6px;\\">
+                              <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;\\">
+                                <b>98.7%</b> <br>
+                                <span style=\\"color:#666666;\\">Uptime</span>
+                              </span>
                             </td>
                           </tr>
                         </table>
@@ -290,9 +300,11 @@ exports[`convertAdvanced — tables fixture snapshot — default profile 1`] = `
                         style=\\"display:inline-block;width:34%;max-width:100%;min-width:100px;border:1px solid #e4e4e4;\\">
                         <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;\\">
                           <tr>
-                            <td style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000; padding:10px 6px;\\">
-                              <b>4.9 &#9733;</b> <br>
-                              <span style=\\"color:#666666;\\">Rating</span>
+                            <td style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000; padding-top:10px;padding-right:6px;padding-bottom:10px;padding-left:6px;\\">
+                              <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;\\">
+                                <b>4.9 &#9733;</b> <br>
+                                <span style=\\"color:#666666;\\">Rating</span>
+                              </span>
                             </td>
                           </tr>
                         </table>
@@ -306,13 +318,13 @@ exports[`convertAdvanced — tables fixture snapshot — default profile 1`] = `
                   <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;border-collapse:collapse;\\">
                     <tr>
                       <td align=\\"left\\" width=\\"50%\\"
-                        style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding:6px 6px;border-bottom:1px solid #e4e4e4;\\">
+                        style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-top:6px;padding-right:6px;padding-bottom:6px;padding-left:6px;border-bottom:1px solid #e4e4e4;\\">
                         <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
                           <b>Plan</b>
                         </span>
                       </td>
                       <td align=\\"left\\" width=\\"50%\\"
-                        style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding:6px 6px;border-bottom:1px solid #e4e4e4;\\">
+                        style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-top:6px;padding-right:6px;padding-bottom:6px;padding-left:6px;border-bottom:1px solid #e4e4e4;\\">
                         <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
                           <b>Price</b>
                         </span>
@@ -320,13 +332,13 @@ exports[`convertAdvanced — tables fixture snapshot — default profile 1`] = `
                     </tr>
                     <tr>
                       <td align=\\"left\\" width=\\"50%\\"
-                        style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding:6px 6px;border-bottom:1px solid #e4e4e4;\\">
+                        style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-top:6px;padding-right:6px;padding-bottom:6px;padding-left:6px;border-bottom:1px solid #e4e4e4;\\">
                         <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
                           Starter
                         </span>
                       </td>
                       <td align=\\"left\\" width=\\"50%\\"
-                        style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding:6px 6px;border-bottom:1px solid #e4e4e4;\\">
+                        style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-top:6px;padding-right:6px;padding-bottom:6px;padding-left:6px;border-bottom:1px solid #e4e4e4;\\">
                         <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
                           &#36;9/mo
                         </span>
@@ -334,13 +346,13 @@ exports[`convertAdvanced — tables fixture snapshot — default profile 1`] = `
                     </tr>
                     <tr>
                       <td align=\\"left\\" width=\\"50%\\"
-                        style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding:6px 6px;border-bottom:1px solid #e4e4e4;\\">
+                        style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-top:6px;padding-right:6px;padding-bottom:6px;padding-left:6px;border-bottom:1px solid #e4e4e4;\\">
                         <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
                           Pro
                         </span>
                       </td>
                       <td align=\\"left\\" width=\\"50%\\"
-                        style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding:6px 6px;border-bottom:1px solid #e4e4e4;\\">
+                        style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-top:6px;padding-right:6px;padding-bottom:6px;padding-left:6px;border-bottom:1px solid #e4e4e4;\\">
                         <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
                           &#36;29/mo
                         </span>
@@ -362,13 +374,13 @@ exports[`convertAdvanced — tables fixture snapshot — default profile 1`] = `
                   <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;border-collapse:collapse;\\">
                     <tr>
                       <td align=\\"left\\" bgcolor=\\"#f4f4f0\\" width=\\"18%\\"
-                        style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding:6px 6px;border-top:1px solid #d6d2c4;border-left:1px solid #d6d2c4;\\">
+                        style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-top:6px;padding-right:6px;padding-bottom:6px;padding-left:6px;border-top:1px solid #d6d2c4;border-left:1px solid #d6d2c4;\\">
                         <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
                           <b style=\\"color:#595959;\\">THEN</b>
                         </span>
                       </td>
                       <td align=\\"left\\" bgcolor=\\"#f4f4f0\\" width=\\"82%\\"
-                        style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding:6px 6px;border-top:1px solid #d6d2c4;border-right:1px solid #d6d2c4;border-left:1px solid #d6d2c4;\\">
+                        style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-top:6px;padding-right:6px;padding-bottom:6px;padding-left:6px;border-top:1px solid #d6d2c4;border-right:1px solid #d6d2c4;border-left:1px solid #d6d2c4;\\">
                         <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
                           Company A · Product launch · <b style=\\"text-decoration:underline;color:#c00000;\\">1,234%</b> metric increase
                         </span>
@@ -376,13 +388,13 @@ exports[`convertAdvanced — tables fixture snapshot — default profile 1`] = `
                     </tr>
                     <tr>
                       <td align=\\"left\\" bgcolor=\\"#f4f4f0\\" width=\\"18%\\"
-                        style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding:6px 6px;border-top:1px solid #d6d2c4;border-bottom:1px solid #d6d2c4;border-left:1px solid #d6d2c4;\\">
+                        style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-top:6px;padding-right:6px;padding-bottom:6px;padding-left:6px;border-top:1px solid #d6d2c4;border-bottom:1px solid #d6d2c4;border-left:1px solid #d6d2c4;\\">
                         <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
                           <b style=\\"color:#1b5e20;\\">NOW</b>
                         </span>
                       </td>
                       <td align=\\"left\\" bgcolor=\\"#f4f4f0\\" width=\\"82%\\"
-                        style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding:6px 6px;border:1px solid #d6d2c4;\\">
+                        style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-top:6px;padding-right:6px;padding-bottom:6px;padding-left:6px;border:1px solid #d6d2c4;\\">
                         <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
                           Company B · New feature · <b style=\\"text-decoration:underline;color:#1b5e20;\\">5x better</b> than baseline
                         </span>
@@ -442,8 +454,10 @@ exports[`convertAdvanced — tickr-promo fixture snapshot — full document 1`] 
                     <tr>
                       <td align=\\"left\\"
                         style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-left:10px;padding-right:10px;padding-top:14px;padding-bottom:14px;\\">
-                        <em style=\\"color:#c2410c;\\">&quot;Just like Uber turned cars into cash and Airbnb transformed spare rooms into revenue, Mode Mobile turns everyday smartphones into EarnPhones that literally pay you back.&quot;</em> <br>
-                        <em style=\\"color:#666666;\\">— Kevin Harrington, Original Shark Tank Investor</em>
+                        <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+                          <em style=\\"color:#c2410c;\\">&quot;Just like Uber turned cars into cash and Airbnb transformed spare rooms into revenue, Mode Mobile turns everyday smartphones into EarnPhones that literally pay you back.&quot;</em> <br>
+                          <em style=\\"color:#666666;\\">— Kevin Harrington, Original Shark Tank Investor</em>
+                        </span>
                       </td>
                     </tr>
                   </table>
@@ -471,9 +485,11 @@ exports[`convertAdvanced — tickr-promo fixture snapshot — full document 1`] 
                         <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;\\">
                           <tr>
                             <td bgcolor=\\"#f1ede6\\"
-                              style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000; padding:10px 6px;background-color:#f1ede6;\\">
-                              <b style=\\"color:#0a2463;\\">32,481%</b> <br>
-                              <span style=\\"color:#666666;\\">3-Yr Revenue Growth</span>
+                              style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;background-color:#f1ede6; padding-top:10px;padding-right:6px;padding-bottom:10px;padding-left:6px;\\">
+                              <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;\\">
+                                <b style=\\"color:#0a2463;\\">32,481%</b> <br>
+                                <span style=\\"color:#666666;\\">3-Yr Revenue Growth</span>
+                              </span>
                             </td>
                           </tr>
                         </table>
@@ -483,9 +499,11 @@ exports[`convertAdvanced — tickr-promo fixture snapshot — full document 1`] 
                         <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;\\">
                           <tr>
                             <td bgcolor=\\"#f1ede6\\"
-                              style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000; padding:10px 6px;background-color:#f1ede6;\\">
-                              <b style=\\"color:#0a2463;\\">490M&#43;</b> <br>
-                              <span style=\\"color:#666666;\\">Total Users</span>
+                              style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;background-color:#f1ede6; padding-top:10px;padding-right:6px;padding-bottom:10px;padding-left:6px;\\">
+                              <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;\\">
+                                <b style=\\"color:#0a2463;\\">490M&#43;</b> <br>
+                                <span style=\\"color:#666666;\\">Total Users</span>
+                              </span>
                             </td>
                           </tr>
                         </table>
@@ -495,9 +513,11 @@ exports[`convertAdvanced — tickr-promo fixture snapshot — full document 1`] 
                         <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;\\">
                           <tr>
                             <td bgcolor=\\"#f1ede6\\"
-                              style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000; padding:10px 6px;background-color:#f1ede6;\\">
-                              <b style=\\"color:#0a2463;\\">&#36;11.8M</b> <br>
-                              <span style=\\"color:#666666;\\">Actual EBITDA 2025</span>
+                              style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;background-color:#f1ede6; padding-top:10px;padding-right:6px;padding-bottom:10px;padding-left:6px;\\">
+                              <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;\\">
+                                <b style=\\"color:#0a2463;\\">&#36;11.8M</b> <br>
+                                <span style=\\"color:#666666;\\">Actual EBITDA 2025</span>
+                              </span>
                             </td>
                           </tr>
                         </table>
@@ -507,9 +527,11 @@ exports[`convertAdvanced — tickr-promo fixture snapshot — full document 1`] 
                         <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;\\">
                           <tr>
                             <td bgcolor=\\"#0a2463\\"
-                              style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#ffffff; padding:10px 6px;background-color:#0a2463;\\">
-                              <b>&#36;0.50</b> <br>
-                              Until May 29
+                              style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#ffffff;background-color:#0a2463; padding-top:10px;padding-right:6px;padding-bottom:10px;padding-left:6px;\\">
+                              <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#ffffff;\\">
+                                <b>&#36;0.50</b> <br>
+                                Until May 29
+                              </span>
                             </td>
                           </tr>
                         </table>
@@ -524,7 +546,9 @@ exports[`convertAdvanced — tickr-promo fixture snapshot — full document 1`] 
                     <tr>
                       <td align=\\"left\\"
                         style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-top:14px;padding-bottom:14px;padding-left:10px;padding-right:10px;\\">
-                        <b style=\\"color:#c2410c;\\">EDITOR'S NOTE:</b> Mode's prior two rounds sold out entirely. With 59,095&#43; investors committed and a &#36;0.50 window that closes May 29, access may not remain available indefinitely.
+                        <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+                          <b style=\\"color:#c2410c;\\">EDITOR'S NOTE:</b> Mode's prior two rounds sold out entirely. With 59,095&#43; investors committed and a &#36;0.50 window that closes May 29, access may not remain available indefinitely.
+                        </span>
                       </td>
                     </tr>
                   </table>

@@ -332,7 +332,7 @@ export function renderNode(
         if (child.kind !== "paragraph") return { innerHtml: "" };
         const cp = child.props;
         const baseColor = cp.bg && isDarkBg(cp.bg, tok) ? tok.color.white : tok.color.black;
-        return { innerHtml: renderLines(cp.lines, tok, baseColor), bg: cp.bg, borderColor: cp.borderColor, align: cp.align };
+        return { innerHtml: renderLines(cp.lines, tok, baseColor), bg: cp.bg, border: cp.border, borderColor: cp.borderColor, align: cp.align };
       });
       const opts: GridOpts = {
         n: node.props.n || cells.length,

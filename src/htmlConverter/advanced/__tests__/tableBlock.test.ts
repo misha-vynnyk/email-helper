@@ -372,6 +372,58 @@ describe("classifyTable — multi-cell", () => {
   });
 });
 
+// ── Accent bar expressed as a narrow empty column (GDocs alternative to border-left) ──
+
+describe("classifyTable — accent bar via empty colored column", () => {
+  function makeEmptyCell(bg: string): CellNode {
+    return { type: "cell", bg, children: [{ type: "p", size: "body", lines: [] }] };
+  }
+
+  it("narrow colored empty cell + content cell → calloutLeft using the empty cell's bg as accent", () => {
+    const table = makeTable([[makeEmptyCell("#047857"), makeCell({ bg: "#f4f1e8" })]]);
+    table.colWidths = [16, 608];
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("calloutLeft");
+    expect((result?.props as Record<string, unknown>)["accentColor"]).toBe("#047857");
+    expect((result?.props as Record<string, unknown>)["bg"]).toBe("#f4f1e8");
+  });
+
+  it("accent bar on the right (narrow cell last) → border-right, not calloutLeft", () => {
+    const table = makeTable([[makeCell({ bg: "#f4f1e8" }), makeEmptyCell("#047857")]]);
+    table.colWidths = [608, 16];
+    const result = classifyTable(table);
+    // No dedicated "right accent" kind — falls to the generic bordered-box route, which
+    // still keeps the color/side instead of losing it.
+    expect(result?.kind).toBe("calloutBox");
+    const border = (result?.props as Record<string, unknown>)["border"] as Record<string, unknown>;
+    expect((border["right"] as Record<string, unknown>)["color"]).toBe("#047857");
+    expect(border["left"]).toBeUndefined();
+  });
+
+  it("does NOT fire when the narrow cell's bg is near-white (real gridline leftover, not an accent)", () => {
+    const table = makeTable([[makeEmptyCell("#ffffff"), makeCell({ bg: "#f4f1e8" })]]);
+    table.colWidths = [16, 608];
+    const result = classifyTable(table);
+    // Falls through to the existing "1 meaningful cell" shortcut instead.
+    expect(result?.kind).not.toBe("calloutLeft");
+  });
+
+  it("does NOT fire when the two columns are comparably wide (not a narrow bar)", () => {
+    const table = makeTable([[makeEmptyCell("#047857"), makeCell({ bg: "#f4f1e8" })]]);
+    table.colWidths = [300, 320];
+    const result = classifyTable(table);
+    expect(result?.kind).not.toBe("calloutLeft");
+  });
+
+  it("does NOT fire when the content cell already has its own border (ambiguous — leave as-is)", () => {
+    const contentCell = makeCell({ bg: "#f4f1e8", border: { bottom: { color: "#c00000" } } });
+    const table = makeTable([[makeEmptyCell("#047857"), contentCell]]);
+    table.colWidths = [16, 608];
+    const result = classifyTable(table);
+    expect(result?.kind).not.toBe("calloutLeft");
+  });
+});
+
 // ── splitRow (letterhead/byline: plain left cell + right-aligned right cell) ──
 
 describe("classifyTable — splitRow", () => {

@@ -101,7 +101,13 @@ export interface GridCell {
   innerHtml: string;
   /** Optional highlight background (e.g. a featured stat tile) — text color adapts via isDarkBg */
   bg?: string;
-  /** This cell's own border color; falls back to GridOpts.borderColor; no border drawn when both are absent */
+  /**
+   * `border` (full per-side spec from the source doc) takes precedence when present and draws
+   * every declared side — e.g. a distinguishing divider color on one side (a white border-right
+   * between two same-colored cells) that collapsing to a single color would lose. `borderColor`
+   * falls back to GridOpts.borderColor and draws a uniform frame; no border when neither is present.
+   */
+  border?: BorderSpec;
   borderColor?: string;
   /** Text alignment from the source cell — defaults to center. */
   align?: "left" | "center" | "right";
@@ -174,6 +180,20 @@ export function baseStyle(
   return `font-family:${tok.font.stack};font-size:${fontSize}px;font-style:normal;font-weight:${fontWeight};line-height:${tok.font.lineHeight};text-align:${align};color:${color};${extraStyle}`;
 }
 
+/**
+ * Wraps already-rendered inner HTML in the block-level tag (span/div, per tok.tags.blockWrap)
+ * with the SAME style already applied to the surrounding <td> — a defensive duplication for
+ * email clients (notably Outlook's Word engine) that don't reliably inherit font styles from
+ * a <td> onto its text content. Shared by every template whose <td> holds plain flowing text
+ * but isn't blockRow (which needs its own tag selection when the block is bold).
+ */
+export function wrapBlockStyle(innerHtml: string, style: string, tok: Tokens = defaultTokens): string {
+  const tag = tok.tags.blockWrap;
+  return `<${tag} style="${style}">
+${indentHtml(innerHtml, 2)}
+</${tag}>`;
+}
+
 export function blockRow(
   innerHtml: string,
   opts: Parameters<typeof baseStyle>[0] & { padY?: number; padTop?: number; padBottom?: number } = {},
@@ -200,9 +220,13 @@ ${indentHtml(innerHtml, 6)}
 /** Per-side `border-<side>:<width>px solid <color>;` — only sides present in `border` are
  *  drawn. Each side's author-declared width (BorderSide.widthPx) wins; `widthPx`/token is
  *  the fallback for sides whose source declaration had no width. When all four sides are
- *  present and visually identical (same effective width/style/color — a plain frame, the
- *  common case), collapses to the single `border:` shorthand instead of four near-duplicate
- *  declarations. */
+ *  present, collapses the MAJORITY of matching sides into a single `border:` shorthand and
+ *  overrides only the side(s) that differ — e.g. 3 identical grey sides + 1 thicker black
+ *  top rule becomes `border:1px solid grey;border-top:3px solid black;` instead of 4
+ *  near-duplicate declarations. All-4-identical (a plain frame) is the majority=4 case of
+ *  this same rule. Never applied with fewer than 4 sides present — `border:` resets literally
+ *  all four sides, so a partial spec (e.g. a border-left-only accent bar) must never gain
+ *  sides the source document never declared. */
 export function borderSpecToStyle(border: BorderSpec | undefined, tok: Tokens = defaultTokens, widthPx?: number): string {
   if (!border) return "";
   const bw = widthPx ?? tok.layout.calloutBoxBorderPx;
@@ -215,8 +239,30 @@ export function borderSpecToStyle(border: BorderSpec | undefined, tok: Tokens = 
     const s = border[key]!;
     return `${s.widthPx ?? bw}px ${s.style ?? "solid"} ${s.color}`;
   };
-  if (present.length === 4 && present.every(([key]) => sideCss(key) === sideCss(present[0][0]))) {
-    return `border:${sideCss(present[0][0])};`;
+
+  if (present.length === 4) {
+    const counts = new Map<string, number>();
+    for (const [key] of present) {
+      const css = sideCss(key);
+      counts.set(css, (counts.get(css) ?? 0) + 1);
+    }
+    let modeCss = sideCss(present[0][0]);
+    let modeCount = 0;
+    for (const [key] of present) {
+      const css = sideCss(key);
+      const count = counts.get(css)!;
+      if (count > modeCount) { modeCss = css; modeCount = count; }
+    }
+    if (modeCount === 4) {
+      return `border:${modeCss};`;
+    }
+    if (modeCount >= 2) {
+      const overrides = present
+        .filter(([key]) => sideCss(key) !== modeCss)
+        .map(([key, prop]) => `${prop}:${sideCss(key)};`)
+        .join("");
+      return `border:${modeCss};${overrides}`;
+    }
   }
   return present
     .map(([key, prop]) => `${prop}:${sideCss(key)};`)
@@ -386,7 +432,7 @@ ${indentHtml(rowsHtml, 12)}
     <table align="center" border="0" bgcolor="${bg}" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;${borderStyle}" role="presentation">
       <tr>
         <td style="${style} padding-left:${ph}px;padding-right:${ph}px;padding-top:${pv}px;padding-bottom:${pv}px;">
-${indentHtml(innerHtml!, 10)}
+${indentHtml(wrapBlockStyle(innerHtml!, style, tok), 10)}
         </td>
       </tr>
     </table>
@@ -428,7 +474,7 @@ ${wrapClose}`;
       return `${wrapOpen}
         <td align="left"
           style="${style} padding-left:${px}px;padding-right:${px}px;padding-top:${p}px;padding-bottom:${p}px;">
-${indentHtml(innerHtml, 10)}
+${indentHtml(wrapBlockStyle(innerHtml, style, tok), 10)}
         </td>
 ${wrapClose}`;
     },
@@ -452,11 +498,11 @@ ${wrapClose}`;
 </tr>`;
 
       if (innerHtml !== undefined) {
-        const style = baseStyle({}, tok);
+        const style = baseStyle({ align }, tok);
         return `${wrapOpen}
         <td align="${align}"
           style="${style} padding-top:${p}px;padding-bottom:${p}px;padding-left:${px}px;padding-right:${px}px;">
-${indentHtml(innerHtml, 10)}
+${indentHtml(wrapBlockStyle(innerHtml, style, tok), 10)}
         </td>
 ${wrapClose}`;
       }
@@ -511,14 +557,22 @@ ${indentHtml(buttonTableHtml(innerHtml, href, bg, tok, radius, border), 4)}
           const cellStyle = baseStyle({ align: cell.align ?? "center", fontSize: tok.font.cellPx, color: textColor }, tok);
           const bgAttr = cell.bg ? ` bgcolor="${cell.bg}"` : "";
           const bgStyle = cell.bg ? `background-color:${cell.bg};` : "";
+          // background-color grouped with the rest of the "look" properties (right after
+          // color), padding appended last — same flow as blockRow's spanStyle+extraStyle,
+          // instead of interrupting padding with a trailing bg declaration.
+          const cellTdStyle = bgStyle ? `${cellStyle}${bgStyle}` : cellStyle;
           const effectiveBorderColor = cell.borderColor ?? borderColor;
-          const borderCss = effectiveBorderColor ? `border:${tok.layout.recordBorderPx}px solid ${effectiveBorderColor};` : "";
+          // Full per-side spec (e.g. a white divider on one side between two same-colored cells)
+          // takes precedence over the single collapsed color, same convention as recordRow.
+          const borderCss = cell.border
+            ? borderSpecToStyle(cell.border, tok, tok.layout.recordBorderPx)
+            : effectiveBorderColor ? `border:${tok.layout.recordBorderPx}px solid ${effectiveBorderColor};` : "";
           return `<td valign="top" align="center" class="${tok.classes.inlineCell}" width="${w}%"${bgAttr}
   style="display:inline-block;width:${w}%;max-width:100%;min-width:${tok.layout.gridMinWidth}px;${borderCss}${bgStyle}">
   <table border="0" cellspacing="0" cellpadding="0" role="presentation" width="100%" style="width:100%;">
     <tr>
-      <td${bgAttr ? `${bgAttr}\n       ` : ""} style="${cellStyle} padding:${cy}px ${cx}px;${bgStyle}">
-${indentHtml(cell.innerHtml, 8)}
+      <td${bgAttr ? `${bgAttr}\n       ` : ""} style="${cellTdStyle} padding-top:${cy}px;padding-right:${cx}px;padding-bottom:${cy}px;padding-left:${cx}px;">
+${indentHtml(wrapBlockStyle(cell.innerHtml, cellStyle, tok), 8)}
       </td>
     </tr>
   </table>
@@ -613,8 +667,8 @@ ${indentHtml(cellsHtml, 8)}
               const bg = cell.bg ?? row.bg;
               const bgAttr = bg ? ` bgcolor="${bg}"` : "";
               const textColor = bg && isDarkBg(bg, tok) ? tok.color.white : rowTextColor;
-              const style = baseStyle({ fontSize: tok.font.cellPx, color: textColor }, tok);
               const align = cell.align ?? "left";
+              const style = baseStyle({ align, fontSize: tok.font.cellPx, color: textColor }, tok);
               const w = rowWidths?.[i] ?? (i === ncols - 1 ? 100 - colPct * (ncols - 1) : colPct);
               const widthAttr = ncols > 1 ? ` width="${w}%"` : "";
               const isLastCol = i === ncols - 1;
@@ -642,13 +696,9 @@ ${indentHtml(cellsHtml, 8)}
                 : effectiveBorderColor
                   ? `border-bottom:${tok.layout.recordBorderPx}px solid ${effectiveBorderColor};`
                   : "";
-              // Inner <span> repeats the font styling, matching the text-cell convention used by
-              // paragraph/etc — some clients don't reliably inherit font styles from the <td>.
               return `<td align="${align}"${bgAttr}${widthAttr}
-  style="${style} padding:${ry}px ${rx}px;${borderStyle}">
-  <${tok.tags.blockWrap} style="${style}">
-${indentHtml(cell.innerHtml, 4)}
-  </${tok.tags.blockWrap}>
+  style="${style} padding-top:${ry}px;padding-right:${rx}px;padding-bottom:${ry}px;padding-left:${rx}px;${borderStyle}">
+${indentHtml(wrapBlockStyle(cell.innerHtml, style, tok), 2)}
 </td>`;
             })
             .join("\n");

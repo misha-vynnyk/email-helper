@@ -334,16 +334,23 @@ describe("borderSpecToStyle", () => {
     expect(css).toContain("border-bottom:");
   });
 
-  it("does NOT collapse when the four sides differ in color", () => {
+  // A majority of matching sides (3 of 4) collapses into the `border:` shorthand, with an
+  // explicit override for only the side that differs — fewer near-duplicate declarations
+  // than 4 separate border-<side> lines, while still rendering the exact same result.
+  it("collapses the 3 matching sides + overrides the 1 that differs in color", () => {
     const css = borderSpecToStyle(
       { top: { color: "#000000" }, right: { color: "#000000" }, bottom: { color: "#000000" }, left: { color: "#ff0000" } },
       tokens,
     );
-    expect(css).not.toMatch(/^border:/);
+    expect(css).toMatch(/^border:\d+px solid #000000;/);
     expect(css).toContain("border-left:");
+    expect(css).toMatch(/border-left:\d+px solid #ff0000;/);
+    expect(css).not.toContain("border-top:");
+    expect(css).not.toContain("border-right:");
+    expect(css).not.toContain("border-bottom:");
   });
 
-  it("does NOT collapse when the four sides differ in width", () => {
+  it("collapses the 3 matching sides + overrides the 1 that differs in width", () => {
     const css = borderSpecToStyle(
       {
         top: { color: "#000000", widthPx: 1 }, right: { color: "#000000", widthPx: 1 },
@@ -351,10 +358,10 @@ describe("borderSpecToStyle", () => {
       },
       tokens,
     );
-    expect(css).not.toMatch(/^border:/);
+    expect(css).toBe("border:1px solid #000000;border-left:3px solid #000000;");
   });
 
-  it("does NOT collapse when the four sides differ in style (solid vs dashed)", () => {
+  it("collapses the 3 matching sides + overrides the 1 that differs in style (solid vs dashed)", () => {
     const css = borderSpecToStyle(
       {
         top: { color: "#000000" }, right: { color: "#000000" },
@@ -362,7 +369,26 @@ describe("borderSpecToStyle", () => {
       },
       tokens,
     );
+    expect(css).toMatch(/^border:\d+px solid #000000;/);
+    expect(css).toMatch(/border-left:\d+px dashed #000000;/);
+  });
+
+  // No majority (all 4 sides pairwise different, or a 2-vs-2 tie split) — the merge only
+  // pays off when 3+ sides agree, so a fully-mixed frame still falls back to explicit
+  // per-side declarations.
+  it("does NOT collapse when all four sides are pairwise different", () => {
+    const css = borderSpecToStyle(
+      {
+        top: { color: "#000000" }, right: { color: "#ff0000" },
+        bottom: { color: "#00ff00" }, left: { color: "#0000ff" },
+      },
+      tokens,
+    );
     expect(css).not.toMatch(/^border:/);
+    expect(css).toContain("border-top:");
+    expect(css).toContain("border-right:");
+    expect(css).toContain("border-bottom:");
+    expect(css).toContain("border-left:");
   });
 });
 

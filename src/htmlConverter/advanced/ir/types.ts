@@ -150,8 +150,12 @@ export interface ParagraphProps {
   marginTopPt?: number;
   marginBottomPt?: number;
   gapBefore?: boolean;
-  /** statsGrid cell paragraphs only: cell background + border color */
+  /** statsGrid cell paragraphs only: cell background + border.
+   *  `border` (full per-side spec from the source doc) takes precedence when present — e.g. a
+   *  distinguishing divider color on one side (a white border-right between two same-colored
+   *  cells) that a single collapsed color would lose; `borderColor` is the single-color fallback. */
   bg?: string;
+  border?: BorderSpec;
   borderColor?: string;
 }
 
