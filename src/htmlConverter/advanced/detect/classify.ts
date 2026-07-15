@@ -102,7 +102,7 @@ function pushMerged(result: ComponentNode[], comp: ComponentNode, tok: Tokens, w
       last.props.bg === comp.props.bg) {
     const lastLines = last.props.lines;
     const newLines = comp.props.lines;
-    if (newLines.length === 0) return;
+    if (newLines.length === 0 && !comp.props.buttons?.length && !comp.props.bands?.length) return;
     const breakIdx = lastLines.length;
     const isTight = last.props.tightNext === true || comp.props.tightBefore === true ||
       !isGapBoundary(last.props, comp.props, tok);
@@ -110,6 +110,15 @@ function pushMerged(result: ComponentNode[], comp: ComponentNode, tok: Tokens, w
     const breaks = new Set<number>(last.props.paraBreaks);
     if (!isTight) breaks.add(breakIdx);
     if (compBreaks) for (const idx of compBreaks) breaks.add(idx + breakIdx);
+    // comp's own nested buttons/bands (see CalloutLeftProps.buttons/bands) — offset onto
+    // the merged lines array so their atLine still points at the right spot; dropped
+    // silently before this fix (see fix-advanced.md, Ітерація 6).
+    const offsetAtLine = <T,>(items: { atLine: number; props: T }[] | undefined, by: number) =>
+      items?.map(i => ({ ...i, atLine: i.atLine + by }));
+    const mergeArr = <T,>(a: T[] | undefined, b: T[] | undefined): T[] | undefined => {
+      const merged = [...(a ?? []), ...(b ?? [])];
+      return merged.length ? merged : undefined;
+    };
     result[result.length - 1] = {
       kind: "calloutLeft",
       props: {
@@ -118,6 +127,8 @@ function pushMerged(result: ComponentNode[], comp: ComponentNode, tok: Tokens, w
         paraBreaks: breaks.size ? breaks : undefined,
         tightNext: comp.props.tightNext,
         marginBottomPt: comp.props.marginBottomPt,
+        buttons: mergeArr(last.props.buttons, offsetAtLine(comp.props.buttons, breakIdx)),
+        bands: mergeArr(last.props.bands, offsetAtLine(comp.props.bands, breakIdx)),
       },
     };
     return;

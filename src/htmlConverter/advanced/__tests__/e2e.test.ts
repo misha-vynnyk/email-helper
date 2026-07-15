@@ -669,6 +669,52 @@ describe("convertAdvanced — paragraph's own border-left (no wrapping <td>)", (
   });
 });
 
+// ── Two adjacent same-accent quote/callout boxes, second one has a nested CTA ──
+// Regression for Ітерація 6 (fix-advanced.md): merging two adjacent same-accent
+// calloutLeft table cells used to silently drop the second cell's nested button —
+// or discard the whole second cell when it carried nothing but a button.
+
+describe("convertAdvanced — two merged calloutLeft boxes, CTA inside the second", () => {
+  const twoQuoteBoxes =
+    `<div dir="ltr" style="margin-left:0pt;" align="left">
+      <table style="border:none;border-collapse:collapse;"><colgroup><col width="624" /></colgroup>
+        <tbody><tr><td style="border-left:solid #38a169 3pt;padding:6pt 6pt 6pt 12pt;">
+          <p><span>First quote line.</span></p>
+        </td></tr></tbody>
+      </table>
+    </div>
+    <div dir="ltr" style="margin-left:0pt;" align="left">
+      <table style="border:none;border-collapse:collapse;"><colgroup><col width="624" /></colgroup>
+        <tbody><tr><td style="border-left:solid #38a169 3pt;padding:6pt 6pt 6pt 12pt;">
+          <p><span>Second box intro text.</span></p>
+          <table style="border:none;border-collapse:collapse;"><colgroup><col width="200" /></colgroup>
+            <tbody><tr><td style="background-color:#0b7285;padding:6pt 10pt 6pt 10pt;">
+              <h5><span>Learn more</span></h5>
+            </td></tr></tbody>
+          </table>
+        </td></tr></tbody>
+      </table>
+    </div>`;
+
+  let html: string;
+  beforeAll(() => { html = convertAdvanced(twoQuoteBoxes); });
+
+  it("merges into ONE box (one border-left), not two", () => {
+    expect((html.match(/border-left:4px solid #38a169;/g) ?? []).length).toBe(1);
+  });
+
+  it("keeps both text lines", () => {
+    expect(html).toContain("First quote line.");
+    expect(html).toContain("Second box intro text.");
+  });
+
+  it("keeps the nested CTA as a real button, not silently dropped", () => {
+    expect(html).toContain("Learn more");
+    expect(html).toContain(`href="${tokens.placeholderHref}"`);
+    expect(html).toContain("#0b7285");
+  });
+});
+
 // ── Real <ul>/<ol> lists ──────────────────────────────────────────────────────
 // GDocs' real <ul>/<li> markup renders as an actual list — matching the simple
 // converter's convention (removeStylesFromLists/addBrAfterClosingP in shared htmlUtils):

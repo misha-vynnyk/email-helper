@@ -502,6 +502,54 @@ describe("classify — paragraph's own border-left → calloutLeft", () => {
   });
 });
 
+// ── calloutLeft merge (table-cell path) preserves nested buttons/bands ───────
+// Regression for Ітерація 6 (fix-advanced.md): merging two adjacent same-accent
+// calloutLeft table cells rebuilt props as {...last.props, ...} — comp's own
+// buttons/bands (only reachable via the table-cell path, flattenCellForAlertBand)
+// were silently dropped, or the whole second cell was discarded outright when it
+// carried nothing but a button.
+
+describe("classify — calloutLeft merge (table cells) carries nested buttons/bands", () => {
+  const leftAccent = { left: { color: "#38a169", widthPx: 4 } };
+
+  function buttonTable(label: string, bg = "#0b7285"): TableNode {
+    return makeTable([[makeCell([{ type: "p", size: "small", headingLevel: 5, lines: [[{ text: label }]] }], bg)]]);
+  }
+
+  it("second cell is ONLY a button (no own text) — merges in instead of vanishing", () => {
+    const nodes: StructuralNode[] = [
+      makeTable([[{ type: "cell", children: [makePara("Intro text")], border: leftAccent }]]),
+      makeTable([[{ type: "cell", children: [buttonTable("Watch the video")], border: leftAccent }]]),
+    ];
+    const result = classify(nodes);
+    expect(result).toHaveLength(1);
+    expect(result[0].kind).toBe("calloutLeft");
+    const props = result[0].props as Record<string, unknown>;
+    const lines = props["lines"] as unknown[][];
+    const buttons = props["buttons"] as { atLine: number; props: Record<string, unknown> }[];
+    expect(lines).toHaveLength(1); // only the first cell's line — second contributed none
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0].atLine).toBe(1); // offset past the first cell's one line
+    expect(buttons[0].props["bg"]).toBe("#0b7285");
+  });
+
+  it("second cell has text AND a button — both merge in, button not lost", () => {
+    const nodes: StructuralNode[] = [
+      makeTable([[{ type: "cell", children: [makePara("First quote")], border: leftAccent }]]),
+      makeTable([[{ type: "cell", children: [makePara("More info"), buttonTable("Learn more")], border: leftAccent }]]),
+    ];
+    const result = classify(nodes);
+    expect(result).toHaveLength(1);
+    expect(result[0].kind).toBe("calloutLeft");
+    const props = result[0].props as Record<string, unknown>;
+    const lines = props["lines"] as unknown[][];
+    const buttons = props["buttons"] as { atLine: number; props: Record<string, unknown> }[];
+    expect(lines).toHaveLength(2); // "First quote" + "More info"
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0].atLine).toBe(2); // after both merged lines
+  });
+});
+
 // ── Pairwise margin-sum boundary rule + gapBefore ────────────────────────────
 
 describe("classify — margin-sum boundary rule", () => {
