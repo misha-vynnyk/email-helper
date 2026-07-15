@@ -167,10 +167,13 @@ function pushMerged(result: ComponentNode[], comp: ComponentNode, tok: Tokens, w
     const atLine = last.props.lines.length;
     const prev = attached[attached.length - 1];
     // Each <li> arrives as its own single-item "list" node (classifyFlow processes one
-    // StructuralNode at a time) — if the previous attached list is at the same position
-    // and ordered-ness, this is another item from the SAME <ul>/<ol>: append, don't
-    // start a second list at the same spot.
-    const lists = prev && prev.atLine === atLine && prev.props.ordered === comp.props.ordered
+    // StructuralNode at a time) — if the previous attached list is at the same position,
+    // same ordered-ness AND same listGroupId (see Paragraph.listGroupId — distinguishes
+    // two adjacent-but-different <ul>/<ol> of matching ordered-ness from consecutive items
+    // of the SAME list), this is another item from the SAME <ul>/<ol>: append, don't start
+    // a second list at the same spot.
+    const lists = prev && prev.atLine === atLine && prev.props.ordered === comp.props.ordered &&
+      prev.props.listGroupId === comp.props.listGroupId
       ? [...attached.slice(0, -1), { atLine, props: { ...prev.props, items: [...prev.props.items, ...comp.props.items] } }]
       : [...attached, { atLine, props: comp.props }];
     result[result.length - 1] = { ...last, props: { ...last.props, lists } };
@@ -191,11 +194,13 @@ function pushMerged(result: ComponentNode[], comp: ComponentNode, tok: Tokens, w
   // the previous block is an image/table) — each <li> arrives as its own single-item
   // "list" node; merge consecutive ones from the same <ul>/<ol> into one list instead of
   // emitting a separate <ul> per item. Different ordered-ness (a <ul> immediately
-  // followed by an <ol>) stays two separate lists.
-  if (comp.kind === "list" && last?.kind === "list" && last.props.ordered === comp.props.ordered) {
+  // followed by an <ol>) OR a different listGroupId (two adjacent but separate <ul>s of
+  // the same ordered-ness) stays two separate lists.
+  if (comp.kind === "list" && last?.kind === "list" && last.props.ordered === comp.props.ordered &&
+      last.props.listGroupId === comp.props.listGroupId) {
     result[result.length - 1] = {
       kind: "list",
-      props: { items: [...last.props.items, ...comp.props.items], ordered: last.props.ordered },
+      props: { items: [...last.props.items, ...comp.props.items], ordered: last.props.ordered, listGroupId: last.props.listGroupId },
     };
     return;
   }

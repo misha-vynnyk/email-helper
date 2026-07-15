@@ -111,8 +111,10 @@ export function renderLines(
   return result.join("");
 }
 
-function renderListItems(items: Run[][], tok: Tokens): string {
-  return items.map(runs => `<li>${renderRuns(runs, tok, tok.color.black)}</li>`).join("\n");
+function renderListItems(items: Run[][][], tok: Tokens): string {
+  // Each item keeps its own lines — a multi-line <li> renders with a <br> between them
+  // instead of collapsing to one line (see ListProps.items, fix-advanced.md Ітерація 9).
+  return items.map(itemLines => `<li>${renderLines(itemLines, tok, tok.color.black)}</li>`).join("\n");
 }
 
 /** Raw <ul>/<ol> markup (tag included, no block wrapper) — for splicing inline into a

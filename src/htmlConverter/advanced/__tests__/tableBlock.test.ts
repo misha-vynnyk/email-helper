@@ -664,3 +664,59 @@ describe("classifyTable — multi-line labels don't glue words together", () => 
     expect(rightRuns.map(r => r.text).join("")).toBe("MEDIA & INVESTOR RELATIONS");
   });
 });
+
+// ── List markers survive flattening (Ітерація 9c) ────────────────────────────
+// A cell's content is always flattened to plain text (flattenLinesWithBreaks /
+// flattenCellForAlertBand — no real <ul> is reachable from inside a table cell), so
+// listItem <li>-derived paragraphs used to lose their bullet/number entirely once
+// flattened — this regression checks the manual "• "/"N. " text prefix survives.
+
+describe("classifyTable — list items keep a bullet/number marker when flattened", () => {
+  function listPara(text: string, extra: Partial<Pick<Paragraph, "ordered" | "listGroupId">> = {}): Paragraph {
+    return { type: "p", size: "body", listItem: true, lines: [[makeRun(text)]], ...extra };
+  }
+
+  it("unordered <li> items get a '• ' prefix", () => {
+    const cell = makeCell({
+      bg: "#f1ede6",
+      children: [listPara("A", { listGroupId: 1 }), listPara("B", { listGroupId: 1 })],
+    });
+    const result = classifyTable(makeTable([[cell]]));
+    expect(result?.kind).toBe("alertBand");
+    const lines = (result?.props as Record<string, unknown>)["lines"] as Array<Array<{ text: string }>>;
+    expect(lines[0][0].text).toBe("• A");
+    expect(lines[1][0].text).toBe("• B");
+  });
+
+  it("ordered <li> items get a numbered '1. ', '2. ' prefix, resetting per listGroupId", () => {
+    const cell = makeCell({
+      bg: "#f1ede6",
+      children: [
+        listPara("First", { ordered: true, listGroupId: 1 }),
+        listPara("Second", { ordered: true, listGroupId: 1 }),
+        listPara("Restarted", { ordered: true, listGroupId: 2 }),
+      ],
+    });
+    const result = classifyTable(makeTable([[cell]]));
+    const lines = (result?.props as Record<string, unknown>)["lines"] as Array<Array<{ text: string }>>;
+    expect(lines[0][0].text).toBe("1. First");
+    expect(lines[1][0].text).toBe("2. Second");
+    expect(lines[2][0].text).toBe("1. Restarted"); // new listGroupId restarts numbering
+  });
+
+  it("a non-list paragraph in between resets the counter for the next list run", () => {
+    const cell = makeCell({
+      bg: "#f1ede6",
+      children: [
+        listPara("First", { ordered: true, listGroupId: 1 }),
+        { type: "p", size: "body", lines: [[makeRun("Interrupting prose")]] },
+        listPara("Restarted", { ordered: true, listGroupId: 1 }),
+      ],
+    });
+    const result = classifyTable(makeTable([[cell]]));
+    const lines = (result?.props as Record<string, unknown>)["lines"] as Array<Array<{ text: string }>>;
+    expect(lines[0][0].text).toBe("1. First");
+    expect(lines[1][0].text).toBe("Interrupting prose");
+    expect(lines[2][0].text).toBe("1. Restarted");
+  });
+});

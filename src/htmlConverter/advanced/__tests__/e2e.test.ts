@@ -747,6 +747,56 @@ describe("convertAdvanced — real <ul> list", () => {
     expect(html).toContain("<li>First</li>");
     expect(html).toContain("<li>Second</li>");
   });
+
+  // Regression, Ітерація 9a (fix-advanced.md): a multi-line <li> (an internal <br> inside
+  // its single <p> — GDocs' actual markup for a soft line break within one bullet) used to
+  // collapse to one line (joinLinesWithSpace, glued with a space) — the <br> must survive.
+  it("a multi-line <li> keeps a <br> between its lines instead of collapsing to one line", () => {
+    const html = convertAdvanced("<ul><li><p>Step 1<br>Then wait</p></li></ul>");
+    expect(html).toMatch(/<li>Step 1\s*<br>\s*Then wait<\/li>/);
+  });
+});
+
+// Regression, Ітерація 9b (fix-advanced.md): two adjacent but SEPARATE <ul>s used to fuse
+// into one continuous list because nothing distinguished the last <li> of one from the
+// first <li> of the next (both structurally identical "listItem" paragraphs).
+describe("convertAdvanced — two adjacent but separate <ul>s stay two lists", () => {
+  it("renders TWO <ul> tags, not one merged 4-item list", () => {
+    const html = convertAdvanced(
+      "<ul><li><p>A</p></li><li><p>B</p></li></ul><ul><li><p>C</p></li><li><p>D</p></li></ul>"
+    );
+    expect((html.match(/<ul/g) ?? []).length).toBe(2);
+    expect((html.match(/<li>/g) ?? []).length).toBe(4);
+  });
+});
+
+// Regression, Ітерація 9c (fix-advanced.md): a table cell is always flattened to plain
+// text (no real <ul> reachable from inside a cell) — <li>-derived paragraphs used to lose
+// their bullet/number marker entirely. Two back-to-back DIFFERENT lists inside one cell
+// also checks the numbering correctly restarts instead of continuing (3., 4., ...) or
+// reusing the bullet style.
+describe("convertAdvanced — two different lists flattened inside one table cell", () => {
+  const twoListsInCell =
+    `<table style="border:none;border-collapse:collapse;"><colgroup><col width="300" /></colgroup>
+      <tbody><tr><td style="background-color:#f1ede6;padding:6pt 10pt 6pt 10pt;">
+        <ul><li><p>First bullet</p></li><li><p>Second bullet</p></li></ul>
+        <ol><li><p>First number</p></li><li><p>Second number</p></li></ol>
+      </td></tr></tbody>
+    </table>`;
+
+  let html: string;
+  beforeAll(() => { html = convertAdvanced(twoListsInCell); });
+
+  it("bullet items get '• ' markers", () => {
+    expect(html).toContain("• First bullet");
+    expect(html).toContain("• Second bullet");
+  });
+
+  it("numbered items get '1. '/'2. ' markers, restarting instead of continuing from the bullets", () => {
+    expect(html).toContain("1. First number");
+    expect(html).toContain("2. Second number");
+    expect(html).not.toContain("3. First number");
+  });
 });
 
 // A list embeds inline with the surrounding prose (intro line → list → continuing prose,

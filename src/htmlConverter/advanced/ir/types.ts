@@ -32,6 +32,10 @@ export interface Paragraph {
   listItem?: boolean;        // true for a <li>-derived paragraph (real <ul>/<ol>) — routes to
                               // the "list" ComponentNode in classifyFlow instead of "paragraph"
   ordered?: boolean;         // true when the source list was <ol> (numbered) rather than <ul>
+  listGroupId?: number;      // increments per <ul>/<ol> encountered in fromDom — distinguishes
+                              // two adjacent but separate lists of matching ordered-ness from
+                              // consecutive items of the SAME list, so pushMerged's list-merge
+                              // (classify.ts) doesn't fuse them into one continuous list
   tightNext?: boolean;       // true if this paragraph's raw HTML ended with a user-typed
                               // § (ONE_BR) marker — signals "no gap before whatever follows",
                               // same tightness class as center-align/listItem in pushMerged
@@ -154,8 +158,15 @@ export interface ParagraphProps {
 /** A real <ul>/<ol> — structurally certain from the source (see Paragraph.listItem) —
  *  rendered as an actual list instead of bullet-prefixed flowing text. */
 export interface ListProps {
-  items: Run[][];  // one entry per <li>, flattened to a single run line (joinLinesWithSpace)
+  // One entry per <li>; each item keeps its own lines (Run[][]) instead of being flattened
+  // to a single joined line — a multi-line <li> (<li><p>Step 1</p><p>Then wait</p></li>)
+  // survives as two lines joined by <br>, not collapsed with a space.
+  items: Run[][][];
   ordered: boolean;
+  /** Copied from Paragraph.listGroupId — pushMerged (classify.ts) compares it alongside
+   *  `ordered` so two adjacent-but-different <ul>/<ol> of matching ordered-ness don't get
+   *  fused into one list. */
+  listGroupId?: number;
 }
 
 export interface AlertBandProps {
