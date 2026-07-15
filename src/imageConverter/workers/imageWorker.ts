@@ -6,6 +6,7 @@
 import { ConversionSettings, ImageFormat, ResizeOptions } from "../types";
 import { getConversionFormat } from "../utils/imageFormatDetector";
 import { encodeAtQuality } from "../utils/jsquashEncode";
+import { resizeImageData } from "../utils/resizeImageData";
 import { computeSSIM } from "../utils/ssim";
 
 interface ConvertWorkerMessage {
@@ -109,19 +110,23 @@ async function convertImage(message: ConvertWorkerMessage): Promise<Blob> {
   const file = new Blob([fileData], { type: fileType });
   const imageBitmap = await createImageBitmap(file);
 
-  const { width, height } = calculateResizedDimensions(imageBitmap.width, imageBitmap.height, settings.resize);
   const outputFormat = getConversionFormat(fileName, fileType, settings.preserveFormat, settings.format);
-  const imageData = drawToCanvas(imageBitmap, width, height, outputFormat, settings.backgroundColor);
+  const { width, height } = calculateResizedDimensions(imageBitmap.width, imageBitmap.height, settings.resize);
+  // Decode + composite background at native resolution first, then resize through
+  // @jsquash/resize (lanczos3) — much sharper than scaling inside the drawImage call.
+  const nativeData = drawToCanvas(imageBitmap, imageBitmap.width, imageBitmap.height, outputFormat, settings.backgroundColor);
+  imageBitmap.close();
+
+  const imageData = await resizeImageData(nativeData, width, height);
   const buffer = await encodeAtQuality(imageData, outputFormat, settings.quality, settings.compressionMode);
 
-  imageBitmap.close();
   return new Blob([buffer], { type: `image/${outputFormat}` });
 }
 
 // Bounds for the perceptual quality search — mirrors the UI's own floor so the
 // "optimal quality" the search picks never lands in territory the user has to
 // explicitly unlock to reach manually (see QualityControl's extreme-unlock).
-const MIN_SEARCH_QUALITY = 20;
+const MIN_SEARCH_QUALITY = 40;
 const MAX_SEARCH_QUALITY = 95;
 const MAX_SEARCH_ITERATIONS = 6;
 // SSIM comparisons run on a downsampled copy so a 4K source doesn't blow up

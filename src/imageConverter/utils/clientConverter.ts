@@ -1,6 +1,7 @@
 import { ConversionResult, ConversionSettings } from "../types";
 import { getConversionFormat } from "./imageFormatDetector";
 import { encodeAtQuality } from "./jsquashEncode";
+import { resizeImageData } from "./resizeImageData";
 
 /**
  * Convert image using Canvas API (client-side)
@@ -79,27 +80,30 @@ export async function convertImageClient(file: File, settings: ConversionSetting
           }
         }
 
-        canvas.width = width;
-        canvas.height = height;
-
         // Get format to use (original or specified)
         const outputFormat = getConversionFormat(file.name, file.type, settings.preserveFormat, settings.format);
+
+        // Decode + composite background at native resolution first, then resize
+        // through @jsquash/resize (lanczos3) — sharper than scaling inside drawImage.
+        canvas.width = img.width;
+        canvas.height = img.height;
 
         // Handle background based on format
         if (outputFormat === "jpeg") {
           // JPEG doesn't support transparency - fill with background color
           ctx.fillStyle = settings.backgroundColor;
-          ctx.fillRect(0, 0, width, height);
+          ctx.fillRect(0, 0, img.width, img.height);
         } else {
           // PNG/WebP/AVIF support transparency - ensure canvas is transparent
-          ctx.clearRect(0, 0, width, height);
+          ctx.clearRect(0, 0, img.width, img.height);
         }
 
-        // Draw image
-        ctx.drawImage(img, 0, 0, width, height);
+        // Draw image at native size
+        ctx.drawImage(img, 0, 0);
 
-        // Get ImageData to pass to WebAssembly encoders
-        const imageData = ctx.getImageData(0, 0, width, height);
+        // Get ImageData to pass to WebAssembly encoders, then resize to target dimensions
+        const nativeData = ctx.getImageData(0, 0, img.width, img.height);
+        const imageData = await resizeImageData(nativeData, width, height);
         const buffer = await encodeAtQuality(imageData, outputFormat, settings.quality, settings.compressionMode);
 
         const blob = new Blob([buffer], { type: `image/${outputFormat}` });
