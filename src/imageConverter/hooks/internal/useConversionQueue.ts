@@ -170,6 +170,12 @@ export function useConversionQueue({
                 result = { blob, size: blob.size };
                 onProgress(85);
               } catch (error) {
+                // A timeout means the encode was already too heavy for a worker — retrying
+                // it on the main thread would block the UI with that same heavy encode.
+                // Let it propagate to the outer catch's retry/error handling instead; every
+                // other worker failure still falls back to the main thread as before.
+                const isTimeout = error instanceof Error && error.message.includes("timed out");
+                if (isTimeout) throw error;
                 logger.warn("ImageConverter", "Worker failed, falling back to main thread", error);
                 onProgress(30);
                 result = await convertImageClient(fileToConvert.file, effectiveSettings);
@@ -225,15 +231,19 @@ export function useConversionQueue({
           });
         }
 
-        const convertedUrl = URL.createObjectURL(result.blob);
-
         if (settingsVersionRef.current !== versionAtStart) {
           // Settings changed while this ran under the old ones — the reset
           // effect already reverted this file to "pending" (and re-queued it
           // if autoConvert is on). Drop this stale result instead of
-          // clobbering whatever the fresh run produces.
+          // clobbering whatever the fresh run produces. Bail out BEFORE
+          // creating the blob URL — nothing above this point used it, so
+          // there's nothing to revoke on the stale path (was previously
+          // created unconditionally, leaking a blob URL on every settings
+          // change made during an in-flight conversion).
           return;
         }
+
+        const convertedUrl = URL.createObjectURL(result.blob);
 
         setFiles((prev) =>
           prev.map((f) =>

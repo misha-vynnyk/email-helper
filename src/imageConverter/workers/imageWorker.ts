@@ -133,6 +133,9 @@ const COMPARE_MAX_DIMENSION = 600;
  * Binary-search the lowest quality whose SSIM against the original still meets
  * targetSimilarity — i.e. the smallest file that still looks the same.
  * Only meaningful for lossy formats; PNG has no quality knob to search.
+ * The returned `estimatedSize` is the size of the downsampled reference encode, not the
+ * final full-resolution file — approximate by design; only `.quality` is used downstream
+ * (the real encode at full resolution happens separately in workerPool.process()).
  */
 async function estimateOptimalQuality(message: EstimateQualityWorkerMessage): Promise<{ quality: number; ssim: number; estimatedSize: number }> {
   const { fileData, fileType, format, resize, backgroundColor, targetSimilarity } = message;
@@ -174,7 +177,11 @@ async function estimateOptimalQuality(message: EstimateQualityWorkerMessage): Pr
 
   for (let i = 0; i < MAX_SEARCH_ITERATIONS && lo <= hi; i++) {
     const mid = Math.round((lo + hi) / 2);
-    const buffer = await encodeAtQuality(fullImageData, format, mid, "balanced");
+    // Encode the downsampled reference copy, not the full-resolution source — SSIM only
+    // ever compares against referenceCompareData anyway (see COMPARE_MAX_DIMENSION above),
+    // so a full-res encode on every search iteration was pure waste that also pushed large
+    // sources past the worker timeout.
+    const buffer = await encodeAtQuality(referenceCompareData, format, mid, "balanced");
     const ssim = await ssimAt(buffer);
 
     if (ssim >= targetSimilarity) {
@@ -187,7 +194,7 @@ async function estimateOptimalQuality(message: EstimateQualityWorkerMessage): Pr
 
   if (!best) {
     // Even the top of the range didn't reach target similarity; that's the best we can offer.
-    const buffer = await encodeAtQuality(fullImageData, format, MAX_SEARCH_QUALITY, "balanced");
+    const buffer = await encodeAtQuality(referenceCompareData, format, MAX_SEARCH_QUALITY, "balanced");
     best = { quality: MAX_SEARCH_QUALITY, ssim: await ssimAt(buffer), estimatedSize: buffer.byteLength };
   }
 
