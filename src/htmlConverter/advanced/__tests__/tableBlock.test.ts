@@ -541,6 +541,28 @@ describe("classifyTable — calloutLeft honors § (tightNext/tightBefore)", () =
     const paraBreaks = (result?.props as Record<string, unknown>)["paraBreaks"] as Set<number>;
     expect(paraBreaks.has(1)).toBe(false);
   });
+
+  // Regression: a real CTA (h5-in-colored-cell nested table) inside a left-accent quote
+  // box used to be silently flattened to plain text by flattenLinesWithBreaks (the
+  // nestedTableFlattened path) — the same fidelity bug alertBand already avoided via
+  // flattenCellForAlertBand. calloutLeft now uses the same flattener.
+  it("preserves a nested h5-button table as a real button instead of flattening it to text", () => {
+    const buttonCell = makeCell({
+      bg: "#38a169",
+      children: [{ type: "p", size: "small", headingLevel: 5, lines: [[makeRun("Watch the video")]] }],
+    });
+    const buttonTable: TableNode = makeTable([[buttonCell]]);
+    const cell = makeCell({
+      border: { left: { color: "#38a169" } },
+      children: [makePara("Intro text"), buttonTable],
+    });
+    const result = classifyTable(makeTable([[cell]]));
+    expect(result?.kind).toBe("calloutLeft");
+    const props = result?.props as Record<string, unknown>;
+    const buttons = props["buttons"] as { atLine: number; props: Record<string, unknown> }[];
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0].props["bg"]).toBe("#38a169");
+  });
 });
 
 // ── Cell alignment from the inner <p> (F3/F9 — GDocs puts text-align on the paragraph) ─

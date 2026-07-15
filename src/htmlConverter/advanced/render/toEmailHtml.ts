@@ -12,6 +12,7 @@ import {
   type GridCell,
   type GridOpts,
   type ImageOpts,
+  type ListOpts,
   type ParagraphOpts,
   type RecordOpts,
   type SplitRowOpts,
@@ -22,7 +23,7 @@ import type { Tokens } from "../config/tokens";
 import { tokens as defaultTokens } from "../config/tokens";
 import { escapeHtml as esc } from "../escape";
 import { isDarkBg } from "../ir/color";
-import type { AlertBandProps, ButtonBandProps, ComponentNode, Run } from "../ir/types";
+import type { AlertBandProps, ButtonBandProps, ComponentNode, ListProps, ParagraphProps,Run } from "../ir/types";
 
 type Templates = ReturnType<typeof buildTemplates>;
 
@@ -110,6 +111,53 @@ export function renderLines(
   return result.join("");
 }
 
+function renderListItems(items: Run[][], tok: Tokens): string {
+  return items.map(runs => `<li>${renderRuns(runs, tok, tok.color.black)}</li>`).join("\n");
+}
+
+/** Raw <ul>/<ol> markup (tag included, no block wrapper) — for splicing inline into a
+ *  paragraph's flowing text. See renderParagraphInner. */
+function renderListInline(props: ListProps, tok: Tokens): string {
+  const tag = props.ordered ? "ol" : "ul";
+  return `<${tag}>\n${renderListItems(props.items, tok)}\n</${tag}>`;
+}
+
+/**
+ * A paragraph's innerHtml, splicing in any attached lists (ParagraphProps.lists) at their
+ * atLine position — "intro line" → <ul> → "continuing prose", all in one <td>, matching
+ * GDocs' own layout instead of the list becoming its own separate block. No lists → same
+ * as a plain renderLines call.
+ */
+function renderParagraphInner(p: ParagraphProps, tok: Tokens): string {
+  if (!p.lists?.length) return renderLines(p.lines, tok, tok.color.black, p.paraBreaks);
+  const sorted = [...p.lists].sort((a, b) => a.atLine - b.atLine);
+  const parts: string[] = [];
+  let groupStart = 0;
+  const flushText = (end: number) => {
+    if (end <= groupStart) return;
+    const groupLines = p.lines.slice(groupStart, end);
+    const groupBreaks = new Set<number>();
+    for (const idx of p.paraBreaks ?? []) {
+      if (idx > groupStart && idx < end) groupBreaks.add(idx - groupStart);
+    }
+    const html = renderLines(groupLines, tok, tok.color.black, groupBreaks);
+    if (html) parts.push(html);
+  };
+  for (const { atLine, props: listProps } of sorted) {
+    flushText(atLine);
+    // A single <br> before the list — matches the simple converter's own convention
+    // (addBrAfterClosingP collapses any run of <br>s before a <ul>/<ol> down to exactly
+    // one, never zero, even though <ul> is already block-level): without it the
+    // preceding line and the list sit flush against each other with no visual gap.
+    // Skipped when the list opens the paragraph (atLine 0, nothing flushed yet).
+    if (parts.length > 0) parts.push("<br>");
+    parts.push(renderListInline(listProps, tok));
+    groupStart = atLine;
+  }
+  flushText(p.lines.length);
+  return parts.join("\n");
+}
+
 /**
  * alertBand content interleaved with nested buttons (see AlertBandProps.buttons):
  * splits the cell into text/button segments for tmpl.alertBand to render as
@@ -119,7 +167,7 @@ export function renderLines(
  * and degrade the CTA to a plain underlined link.
  */
 function buildAlertBandSegments(
-  p: AlertBandProps,
+  p: Pick<AlertBandProps, "lines" | "paraBreaks" | "buttons" | "bands">,
   tok: Tokens,
   textColor: string,
 ): AlertBandSegment[] {
@@ -137,12 +185,16 @@ function buildAlertBandSegments(
   };
   const pushButton = (btn: ButtonBandProps) => {
     const btnTextColor = isDarkBg(btn.bg, tok) ? tok.color.white : tok.color.black;
-    // Unlike renderNode's standalone buttonBand case, keep each run's own color here:
-    // this button is nested inside a hand-styled banner where the author already chose
-    // an explicit text color (e.g. white on an orange CTA that isDarkBg doesn't classify
-    // as dark) — btnTextColor above is only the fallback for runs with no color of their
-    // own. href is still stripped: a nested <a> inside this button's <a> would be invalid.
-    const buttonRuns = btn.runs.map(r => ({ ...r, href: undefined }));
+    // href is always stripped: a nested <a> inside this button's own <a> would be invalid.
+    // Color is stripped only on runs that carried an href: a real <a> inside the cell
+    // carries the browser's default link-blue, an artifact of it being a link, not a
+    // color the author chose — trusting it would print blue-on-green instead of
+    // white-on-green (see the h5-with-real-link regression this guards against).
+    // A plain colored span with no href (e.g. an explicit white span hand-picked to
+    // contrast against an orange bg that isDarkBg doesn't classify as dark) IS a
+    // deliberate author choice and survives — btnTextColor is only the fallback for
+    // runs with no color of their own.
+    const buttonRuns = btn.runs.map(r => ({ ...r, color: r.href ? undefined : r.color, href: undefined }));
     const label = renderRuns(buttonRuns, tok, btnTextColor);
     segments.push({ kind: "button", label, href: btn.href ?? tok.placeholderHref, bg: btn.bg, radius: btn.radius, border: btn.border });
   };
@@ -182,7 +234,7 @@ export function renderNode(
     case "paragraph": {
       const p = node.props;
       const opts: ParagraphOpts = {
-        innerHtml: renderLines(p.lines, tok, tok.color.black, p.paraBreaks),
+        innerHtml: renderParagraphInner(p, tok),
         align: p.align ?? "left",
         size: p.size ?? "body",
         variant: p.variant,
@@ -190,6 +242,12 @@ export function renderNode(
         tightBefore: p.tightBefore,
       };
       return tmpl.paragraph(opts);
+    }
+
+    case "list": {
+      const p = node.props;
+      const opts: ListOpts = { ordered: p.ordered };
+      return tmpl.list(renderListItems(p.items, tok), opts);
     }
 
     case "alertBand": {
@@ -204,13 +262,14 @@ export function renderNode(
     case "buttonBand": {
       const p = node.props;
       const textColor = isDarkBg(p.bg, tok) ? tok.color.white : tok.color.black;
-      // Strip per-run color and href: this button comes from GDocs' h5-in-colored-cell
-      // marker convention (see classifySingleCell's hasButtonMarker branch) — the h5's own
-      // heading style carries a baked-in default color (often grey) that's an artifact of
-      // the heading style, not an author choice about the button's text. Unlike
-      // buildAlertBandSegments' nested-button case (a hand-styled banner where the author
-      // picked a real color to contrast against a hand-picked bg), trusting it here would
-      // print near-invisible grey text on an arbitrary button background.
+      // Strip per-run color and href unconditionally here — unlike pushButton
+      // (buildAlertBandSegments), which keeps a plain span's color since that button was
+      // found inside a hand-styled banner cell where color choices are deliberate, a
+      // standalone buttonBand comes straight from GDocs' bare h5-in-colored-cell marker
+      // convention (see classifySingleCell's hasButtonMarker branch) with no such context —
+      // the h5's own heading style carries a baked-in default color (often grey) even with
+      // no <a> in sight, an artifact of GDocs' markup, not an author choice. Trusting it
+      // would print near-invisible grey text on an arbitrary button background.
       const buttonRuns = p.runs.map(r => ({ ...r, color: undefined, href: undefined }));
       const opts: ButtonBandOpts = {
         innerHtml: renderRuns(buttonRuns, tok, textColor),
@@ -224,16 +283,31 @@ export function renderNode(
 
     case "calloutLeft": {
       const p = node.props;
-      const innerHtml = renderLines(p.lines, tok, tok.color.black, p.paraBreaks);
+      const hasNested = Boolean(p.buttons?.length || p.bands?.length);
+      const innerHtml = hasNested ? "" : renderLines(p.lines, tok, tok.color.black, p.paraBreaks);
       const opts: CalloutOpts = {
         accentColor: p.accentColor,
         accentWidthPx: p.accentWidthPx,
+        accentStyle: p.accentStyle,
+        accentPadX: p.accentPadX,
         bg: p.bg,
+        segments: hasNested ? buildAlertBandSegments(p, tok, tok.color.black) : undefined,
       };
       return tmpl.calloutLeft(innerHtml, opts);
     }
 
     case "calloutBox": {
+      // Common case: one plain (body, no variant) paragraph and nothing else — e.g. a
+      // dashed note box with a single line of text. Skip the children-rows wrapper table
+      // (see CalloutBoxOpts.innerHtml) instead of nesting a second <table> for one row.
+      // Anything else (a nested button/image, multiple children) keeps the general
+      // children-recursion path so F10-style nested CTAs still survive.
+      const only = node.children.length === 1 ? node.children[0] : undefined;
+      if (only?.kind === "paragraph" && only.props.size === "body" && !only.props.variant) {
+        const innerHtml = renderLines(only.props.lines, tok, tok.color.black, only.props.paraBreaks);
+        const opts: CalloutBoxOpts = { border: node.props.border, bg: node.props.bg, innerHtml };
+        return tmpl.calloutBox(undefined, opts);
+      }
       const childrenHtml = renderAll(node.children, tmpl, tok);
       const opts: CalloutBoxOpts = {
         border: node.props.border,
@@ -245,7 +319,7 @@ export function renderNode(
     case "textDivider": {
       const p = node.props;
       const innerHtml = renderLines(p.lines, tok, tok.color.black, p.paraBreaks);
-      const opts: TextDividerOpts = { align: p.align, ruleColor: p.ruleColor };
+      const opts: TextDividerOpts = { align: p.align, ruleColor: p.ruleColor, ruleStyle: p.ruleStyle };
       return tmpl.textDivider(innerHtml, opts);
     }
 

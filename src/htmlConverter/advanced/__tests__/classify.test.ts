@@ -8,7 +8,7 @@ function makePara(
   text: string,
   size: Paragraph["size"] = "body",
   align: Paragraph["align"] = "left",
-  extra: Partial<Pick<Paragraph, "listItem" | "tightNext" | "tightBefore">> = {},
+  extra: Partial<Pick<Paragraph, "listItem" | "ordered" | "tightNext" | "tightBefore" | "border" | "accentPadX" | "marginTopPt" | "marginBottomPt">> = {},
 ): Paragraph {
   return { type: "p", size, align, lines: [[{ text }]], ...extra };
 }
@@ -128,10 +128,11 @@ describe("classify — paragraph merging", () => {
     expect(breaks.has(1)).toBe(true);
   });
 
-  // Bug fix: real <ul>/<li> lists are structurally certain — fromDom.ts sets listItem:true
-  // on every <li>-derived paragraph — so adjacent items always merge with a single <br>,
-  // regardless of what text/character (if any) each item happens to start with.
-  it("merges adjacent listItem paragraphs with NO paraBreak (single <br>), whatever their text", () => {
+  // Real <ul>/<li> lists are structurally certain — fromDom.ts sets listItem:true on every
+  // <li>-derived paragraph. Each arrives as its own single-item "list" node (classifyFlow
+  // processes one StructuralNode at a time); pushMerged combines consecutive ones from the
+  // same <ul>/<ol> into a single "list" ComponentNode instead of a separate <ul> per item.
+  it("merges adjacent listItem paragraphs into one 'list' node, whatever their text", () => {
     const nodes: StructuralNode[] = [
       makePara("Partners: Google, Meta", "body", "left", { listItem: true }),
       makePara("Backed by: Pat Gelsinger", "body", "left", { listItem: true }),
@@ -139,9 +140,20 @@ describe("classify — paragraph merging", () => {
     ];
     const result = classify(nodes);
     expect(result).toHaveLength(1);
-    expect((result[0].props as Record<string, unknown>)["paraBreaks"]).toBeUndefined();
-    const lines = (result[0].props as Record<string, unknown>)["lines"] as unknown[][];
-    expect(lines).toHaveLength(3);
+    expect(result[0].kind).toBe("list");
+    const items = (result[0].props as Record<string, unknown>)["items"] as unknown[][];
+    expect(items).toHaveLength(3);
+  });
+
+  it("keeps ordered (<ol>) and unordered (<ul>) lists separate even when adjacent", () => {
+    const nodes: StructuralNode[] = [
+      makePara("bullet one", "body", "left", { listItem: true, ordered: false }),
+      makePara("number one", "body", "left", { listItem: true, ordered: true }),
+    ];
+    const result = classify(nodes);
+    expect(result).toHaveLength(2);
+    expect(result[0].kind).toBe("list");
+    expect(result[1].kind).toBe("list");
   });
 
   // A manually-typed checklist (no real <ul>, just <p>s with a leading "✓") is detected
@@ -302,6 +314,21 @@ describe("classify — heading markers", () => {
     expect((result[0].props as Record<string, unknown>)["bg"]).toBe(tokens.color.button);
   });
 
+  // A standalone h5 (not inside a colored <td> — see classifyTable's hasButtonMarker
+  // branch for that case) can carry its OWN background-color directly on the <h5> style.
+  // The document's color must win over the house default button color.
+  it("h5 with its own background-color uses that color, not the house default", () => {
+    const para: Paragraph = { type: "p", size: "small", headingLevel: 5, bg: "#7b4fbf", lines: [[{ text: "Watch now" }]] };
+    const result = classify([para]);
+    expect(result[0].kind).toBe("buttonBand");
+    expect((result[0].props as Record<string, unknown>)["bg"]).toBe("#7b4fbf");
+  });
+
+  it("h5 with no declared background-color still falls back to the house default", () => {
+    const result = classify([makeHeading(5, "Click me")]);
+    expect((result[0].props as Record<string, unknown>)["bg"]).toBe(tokens.color.button);
+  });
+
   it("h5 button runs contain the text", () => {
     const result = classify([makeHeading(5, "Buy now")]);
     const runs = (result[0].props as Record<string, unknown>)["runs"] as Array<{ text: string }>;
@@ -407,6 +434,71 @@ describe("classify — h5 flow button label", () => {
     expect(result[0].kind).toBe("buttonBand");
     const runs = (result[0].props as Record<string, unknown>)["runs"] as Array<{ text: string }>;
     expect(runs.map(r => r.text).join("")).toBe("Click Here");
+  });
+});
+
+// ── <p> with its own border-left (quote/callout convention, not a wrapping <td>) ──
+
+describe("classify — paragraph's own border-left → calloutLeft", () => {
+  const accent = { left: { color: "#b71c1c", widthPx: 4 } };
+
+  it("a single bordered <p> becomes a calloutLeft using the document's own color/width", () => {
+    const result = classify([makePara("Skipping SPCX", "body", "left", { border: accent })]);
+    expect(result).toHaveLength(1);
+    expect(result[0].kind).toBe("calloutLeft");
+    const props = result[0].props as Record<string, unknown>;
+    expect(props["accentColor"]).toBe("#b71c1c");
+    expect(props["accentWidthPx"]).toBe(4);
+  });
+
+  it("merges consecutive same-accent bordered paragraphs into ONE calloutLeft, not three", () => {
+    const result = classify([
+      makePara("Skipping SPCX at $135.", "body", "left", { border: accent, marginTopPt: 0, marginBottomPt: 0 }),
+      makePara("Loading one ticker ahead.", "body", "left", { border: accent, marginTopPt: 0, marginBottomPt: 0 }),
+      makePara("Releasing the name free.", "body", "left", { border: accent, marginTopPt: 0, marginBottomPt: 0 }),
+    ]);
+    expect(result).toHaveLength(1);
+    expect(result[0].kind).toBe("calloutLeft");
+    const lines = (result[0].props as Record<string, unknown>)["lines"] as unknown[][];
+    expect(lines).toHaveLength(3);
+  });
+
+  it("a different accent color starts a NEW calloutLeft instead of merging", () => {
+    const otherAccent = { left: { color: "#1a56db", widthPx: 4 } };
+    const result = classify([
+      makePara("Red quote", "body", "left", { border: accent }),
+      makePara("Blue quote", "body", "left", { border: otherAccent }),
+    ]);
+    expect(result).toHaveLength(2);
+    expect(result[0].kind).toBe("calloutLeft");
+    expect(result[1].kind).toBe("calloutLeft");
+  });
+
+  it("a plain paragraph in between keeps the two calloutLeft boxes separate", () => {
+    const result = classify([
+      makePara("First quote", "body", "left", { border: accent }),
+      makePara("Unrelated prose"),
+      makePara("Second quote", "body", "left", { border: accent }),
+    ]);
+    expect(result).toHaveLength(3);
+    expect(result[0].kind).toBe("calloutLeft");
+    expect(result[1].kind).toBe("paragraph");
+    expect(result[2].kind).toBe("calloutLeft");
+  });
+
+  it("threads accentPadX (document's own gap) through to the ComponentNode", () => {
+    const result = classify([makePara("Quote", "body", "left", { border: accent, accentPadX: 16 })]);
+    expect((result[0].props as Record<string, unknown>)["accentPadX"]).toBe(16);
+  });
+
+  it("a different accentPadX starts a NEW calloutLeft instead of merging", () => {
+    const result = classify([
+      makePara("Narrow indent", "body", "left", { border: accent, accentPadX: 10 }),
+      makePara("Wide indent", "body", "left", { border: accent, accentPadX: 16 }),
+    ]);
+    expect(result).toHaveLength(2);
+    expect(result[0].kind).toBe("calloutLeft");
+    expect(result[1].kind).toBe("calloutLeft");
   });
 });
 

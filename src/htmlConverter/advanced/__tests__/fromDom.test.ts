@@ -71,6 +71,67 @@ describe("fromDom — headingLevel", () => {
   });
 });
 
+// ── Paragraph's own background-color (e.g. h5 button colored via its own style,
+//    not a wrapping colored <td>) ──────────────────────────────────────────────
+
+describe("fromDom — paragraph's own background-color", () => {
+  it("captures background-color declared directly on an <h5>", () => {
+    const p = firstParagraph('<h5 style="background-color:#7b4fbf;">Watch now</h5>');
+    expect(p.bg).toBe("#7b4fbf");
+  });
+
+  it("leaves bg undefined when the source declares none", () => {
+    const p = firstParagraph("<h5>Watch now</h5>");
+    expect(p.bg).toBeUndefined();
+  });
+});
+
+// ── Paragraph's own border (e.g. a quote/callout <p> with border-left, not a wrapping
+//    colored <td>) ───────────────────────────────────────────────────────────
+
+describe("fromDom — paragraph's own border", () => {
+  it("captures border-left declared directly on a <p>", () => {
+    const p = firstParagraph('<p style="border-left:solid #b71c1c 3pt;">Quoted line</p>');
+    expect(p.border?.left?.color).toBe("#b71c1c");
+    expect(p.border?.left?.widthPx).toBe(4); // 3pt × 96/72 = 4px
+    expect(p.border?.top).toBeUndefined();
+  });
+
+  it("leaves border undefined when the source declares none", () => {
+    const p = firstParagraph("<p>Plain line</p>");
+    expect(p.border).toBeUndefined();
+  });
+});
+
+// ── accentPadX (gap between a border-left <p> and its text) ─────────────────
+
+describe("fromDom — accentPadX (border-left <p>'s gap to text)", () => {
+  it("reads padding-left (longhand)", () => {
+    const p = firstParagraph('<p style="border-left:solid #b71c1c 3pt;padding-left:12pt;">Quote</p>');
+    expect(p.accentPadX).toBe(16); // 12pt × 96/72 = 16px
+  });
+
+  it("reads the left value out of the `padding` shorthand (4 values: T R B L)", () => {
+    const p = firstParagraph('<p style="border-left:solid #b71c1c 3pt;padding:0pt 0pt 4pt 12pt;">Quote</p>');
+    expect(p.accentPadX).toBe(16);
+  });
+
+  it("falls back to margin-left when no padding-left/padding is declared", () => {
+    const p = firstParagraph('<p style="border-left:solid #b71c1c 3pt;margin-left:12pt;">Quote</p>');
+    expect(p.accentPadX).toBe(16);
+  });
+
+  it("prefers padding-left over margin-left when both are declared", () => {
+    const p = firstParagraph('<p style="border-left:solid #b71c1c 3pt;margin-left:12pt;padding-left:20pt;">Quote</p>');
+    expect(p.accentPadX).toBe(27); // 20pt × 96/72 = 26.67 → 27px
+  });
+
+  it("leaves accentPadX undefined when none of padding-left/padding/margin-left is declared", () => {
+    const p = firstParagraph('<p style="border-left:solid #b71c1c 3pt;">Quote</p>');
+    expect(p.accentPadX).toBeUndefined();
+  });
+});
+
 // ── Inline tag: STRONG and I ──────────────────────────────────────────────────
 
 describe("fromDom — STRONG and I inline tags", () => {
@@ -126,18 +187,19 @@ describe("fromDom — UL list", () => {
     expect(paragraphs).toHaveLength(2);
   });
 
-  it("first run of each <li> is the bullet prefix '• '", () => {
+  it("marks each <li> paragraph as listItem, unordered", () => {
     const result = nodes("<ul><li>Apple</li><li>Banana</li></ul>");
     const paragraphs = result.filter((n) => n.type === "p") as Paragraph[];
-    expect(paragraphs[0].lines[0][0].text).toBe("• ");
-    expect(paragraphs[1].lines[0][0].text).toBe("• ");
+    expect(paragraphs[0].listItem).toBe(true);
+    expect(paragraphs[0].ordered).toBe(false);
+    expect(paragraphs[1].listItem).toBe(true);
   });
 
-  it("li text content follows the bullet prefix", () => {
+  it("li text content has no manually-injected bullet prefix — real <ul> supplies it", () => {
     const result = nodes("<ul><li>Apple</li></ul>");
     const p = result[0] as Paragraph;
     const lineText = p.lines[0].map((r) => r.text).join("");
-    expect(lineText).toBe("• Apple");
+    expect(lineText).toBe("Apple");
   });
 });
 
@@ -148,21 +210,21 @@ describe("fromDom — OL list", () => {
     expect(paragraphs).toHaveLength(3);
   });
 
-  it("first run of each <li> is the numbered prefix '1. ', '2. ', '3. '", () => {
+  it("marks each <li> paragraph as listItem, ordered — no manual numbering prefix", () => {
     const result = nodes("<ol><li>First</li><li>Second</li><li>Third</li></ol>");
     const paragraphs = result.filter((n) => n.type === "p") as Paragraph[];
-    expect(paragraphs[0].lines[0][0].text).toBe("1. ");
-    expect(paragraphs[1].lines[0][0].text).toBe("2. ");
-    expect(paragraphs[2].lines[0][0].text).toBe("3. ");
+    for (const p of paragraphs) {
+      expect(p.listItem).toBe(true);
+      expect(p.ordered).toBe(true);
+    }
+    expect(paragraphs[0].lines[0][0].text).toBe("First");
   });
 
-  it("OL and UL produce different prefixes", () => {
+  it("OL and UL produce different `ordered` flags", () => {
     const olNodes = nodes("<ol><li>item</li></ol>");
     const ulNodes = nodes("<ul><li>item</li></ul>");
-    const olPrefix = (olNodes[0] as Paragraph).lines[0][0].text;
-    const ulPrefix = (ulNodes[0] as Paragraph).lines[0][0].text;
-    expect(olPrefix).toBe("1. ");
-    expect(ulPrefix).toBe("• ");
+    expect((olNodes[0] as Paragraph).ordered).toBe(true);
+    expect((ulNodes[0] as Paragraph).ordered).toBe(false);
   });
 });
 
@@ -515,6 +577,30 @@ describe("fromDom — border widths from the document", () => {
   it("still drops a zero-width border entirely", () => {
     const side = borderTop('<table><tr><td style="border: 0pt solid #000000;">x</td></tr></table>');
     expect(side).toBeUndefined();
+  });
+});
+
+// ── Border style (dashed/dotted) ──────────────────────────────────────────────
+
+describe("fromDom — border style from the document", () => {
+  function borderTop(html: string) {
+    const table = nodes(html)[0] as TableNode;
+    return table.rows[0].cells[0].border?.top;
+  }
+
+  it("captures a dashed border style", () => {
+    const side = borderTop('<table><tr><td style="border: 1pt dashed #c2410c;">x</td></tr></table>');
+    expect(side?.style).toBe("dashed");
+  });
+
+  it("captures a dotted border style", () => {
+    const side = borderTop('<table><tr><td style="border: 1px dotted #000000;">x</td></tr></table>');
+    expect(side?.style).toBe("dotted");
+  });
+
+  it("leaves style undefined for a solid border (the common case)", () => {
+    const side = borderTop('<table><tr><td style="border: 1px solid #000000;">x</td></tr></table>');
+    expect(side?.style).toBeUndefined();
   });
 });
 

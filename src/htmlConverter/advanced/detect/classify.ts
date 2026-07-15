@@ -46,10 +46,11 @@ function pushMerged(result: ComponentNode[], comp: ComponentNode, tok: Tokens, w
     //  1. § on either end (tightNext on the previous paragraph / tightBefore on this
     //     one) → line break; the explicit marker always wins.
     //  2. Structural/convention signals (unless an author-typed blank line — gapBefore —
-    //     sits on the boundary): centered (GDocs banner/eyebrow convention), listItem
-    //     (structurally certain, real <ul>/<ol>), marker pair (BOTH lines start with a
-    //     bullet/checkmark glyph — a hand-typed checklist; the pair requirement keeps a
-    //     lone dash-led sentence prose) → line break.
+    //     sits on the boundary): centered (GDocs banner/eyebrow convention), marker pair
+    //     (BOTH lines start with a bullet/checkmark glyph — a hand-typed checklist; the
+    //     pair requirement keeps a lone dash-led sentence prose) → line break. (Real
+    //     <ul>/<li> lists don't reach this merge at all — they route to their own "list"
+    //     ComponentNode in classifyFlow, merged separately below.)
     //  3. isGapBoundary (ir/spacing.ts): blank line → gap; margin sum below the
     //     threshold token → line break; margins undeclared → gap. This pairwise rule
     //     replaced both the reverted chain-relative margin heuristic (one large-margin
@@ -59,7 +60,7 @@ function pushMerged(result: ComponentNode[], comp: ComponentNode, tok: Tokens, w
       startsWithListMarker(lastLines[breakIdx - 1]);
     const isTight = last.props.tightNext === true || comp.props.tightBefore === true ||
       (comp.props.gapBefore !== true &&
-        (alignOf(comp.props) === "center" || comp.props.listItem === true || isMarkerPair)) ||
+        (alignOf(comp.props) === "center" || isMarkerPair)) ||
       !isGapBoundary(last.props, comp.props, tok);
     const compBreaks = comp.props.paraBreaks;
 
@@ -87,6 +88,41 @@ function pushMerged(result: ComponentNode[], comp: ComponentNode, tok: Tokens, w
     return;
   }
 
+  // Consecutive <p>-with-border-left paragraphs (see Paragraph.border, classifyFlow's
+  // isLeftAccentOnly branch) merge into ONE calloutLeft box instead of three separate
+  // bordered blocks — same boundary rule as the plain-paragraph merge above (§ wins,
+  // blank line forces the gap, small margin sums mean adjacent lines). Only merges when
+  // the accent itself matches — a color/width/style/indent change means a new, deliberately
+  // distinct box.
+  if (comp.kind === "calloutLeft" && last?.kind === "calloutLeft" &&
+      last.props.accentColor === comp.props.accentColor &&
+      last.props.accentWidthPx === comp.props.accentWidthPx &&
+      last.props.accentStyle === comp.props.accentStyle &&
+      last.props.accentPadX === comp.props.accentPadX &&
+      last.props.bg === comp.props.bg) {
+    const lastLines = last.props.lines;
+    const newLines = comp.props.lines;
+    if (newLines.length === 0) return;
+    const breakIdx = lastLines.length;
+    const isTight = last.props.tightNext === true || comp.props.tightBefore === true ||
+      !isGapBoundary(last.props, comp.props, tok);
+    const compBreaks = comp.props.paraBreaks;
+    const breaks = new Set<number>(last.props.paraBreaks);
+    if (!isTight) breaks.add(breakIdx);
+    if (compBreaks) for (const idx of compBreaks) breaks.add(idx + breakIdx);
+    result[result.length - 1] = {
+      kind: "calloutLeft",
+      props: {
+        ...last.props,
+        lines: [...lastLines, ...newLines],
+        paraBreaks: breaks.size ? breaks : undefined,
+        tightNext: comp.props.tightNext,
+        marginBottomPt: comp.props.marginBottomPt,
+      },
+    };
+    return;
+  }
+
   // The full merge above requires matching size/variant/align — a § between a headline
   // and body text (or center- and left-aligned paragraphs) can't share one <span>'s
   // formatting, so it falls through here instead. The two blocks stay separate, but the
@@ -105,6 +141,52 @@ function pushMerged(result: ComponentNode[], comp: ComponentNode, tok: Tokens, w
   // bottom padding; the paragraph's own tightBefore already zeroes its top padding.
   if (comp.kind === "paragraph" && last?.kind === "image" && comp.props.tightBefore === true) {
     result[result.length - 1] = { ...last, props: { ...last.props, tightAfter: true } };
+  }
+
+  // A real <ul>/<ol> renders inline with the surrounding prose (intro line → list →
+  // continuing prose, all one <td>) instead of its own separate block — matches GDocs'
+  // own visual layout. Attach to a plain body paragraph immediately before it; headline/
+  // quote-variant text keeps the list separate since embedding would inherit the wrong
+  // font-size/weight for the list items.
+  const isPlainBodyParagraph = (p: ComponentNode | undefined): p is Extract<ComponentNode, { kind: "paragraph" }> =>
+    p?.kind === "paragraph" && p.props.size === "body" && !p.props.variant;
+
+  if (comp.kind === "list" && isPlainBodyParagraph(last)) {
+    const attached = last.props.lists ?? [];
+    const atLine = last.props.lines.length;
+    const prev = attached[attached.length - 1];
+    // Each <li> arrives as its own single-item "list" node (classifyFlow processes one
+    // StructuralNode at a time) — if the previous attached list is at the same position
+    // and ordered-ness, this is another item from the SAME <ul>/<ol>: append, don't
+    // start a second list at the same spot.
+    const lists = prev && prev.atLine === atLine && prev.props.ordered === comp.props.ordered
+      ? [...attached.slice(0, -1), { atLine, props: { ...prev.props, items: [...prev.props.items, ...comp.props.items] } }]
+      : [...attached, { atLine, props: comp.props }];
+    result[result.length - 1] = { ...last, props: { ...last.props, lists } };
+    return;
+  }
+
+  // Mirror of the above for a list that comes FIRST, followed by prose — the paragraph
+  // absorbs the preceding list at its own start (atLine 0).
+  if (comp.kind === "paragraph" && comp.props.size === "body" && !comp.props.variant && last?.kind === "list") {
+    result[result.length - 1] = {
+      kind: "paragraph",
+      props: { ...comp.props, lists: [{ atLine: 0, props: last.props }] },
+    };
+    return;
+  }
+
+  // Fallback: no adjacent paragraph to attach to (e.g. document starts with a <ul>, or
+  // the previous block is an image/table) — each <li> arrives as its own single-item
+  // "list" node; merge consecutive ones from the same <ul>/<ol> into one list instead of
+  // emitting a separate <ul> per item. Different ordered-ness (a <ul> immediately
+  // followed by an <ol>) stays two separate lists.
+  if (comp.kind === "list" && last?.kind === "list" && last.props.ordered === comp.props.ordered) {
+    result[result.length - 1] = {
+      kind: "list",
+      props: { items: [...last.props.items, ...comp.props.items], ordered: last.props.ordered },
+    };
+    return;
   }
 
   if (comp.kind === "recordRow" && last?.kind === "recordRow") {
