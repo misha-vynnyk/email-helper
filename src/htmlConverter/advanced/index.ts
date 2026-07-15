@@ -6,7 +6,7 @@ import { buildTemplates, templates as defaultTemplates } from "./config/template
 import type { TokensOverride } from "./config/tokens";
 import { mergeTokens,tokens } from "./config/tokens";
 import { classify } from "./detect/classify";
-import { fromDom } from "./ir/fromDom";
+import { fromDom, resetListGroupCounter } from "./ir/fromDom";
 import { normalize } from "./normalize";
 import { normalizeSymbols,preprocess } from "./preprocess";
 import { renderAll } from "./render/toEmailHtml";
@@ -43,6 +43,9 @@ export function convertAdvancedDetailed(
 
   const html        = preprocess(rawHtml, oneBrSymbol);
   const bodyEl      = normalize(html);
+  // fromDom's listGroupId counter is module-level (recursion would reset a local one) —
+  // reset it here, the single entry point into one document's fromDom-recursion tree.
+  resetListGroupCounter();
   const structural  = fromDom(bodyEl, tok.color.rootBackground, tok, warn);
   const components  = classify(structural, tok, warn);
   const rows        = renderAll(components, tmpl, tok);

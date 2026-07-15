@@ -9,7 +9,7 @@ export function classifyFlow(nodes: StructuralNode[], tok: Tokens = defaultToken
   const result: ComponentNode[] = [];
   for (const node of nodes) {
     if (node.type !== "p") continue;
-    const { lines, align, size, headingLevel, bg, border, accentPadX, paraBreaks, listItem, ordered, tightNext, tightBefore,
+    const { lines, align, size, headingLevel, bg, border, accentPadX, paraBreaks, listItem, ordered, listGroupId, tightNext, tightBefore,
       marginTopPt, marginBottomPt, gapBefore } = node;
     if (!lines.some(l => l.length > 0)) continue;
 
@@ -36,8 +36,10 @@ export function classifyFlow(nodes: StructuralNode[], tok: Tokens = defaultToken
     // Real <ul>/<li> (structurally certain, see Paragraph.listItem) → a "list"
     // ComponentNode, rendered as an actual <ul>/<ol> — pushMerged (classify.ts) merges
     // consecutive <li> items into one list, same convention as recordRow's table merge.
+    // items keeps each <li>'s own lines (not joinLinesWithSpace) — a multi-line <li>
+    // survives as <br>-joined lines instead of collapsing to one line with a space.
     if (listItem) {
-      result.push({ kind: "list", props: { items: [joinLinesWithSpace(lines)], ordered: ordered ?? false } });
+      result.push({ kind: "list", props: { items: [lines], ordered: ordered ?? false, listGroupId } });
       continue;
     }
 

@@ -1,6 +1,6 @@
 // Unit tests for ir/fromDom — covers paths not reached by e2e fixtures.
 import { tokens } from "../config/tokens";
-import { fromDom } from "../ir/fromDom";
+import { fromDom, resetListGroupCounter } from "../ir/fromDom";
 import type { Paragraph, TableNode } from "../ir/types";
 
 function parse(html: string): HTMLBodyElement {
@@ -225,6 +225,38 @@ describe("fromDom — OL list", () => {
     const ulNodes = nodes("<ul><li>item</li></ul>");
     expect((olNodes[0] as Paragraph).ordered).toBe(true);
     expect((ulNodes[0] as Paragraph).ordered).toBe(false);
+  });
+});
+
+// ── listGroupId — distinguishes adjacent but separate <ul>/<ol> ──────────────
+// Regression, Ітерація 9b (fix-advanced.md): without listGroupId, pushMerged's list-merge
+// (classify.ts) couldn't tell two adjacent <ul>s of the same ordered-ness apart from
+// consecutive <li>s of the SAME <ul> — they'd fuse into one continuous list/numbering.
+
+describe("fromDom — listGroupId", () => {
+  beforeEach(() => { resetListGroupCounter(); });
+
+  it("increments listGroupId for each separate <ul>/<ol>", () => {
+    const result = nodes("<ul><li>A</li></ul><ol><li>B</li></ol>");
+    const paragraphs = result.filter((n) => n.type === "p") as Paragraph[];
+    expect(paragraphs[0].listGroupId).toBe(1);
+    expect(paragraphs[1].listGroupId).toBe(2);
+  });
+
+  it("items within the SAME <ul> share one listGroupId", () => {
+    const result = nodes("<ul><li>A</li><li>B</li></ul>");
+    const paragraphs = result.filter((n) => n.type === "p") as Paragraph[];
+    expect(paragraphs[0].listGroupId).toBe(paragraphs[1].listGroupId);
+  });
+
+  // The counter is module-level, not a local `let` inside fromDom() — a local one would
+  // reset on the DIV recursion (fromDom calls itself for DIV/SECTION/... containers),
+  // giving both lists listGroupId=1 and re-introducing the exact bug this fix targets.
+  it("a list inside a <div> and an adjacent top-level list get DIFFERENT listGroupId", () => {
+    const result = nodes("<div><ul><li>Inside div</li></ul></div><ul><li>Top level</li></ul>");
+    const paragraphs = result.filter((n) => n.type === "p") as Paragraph[];
+    expect(paragraphs).toHaveLength(2);
+    expect(paragraphs[0].listGroupId).not.toBe(paragraphs[1].listGroupId);
   });
 });
 

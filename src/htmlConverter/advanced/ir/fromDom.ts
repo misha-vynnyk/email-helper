@@ -377,6 +377,22 @@ function parseTable(el: Element, bg: string, tok: Tokens, warn?: WarnFn): TableN
   return { type: "table", rows, colWidths };
 }
 
+// ── List group tracking ─────────────────────────────────────────────────────
+// Module-level (not a local `let` inside fromDom, which would reset on every recursive
+// call — fromDom recurses into itself for DIV/BLOCKQUOTE/SECTION/... containers and
+// parseTable calls it once per cell) counter distinguishing two adjacent-but-separate
+// <ul>/<ol> of the same ordered-ness from consecutive items of the SAME list — see
+// Paragraph.listGroupId, consumed by pushMerged's list-merge (classify.ts).
+let listGroupCounter = 0;
+
+/** Reset before each top-level conversion (see convertAdvancedDetailed) so two documents
+ *  converted in the same session don't share numbering — harmless for the merge check
+ *  itself (only adjacent-within-one-document lists are ever compared), but avoids
+ *  needless cross-document state. */
+export function resetListGroupCounter(): void {
+  listGroupCounter = 0;
+}
+
 // ── Entry point ───────────────────────────────────────────────────────────────
 
 export function fromDom(
@@ -454,6 +470,8 @@ export function fromDom(
     }
 
     if (tag === "UL" || tag === "OL") {
+      listGroupCounter += 1;
+      const groupId = listGroupCounter;
       for (const li of Array.from(el.querySelectorAll(":scope > li"))) {
         const p = parseParagraph(li as Element, bg, tok);
         if (p) {
@@ -462,6 +480,7 @@ export function fromDom(
           // <ol> comes from the browser's own list-style, not a manual "N. " prefix.
           p.listItem = true;
           p.ordered = tag === "OL";
+          p.listGroupId = groupId;
           applyPending(p);
           nodes.push(p);
         }

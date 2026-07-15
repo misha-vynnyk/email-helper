@@ -35,6 +35,38 @@ function hasMeaningfulBorder(border: BorderSpec | undefined, tok: Tokens): boole
 // ── Cell content helpers ──────────────────────────────────────────────────────
 
 /**
+ * Numbers/bullets consecutive <li>-derived paragraphs (Paragraph.listItem) as plain text
+ * inside the flatteners below. A table cell is already flattened to text (same "flatten
+ * to text" contract as nested tables), so a real <ul> isn't reachable here — a manual
+ * "• "/"N. " prefix on the first run is the right depth of fix (see fix-advanced.md,
+ * Ітерація 9c). Threaded through one flatten pass; resets whenever listItem stops being
+ * true, or `ordered`/`listGroupId` changes (a different <ul>/<ol> restarts numbering).
+ */
+interface ListMarkerState {
+  active: boolean;
+  ordered: boolean;
+  groupId: number | undefined;
+  n: number;
+}
+
+function markListItem(child: Paragraph, state: ListMarkerState): Run[][] {
+  if (!child.listItem) {
+    state.active = false;
+    return child.lines;
+  }
+  const sameRun = state.active && state.ordered === (child.ordered ?? false) && state.groupId === child.listGroupId;
+  state.n = sameRun ? state.n + 1 : 1;
+  state.active = true;
+  state.ordered = child.ordered ?? false;
+  state.groupId = child.listGroupId;
+  if (child.lines.length === 0 || child.lines[0].length === 0) return child.lines;
+  const marker = state.ordered ? `${state.n}. ` : "• ";
+  const [firstLine, ...restLines] = child.lines;
+  const [firstRun, ...restRuns] = firstLine;
+  return [[{ ...firstRun, text: marker + firstRun.text }, ...restRuns], ...restLines];
+}
+
+/**
  * Core cell flattener: paragraph lines of a cell in document order, descending
  * into nested tables (whose layout is lost — only the text survives, reported
  * via `warn`). Also tracks which line indices start a new source paragraph so
@@ -49,6 +81,7 @@ function flattenLinesWithBreaks(cell: CellNode, tok: Tokens, warn?: WarnFn): { l
   const lines: Run[][] = [];
   const paraBreaks = new Set<number>();
   let prevP: Paragraph | null = null;
+  const listState: ListMarkerState = { active: false, ordered: false, groupId: undefined, n: 0 };
   const appendBlock = (blockLines: Run[][], blockBreaks: Set<number> | undefined, gap: boolean) => {
     if (blockLines.length === 0) return;
     if (lines.length > 0 && gap) paraBreaks.add(lines.length);
@@ -57,9 +90,10 @@ function flattenLinesWithBreaks(cell: CellNode, tok: Tokens, warn?: WarnFn): { l
   };
   for (const child of cell.children) {
     if (child.type === "p") {
-      appendBlock(child.lines, child.paraBreaks, isGapBoundary(prevP ?? {}, child, tok));
+      appendBlock(markListItem(child, listState), child.paraBreaks, isGapBoundary(prevP ?? {}, child, tok));
       prevP = child;
     } else if (child.type === "table") {
+      listState.active = false; // a nested table interrupts a list run — next <li> restarts
       warn?.(WARN.nestedTableFlattened);
       for (const row of child.rows) {
         for (const nested of row.cells) {
@@ -117,6 +151,7 @@ function flattenCellForAlertBand(
   const bands: { atLine: number; props: AlertBandProps }[] = [];
   let align: "left" | "center" | "right" | undefined;
   let prevP: Paragraph | null = null;
+  const listState: ListMarkerState = { active: false, ordered: false, groupId: undefined, n: 0 };
   const appendBlock = (blockLines: Run[][], blockBreaks: Set<number> | undefined, gap: boolean) => {
     if (blockLines.length === 0) return;
     if (lines.length > 0 && gap) paraBreaks.add(lines.length);
@@ -126,9 +161,10 @@ function flattenCellForAlertBand(
   for (const child of cell.children) {
     if (child.type === "p") {
       if (align === undefined && child.align) align = child.align;
-      appendBlock(child.lines, child.paraBreaks, isGapBoundary(prevP ?? {}, child, tok));
+      appendBlock(markListItem(child, listState), child.paraBreaks, isGapBoundary(prevP ?? {}, child, tok));
       prevP = child;
     } else if (child.type === "table") {
+      listState.active = false; // a nested table interrupts a list run — next <li> restarts
       const nestedComponent = classifyTable(child, tok, warn, classifyChildren);
       if (nestedComponent?.kind === "buttonBand") {
         buttons.push({ atLine: lines.length, props: nestedComponent.props });
