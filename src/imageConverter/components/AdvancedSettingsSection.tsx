@@ -43,8 +43,8 @@ export default function AdvancedSettingsSection({ settings, updateSettings }: Ad
         </div>
 
         {settings.resize.mode === "preset" && (
-          <div className='grid grid-cols-3 gap-2 animate-in slide-in-from-top-2 duration-300'>
-            {[1920, 1200, 800].map((size) => (
+          <div className='grid grid-cols-4 gap-2 animate-in slide-in-from-top-2 duration-300'>
+            {[1000, 600, 464, 364].map((size) => (
               <button
                 key={size}
                 onClick={() => updateSettings({ resize: { ...settings.resize, preset: size } })}
