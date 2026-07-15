@@ -47,7 +47,14 @@ export function classifyFlow(nodes: StructuralNode[], tok: Tokens = defaultToken
     // (a plain <p> can't), so this becomes a "calloutLeft" ComponentNode — pushMerged
     // (classify.ts) merges consecutive same-accent paragraphs into one box, same boundary
     // rule (isGapBoundary/§) as plain paragraph merging.
-    const isLeftAccentOnly = Boolean(border?.left) && !border?.top && !border?.right && !border?.bottom;
+    // size === "body" only: CalloutLeftProps has no size/align field, so a heading
+    // (h1/h2 "headline", h6 "small") with border-left routed here would silently lose its
+    // size/alignment, rendering as 14px left-aligned body text — see fix-advanced.md,
+    // Ітерація 8. A heading with border-left falls through to the plain "paragraph" case
+    // below instead — the border itself is dropped there (ParagraphProps carries no border),
+    // same as before border-left support existed for flow paragraphs.
+    const isLeftAccentOnly = size === "body" &&
+      Boolean(border?.left) && !border?.top && !border?.right && !border?.bottom;
     if (isLeftAccentOnly) {
       result.push({
         kind: "calloutLeft",

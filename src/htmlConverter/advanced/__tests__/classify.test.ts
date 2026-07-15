@@ -500,6 +500,24 @@ describe("classify — paragraph's own border-left → calloutLeft", () => {
     expect(result[0].kind).toBe("calloutLeft");
     expect(result[1].kind).toBe("calloutLeft");
   });
+
+  // Regression, Ітерація 8 (fix-advanced.md): CalloutLeftProps has no size/align field, so a
+  // heading with border-left used to silently lose its size/alignment (rendered as plain 14px
+  // left-aligned body text) by routing into calloutLeft like any other bordered paragraph.
+  it("a headline (size !== body) with border-left stays a headline paragraph, not calloutLeft", () => {
+    const result = classify([makePara("Big centered heading", "headline", "center", { border: accent })]);
+    expect(result).toHaveLength(1);
+    expect(result[0].kind).toBe("paragraph");
+    const props = result[0].props as Record<string, unknown>;
+    expect(props["size"]).toBe("headline");
+    expect(props["align"]).toBe("center");
+  });
+
+  it("small-size (h6) text with border-left also stays a plain paragraph, not calloutLeft", () => {
+    const result = classify([makePara("Fine print", "small", "left", { border: accent })]);
+    expect(result[0].kind).toBe("paragraph");
+    expect((result[0].props as Record<string, unknown>)["size"]).toBe("small");
+  });
 });
 
 // ── calloutLeft merge (table-cell path) preserves nested buttons/bands ───────
