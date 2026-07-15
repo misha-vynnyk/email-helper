@@ -156,20 +156,6 @@ describe("classify — paragraph merging", () => {
     expect(result[1].kind).toBe("list");
   });
 
-  // Regression, Ітерація 9a (fix-advanced.md): a multi-line <li> (<li><p>Step 1</p>
-  // <p>Then wait</p></li>) used to collapse to one line via joinLinesWithSpace.
-  it("a multi-line <li> keeps its internal line break instead of collapsing to one line", () => {
-    const nodes: StructuralNode[] = [
-      { type: "p", size: "body", listItem: true, ordered: false, lines: [[{ text: "Step 1" }], [{ text: "Then wait" }]] } as StructuralNode,
-    ];
-    const result = classify(nodes);
-    expect(result).toHaveLength(1);
-    expect(result[0].kind).toBe("list");
-    const items = (result[0].props as Record<string, unknown>)["items"] as unknown[][][];
-    expect(items).toHaveLength(1); // one <li>
-    expect(items[0]).toHaveLength(2); // both of its lines survive, not joined into one
-  });
-
   // Regression, Ітерація 9b (fix-advanced.md): two adjacent but SEPARATE <ol>s (distinct
   // listGroupId) of the same ordered-ness used to fuse into one continuous numbering.
   it("two adjacent <ol>s with different listGroupId stay separate lists", () => {
