@@ -158,10 +158,7 @@ export interface ParagraphProps {
 /** A real <ul>/<ol> — structurally certain from the source (see Paragraph.listItem) —
  *  rendered as an actual list instead of bullet-prefixed flowing text. */
 export interface ListProps {
-  // One entry per <li>; each item keeps its own lines (Run[][]) instead of being flattened
-  // to a single joined line — a multi-line <li> (<li><p>Step 1</p><p>Then wait</p></li>)
-  // survives as two lines joined by <br>, not collapsed with a space.
-  items: Run[][][];
+  items: Run[][];  // one entry per <li>, flattened to a single run line (joinLinesWithSpace)
   ordered: boolean;
   /** Copied from Paragraph.listGroupId — pushMerged (classify.ts) compares it alongside
    *  `ordered` so two adjacent-but-different <ul>/<ol> of matching ordered-ness don't get

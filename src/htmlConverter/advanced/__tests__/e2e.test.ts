@@ -748,13 +748,6 @@ describe("convertAdvanced — real <ul> list", () => {
     expect(html).toContain("<li>Second</li>");
   });
 
-  // Regression, Ітерація 9a (fix-advanced.md): a multi-line <li> (an internal <br> inside
-  // its single <p> — GDocs' actual markup for a soft line break within one bullet) used to
-  // collapse to one line (joinLinesWithSpace, glued with a space) — the <br> must survive.
-  it("a multi-line <li> keeps a <br> between its lines instead of collapsing to one line", () => {
-    const html = convertAdvanced("<ul><li><p>Step 1<br>Then wait</p></li></ul>");
-    expect(html).toMatch(/<li>Step 1\s*<br>\s*Then wait<\/li>/);
-  });
 });
 
 // Regression, Ітерація 9b (fix-advanced.md): two adjacent but SEPARATE <ul>s used to fuse

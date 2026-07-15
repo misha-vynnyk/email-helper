@@ -316,7 +316,7 @@ describe("renderNode — calloutBox", () => {
       props: {
         lines: [[{ text: "Intro:" }]],
         size: "body",
-        lists: [{ atLine: 1, props: { items: [[[{ text: "Item A" }]], [[{ text: "Item B" }]]], ordered: false } }],
+        lists: [{ atLine: 1, props: { items: [[{ text: "Item A" }], [{ text: "Item B" }]], ordered: false } }],
       },
     }]);
     const result = renderNode(node, tmpl, tokens);
