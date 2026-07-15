@@ -294,18 +294,25 @@ function classifySingleCell(
     const { lines, paraBreaks } = flattenLinesWithBreaks(cell, tok, warn);
     return {
       kind: "textDivider",
-      props: { lines, paraBreaks, align: cellAlign(cell), ruleColor: border!.bottom!.color },
+      props: { lines, paraBreaks, align: cellAlign(cell), ruleColor: border!.bottom!.color, ruleStyle: border!.bottom!.style },
     };
   }
 
   // Pure border-left accent (+ optional light bg) → calloutLeft, using the
-  // document's own border color instead of the house default.
+  // document's own border color instead of the house default. Uses the same
+  // flattener as alertBand (flattenCellForAlertBand) so a nested button/band table —
+  // e.g. a CTA inside a left-accent quote box — survives as a real button instead of
+  // being flattened to plain text (see flattenLinesWithBreaks' nestedTableFlattened path).
   const isLeftAccentOnly = Boolean(border?.left) && !border?.top && !border?.right && !border?.bottom;
   if (isLeftAccentOnly) {
-    const { lines, paraBreaks } = flattenLinesWithBreaks(cell, tok, warn);
+    const { lines, paraBreaks, buttons, bands } = flattenCellForAlertBand(cell, tok, warn, classifyChildren);
     return {
       kind: "calloutLeft",
-      props: { lines, paraBreaks, bg, accentColor: border!.left!.color, accentWidthPx: border!.left!.widthPx },
+      props: {
+        lines, paraBreaks, bg, accentColor: border!.left!.color, accentWidthPx: border!.left!.widthPx, accentStyle: border!.left!.style,
+        buttons: buttons.length ? buttons : undefined,
+        bands: bands.length ? bands : undefined,
+      },
     };
   }
 

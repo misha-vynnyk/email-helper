@@ -171,6 +171,25 @@ function lengthToPt(value: string | undefined): number | undefined {
   return value.trim().endsWith("px") ? n * (72 / 96) : n;
 }
 
+// pt → px, quantized to a whole number and clamped to a sane indent range (guards against
+// a stray huge value blowing up the layout, same reasoning as BORDER_WIDTH_MAX_PX).
+const ACCENT_PAD_MAX_PX = 100;
+function ptToIndentPx(pt: number): number {
+  return Math.min(ACCENT_PAD_MAX_PX, Math.max(0, Math.round(pt * (96 / 72))));
+}
+
+// The left value out of a CSS box shorthand ("padding"/"margin": 1-4 space-separated
+// lengths — 1=all sides, 2=[vert,horiz], 3=[top,horiz,bottom], 4=[top,right,bottom,left]).
+// GDocs' quote convention often declares `padding: 0pt 0pt 4pt 12pt;` as one shorthand
+// rather than a separate padding-left, so the longhand lookup alone would miss it.
+function shorthandLeftPt(value: string | undefined): number | undefined {
+  if (!value) return undefined;
+  const parts = value.trim().split(/\s+/);
+  if (parts.length === 0) return undefined;
+  const leftPart = parts.length >= 4 ? parts[3] : parts.length >= 2 ? parts[1] : parts[0];
+  return lengthToPt(leftPart);
+}
+
 function parseParagraph(el: Element, bg: string, tok: Tokens): Paragraph | null {
   const tag = el.tagName.toUpperCase();
   const style = parseStyle(el.getAttribute("style") ?? "");
@@ -205,8 +224,21 @@ function parseParagraph(el: Element, bg: string, tok: Tokens): Paragraph | null 
   }
 
   if (lines.length === 0) return null;
+  // Own background-color (e.g. an h5 button styled via bg on the <h5> itself instead of a
+  // wrapping colored <td>) — same parse+canonicalize as cell bg in parseTable.
+  const rawBg = style["background-color"];
+  const ownBg = rawBg ? canonicalizeBg(rawBg, tok) ?? undefined : undefined;
+  // Own border (e.g. a quote/callout <p> with border-left, not a wrapping colored <td>) —
+  // same parser as cell borders in parseTable.
+  const ownBorder = parseBorderSpec(style, tok);
+  // Gap between that border and the text — padding-left (longhand or the `padding`
+  // shorthand) is the semantically correct source (space between the border and the
+  // content); margin-left is the fallback for when only that was declared (GDocs' quote
+  // convention often sets both identically anyway).
+  const leftIndentPt = lengthToPt(style["padding-left"]) ?? shorthandLeftPt(style["padding"]) ?? lengthToPt(style["margin-left"]);
+  const accentPadX = leftIndentPt !== undefined ? ptToIndentPx(leftIndentPt) : undefined;
   return {
-    type: "p", align, size, headingLevel, lines,
+    type: "p", align, size, headingLevel, bg: ownBg, border: ownBorder, accentPadX, lines,
     paraBreaks: paraBreaks.size ? paraBreaks : undefined,
     tightNext: tightNext || undefined,
     tightBefore: tightBefore || undefined,
@@ -285,6 +317,8 @@ function parseBorderSide(value: string | undefined, tok: Tokens): BorderSide | u
     const px = widthMatch[2] === "pt" ? width * (96 / 72) : width;
     side.widthPx = Math.min(BORDER_WIDTH_MAX_PX, Math.max(1, Math.round(px)));
   }
+  if (/\bdashed\b/.test(v)) side.style = "dashed";
+  else if (/\bdotted\b/.test(v)) side.style = "dotted";
   return side;
 }
 
@@ -420,16 +454,14 @@ export function fromDom(
     }
 
     if (tag === "UL" || tag === "OL") {
-      let idx = 1;
       for (const li of Array.from(el.querySelectorAll(":scope > li"))) {
         const p = parseParagraph(li as Element, bg, tok);
         if (p) {
-          // parseParagraph never emits empty lines, so lines[0] is real content
-          const prefix: Run = { text: tag === "UL" ? "• " : `${idx++}. ` };
-          p.lines = [[prefix, ...(p.lines[0] ?? [])], ...p.lines.slice(1)];
-          // Adjacent list items always merge with a single <br>, never a paragraph gap —
-          // structurally certain here (we're inside <ul>/<ol>), no heuristic needed.
+          // listItem routes this to classifyFlow's "list" ComponentNode path — a real
+          // <ul>/<ol> in the output, not bullet-prefixed flowing text. Numbering for
+          // <ol> comes from the browser's own list-style, not a manual "N. " prefix.
           p.listItem = true;
+          p.ordered = tag === "OL";
           applyPending(p);
           nodes.push(p);
         }

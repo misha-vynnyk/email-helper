@@ -19,10 +19,19 @@ export interface Paragraph {
   size: "body" | "small" | "headline";   // role, not px (§6)
   headingLevel?: number;     // original H1–H6 tag level; used by classify to map to components
   accent?: boolean;          // bold accent line → template prepends ▸ (tokens.accentBullet)
+  bg?: string;               // background-color declared directly on this element (e.g. an h5
+                              // button colored via its own style, not a wrapping colored <td>)
+  border?: BorderSpec;       // border declared directly on this element (e.g. a quote/callout
+                              // <p> with border-left, not a wrapping colored <td>) — a left-only
+                              // border routes to "calloutLeft" in classifyFlow instead of "paragraph"
+  accentPadX?: number;       // gap between a border-left and the text (padding-left, falling
+                              // back to margin-left), quantized to px — see CalloutLeftProps.accentPadX
   lines: Run[][];            // each line = array of runs; lines joined with <br>
   paraBreaks?: Set<number>;  // line indices preceded by an author-typed blank line
                               // (<br><br> inside one <p>) — rendered as <br><br>
-  listItem?: boolean;        // true for a <li>-derived paragraph (real <ul>/<ol>)
+  listItem?: boolean;        // true for a <li>-derived paragraph (real <ul>/<ol>) — routes to
+                              // the "list" ComponentNode in classifyFlow instead of "paragraph"
+  ordered?: boolean;         // true when the source list was <ol> (numbered) rather than <ul>
   tightNext?: boolean;       // true if this paragraph's raw HTML ended with a user-typed
                               // § (ONE_BR) marker — signals "no gap before whatever follows",
                               // same tightness class as center-align/listItem in pushMerged
@@ -55,6 +64,9 @@ export interface BorderSide {
    *  Quantizing (instead of ignoring width entirely) keeps the author's thin-line vs
    *  heavy-bar intent while avoiding fractional pt values email clients render unreliably. */
   widthPx?: number;
+  /** Author-declared border-style; absent (→ "solid") is the overwhelmingly common case,
+   *  so only the two visibly-distinct alternatives are tracked. */
+  style?: "dashed" | "dotted";
 }
 
 export interface BorderSpec {
@@ -106,7 +118,14 @@ export interface ParagraphProps {
   align?: Align;
   variant?: "quote";           // h4 marker: extra horizontal indent
   paraBreaks?: Set<number>;    // line indices rendered as <br><br>
-  listItem?: boolean;
+  /**
+   * A real <ul>/<ol> (see ListProps) that sits between this paragraph's flowing lines —
+   * e.g. "intro line" → list → "continuing prose", all one visual block/<td>, matching
+   * GDocs' own layout instead of splitting into separate blocks. Same `atLine` convention
+   * as AlertBandProps.buttons: the list renders before `lines[atLine]`, doesn't occupy a
+   * lines slot itself.
+   */
+  lists?: { atLine: number; props: ListProps }[];
   tightNext?: boolean;         // ends with § — next merged paragraph gets no gap before it
   /**
    * Two roles, same field: (1) INPUT, propagated straight from the source Paragraph
@@ -130,6 +149,13 @@ export interface ParagraphProps {
   /** statsGrid cell paragraphs only: cell background + border color */
   bg?: string;
   borderColor?: string;
+}
+
+/** A real <ul>/<ol> — structurally certain from the source (see Paragraph.listItem) —
+ *  rendered as an actual list instead of bullet-prefixed flowing text. */
+export interface ListProps {
+  items: Run[][];  // one entry per <li>, flattened to a single run line (joinLinesWithSpace)
+  ordered: boolean;
 }
 
 export interface AlertBandProps {
@@ -168,8 +194,30 @@ export interface CalloutLeftProps {
   accentColor: string;
   /** Author-declared left-border width (see BorderSide.widthPx); token fallback when absent. */
   accentWidthPx?: number;
+  /** Author-declared left-border style (see BorderSide.style); "solid" when absent. */
+  accentStyle?: "dashed" | "dotted";
+  /** Author-declared gap between the accent line and the text (padding-left, falling back
+   *  to margin-left — GDocs' quote convention often declares both identically), quantized
+   *  to whole px. tok.layout.calloutPadX is the fallback when the source declared neither. */
+  accentPadX?: number;
   paraBreaks?: Set<number>;
   bg?: string;
+  /** Nested tables that resolve to a real button — same convention as AlertBandProps.buttons,
+   *  so a CTA inside a left-accent quote box survives instead of being flattened to text. */
+  buttons?: { atLine: number; props: ButtonBandProps }[];
+  /** Nested tables that resolve to their own colored band — same convention as AlertBandProps.bands. */
+  bands?: { atLine: number; props: AlertBandProps }[];
+  /**
+   * Input-only merge signals for consecutive <p>-with-border-left paragraphs (see
+   * Paragraph.border) — consumed by pushMerged's calloutLeft merge case (same boundary
+   * rule as plain paragraphs, isGapBoundary), never read at render time. See ParagraphProps
+   * for semantics of each field.
+   */
+  tightNext?: boolean;
+  tightBefore?: boolean;
+  marginTopPt?: number;
+  marginBottomPt?: number;
+  gapBefore?: boolean;
 }
 
 export interface CalloutBoxProps {
@@ -182,6 +230,8 @@ export interface TextDividerProps {
   align?: Align;
   paraBreaks?: Set<number>;
   ruleColor: string;
+  /** Author-declared rule style (see BorderSide.style); "solid" when absent. */
+  ruleStyle?: "dashed" | "dotted";
 }
 
 export interface StatsGridProps {
@@ -230,6 +280,7 @@ export interface SpacerProps {
 
 export type ComponentNode =
   | { kind: "paragraph"; props: ParagraphProps }
+  | { kind: "list"; props: ListProps }
   | { kind: "alertBand"; props: AlertBandProps }
   | { kind: "buttonBand"; props: ButtonBandProps }
   | { kind: "calloutLeft"; props: CalloutLeftProps }

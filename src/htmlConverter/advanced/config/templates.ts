@@ -23,6 +23,10 @@ export interface ParagraphOpts {
   tightBefore?: boolean;
 }
 
+export interface ListOpts {
+  ordered: boolean;
+}
+
 export interface AlertBandOpts {
   bg: string;
   /** Cell border from the source document (e.g. a white outline on a dark CTA) */
@@ -60,17 +64,35 @@ export interface CalloutOpts {
   accentColor: string;
   /** Author-declared left-border width in px; tok.layout.calloutAccentPx when absent. */
   accentWidthPx?: number;
+  /** Author-declared left-border style; "solid" when absent. */
+  accentStyle?: "dashed" | "dotted";
+  /** Author-declared gap between the accent and the text; tok.layout.calloutPadX when absent. */
+  accentPadX?: number;
   bg?: string;
+  /** Present when the source cell has nested h5-button(s)/band(s) — same convention as
+   *  AlertBandOpts.segments — rendered as stacked rows instead of the plain innerHtml. */
+  segments?: AlertBandSegment[];
 }
 
 export interface CalloutBoxOpts {
   border: BorderSpec;
   bg?: string;
+  /**
+   * Present when the box has exactly one plain-text (body, no variant) paragraph child —
+   * the common case (a bordered note/callout, no nested button/table). Skips the
+   * children-rows wrapper table entirely: one <td> carries both the horizontal inset and
+   * the paragraph's own vertical padding, instead of nesting a second <table> just to hold
+   * a single row. Any other shape (nested button, image, multiple children) still goes
+   * through `childrenHtml` so F10-style nested CTAs keep working.
+   */
+  innerHtml?: string;
 }
 
 export interface TextDividerOpts {
   align?: "left" | "center" | "right";
   ruleColor: string;
+  /** Author-declared rule style; "solid" when absent. */
+  ruleStyle?: "dashed" | "dotted";
 }
 
 export interface GridCell {
@@ -175,7 +197,10 @@ ${indentHtml(innerHtml, 6)}
 
 /** Per-side `border-<side>:<width>px solid <color>;` — only sides present in `border` are
  *  drawn. Each side's author-declared width (BorderSide.widthPx) wins; `widthPx`/token is
- *  the fallback for sides whose source declaration had no width. */
+ *  the fallback for sides whose source declaration had no width. When all four sides are
+ *  present and visually identical (same effective width/style/color — a plain frame, the
+ *  common case), collapses to the single `border:` shorthand instead of four near-duplicate
+ *  declarations. */
 export function borderSpecToStyle(border: BorderSpec | undefined, tok: Tokens = defaultTokens, widthPx?: number): string {
   if (!border) return "";
   const bw = widthPx ?? tok.layout.calloutBoxBorderPx;
@@ -183,9 +208,16 @@ export function borderSpecToStyle(border: BorderSpec | undefined, tok: Tokens = 
     ["top", "border-top"], ["right", "border-right"],
     ["bottom", "border-bottom"], ["left", "border-left"],
   ];
-  return sides
-    .filter(([key]) => border[key])
-    .map(([key, prop]) => `${prop}:${border[key]!.widthPx ?? bw}px solid ${border[key]!.color};`)
+  const present = sides.filter(([key]) => border[key]);
+  const sideCss = (key: keyof BorderSpec) => {
+    const s = border[key]!;
+    return `${s.widthPx ?? bw}px ${s.style ?? "solid"} ${s.color}`;
+  };
+  if (present.length === 4 && present.every(([key]) => sideCss(key) === sideCss(present[0][0]))) {
+    return `border:${sideCss(present[0][0])};`;
+  }
+  return present
+    .map(([key, prop]) => `${prop}:${sideCss(key)};`)
     .join("");
 }
 
@@ -210,6 +242,50 @@ ${indentHtml(label, 8)}
     </td>
   </tr>
 </table>`;
+}
+
+/**
+ * One <tr> per segment — shared by alertBand and calloutLeft (both can hold a nested
+ * button/band table; see AlertBandOpts.segments). A real button gets its own <td bgcolor>
+ * row instead of a bare <a> interleaved with text, since clients that strip inline styles
+ * off anchors (Outlook's Word engine) would otherwise drop the background/padding/display.
+ */
+export function buildSegmentRows(
+  segments: AlertBandSegment[],
+  align: "left" | "center" | "right",
+  textColor: string,
+  tok: Tokens = defaultTokens,
+): string {
+  const p = tok.layout.blockPadY;
+  return segments.map(seg => {
+    if (seg.kind === "button") {
+      const btnTable = buttonTableHtml(seg.label, seg.href, seg.bg, tok, seg.radius, seg.border);
+      return `<tr>
+  <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
+${indentHtml(btnTable, 4)}
+  </td>
+</tr>`;
+    }
+    if (seg.kind === "band") {
+      const bandColor = isDarkBg(seg.bg, tok) ? tok.color.white : tok.color.black;
+      const bandStyle = baseStyle({ align: seg.align ?? "left", color: bandColor }, tok);
+      const bandBorder = borderSpecToStyle(seg.border, tok);
+      const bh = tok.layout.alertBandPadH;
+      const bv = tok.layout.alertBandPadV;
+      return `<tr>
+  <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
+    <table align="center" border="0" bgcolor="${seg.bg}" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;${bandBorder}" role="presentation">
+      <tr>
+        <td style="${bandStyle} padding-left:${bh}px;padding-right:${bh}px;padding-top:${bv}px;padding-bottom:${bv}px;">
+${indentHtml(seg.html, 10)}
+        </td>
+      </tr>
+    </table>
+  </td>
+</tr>`;
+    }
+    return blockRow(seg.html, { align, color: textColor }, tok);
+  }).join("\n");
 }
 
 // ── Factory ───────────────────────────────────────────────────────────────────
@@ -255,6 +331,25 @@ ${indentHtml(content, 14)}
       return blockRow(innerHtml, { align, fontSize, fontWeight, extraStyle, padTop, padBottom }, tok);
     },
 
+    // Real <ul>/<ol> — matches the simple converter's convention of keeping actual list
+    // markup (removeStylesFromLists/addBrAfterClosingP in the shared htmlUtils): no <br>
+    // between <li> items, the destination platform supplies its own list bullet/spacing
+    // styling, so only body font/color is inlined here (not a full reset).
+    list(itemsHtml: string, opts: ListOpts): string {
+      const { ordered } = opts;
+      const tag = ordered ? "ol" : "ul";
+      const style = baseStyle({}, tok);
+      const p = pad();
+      const indent = tok.layout.listIndentPx;
+      return `<tr>
+  <td style="padding-top:${p}px;padding-bottom:${p}px;">
+    <${tag} style="${style} margin:0;padding-left:${indent}px;">
+${indentHtml(itemsHtml, 6)}
+    </${tag}>
+  </td>
+</tr>`;
+    },
+
     alertBand(opts: AlertBandOpts): string {
       const { innerHtml, segments, bg, border, align = "left" } = opts;
       const textColor = isDarkBg(bg, tok) ? tok.color.white : tok.color.black;
@@ -265,40 +360,7 @@ ${indentHtml(content, 14)}
         // One <tr> per segment — a real button row (its own <td bgcolor>) instead of a
         // bare <a> interleaved with text; see AlertBandOpts.segments and buttonTableHtml.
         const sp = tok.layout.sidePadding;
-        const rowsHtml = segments.map(seg => {
-          if (seg.kind === "button") {
-            // wrapClass defaults to tok.classes.btnWrap — must land on the colored button
-            // <td> (bgcolor + radius), same convention as the standalone buttonBand case,
-            // not on this plain padding wrapper <td>.
-            const btnTable = buttonTableHtml(seg.label, seg.href, seg.bg, tok, seg.radius, seg.border);
-            return `<tr>
-  <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
-${indentHtml(btnTable, 4)}
-  </td>
-</tr>`;
-          }
-          if (seg.kind === "band") {
-            // Nested colored band — same inner-table markup as the plain (non-segment)
-            // alertBand below, so the inner bg/border survive as their own row.
-            const bandColor = isDarkBg(seg.bg, tok) ? tok.color.white : tok.color.black;
-            const bandStyle = baseStyle({ align: seg.align ?? "left", color: bandColor }, tok);
-            const bandBorder = borderSpecToStyle(seg.border, tok);
-            const bh = tok.layout.alertBandPadH;
-            const bv = tok.layout.alertBandPadV;
-            return `<tr>
-  <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
-    <table align="center" border="0" bgcolor="${seg.bg}" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;${bandBorder}" role="presentation">
-      <tr>
-        <td style="${bandStyle} padding-left:${bh}px;padding-right:${bh}px;padding-top:${bv}px;padding-bottom:${bv}px;">
-${indentHtml(seg.html, 10)}
-        </td>
-      </tr>
-    </table>
-  </td>
-</tr>`;
-          }
-          return blockRow(seg.html, { align, color: textColor }, tok);
-        }).join("\n");
+        const rowsHtml = buildSegmentRows(segments, align, textColor, tok);
         return `<tr>
   <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
     <table align="center" border="0" bgcolor="${bg}" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;${borderStyle}" role="presentation">
@@ -331,49 +393,79 @@ ${indentHtml(innerHtml!, 10)}
     },
 
     calloutLeft(innerHtml: string, opts: CalloutOpts): string {
-      const { accentColor, bg } = opts;
+      const { accentColor, bg, segments } = opts;
       const style = baseStyle({}, tok);
       const p = pad();
-      const px = tok.layout.calloutPadX;
+      const px = opts.accentPadX ?? tok.layout.calloutPadX;
       const accent = opts.accentWidthPx ?? tok.layout.calloutAccentPx;
+      const accentStyle = opts.accentStyle ?? "solid";
       const bgAttr = bg ? ` bgcolor="${bg}"` : "";
       const bgStyle = bg ? `background-color:${bg};` : "";
-      return `<tr>
+      const wrapOpen = `<tr>
   <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
-    <table align="center" border="0"${bgAttr} cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;${bgStyle}border-left:${accent}px solid ${accentColor};" role="presentation">
-      <tr>
+    <table align="center" border="0"${bgAttr} cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;${bgStyle}border-left:${accent}px ${accentStyle} ${accentColor};" role="presentation">
+      <tr>`;
+      const wrapClose = `      </tr>
+    </table>
+  </td>
+</tr>`;
+
+      // A nested button/band table (see CalloutLeftProps.buttons/bands) can't share the
+      // plain flowing-text <td> below — same reasoning as alertBand's segments branch:
+      // a real button needs its own <td bgcolor> row to survive Outlook's Word engine.
+      if (segments) {
+        return `${wrapOpen}
+        <td align="left" style="padding-left:${px}px;padding-right:${px}px;">
+          <table align="center" border="0" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;" role="presentation">
+${indentHtml(buildSegmentRows(segments, "left", tok.color.black, tok), 12)}
+          </table>
+        </td>
+${wrapClose}`;
+      }
+
+      return `${wrapOpen}
         <td align="left"
           style="${style} padding-left:${px}px;padding-right:${px}px;padding-top:${p}px;padding-bottom:${p}px;">
 ${indentHtml(innerHtml, 10)}
         </td>
-      </tr>
-    </table>
-  </td>
-</tr>`;
+${wrapClose}`;
     },
 
     // Full/partial frame around recursively-rendered children (e.g. a bordered CTA box
     // that contains its own buttonBand) — only the sides present in `border` are drawn.
-    calloutBox(childrenHtml: string, opts: CalloutBoxOpts): string {
-      const { border, bg } = opts;
+    calloutBox(childrenHtml: string | undefined, opts: CalloutBoxOpts): string {
+      const { border, bg, innerHtml } = opts;
       const borderStyle = borderSpecToStyle(border, tok);
       const p = pad();
       const px = tok.layout.calloutPadX;
       const bgAttr = bg ? ` bgcolor="${bg}"` : "";
       const bgStyle = bg ? `background-color:${bg};` : "";
-      return `<tr>
+      const wrapOpen = `<tr>
   <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
     <table align="center" border="0"${bgAttr} cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;${bgStyle}${borderStyle}" role="presentation">
-      <tr>
-        <td style="padding-left:${px}px;padding-right:${px}px;">
-          <table border="0" cellspacing="0" cellpadding="0" width="100%" role="presentation" style="width:100%;">
-${indentHtml(childrenHtml, 12)}
-          </table>
-        </td>
-      </tr>
+      <tr>`;
+      const wrapClose = `      </tr>
     </table>
   </td>
 </tr>`;
+
+      if (innerHtml !== undefined) {
+        const style = baseStyle({}, tok);
+        return `${wrapOpen}
+        <td align="left"
+          style="${style} padding-top:${p}px;padding-bottom:${p}px;padding-left:${px}px;padding-right:${px}px;">
+${indentHtml(innerHtml, 10)}
+        </td>
+${wrapClose}`;
+      }
+
+      return `${wrapOpen}
+        <td style="padding-left:${px}px;padding-right:${px}px;">
+          <table border="0" cellspacing="0" cellpadding="0" width="100%" role="presentation" style="width:100%;">
+${indentHtml(childrenHtml!, 12)}
+          </table>
+        </td>
+${wrapClose}`;
     },
 
     // Plain flowing text (no box/padding) followed by a thin rule row — GDocs' 1×1
@@ -384,12 +476,12 @@ ${indentHtml(childrenHtml, 12)}
     // lines inside this <td>. border-bottom directly on a <td> renders reliably
     // in every major client, including Outlook's Word engine — no <hr> needed.
     textDivider(innerHtml: string, opts: TextDividerOpts): string {
-      const { align = "left", ruleColor } = opts;
+      const { align = "left", ruleColor, ruleStyle = "solid" } = opts;
       const textRow = blockRow(innerHtml, { align }, tok);
       const p = pad();
       return `${textRow}
 <tr>
-  <td height="1" style="font-size:1px;line-height:1px;border-bottom:1px solid ${ruleColor};padding-bottom:${p}px;">&#160;</td>
+  <td height="1" style="font-size:1px;line-height:1px;border-bottom:1px ${ruleStyle} ${ruleColor};padding-bottom:${p}px;">&#160;</td>
 </tr>`;
     },
 

@@ -382,7 +382,7 @@ exports[`convertAdvanced — tables fixture snapshot — default profile 1`] = `
                         </span>
                       </td>
                       <td align=\\"left\\" bgcolor=\\"#f4f4f0\\" width=\\"82%\\"
-                        style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding:6px 6px;border-top:1px solid #d6d2c4;border-right:1px solid #d6d2c4;border-bottom:1px solid #d6d2c4;border-left:1px solid #d6d2c4;\\">
+                        style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding:6px 6px;border:1px solid #d6d2c4;\\">
                         <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
                           Company B · New feature · <b style=\\"text-decoration:underline;color:#1b5e20;\\">5x better</b> than baseline
                         </span>
@@ -520,19 +520,11 @@ exports[`convertAdvanced — tickr-promo fixture snapshot — full document 1`] 
               </tr>
               <tr>
                 <td align=\\"center\\" style=\\"padding-top:14px;padding-bottom:14px;\\">
-                  <table align=\\"center\\" border=\\"0\\" bgcolor=\\"#fff7ed\\" cellspacing=\\"0\\" cellpadding=\\"0\\" width=\\"100%\\" style=\\"width:100%;max-width:100%;padding:0;margin:0;background-color:#fff7ed;border-top:1px solid #c2410c;border-right:1px solid #c2410c;border-bottom:1px solid #c2410c;border-left:1px solid #c2410c;\\" role=\\"presentation\\">
+                  <table align=\\"center\\" border=\\"0\\" bgcolor=\\"#fff7ed\\" cellspacing=\\"0\\" cellpadding=\\"0\\" width=\\"100%\\" style=\\"width:100%;max-width:100%;padding:0;margin:0;background-color:#fff7ed;border:1px solid #c2410c;\\" role=\\"presentation\\">
                     <tr>
-                      <td style=\\"padding-left:10px;padding-right:10px;\\">
-                        <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" width=\\"100%\\" role=\\"presentation\\" style=\\"width:100%;\\">
-                          <tr>
-                            <td align=\\"left\\"
-                              style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-top:14px;padding-bottom:14px;\\">
-                              <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
-                                <b style=\\"color:#c2410c;\\">EDITOR'S NOTE:</b> Mode's prior two rounds sold out entirely. With 59,095&#43; investors committed and a &#36;0.50 window that closes May 29, access may not remain available indefinitely.
-                              </span>
-                            </td>
-                          </tr>
-                        </table>
+                      <td align=\\"left\\"
+                        style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-top:14px;padding-bottom:14px;padding-left:10px;padding-right:10px;\\">
+                        <b style=\\"color:#c2410c;\\">EDITOR'S NOTE:</b> Mode's prior two rounds sold out entirely. With 59,095&#43; investors committed and a &#36;0.50 window that closes May 29, access may not remain available indefinitely.
                       </td>
                     </tr>
                   </table>
@@ -540,7 +532,7 @@ exports[`convertAdvanced — tickr-promo fixture snapshot — full document 1`] 
               </tr>
               <tr>
                 <td align=\\"center\\" style=\\"padding-top:14px;padding-bottom:14px;\\">
-                  <table align=\\"center\\" border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" width=\\"100%\\" style=\\"width:100%;max-width:100%;padding:0;margin:0;border-top:2px solid #000000;border-right:2px solid #000000;border-bottom:2px solid #000000;border-left:2px solid #000000;\\" role=\\"presentation\\">
+                  <table align=\\"center\\" border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" width=\\"100%\\" style=\\"width:100%;max-width:100%;padding:0;margin:0;border:2px solid #000000;\\" role=\\"presentation\\">
                     <tr>
                       <td style=\\"padding-left:10px;padding-right:10px;\\">
                         <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" width=\\"100%\\" role=\\"presentation\\" style=\\"width:100%;\\">

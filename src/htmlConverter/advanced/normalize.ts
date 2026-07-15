@@ -5,13 +5,13 @@ const ALWAYS_STRIP = new Set([
   "white-space", "vertical-align", "font-variant",
   "overflow", "overflow-wrap",
   "font-family", "font-size", "line-height",
-  "margin", "margin-left", "margin-right",
-  "padding", "padding-top", "padding-bottom", "padding-left", "padding-right",
+  "margin", "margin-right",
+  "padding-top", "padding-bottom", "padding-right",
   "border-collapse", "border-spacing",
 ]);
 // Document metrics are stripped — vertical rhythm and text sizes come exclusively from
-// the token system; the § marker is the author's channel for tight spacing. Two
-// deliberate exceptions:
+// the token system; the § marker is the author's channel for tight spacing. Deliberate
+// exceptions:
 //   - margin-top / margin-bottom are KEPT: fromDom reads them ONLY for the paragraph-
 //     boundary rule (ir/spacing.ts isGapBoundary) — prev margin-bottom + cur margin-top,
 //     both explicitly declared, summed and compared against the gapMarginThresholdPt
@@ -20,6 +20,11 @@ const ALWAYS_STRIP = new Set([
 //     the pairwise sum rule has no chain memory and can't cascade.
 //   - border / border-<side> are kept — fromDom reads their color (and declared
 //     width, quantized to whole px) for classification (§4) and box rendering.
+//   - padding-left / padding (shorthand) / margin-left are kept — fromDom reads the LEFT
+//     value ONLY, as the gap between a <p>'s own border-left and its text (a quote/callout
+//     convention declared directly on the paragraph, not a wrapping colored <td> — see
+//     CalloutLeftProps.accentPadX). padding-top/right/bottom stay stripped; nothing reads
+//     them, and the "padding" shorthand's other three values are ignored by that same reader.
 
 const STRIP_WHEN: Array<[string, string]> = [
   ["background-color", "transparent"],

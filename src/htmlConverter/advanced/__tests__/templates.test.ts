@@ -1,4 +1,4 @@
-import { baseStyle, blockRow,buildTemplates } from "../config/templates";
+import { baseStyle, blockRow,borderSpecToStyle,buildTemplates } from "../config/templates";
 import { mergeTokens,tokens } from "../config/tokens";
 import { profile as alphaoneProfile } from "../profiles/alphaone";
 import { profile as tttProfile } from "../profiles/ttt";
@@ -281,6 +281,88 @@ describe("buildTemplates — calloutLeft", () => {
     const html = tmpl.calloutLeft("x", { accentColor: "#aabbcc", bg: "#fff3cd" });
     expect(html).toContain("#fff3cd");
     expect(html).toContain('bgcolor="#fff3cd"');
+  });
+
+  it("renders a dashed accent when the source declared one", () => {
+    const html = tmpl.calloutLeft("x", { accentColor: "#aabbcc", accentStyle: "dashed" });
+    expect(html).toMatch(/border-left:\d+px dashed #aabbcc/);
+  });
+
+  it("uses the document's own accentPadX instead of the calloutPadX token when declared", () => {
+    const html = tmpl.calloutLeft("x", { accentColor: "#aabbcc", accentPadX: 16 });
+    expect(html).toContain("padding-left:16px;padding-right:16px;");
+    expect(html).not.toContain(`padding-left:${tokens.layout.calloutPadX}px`);
+  });
+
+  it("falls back to the calloutPadX token when the source declares no indent", () => {
+    const html = tmpl.calloutLeft("x", { accentColor: "#aabbcc" });
+    expect(html).toContain(`padding-left:${tokens.layout.calloutPadX}px;padding-right:${tokens.layout.calloutPadX}px;`);
+  });
+});
+
+// ── borderSpecToStyle ─────────────────────────────────────────────────────────
+
+describe("borderSpecToStyle", () => {
+  it("defaults to solid when a side declares no style", () => {
+    const css = borderSpecToStyle({ top: { color: "#000000" } }, tokens);
+    expect(css).toMatch(/border-top:\d+px solid #000000;/);
+  });
+
+  it("uses the side's declared dashed/dotted style independently per side", () => {
+    const css = borderSpecToStyle(
+      { top: { color: "#000000", style: "dashed" }, left: { color: "#ff0000", style: "dotted" } },
+      tokens,
+    );
+    expect(css).toMatch(/border-top:\d+px dashed #000000;/);
+    expect(css).toMatch(/border-left:\d+px dotted #ff0000;/);
+  });
+
+  // A plain frame — all four sides present and visually identical — collapses to the
+  // `border:` shorthand instead of 4 near-duplicate border-<side> declarations.
+  it("collapses to the `border:` shorthand when all four sides are identical", () => {
+    const side = { color: "#c2410c", widthPx: 2 };
+    const css = borderSpecToStyle({ top: side, right: side, bottom: side, left: side }, tokens);
+    expect(css).toBe("border:2px solid #c2410c;");
+  });
+
+  it("does NOT collapse when only three of four sides are present", () => {
+    const side = { color: "#c2410c", widthPx: 2 };
+    const css = borderSpecToStyle({ top: side, right: side, bottom: side }, tokens);
+    expect(css).not.toContain("border:");
+    expect(css).toContain("border-top:");
+    expect(css).toContain("border-right:");
+    expect(css).toContain("border-bottom:");
+  });
+
+  it("does NOT collapse when the four sides differ in color", () => {
+    const css = borderSpecToStyle(
+      { top: { color: "#000000" }, right: { color: "#000000" }, bottom: { color: "#000000" }, left: { color: "#ff0000" } },
+      tokens,
+    );
+    expect(css).not.toMatch(/^border:/);
+    expect(css).toContain("border-left:");
+  });
+
+  it("does NOT collapse when the four sides differ in width", () => {
+    const css = borderSpecToStyle(
+      {
+        top: { color: "#000000", widthPx: 1 }, right: { color: "#000000", widthPx: 1 },
+        bottom: { color: "#000000", widthPx: 1 }, left: { color: "#000000", widthPx: 3 },
+      },
+      tokens,
+    );
+    expect(css).not.toMatch(/^border:/);
+  });
+
+  it("does NOT collapse when the four sides differ in style (solid vs dashed)", () => {
+    const css = borderSpecToStyle(
+      {
+        top: { color: "#000000" }, right: { color: "#000000" },
+        bottom: { color: "#000000" }, left: { color: "#000000", style: "dashed" },
+      },
+      tokens,
+    );
+    expect(css).not.toMatch(/^border:/);
   });
 });
 

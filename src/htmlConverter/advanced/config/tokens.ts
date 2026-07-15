@@ -50,6 +50,7 @@ export interface Tokens {
     recordBorderPx: number;
     buttonSubtitlePadTop: number;
     gapMarginThresholdPt: number;
+    listIndentPx: number;
   };
   button: {
     radius: number;
@@ -133,6 +134,7 @@ export const tokens: Tokens = {
     // as tight lines; deliberate section spacing (14pt+) reads as a gap. Blank lines
     // (top-level <br>) and § override this in either direction.
     gapMarginThresholdPt: 10,
+    listIndentPx: 20,   // <ul>/<ol> left indent (matches quotePadX)
   },
   button: { radius: 10, height: 51, padding: "3px 5px", innerPadding: "9px 15px", target: "_blank", textDecoration: "none" },
   tags: { bold: "b", italic: "em", underline: "u", colorWrap: "span", blockWrap: "span" },

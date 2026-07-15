@@ -260,13 +260,17 @@ describe("convertAdvanced — tables fixture", () => {
 
     it("draws top+left on every cell, but bottom/right only on the closing row/column", () => {
       // 2 cols x 2 rows: top+left on all 4 cells; bottom only on the last row's 2 cells;
-      // right only on the last column's 2 cells. Any other count means a seam is either
-      // missing its border or doubled up.
+      // right only on the last column's 2 cells. The bottom-right corner cell has all 4
+      // sides present and identical, so borderSpecToStyle collapses it to the `border:`
+      // shorthand instead of 4 separate declarations — accounting for the -1 on each
+      // per-side count below and the +1 shorthand occurrence. Any other count means a
+      // seam is either missing its border or doubled up.
       const count = (needle: string) => html.split(needle).length - 1;
-      expect(count("border-top:1px solid #d6d2c4")).toBe(4);
-      expect(count("border-left:1px solid #d6d2c4")).toBe(4);
-      expect(count("border-bottom:1px solid #d6d2c4")).toBe(2);
-      expect(count("border-right:1px solid #d6d2c4")).toBe(2);
+      expect(count("border-top:1px solid #d6d2c4")).toBe(3);
+      expect(count("border-left:1px solid #d6d2c4")).toBe(3);
+      expect(count("border-bottom:1px solid #d6d2c4")).toBe(1);
+      expect(count("border-right:1px solid #d6d2c4")).toBe(1);
+      expect(count("border:1px solid #d6d2c4")).toBe(1);
     });
 
     it("puts bgcolor on each <td>, not redundantly on the <tr>", () => {
@@ -487,6 +491,38 @@ describe("convertAdvanced — GDocs button-in-table pattern", () => {
   });
 });
 
+// ── GDocs h5 button colored via its OWN background-color (no wrapping <td> bg) ──
+// A standalone h5 button where the author set background-color directly on the <h5>
+// itself, not on a surrounding colored table cell — a different real-world GDocs
+// pattern from "GDocs button-in-table pattern" above. Regression: flowBlock.ts used
+// to hardcode tok.color.button for every standalone h5, silently discarding this color.
+describe("convertAdvanced — GDocs h5 button with its own background-color", () => {
+  const h5OwnBg = `<h5 dir="ltr" style="line-height:1.2;text-align: center;background-color:#7b4fbf;margin-top:0pt;margin-bottom:5pt;padding:-7.5pt 0pt 0pt 0pt;"><span style="font-size:11pt;font-family:Arial,sans-serif;color:#666666;background-color:transparent;font-weight:400;font-style:normal;font-variant:normal;text-decoration:none;vertical-align:baseline;white-space:pre;white-space:pre-wrap;">Watch The Cherry Trick That Stops 3AM Wake-Ups &#8594;</span></h5>`;
+
+  it("produces no conversion warnings", () => {
+    const { warnings } = convertAdvancedDetailed(h5OwnBg);
+    expect(warnings).toEqual([]);
+  });
+
+  it("button uses the h5's own purple (#7b4fbf), not the house default green", () => {
+    const html = convertAdvanced(h5OwnBg);
+    expect(html).toContain("#7b4fbf");
+    expect(html).not.toContain("#28b628");
+  });
+
+  it("strips the span's grey artifact color, using white text on the dark purple bg", () => {
+    const html = convertAdvanced(h5OwnBg);
+    expect(html).toContain(`color:${tokens.color.white}`);
+    expect(html).not.toContain("#666666");
+  });
+
+  it("renders as a real buttonBand row with the placeholder href", () => {
+    const html = convertAdvanced(h5OwnBg);
+    expect(html).toContain(`href="${tokens.placeholderHref}"`);
+    expect(html).toContain("Watch The Cherry Trick");
+  });
+});
+
 // ── GDocs banner with a nested h5 button (dark alertBand + orange CTA) ──────
 // Real-world GDocs paste: a dark-green banner (paragraphs of text) with an
 // orange "Lock In Your $0.79 Allocation" button nested inside as its own 1x1
@@ -586,6 +622,133 @@ describe("convertAdvanced — GDocs banner with nested h5 button", () => {
 
   it("snapshot — full banner-with-button block", () => {
     expect(html).toMatchSnapshot();
+  });
+});
+
+// ── <p> with its own border-left (quote/callout convention, not a wrapping <td>) ──
+// GDocs sometimes puts border-left directly on a <p> (a "pull quote" line) instead of
+// wrapping it in a colored table cell. A border needs a table to give it real padding —
+// a plain <p> can't — so this must become a calloutLeft table, and consecutive same-accent
+// paragraphs must merge into ONE box, not a separate bordered block per line.
+describe("convertAdvanced — paragraph's own border-left (no wrapping <td>)", () => {
+  const threeAccentLines =
+    `<p style="border-left:solid #b71c1c 3pt;margin-top:0pt;margin-bottom:0pt;">` +
+    `<span style="font-weight:700;">Skipping SPCX at </span><span style="color:#b71c1c;font-weight:700;">$135</span></p>` +
+    `<p style="border-left:solid #b71c1c 3pt;margin-top:0pt;margin-bottom:0pt;">` +
+    `<span style="font-weight:700;">Loading one ticker ahead.</span></p>` +
+    `<p style="border-left:solid #b71c1c 3pt;margin-top:0pt;margin-bottom:0pt;">` +
+    `<span style="font-weight:700;">Releasing the name free.</span></p>`;
+
+  it("produces no conversion warnings", () => {
+    const { warnings } = convertAdvancedDetailed(threeAccentLines);
+    expect(warnings).toEqual([]);
+  });
+
+  it("renders ONE table with border-left using the document's own color/width, not three", () => {
+    const html = convertAdvanced(threeAccentLines);
+    expect((html.match(/border-left:4px solid #b71c1c;/g) ?? []).length).toBe(1);
+  });
+
+  it("keeps all three lines' text, each in its own <br>-separated line", () => {
+    const html = convertAdvanced(threeAccentLines);
+    expect(html).toContain("Skipping SPCX at");
+    expect(html).toContain("Loading one ticker ahead.");
+    expect(html).toContain("Releasing the name free.");
+  });
+
+  it("does not fall back to a plain paragraph (border must not be silently dropped)", () => {
+    const html = convertAdvanced(threeAccentLines);
+    expect(html).toContain("border-left:");
+  });
+
+  it("uses the document's own padding-left as the gap to text, not the calloutPadX token", () => {
+    const withIndent = `<p style="border-left:solid #b71c1c 3pt;margin-top:0pt;margin-bottom:0pt;padding:0pt 0pt 4pt 12pt;"><span style="font-weight:700;">Skipping SPCX at </span><span style="color:#b71c1c;font-weight:700;">$135</span></p>`;
+    const html = convertAdvanced(withIndent);
+    expect(html).toContain("padding-left:16px;padding-right:16px;"); // 12pt × 96/72 = 16px
+    expect(html).not.toContain(`padding-left:${tokens.layout.calloutPadX}px`);
+  });
+});
+
+// ── Real <ul>/<ol> lists ──────────────────────────────────────────────────────
+// GDocs' real <ul>/<li> markup renders as an actual list — matching the simple
+// converter's convention (removeStylesFromLists/addBrAfterClosingP in shared htmlUtils):
+// no manual bullet/number prefix, no <br> between items.
+
+describe("convertAdvanced — real <ul> list", () => {
+  const threeItemList = `<ul><li><p>Neuro-Protection: floods brain pathways.</p></li><li><p>Rapid Action: stabilizes focus.</p></li><li><p>Third-Party Verified: audited for purity.</p></li></ul>`;
+
+  it("produces no conversion warnings", () => {
+    const { warnings } = convertAdvancedDetailed(threeItemList);
+    expect(warnings).toEqual([]);
+  });
+
+  it("renders a real <ul> with 3 <li> items, not bullet-prefixed flowing text", () => {
+    const html = convertAdvanced(threeItemList);
+    expect(html).toContain("<ul");
+    expect((html.match(/<li>/g) ?? []).length).toBe(3);
+    expect(html).not.toContain("•");
+  });
+
+  it("keeps each item's own run formatting inside its <li>, unprefixed", () => {
+    const html = convertAdvanced(threeItemList);
+    expect(html).toContain("<li>Neuro-Protection: floods brain pathways.</li>");
+  });
+
+  it("<ol> renders as a real ordered list, no manual '1. '/'2. ' prefix on item text", () => {
+    const html = convertAdvanced("<ol><li><p>First</p></li><li><p>Second</p></li></ol>");
+    expect(html).toContain("<ol");
+    expect((html.match(/<li>/g) ?? []).length).toBe(2);
+    expect(html).toContain("<li>First</li>");
+    expect(html).toContain("<li>Second</li>");
+  });
+});
+
+// A list embeds inline with the surrounding prose (intro line → list → continuing prose,
+// all one <td>) instead of becoming its own separate block — matches GDocs' own layout.
+describe("convertAdvanced — list embedded inline with surrounding prose", () => {
+  const introListOutro =
+    "<p>Intro text before the list:</p>" +
+    "<ul><li><p>First point.</p></li><li><p>Second point.</p></li></ul>" +
+    "<p>Continuing text after the list.</p>";
+
+  it("produces no conversion warnings", () => {
+    const { warnings } = convertAdvancedDetailed(introListOutro);
+    expect(warnings).toEqual([]);
+  });
+
+  it("keeps intro text, the <ul>, and outro text inside ONE <td> (single block, not three)", () => {
+    const html = convertAdvanced(introListOutro);
+    const tdCountBetween = (html.match(/padding-top:14px;padding-bottom:14px;/g) ?? []).length;
+    // 2 spacer rows (top/bottom of the document) + exactly 1 content block for
+    // intro+list+outro — NOT 3 separate blocks (intro, list, outro).
+    expect(tdCountBetween).toBe(1);
+    expect(html).toContain("Intro text before the list:");
+    expect(html).toContain("<ul>");
+    expect(html).toContain("Continuing text after the list.");
+  });
+
+  it("puts a <br> between the preceding line and the list (not flush against it)", () => {
+    const html = convertAdvanced(introListOutro);
+    expect(html).toMatch(/Intro text before the list:\s*<br>\s*<ul>/);
+  });
+
+  it("a list that OPENS its paragraph (prose comes only AFTER) gets no stray leading <br>", () => {
+    const html = convertAdvanced("<ul><li><p>Solo item</p></li></ul><p>text</p>");
+    expect(html).not.toMatch(/^\s*<br>\s*<ul>/m);
+    expect(html).toContain("<li>Solo item</li>");
+  });
+
+  it("a list with no adjacent paragraph (document starts with <ul>) still renders as its own block", () => {
+    const html = convertAdvanced("<ul><li><p>Only item.</p></li></ul>");
+    expect(html).toContain("<ul");
+    expect(html).toContain("<li>Only item.</li>");
+  });
+
+  it("a headline paragraph does not absorb an adjacent list (would inherit the wrong font-size)", () => {
+    const html = convertAdvanced("<h1>Big Headline</h1><ul><li><p>Item one</p></li></ul>");
+    expect(html).toContain(`${tokens.font.headlinePx}px`);
+    // The list must still render, just as its own block, not inside the headline's <td>.
+    expect(html).toContain("<li>Item one</li>");
   });
 });
 
@@ -816,16 +979,18 @@ describe("convertAdvanced — tickr-promo fixture", () => {
   });
 
   it("wraps the EDITOR'S NOTE box in its own bordered frame using the document's border color", () => {
-    // Source declares a full #c2410c frame (all four sides) on this cell
-    expect(html).toMatch(/border-top:1px solid #c2410c;border-right:1px solid #c2410c;border-bottom:1px solid #c2410c;border-left:1px solid #c2410c;/);
+    // Source declares a full #c2410c frame (all four sides, identical) on this cell —
+    // borderSpecToStyle collapses that to the `border:` shorthand instead of 4 separate
+    // border-<side> declarations.
+    expect(html).toMatch(/border:1px solid #c2410c;/);
   });
 
   it("wraps the black-bordered CTA section in a frame instead of dropping the border", () => {
     // Source declares a full #111111 1.25pt frame with no background — previously this
     // border was silently dropped because normalize.ts stripped all border CSS
     // and single-cell classification returned null for cells without a bg.
-    // 1.25pt × 96/72 ≈ 1.67 → quantized to 2px.
-    expect(html).toMatch(/border-top:2px solid #000000;border-right:2px solid #000000;border-bottom:2px solid #000000;border-left:2px solid #000000;/);
+    // 1.25pt × 96/72 ≈ 1.67 → quantized to 2px. All four sides identical → `border:` shorthand.
+    expect(html).toMatch(/border:2px solid #000000;/);
   });
 
   it("renders a 4-cell statsGrid with widths summing to 100%", () => {

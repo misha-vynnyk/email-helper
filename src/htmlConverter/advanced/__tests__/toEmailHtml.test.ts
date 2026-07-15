@@ -258,6 +258,49 @@ describe("renderNode — paragraph", () => {
   });
 });
 
+// ── renderNode — calloutBox ────────────────────────────────────────────────────
+// A bordered box with a single plain-text paragraph (the common case — a note/callout
+// with no nested button) must not nest a second <table> just to hold that one row.
+
+describe("renderNode — calloutBox", () => {
+  function makeBox(children: ComponentNode[]): ComponentNode {
+    return { kind: "calloutBox", props: { border: { top: { color: "#c2410c" } } }, children };
+  }
+
+  it("single plain (body, no variant) paragraph child skips the inner rows table", () => {
+    const node = makeBox([{ kind: "paragraph", props: { lines: [[{ text: "Note text" }]], size: "body" } }]);
+    const result = renderNode(node, tmpl, tokens);
+    expect(result).toContain("Note text");
+    expect((result.match(/<table/g) ?? []).length).toBe(1);
+  });
+
+  it("multiple children still use the general children-recursion path (nested table)", () => {
+    const node = makeBox([
+      { kind: "paragraph", props: { lines: [[{ text: "Line one" }]], size: "body" } },
+      { kind: "paragraph", props: { lines: [[{ text: "Line two" }]], size: "body" } },
+    ]);
+    const result = renderNode(node, tmpl, tokens);
+    expect((result.match(/<table/g) ?? []).length).toBe(2);
+  });
+
+  it("a nested buttonBand child still uses the general children-recursion path (F10)", () => {
+    const node = makeBox([
+      { kind: "buttonBand", props: { runs: [{ text: "Click" }], href: "urlhere", bg: "#111111" } },
+    ]);
+    const result = renderNode(node, tmpl, tokens);
+    // Box table + children-rows table + buttonTableHtml's own table = 3, not the
+    // 1-table flattened shortcut — the button must not be silently dropped/flattened.
+    expect((result.match(/<table/g) ?? []).length).toBe(3);
+    expect(result).toContain("bgcolor=\"#111111\"");
+  });
+
+  it("a headline-size single child does not take the flattened shortcut", () => {
+    const node = makeBox([{ kind: "paragraph", props: { lines: [[{ text: "Big" }]], size: "headline" } }]);
+    const result = renderNode(node, tmpl, tokens);
+    expect((result.match(/<table/g) ?? []).length).toBe(2);
+  });
+});
+
 // ── renderNode — statsGrid width distribution ─────────────────────────────────
 
 describe("renderNode — statsGrid", () => {
@@ -633,5 +676,47 @@ describe("renderNode — alertBand nested bands", () => {
     expect(html).toContain("BAND TEXT");
     expect(html).toContain("GO");
     expect(html).toContain('bgcolor="#28b628"');
+  });
+});
+
+// ── renderNode — nested button run color (real <a> vs plain colored span) ────
+// A run inside a nested h5-button carries the browser's default link-blue only when it
+// came from a real <a href> — that's an artifact of it being a link, not a color the
+// author chose, and must be stripped in favor of the button's own contrast color. A plain
+// colored span with no href (e.g. a hand-picked white-on-orange CTA) is a deliberate
+// choice and must survive.
+
+describe("renderNode — alertBand/calloutLeft nested button run color", () => {
+  it("strips the run's color when it came from a real href (link-blue artifact)", () => {
+    const node: ComponentNode = {
+      kind: "calloutLeft",
+      props: {
+        lines: [[{ text: "Intro" }]],
+        accentColor: "#38a169",
+        buttons: [{
+          atLine: 1,
+          props: { runs: [{ text: "Watch", color: "#1155cc", underline: true, href: "https://x.com" }], href: "urlhere", bg: "#38a169" },
+        }],
+      },
+    };
+    const html = renderNode(node, tmpl, tokens);
+    expect(html).not.toContain("#1155cc");
+    expect(html).toContain(tokens.color.white);
+  });
+
+  it("keeps a plain colored span's color when it has no href (deliberate author choice)", () => {
+    const node: ComponentNode = {
+      kind: "alertBand",
+      props: {
+        lines: [[{ text: "Intro" }]],
+        bg: "#000000",
+        buttons: [{
+          atLine: 1,
+          props: { runs: [{ text: "Lock In", color: "#ffffff" }], href: "urlhere", bg: "#e07b39" },
+        }],
+      },
+    };
+    const html = renderNode(node, tmpl, tokens);
+    expect(html).toContain("#ffffff");
   });
 });

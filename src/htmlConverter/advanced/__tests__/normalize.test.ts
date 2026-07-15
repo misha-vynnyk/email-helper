@@ -18,24 +18,33 @@ describe("normalize", () => {
     expect(getStyle(body, "p")).toContain("color");
   });
 
-  it("strips margin shorthand and left/right, keeps margin-top/bottom (pairwise zero-gap signal)", () => {
+  it("strips margin shorthand and margin-right, keeps margin-top/bottom (pairwise zero-gap signal) and margin-left (accentPadX fallback)", () => {
     // margin-top/margin-bottom survive — fromDom reads them ONLY to detect the explicit
     // 0+0 pair across a paragraph boundary (single-<br> merge); values are never rendered.
+    // margin-left survives too — fromDom's accentPadX fallback (CalloutLeftProps.accentPadX)
+    // reads it when a border-left <p> declares no padding-left of its own.
     const body = normalize(
-      '<p style="margin: 0; margin-top: 4pt; margin-bottom: 4pt; margin-left: 1pt; color: red;">hi</p>',
+      '<p style="margin: 0; margin-top: 4pt; margin-bottom: 4pt; margin-left: 1pt; margin-right: 2pt; color: red;">hi</p>',
     );
     const style = getStyle(body, "p");
-    expect(style).not.toContain("margin-left");
     expect(style).not.toContain("margin: 0");
+    expect(style).not.toContain("margin-right");
     expect(style).toContain("margin-top");
     expect(style).toContain("margin-bottom");
+    expect(style).toContain("margin-left");
     expect(style).toContain("color");
   });
 
-  it("strips padding variants", () => {
-    const body = normalize('<p style="padding: 10px; padding-left: 5px; color: blue;">hi</p>');
+  it("strips padding-top/right/bottom, keeps padding/padding-left (border-left <p>'s accent gap)", () => {
+    // padding / padding-left survive — fromDom reads the LEFT value ONLY, as the gap
+    // between a <p>'s own border-left and its text (CalloutLeftProps.accentPadX).
+    const body = normalize('<p style="padding: 10px; padding-left: 5px; padding-top: 1px; padding-right: 2px; padding-bottom: 3px; color: blue;">hi</p>');
     const style = getStyle(body, "p");
-    expect(style).not.toContain("padding");
+    expect(style).not.toContain("padding-top");
+    expect(style).not.toContain("padding-right");
+    expect(style).not.toContain("padding-bottom");
+    expect(style).toContain("padding:");
+    expect(style).toContain("padding-left");
     expect(style).toContain("color");
   });
 
