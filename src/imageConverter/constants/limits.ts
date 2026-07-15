@@ -14,6 +14,9 @@ export const TIMING = {
   // Worker tasks have no other cancellation path — a WASM encode that never posts
   // back (e.g. an unusually slow AVIF/WebP encode near quality 100) would otherwise
   // hold that worker "busy" forever, shrinking the pool until nothing converts.
-  CONVERSION_TIMEOUT_MS: 60000,
+  // 120s (was 60s): moderate headroom for a genuinely heavy max-compression AVIF encode
+  // on a large source, now that the estimate-quality search (imageWorker.ts) no longer
+  // encodes full-resolution on every iteration — that was the main source of false timeouts.
+  CONVERSION_TIMEOUT_MS: 120000,
 } as const;
 
