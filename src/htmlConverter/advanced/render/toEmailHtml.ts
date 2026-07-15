@@ -304,8 +304,11 @@ export function renderNode(
       // children-recursion path so F10-style nested CTAs still survive.
       const only = node.children.length === 1 ? node.children[0] : undefined;
       if (only?.kind === "paragraph" && only.props.size === "body" && !only.props.variant) {
-        const innerHtml = renderLines(only.props.lines, tok, tok.color.black, only.props.paraBreaks);
-        const opts: CalloutBoxOpts = { border: node.props.border, bg: node.props.bg, innerHtml };
+        // renderParagraphInner (not a bare renderLines) so an attached list
+        // (ParagraphProps.lists) survives instead of vanishing — see fix-advanced.md,
+        // Ітерація 7.
+        const innerHtml = renderParagraphInner(only.props, tok);
+        const opts: CalloutBoxOpts = { border: node.props.border, bg: node.props.bg, innerHtml, align: only.props.align ?? "left" };
         return tmpl.calloutBox(undefined, opts);
       }
       const childrenHtml = renderAll(node.children, tmpl, tok);

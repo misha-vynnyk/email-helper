@@ -299,6 +299,32 @@ describe("renderNode — calloutBox", () => {
     const result = renderNode(node, tmpl, tokens);
     expect((result.match(/<table/g) ?? []).length).toBe(2);
   });
+
+  // Regression, Ітерація 7 (fix-advanced.md): the flattened shortcut used to render via a
+  // bare renderLines — align was never read (hardcoded to "left" in tmpl.calloutBox) and any
+  // attached list (ParagraphProps.lists) vanished entirely.
+  it("preserves a centered single paragraph's alignment (not hardcoded left)", () => {
+    const node = makeBox([{ kind: "paragraph", props: { lines: [[{ text: "Centered note" }]], size: "body", align: "center" } }]);
+    const result = renderNode(node, tmpl, tokens);
+    expect(result).toContain('align="center"');
+    expect(result).not.toContain('align="left"');
+  });
+
+  it("keeps an attached list on the single-paragraph shortcut, instead of dropping it", () => {
+    const node = makeBox([{
+      kind: "paragraph",
+      props: {
+        lines: [[{ text: "Intro:" }]],
+        size: "body",
+        lists: [{ atLine: 1, props: { items: [[{ text: "Item A" }], [{ text: "Item B" }]], ordered: false } }],
+      },
+    }]);
+    const result = renderNode(node, tmpl, tokens);
+    expect(result).toContain("<ul");
+    expect(result).toContain("<li>Item A</li>");
+    expect(result).toContain("<li>Item B</li>");
+    expect(result).toContain("Intro:");
+  });
 });
 
 // ── renderNode — statsGrid width distribution ─────────────────────────────────
