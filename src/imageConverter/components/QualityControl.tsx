@@ -10,11 +10,13 @@ import { useDebounce } from "@/hooks/useDebounce";
 
 import { CompressionMode } from "../types";
 
-// Below this, output gets visibly degraded (blocky/blurry) for most images.
+// Below this, output gets visibly degraded (blocky/blurry) for most images —
+// matches the "Low" boundary in getQualityLevel below, so the default
+// (locked) range never overlaps the tier the app itself calls low quality.
 // The range stays reachable — just gated behind an explicit unlock — so someone
 // who genuinely wants extreme compression still can, but can't get there by
 // an accidental drag.
-const EXTREME_QUALITY_THRESHOLD = 20;
+const EXTREME_QUALITY_THRESHOLD = 40;
 
 interface QualityControlProps {
   autoQuality: boolean;
