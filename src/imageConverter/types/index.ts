@@ -8,7 +8,7 @@ export interface ResizeOptions {
   mode: ResizeMode;
   width?: number;
   height?: number;
-  preset?: number; // 1920, 1200, 800
+  preset?: number; // 1000, 600, 464, 364
   preserveAspectRatio: boolean;
   allowUpscale: boolean;
 }

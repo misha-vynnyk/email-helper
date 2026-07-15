@@ -7,11 +7,24 @@
 import { encode as encodeAvif } from "@jsquash/avif";
 import type { EncodeOptions as AvifEncodeOptions } from "@jsquash/avif/meta";
 import { encode as encodeJpeg } from "@jsquash/jpeg";
+import { optimise as optimisePng } from "@jsquash/oxipng";
 import { encode as encodePng } from "@jsquash/png";
 import { encode as encodeWebp } from "@jsquash/webp";
 import type { EncodeOptions as WebpEncodeOptions } from "@jsquash/webp/meta";
 
 import { CompressionMode, ImageFormat } from "../types";
+
+/** oxipng docs discourage going above 4 — diminishing returns for much higher WASM cost. */
+async function encodePngOptimized(imageData: ImageData, compressionMode: CompressionMode): Promise<ArrayBuffer> {
+  const buffer = await encodePng(imageData);
+  const level = compressionMode === "maximum-compression" ? 4 : 2;
+  try {
+    return await optimisePng(buffer, { level });
+  } catch {
+    // oxipng WASM failed to load/run — ship the unoptimized (but still valid) PNG.
+    return buffer;
+  }
+}
 
 export async function encodeAtQuality(imageData: ImageData, format: ImageFormat, quality: number, compressionMode: CompressionMode): Promise<ArrayBuffer> {
   switch (format) {
@@ -43,7 +56,7 @@ export async function encodeAtQuality(imageData: ImageData, format: ImageFormat,
       return encodeAvif(imageData, avifOptions);
     }
     case "png":
-      return encodePng(imageData);
+      return encodePngOptimized(imageData, compressionMode);
     default:
       return encodeJpeg(imageData, { quality });
   }
