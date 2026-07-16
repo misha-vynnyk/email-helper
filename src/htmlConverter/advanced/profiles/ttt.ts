@@ -1,3 +1,4 @@
+import { STORAGE_PROVIDERS_CONFIG } from "../../constants";
 import type { TokensOverride } from "../config/tokens";
 
 // TTT (TerraTrans) profile — values taken from ttt/templates.ts.
@@ -6,5 +7,10 @@ export const profile: TokensOverride = {
     blockPadY:   15,  // TTT_PADDING = "15px"
     sidePadding: 21,  // "padding-left: 21px; padding-right: 21px" in TTT scaffold
     spacerPx:    15,  // height="15" in TTT fullStructure spacers
+    // FULL_IMAGE_WIDTH = "400" in ttt/templates.ts — its own hand-picked value, notably NOT
+    // close to containerMaxWidth − 2×sidePadding (558), so it can't be derived from a formula.
+    placeholderImageWidth: 400,
   },
+  // Matches TTT_STORAGE_URL in ttt/templates.ts
+  placeholderImageSrc: STORAGE_PROVIDERS_CONFIG.providers.ttt.publicBaseUrl + "/",
 };

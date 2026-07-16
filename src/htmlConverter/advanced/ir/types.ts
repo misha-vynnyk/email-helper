@@ -189,6 +189,13 @@ export interface AlertBandProps {
    * `atLine` convention as `buttons`.
    */
   bands?: { atLine: number; props: AlertBandProps }[];
+  /**
+   * Images that were direct children of the source cell (GDocs' own <p><span><img></span></p>
+   * wrapping means these arrive as standalone nodes, not part of any paragraph's runs) —
+   * kept as real <img> rows instead of being silently dropped by the flattener. Same
+   * `atLine` convention as `buttons`/`bands`.
+   */
+  images?: { atLine: number; props: ImageProps }[];
   /** Text alignment from the source cell's paragraphs — defaults to left. */
   align?: Align;
 }
@@ -219,6 +226,8 @@ export interface CalloutLeftProps {
   buttons?: { atLine: number; props: ButtonBandProps }[];
   /** Nested tables that resolve to their own colored band — same convention as AlertBandProps.bands. */
   bands?: { atLine: number; props: AlertBandProps }[];
+  /** Images that were direct children of the source cell — same convention as AlertBandProps.images. */
+  images?: { atLine: number; props: ImageProps }[];
   /**
    * Input-only merge signals for consecutive <p>-with-border-left paragraphs (see
    * Paragraph.border) — consumed by pushMerged's calloutLeft merge case (same boundary

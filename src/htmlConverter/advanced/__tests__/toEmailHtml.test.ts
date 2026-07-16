@@ -553,14 +553,19 @@ describe("renderNode — alertBand", () => {
 // ── renderNode — image ────────────────────────────────────────────────────────
 
 describe("renderNode — image", () => {
-  it("renders an img row with the source URL and alt", () => {
+  // The parsed doc's own src/alt (ImageProps) are never rendered — every image gets the
+  // fixed storage placeholder (tok.placeholderImageSrc/Alt), replaced later via the app's
+  // own upload flow (matches Simple converter's wrapImg convention).
+  it("renders an img row using the storage placeholder, ignoring the doc's own src/alt", () => {
     const node: ComponentNode = {
       kind: "image",
       props: { src: "https://lh7.googleusercontent.com/abc", alt: "Chart" },
     };
     const result = renderNode(node, tmpl, tokens);
-    expect(result).toContain('src="https://lh7.googleusercontent.com/abc"');
-    expect(result).toContain('alt="Chart"');
+    expect(result).not.toContain("https://lh7.googleusercontent.com/abc");
+    expect(result).not.toContain('alt="Chart"');
+    expect(result).toContain(`src="${tokens.placeholderImageSrc}"`);
+    expect(result).toContain(`alt="${tokens.placeholderImageAlt}"`);
     expect(result).toContain(`href="${tokens.placeholderHref}"`);
   });
 
@@ -618,6 +623,84 @@ describe("renderNode — calloutLeft", () => {
     };
     const result = renderNode(node, tmpl, tokens);
     expect(result).toMatch(/<span style="font-family:[^"]*">\s*tip\s*<\/span>/);
+  });
+});
+
+// ── renderNode — alertBand/calloutLeft with images, no buttons/bands ──────────
+// Regression for a real GDocs doc: a dark 1×1 box (headline + CTA line + a plain
+// screenshot image) silently dropped the image entirely. Fixed by giving image-only
+// cells their own AlertBandOpts/CalloutOpts.rows shape — direct <tr> rows in the
+// bg/border table, each with its own horizontal inset — instead of routing them
+// through the button/band `segments` shape (which keeps its 20px side-padding wrapper,
+// see e2e.test.ts's "standard block side padding" regression).
+
+describe("renderNode — alertBand with images (no buttons/bands)", () => {
+  const node: ComponentNode = {
+    kind: "alertBand",
+    props: {
+      lines: [[{ text: "Watch the pitch" }]],
+      bg: "#000000",
+      border: { top: { color: "#00ffff" }, right: { color: "#00ffff" }, bottom: { color: "#00ffff" }, left: { color: "#00ffff" } },
+      images: [{ atLine: 1, props: { src: "https://example.com/pitch.png", alt: "Pitch" } }],
+    },
+  };
+
+  it("renders the image as a real <img> row using the storage placeholder, ignoring the doc's own src/alt", () => {
+    const html = renderNode(node, tmpl, tokens);
+    expect(html).not.toContain("https://example.com/pitch.png");
+    expect(html).not.toContain('alt="Pitch"');
+    expect(html).toContain(`src="${tokens.placeholderImageSrc}"`);
+    expect(html).toContain(`alt="${tokens.placeholderImageAlt}"`);
+    expect(html).toContain(`class="${tokens.classes.imgBg}"`);
+    expect(html).toContain(`href="${tokens.placeholderHref}"`);
+  });
+
+  it("does not wrap rows in the button/band segments' extra 20px side-padding table", () => {
+    const html = renderNode(node, tmpl, tokens);
+    expect(html).not.toContain(`padding-left:${tokens.layout.sidePadding}px;padding-right:${tokens.layout.sidePadding}px;`);
+  });
+
+  it("gives each row (text and image) the alertBand horizontal inset directly", () => {
+    const html = renderNode(node, tmpl, tokens);
+    const ph = tokens.layout.alertBandPadH;
+    expect(html).toContain(`padding-left:${ph}px;padding-right:${ph}px;`);
+  });
+
+  it("keeps text and image in document order", () => {
+    const html = renderNode(node, tmpl, tokens);
+    expect(html.indexOf("Watch the pitch")).toBeLessThan(html.indexOf(`class="${tokens.classes.imgBg}"`));
+  });
+
+  // Outlook's Word engine honors the HTML width attribute literally (unlike width:100% in
+  // style, which every other client respects) — a nested image row must shrink its width by
+  // the row's own horizontal padding, or it overflows the box by 2×padX in Outlook specifically.
+  it("shrinks the image width by its own horizontal padding (2×alertBandPadH), not the bare 560px content width", () => {
+    const html = renderNode(node, tmpl, tokens);
+    const ph = tokens.layout.alertBandPadH;
+    const contentW = tokens.layout.containerMaxWidth - 2 * tokens.layout.sidePadding;
+    const expectedW = contentW - 2 * ph;
+    expect(html).toContain(`width="${expectedW}"`);
+    expect(html).toContain(`max-width:${expectedW}px`);
+    expect(html).not.toContain(`width="${contentW}"`);
+  });
+});
+
+describe("renderNode — calloutLeft with images (no buttons/bands)", () => {
+  it("renders the image row inside the accent-bordered table with the callout's own horizontal inset", () => {
+    const node: ComponentNode = {
+      kind: "calloutLeft",
+      props: {
+        lines: [[{ text: "Quoted text" }]],
+        accentColor: "#047857",
+        accentPadX: 12,
+        images: [{ atLine: 1, props: { src: "https://example.com/quote.png" } }],
+      },
+    };
+    const html = renderNode(node, tmpl, tokens);
+    expect(html).not.toContain("https://example.com/quote.png");
+    expect(html).toContain(`src="${tokens.placeholderImageSrc}"`);
+    expect(html).toContain("border-left:");
+    expect(html).toContain("padding-left:12px;padding-right:12px;");
   });
 });
 

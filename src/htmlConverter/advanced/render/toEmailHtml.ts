@@ -5,6 +5,7 @@
 import {
   type AlertBandOpts,
   type AlertBandSegment,
+  blockRow,
   buildTemplates,
   type ButtonBandOpts,
   type CalloutBoxOpts,
@@ -12,6 +13,7 @@ import {
   type GridCell,
   type GridOpts,
   type ImageOpts,
+  imageRowHtml,
   type ListOpts,
   type ParagraphOpts,
   type RecordOpts,
@@ -167,7 +169,7 @@ function renderParagraphInner(p: ParagraphProps, tok: Tokens): string {
  * and degrade the CTA to a plain underlined link.
  */
 function buildAlertBandSegments(
-  p: Pick<AlertBandProps, "lines" | "paraBreaks" | "buttons" | "bands">,
+  p: Pick<AlertBandProps, "lines" | "paraBreaks" | "buttons" | "bands" | "images">,
   tok: Tokens,
   textColor: string,
 ): AlertBandSegment[] {
@@ -201,11 +203,14 @@ function buildAlertBandSegments(
   const nested = [
     ...(p.buttons ?? []).map(b => ({ atLine: b.atLine, kind: "button" as const, btn: b.props })),
     ...(p.bands ?? []).map(b => ({ atLine: b.atLine, kind: "band" as const, band: b.props })),
+    ...(p.images ?? []).map(im => ({ atLine: im.atLine, kind: "image" as const })),
   ].sort((a, b) => a.atLine - b.atLine);
   for (const item of nested) {
     flushTextGroup(item.atLine);
     if (item.kind === "button") {
       pushButton(item.btn);
+    } else if (item.kind === "image") {
+      segments.push({ kind: "image" });
     } else {
       // Nested colored band (e.g. a dark pseudo-button cell inside a dark bordered box):
       // its own bg survives as a separate row instead of flattening to plain text.
@@ -221,6 +226,45 @@ function buildAlertBandSegments(
   }
   flushTextGroup(p.lines.length);
   return segments;
+}
+
+/**
+ * Text/image rows for a cell that has image(s) but no buttons/bands of its own — used
+ * instead of buildAlertBandSegments so this common case (a banner headline + a screenshot,
+ * no CTA) gets AlertBandOpts.rows' direct-nesting shape (each row carries its own horizontal
+ * inset) rather than the segments path's extra side-padding wrapper table, which stays
+ * reserved for the button/band case (see e2e.test.ts's "standard block side padding"
+ * regression — that shape must not change just because images also got support here).
+ */
+function buildImageOnlyRows(
+  p: Pick<AlertBandProps, "lines" | "paraBreaks" | "images">,
+  tok: Tokens,
+  textColor: string,
+  align: "left" | "center" | "right",
+  padX: number,
+): string[] {
+  const rows: string[] = [];
+  let groupStart = 0;
+  const flushTextGroup = (end: number) => {
+    if (end <= groupStart) return;
+    const groupLines = p.lines.slice(groupStart, end);
+    const groupBreaks = new Set<number>();
+    for (const idx of p.paraBreaks ?? []) {
+      if (idx > groupStart && idx < end) groupBreaks.add(idx - groupStart);
+    }
+    const html = renderLines(groupLines, tok, textColor, groupBreaks);
+    if (html) {
+      rows.push(blockRow(html, { align, color: textColor, extraStyle: `padding-left:${padX}px;padding-right:${padX}px;` }, tok));
+    }
+  };
+  const images = [...(p.images ?? [])].sort((a, b) => a.atLine - b.atLine);
+  for (const im of images) {
+    flushTextGroup(im.atLine);
+    rows.push(imageRowHtml(im.props, tok, padX));
+    groupStart = im.atLine;
+  }
+  flushTextGroup(p.lines.length);
+  return rows;
 }
 
 // ── ComponentNode → HTML row ──────────────────────────────────────────────────
@@ -253,9 +297,18 @@ export function renderNode(
     case "alertBand": {
       const p = node.props;
       const textColor = isDarkBg(p.bg, tok) ? tok.color.white : tok.color.black;
-      const opts: AlertBandOpts = p.buttons?.length || p.bands?.length
-        ? { segments: buildAlertBandSegments(p, tok, textColor), bg: p.bg, border: p.border, align: p.align }
-        : { innerHtml: renderLines(p.lines, tok, textColor, p.paraBreaks), bg: p.bg, border: p.border, align: p.align };
+      let opts: AlertBandOpts;
+      if (p.buttons?.length || p.bands?.length) {
+        // A real button/band needs its own bulletproof <td bgcolor> row — that path's extra
+        // side-padding wrapper (AlertBandOpts.segments) stays as-is; images alongside a
+        // button/band ride along in the same segment list (buildAlertBandSegments).
+        opts = { segments: buildAlertBandSegments(p, tok, textColor), bg: p.bg, border: p.border, align: p.align };
+      } else if (p.images?.length) {
+        const rows = buildImageOnlyRows(p, tok, textColor, p.align ?? "left", tok.layout.alertBandPadH);
+        opts = { rows, bg: p.bg, border: p.border, align: p.align };
+      } else {
+        opts = { innerHtml: renderLines(p.lines, tok, textColor, p.paraBreaks), bg: p.bg, border: p.border, align: p.align };
+      }
       return tmpl.alertBand(opts);
     }
 
@@ -283,15 +336,19 @@ export function renderNode(
 
     case "calloutLeft": {
       const p = node.props;
-      const hasNested = Boolean(p.buttons?.length || p.bands?.length);
-      const innerHtml = hasNested ? "" : renderLines(p.lines, tok, tok.color.black, p.paraBreaks);
+      const hasButtonsOrBands = Boolean(p.buttons?.length || p.bands?.length);
+      const hasImagesOnly = !hasButtonsOrBands && Boolean(p.images?.length);
+      const innerHtml = hasButtonsOrBands || hasImagesOnly ? "" : renderLines(p.lines, tok, tok.color.black, p.paraBreaks);
       const opts: CalloutOpts = {
         accentColor: p.accentColor,
         accentWidthPx: p.accentWidthPx,
         accentStyle: p.accentStyle,
         accentPadX: p.accentPadX,
         bg: p.bg,
-        segments: hasNested ? buildAlertBandSegments(p, tok, tok.color.black) : undefined,
+        segments: hasButtonsOrBands ? buildAlertBandSegments(p, tok, tok.color.black) : undefined,
+        rows: hasImagesOnly
+          ? buildImageOnlyRows(p, tok, tok.color.black, "left", p.accentPadX ?? tok.layout.calloutPadX)
+          : undefined,
       };
       return tmpl.calloutLeft(innerHtml, opts);
     }
@@ -374,13 +431,11 @@ export function renderNode(
     }
 
     case "image": {
-      const opts: ImageOpts = {
-        src: node.props.src,
-        alt: node.props.alt,
-        tightBefore: node.props.tightBefore,
-        tightAfter: node.props.tightAfter,
-      };
-      return opts.src ? tmpl.image(opts) : "";
+      // src is never rendered (see imageRowHtml) — this only guards against malformed IR
+      // built outside the type system (fromDom always sets a non-empty src or drops the node).
+      if (!node.props.src) return "";
+      const opts: ImageOpts = { tightBefore: node.props.tightBefore, tightAfter: node.props.tightAfter };
+      return tmpl.image(opts);
     }
 
     // No classify/detect path ever produces kind:"spacer" — this branch is reachable

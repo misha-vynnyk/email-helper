@@ -77,13 +77,17 @@ describe("sanitize — round-trip on convertAdvanced output", () => {
   it("preserves all content markers of the pipeline output", () => {
     const html = convertAdvanced(RAW);
     const out = sanitize(html);
+    // The image's own src/alt from the source doc are never rendered (see imageRowHtml) —
+    // every image gets the fixed storage placeholder, replaced later via the app's own
+    // upload flow — so the marker here is the placeholder, not the doc's original URL.
     for (const marker of [
       "Title", "Body with", "bold", "italic", "a link",
-      "https://lh7.googleusercontent.com/abc", 'alt="Pic"',
+      'alt="Video preview"',
       "Button label", "alert text",
     ]) {
       expect(out).toContain(marker);
     }
+    expect(out).not.toContain("https://lh7.googleusercontent.com/abc");
   });
 
   it("preserves structural attributes (styles, classes, bgcolor, role)", () => {

@@ -19,8 +19,20 @@ export interface Tokens {
     white: string;
     black: string;
   };
-  /** Href stub rendered into links/buttons/images — real URLs are filled in manually after conversion */
+  /** Href stub rendered into links/buttons — real URLs are filled in manually after conversion */
   placeholderHref: string;
+  /**
+   * Every <img> the advanced converter emits uses this src instead of whatever the source
+   * document had — matches the Simple converter's own `wrapImg`/`signatureImg` convention
+   * (src/htmlConverter/templates.ts): images are never uploaded from the pasted doc, they're
+   * re-uploaded through the app's own storage flow afterward, which finds/replaces this exact
+   * placeholder. Per-provider profiles (ttt.ts, alphaone.ts) override it to their own bucket's
+   * public base URL, matching TTT_STORAGE_URL/ALPHAONE_STORAGE_URL in the Simple converter.
+   */
+  placeholderImageSrc: string;
+  /** Matches the Simple converter's fixed alt text for not-yet-uploaded images — same across
+   *  every provider (see src/htmlConverter/templates.ts's wrapImg), so no profile override. */
+  placeholderImageAlt: string;
   font: {
     stack: string;
     lineHeight: number;
@@ -51,6 +63,15 @@ export interface Tokens {
     buttonSubtitlePadTop: number;
     gapMarginThresholdPt: number;
     listIndentPx: number;
+    /**
+     * Base width for the placeholder image (imageRowHtml) — a hand-picked constant per
+     * provider, NOT derived from containerMaxWidth/sidePadding. Matches the Simple converter's
+     * own per-provider `wrapImg` width, which the three variants don't agree on either: 560
+     * (default, templates.ts), 562 (AlfaOne, alphaone/templates.ts), 400 (TTT's
+     * FULL_IMAGE_WIDTH, ttt/templates.ts — notably NOT close to containerMaxWidth −
+     * 2×sidePadding=558, so it must come from its own token, not a formula).
+     */
+    placeholderImageWidth: number;
   };
   button: {
     radius: number;
@@ -96,6 +117,8 @@ export const tokens: Tokens = {
     black: config.colors.black,
   },
   placeholderHref: "urlhere",
+  placeholderImageSrc: config.storageUrl,  // "https://storage.5th-elementagency.com/" — matches Simple's default provider
+  placeholderImageAlt: "Video preview",
   font: {
     // Pulled from shared config — one place to update for all converters and profiles
     stack: config.fontFamily,  // "'Roboto', Arial, Helvetica, sans-serif"
@@ -135,6 +158,7 @@ export const tokens: Tokens = {
     // (top-level <br>) and § override this in either direction.
     gapMarginThresholdPt: 10,
     listIndentPx: 20,   // <ul>/<ol> left indent (matches quotePadX)
+    placeholderImageWidth: 560,   // matches Simple converter's default wrapImg width="560"
   },
   button: { radius: 10, height: 51, padding: "3px 5px", innerPadding: "9px 15px", target: "_blank", textDecoration: "none" },
   tags: { bold: "b", italic: "em", underline: "u", colorWrap: "span", blockWrap: "span" },
@@ -161,6 +185,7 @@ export type TokensOverride = {
   classes?: Partial<Tokens["classes"]>;
   accentBullet?: string;
   placeholderHref?: string;
+  placeholderImageSrc?: string;
 };
 
 export function mergeTokens(base: Tokens, override: TokensOverride): Tokens {
@@ -173,5 +198,7 @@ export function mergeTokens(base: Tokens, override: TokensOverride): Tokens {
     classes: { ...base.classes, ...override.classes },
     accentBullet: override.accentBullet ?? base.accentBullet,
     placeholderHref: override.placeholderHref ?? base.placeholderHref,
+    placeholderImageSrc: override.placeholderImageSrc ?? base.placeholderImageSrc,
+    placeholderImageAlt: base.placeholderImageAlt,
   } as Tokens;
 }

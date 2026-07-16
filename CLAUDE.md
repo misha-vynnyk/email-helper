@@ -237,7 +237,7 @@ The most complex feature. Converts plain text/raw HTML to formatted email-safe H
 - Pipeline: `preprocess → normalize → fromDom (structural IR) → classify (semantic IR) → render`
 - All visuals come from `config/tokens.ts`; profiles (`profiles/ttt.ts`, `alphaone.ts`) are token overrides — no markup forks
 - `convertAdvancedDetailed()` returns `{ html, warnings }`; warnings surface in the UI log
-- Inline links intentionally render `href="urlhere"` (placeholder workflow); images keep original `src` for URL-map replacement
+- Inline links intentionally render `href="urlhere"` (placeholder workflow); images never carry the source doc's own `src`/`alt` either — every `<img>` renders `tok.placeholderImageSrc`/`placeholderImageAlt` (per-provider storage root URL + `"Video preview"`, matching the Simple converter's `wrapImg` convention), replaced later by the app's own upload flow
 - Optional DOMPurify pass in `sanitize.ts` for untrusted input
 
 **Features:**
