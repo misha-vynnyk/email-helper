@@ -1,3 +1,4 @@
+import { mergeTokens,tokens } from "../config/tokens";
 import { classifyTable } from "../detect/tableBlock";
 import type { CellNode, Paragraph,TableNode } from "../ir/types";
 
@@ -266,7 +267,7 @@ describe("classifyTable — bottom-only border (GDocs divider idiom)", () => {
 
 // Fix #9: without classifyChildren, calloutBox's fallback child must match cellToChild
 describe("classifyTable — calloutBox fallback child (no classifyChildren)", () => {
-  it("fallback child uses align='center' and carries bg, same as cellToChild", () => {
+  it("fallback child uses tok.statsGridDefaultAlign and carries bg, same as cellToChild", () => {
     const cell = makeCell({
       bg: "#fff7ed",
       border: { top: { color: "#c2410c" }, right: { color: "#c2410c" },
@@ -277,7 +278,7 @@ describe("classifyTable — calloutBox fallback child (no classifyChildren)", ()
     const result = classifyTable(table);
     expect(result?.kind).toBe("calloutBox");
     const child = childrenOf(result)[0];
-    expect(child?.props["align"]).toBe("center");
+    expect(child?.props["align"]).toBe(tokens.statsGridDefaultAlign);
     expect(child?.props["bg"]).toBe("#fff7ed");
   });
 });
@@ -297,6 +298,33 @@ describe("classifyTable — multi-cell", () => {
     expect(result?.kind).toBe("statsGrid");
     expect((result?.props as Record<string, unknown>)["n"]).toBe(3);
     expect(childrenOf(result)).toHaveLength(3);
+  });
+
+  // GDocs column-resize widths are rarely pixel-perfect even when the author intended equal
+  // columns — a real repro: a 2-up stat-card row (two side-by-side metric tiles) exported as
+  // 292/328 (620 total), each only ~5.8% off the 310 average. Treated as an intentional equal
+  // grid and split 50/50, not the noisy 47/53 the raw ratio would give.
+  it("near-equal 2-col widths (292/328) split exactly 50/50, not the raw 47/53 ratio", () => {
+    const table = makeTable([[makeCell(), makeCell()]]);
+    table.colWidths = [292, 328];
+    const result = classifyTable(table);
+    expect((result?.props as Record<string, unknown>)["widths"]).toEqual([50, 50]);
+  });
+
+  it("near-equal 4-col widths (156/155/155/156) split exactly 25/25/25/25", () => {
+    const table = makeTable([[makeCell(), makeCell(), makeCell(), makeCell()]]);
+    table.colWidths = [156, 155, 155, 156];
+    const result = classifyTable(table);
+    expect((result?.props as Record<string, unknown>)["widths"]).toEqual([25, 25, 25, 25]);
+  });
+
+  // A genuinely asymmetric layout (e.g. a 1/3-2/3 sidebar+content row) must keep its real
+  // ratio — each column is ~33% off the 300 average, well past the equal-width tolerance.
+  it("clearly different column widths (200/400) keep their real proportional ratio", () => {
+    const table = makeTable([[makeCell(), makeCell()]]);
+    table.colWidths = [200, 400];
+    const result = classifyTable(table);
+    expect((result?.props as Record<string, unknown>)["widths"]).toEqual([33, 67]);
   });
 
   it("statsGrid children carry each cell's bg (e.g. a highlighted stat tile)", () => {
@@ -624,7 +652,7 @@ describe("classifyTable — cell alignment read from the inner paragraph", () =>
     return { type: "p", size: "body", align, lines: [[makeRun(text)]] };
   }
 
-  it("statsGrid cell uses the first paragraph's align instead of always centering", () => {
+  it("statsGrid cell uses the first paragraph's align instead of always falling back", () => {
     // 3 cells so the two-cell splitRow (letterhead) pattern can't match
     const table = makeTable([[
       makeCell({ children: [alignedPara("Revenue", "left")] }),
@@ -635,14 +663,25 @@ describe("classifyTable — cell alignment read from the inner paragraph", () =>
     expect(result?.kind).toBe("statsGrid");
     expect(childrenOf(result)[0].props["align"]).toBe("left");
     expect(childrenOf(result)[1].props["align"]).toBe("right");
-    expect(childrenOf(result)[2].props["align"]).toBe("center");
+    expect(childrenOf(result)[2].props["align"]).toBe(tokens.statsGridDefaultAlign);
   });
 
-  it("statsGrid cell still defaults to center when neither the cell nor its paragraph declares align", () => {
+  it("statsGrid cell falls back to tok.statsGridDefaultAlign when neither the cell nor its paragraph declares align", () => {
     const table = makeTable([[makeCell(), makeCell()]]);
     const result = classifyTable(table);
     expect(result?.kind).toBe("statsGrid");
-    expect(childrenOf(result)[0].props["align"]).toBe("center");
+    expect(childrenOf(result)[0].props["align"]).toBe(tokens.statsGridDefaultAlign);
+  });
+
+  // The center fallback is a converter-side guess (GDocs omitting text-align actually means
+  // "left", the CSS default — see config/tokens.ts's statsGridDefaultAlign doc comment), not
+  // a fact read from the document — config-tunable per profile without touching this logic.
+  it("statsGrid's no-align fallback follows tok.statsGridDefaultAlign, not a hardcoded value", () => {
+    const table = makeTable([[makeCell(), makeCell()]]);
+    const tok = mergeTokens(tokens, { statsGridDefaultAlign: "left" });
+    const result = classifyTable(table, tok);
+    expect(result?.kind).toBe("statsGrid");
+    expect(childrenOf(result)[0].props["align"]).toBe("left");
   });
 
   it("recordRow cell uses the paragraph's align (mixed text-left / numbers-center survives)", () => {
@@ -780,15 +819,15 @@ describe("classifyTable — list items keep a bullet/number marker when flattene
 // flatteners only switched on child.type "p"/"table", never "img".
 
 describe("classifyTable — images as direct cell children", () => {
-  const img = { type: "img" as const, src: "https://example.com/pitch.png", alt: "Pitch" };
+  const img = { type: "img" as const, src: "https://example.com/image.png", alt: "Caption" };
 
   it("dark bg (alertBand) keeps the image as an images segment at its position", () => {
-    const cell = makeCell({ bg: "#000000", children: [makePara("Watch the pitch"), img] });
+    const cell = makeCell({ bg: "#000000", children: [makePara("Lorem ipsum dolor"), img] });
     const result = classifyTable(makeTable([[cell]]));
     expect(result?.kind).toBe("alertBand");
     const images = (result?.props as Record<string, unknown>)["images"] as Array<{ atLine: number; props: { src: string } }>;
     expect(images).toHaveLength(1);
-    expect(images[0].props.src).toBe("https://example.com/pitch.png");
+    expect(images[0].props.src).toBe("https://example.com/image.png");
     expect(images[0].atLine).toBe(1);
   });
 
@@ -809,7 +848,7 @@ describe("classifyTable — images as direct cell children", () => {
     expect(result?.kind).toBe("calloutLeft");
     const images = (result?.props as Record<string, unknown>)["images"] as Array<{ atLine: number; props: { src: string } }>;
     expect(images).toHaveLength(1);
-    expect(images[0].props.src).toBe("https://example.com/pitch.png");
+    expect(images[0].props.src).toBe("https://example.com/image.png");
   });
 
   it("light bg with no border (alertBand fallback) keeps the image too", () => {
@@ -821,8 +860,8 @@ describe("classifyTable — images as direct cell children", () => {
   });
 
   it("statsGrid cells have no rendered shape for images — warns instead of silently dropping", () => {
-    const cellA = makeCell({ bg: "#f5f5f5", children: [makePara("Capital Raised"), img] });
-    const cellB = makeCell({ bg: "#f5f5f5", children: [makePara("Investors")] });
+    const cellA = makeCell({ bg: "#f5f5f5", children: [makePara("Lorem"), img] });
+    const cellB = makeCell({ bg: "#f5f5f5", children: [makePara("Ipsum")] });
     const warn = jest.fn();
     const result = classifyTable(makeTable([[cellA, cellB]]), undefined, warn);
     expect(result?.kind).toBe("statsGrid");

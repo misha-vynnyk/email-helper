@@ -638,17 +638,17 @@ describe("renderNode — alertBand with images (no buttons/bands)", () => {
   const node: ComponentNode = {
     kind: "alertBand",
     props: {
-      lines: [[{ text: "Watch the pitch" }]],
+      lines: [[{ text: "Lorem ipsum dolor" }]],
       bg: "#000000",
       border: { top: { color: "#00ffff" }, right: { color: "#00ffff" }, bottom: { color: "#00ffff" }, left: { color: "#00ffff" } },
-      images: [{ atLine: 1, props: { src: "https://example.com/pitch.png", alt: "Pitch" } }],
+      images: [{ atLine: 1, props: { src: "https://example.com/image.png", alt: "Caption" } }],
     },
   };
 
   it("renders the image as a real <img> row using the storage placeholder, ignoring the doc's own src/alt", () => {
     const html = renderNode(node, tmpl, tokens);
-    expect(html).not.toContain("https://example.com/pitch.png");
-    expect(html).not.toContain('alt="Pitch"');
+    expect(html).not.toContain("https://example.com/image.png");
+    expect(html).not.toContain('alt="Caption"');
     expect(html).toContain(`src="${tokens.placeholderImageSrc}"`);
     expect(html).toContain(`alt="${tokens.placeholderImageAlt}"`);
     expect(html).toContain(`class="${tokens.classes.imgBg}"`);
@@ -668,7 +668,7 @@ describe("renderNode — alertBand with images (no buttons/bands)", () => {
 
   it("keeps text and image in document order", () => {
     const html = renderNode(node, tmpl, tokens);
-    expect(html.indexOf("Watch the pitch")).toBeLessThan(html.indexOf(`class="${tokens.classes.imgBg}"`));
+    expect(html.indexOf("Lorem ipsum dolor")).toBeLessThan(html.indexOf(`class="${tokens.classes.imgBg}"`));
   });
 
   // Outlook's Word engine honors the HTML width attribute literally (unlike width:100% in
@@ -693,11 +693,11 @@ describe("renderNode — calloutLeft with images (no buttons/bands)", () => {
         lines: [[{ text: "Quoted text" }]],
         accentColor: "#047857",
         accentPadX: 12,
-        images: [{ atLine: 1, props: { src: "https://example.com/quote.png" } }],
+        images: [{ atLine: 1, props: { src: "https://example.com/photo.png" } }],
       },
     };
     const html = renderNode(node, tmpl, tokens);
-    expect(html).not.toContain("https://example.com/quote.png");
+    expect(html).not.toContain("https://example.com/photo.png");
     expect(html).toContain(`src="${tokens.placeholderImageSrc}"`);
     expect(html).toContain("border-left:");
     expect(html).toContain("padding-left:12px;padding-right:12px;");
