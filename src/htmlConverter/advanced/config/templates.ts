@@ -42,13 +42,25 @@ export interface AlertBandOpts {
    * strip inline styles off <a> tags (see buttonTableHtml).
    */
   segments?: AlertBandSegment[];
+  /**
+   * Present when the source cell has image(s) but no buttons/bands of its own — pre-rendered
+   * <tr> rows (text-group rows via blockRow, image rows via imageRowHtml), nested directly in
+   * the bg/border table with no extra side-padding wrapper (unlike `segments`, which always
+   * wraps in the standard 20px block side padding — see e2e.test.ts's "uses the standard block
+   * side padding" regression for why that stays untouched for the button/band case). Each row
+   * carries its own horizontal inset instead.
+   */
+  rows?: string[];
 }
 
 export type AlertBandSegment =
   | { kind: "text"; html: string }
   | { kind: "button"; label: string; href: string; bg: string; radius?: number; border?: BorderSpec }
   /** Nested colored band (its own bg/border) rendered as a separate row inside the outer band. */
-  | { kind: "band"; html: string; bg: string; border?: BorderSpec; align?: "left" | "center" | "right" };
+  | { kind: "band"; html: string; bg: string; border?: BorderSpec; align?: "left" | "center" | "right" }
+  /** An image that was a direct child of the source cell — see AlertBandProps.images. Its
+   *  own src/alt are never rendered (see imageRowHtml); the kind only fixes its position. */
+  | { kind: "image" };
 
 export interface ButtonBandOpts {
   bg: string;
@@ -72,6 +84,9 @@ export interface CalloutOpts {
   /** Present when the source cell has nested h5-button(s)/band(s) — same convention as
    *  AlertBandOpts.segments — rendered as stacked rows instead of the plain innerHtml. */
   segments?: AlertBandSegment[];
+  /** Present when the source cell has image(s) but no buttons/bands — same convention as
+   *  AlertBandOpts.rows. */
+  rows?: string[];
 }
 
 export interface CalloutBoxOpts {
@@ -122,8 +137,6 @@ export interface GridOpts {
 }
 
 export interface ImageOpts {
-  src: string;
-  alt?: string;
   /** § next to the image — zero the corresponding padding (see ImageProps). */
   tightBefore?: boolean;
   tightAfter?: boolean;
@@ -293,6 +306,45 @@ ${indentHtml(label, 8)}
 }
 
 /**
+ * Standalone-image markup (img-bg-block class, wrapped in a bulletproof <a>, capped at the
+ * fixed content width) — shared by the top-level image ComponentNode (`image()`) and image
+ * rows nested inside an alertBand/calloutLeft box (see AlertBandOpts.rows), where `padX` adds
+ * the box's own horizontal inset. 0 for the standalone/top-level case, which already sits
+ * inside the document's side padding and needs no inset of its own.
+ *
+ * src/alt are never read from the source document — every advanced-converter image is
+ * re-uploaded through the app's own storage flow after conversion, which finds/replaces this
+ * exact placeholder (tok.placeholderImageSrc/Alt). Matches the Simple converter's
+ * wrapImg/signatureImg convention (src/htmlConverter/templates.ts) — same fixed alt text,
+ * same per-provider storage root URL and base width (see profiles/ttt.ts, profiles/alphaone.ts,
+ * and Tokens.layout.placeholderImageWidth — the three Simple-converter variants each hand-pick
+ * their own base width, not a shared formula).
+ */
+export function imageRowHtml(
+  opts: { tightBefore?: boolean; tightAfter?: boolean },
+  tok: Tokens = defaultTokens,
+  padX = 0,
+): string {
+  const { tightBefore, tightAfter } = opts;
+  const padTop = tightBefore ? 0 : tok.layout.blockPadY;
+  const padBottom = tightAfter ? 0 : tok.layout.blockPadY;
+  // Outlook's Word engine honors the HTML width attribute literally (unlike width:100% in
+  // style, which every other client uses) — if the row sits inside a padded box (padX > 0),
+  // the true usable width is narrower than the base placeholder width, or the fixed-width
+  // <img> overflows its <td> by 2×padX in Outlook specifically.
+  const w = tok.layout.placeholderImageWidth - 2 * padX;
+  const padXCss = padX ? `padding-left:${padX}px;padding-right:${padX}px;` : "";
+  return `<tr>
+  <td class="${tok.classes.imgBg}" align="center" style="padding-top:${padTop}px;padding-bottom:${padBottom}px;${padXCss}">
+    <a href="${tok.placeholderHref}" target="${tok.button.target}">
+      <img alt="${escapeHtml(tok.placeholderImageAlt)}" height="auto" src="${escapeHtml(tok.placeholderImageSrc)}" width="${w}"
+        style="border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;max-width:${w}px;font-size:13px;"/>
+    </a>
+  </td>
+</tr>`;
+}
+
+/**
  * One <tr> per segment — shared by alertBand and calloutLeft (both can hold a nested
  * button/band table; see AlertBandOpts.segments). A real button gets its own <td bgcolor>
  * row instead of a bare <a> interleaved with text, since clients that strip inline styles
@@ -331,6 +383,9 @@ ${indentHtml(seg.html, 10)}
     </table>
   </td>
 </tr>`;
+    }
+    if (seg.kind === "image") {
+      return imageRowHtml({}, tok);
     }
     return blockRow(seg.html, { align, color: textColor }, tok);
   }).join("\n");
@@ -399,10 +454,23 @@ ${indentHtml(itemsHtml, 6)}
     },
 
     alertBand(opts: AlertBandOpts): string {
-      const { innerHtml, segments, bg, border, align = "left" } = opts;
+      const { innerHtml, segments, rows, bg, border, align = "left" } = opts;
       const textColor = isDarkBg(bg, tok) ? tok.color.white : tok.color.black;
       const p = pad();
       const borderStyle = borderSpecToStyle(border, tok);
+
+      if (rows) {
+        // Image(s) but no buttons/bands — stack rows directly in the bg/border table, each
+        // carrying its own horizontal inset (see AlertBandOpts.rows), instead of the
+        // segments path's extra side-padding wrapper (which stays reserved for buttons/bands).
+        return `<tr>
+  <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
+    <table align="center" border="0" bgcolor="${bg}" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;${borderStyle}" role="presentation">
+${indentHtml(rows.join("\n"), 6)}
+    </table>
+  </td>
+</tr>`;
+      }
 
       if (segments) {
         // One <tr> per segment — a real button row (its own <td bgcolor>) instead of a
@@ -441,7 +509,7 @@ ${indentHtml(wrapBlockStyle(innerHtml!, style, tok), 10)}
     },
 
     calloutLeft(innerHtml: string, opts: CalloutOpts): string {
-      const { accentColor, bg, segments } = opts;
+      const { accentColor, bg, segments, rows } = opts;
       const style = baseStyle({}, tok);
       const p = pad();
       const px = opts.accentPadX ?? tok.layout.calloutPadX;
@@ -449,9 +517,24 @@ ${indentHtml(wrapBlockStyle(innerHtml!, style, tok), 10)}
       const accentStyle = opts.accentStyle ?? "solid";
       const bgAttr = bg ? ` bgcolor="${bg}"` : "";
       const bgStyle = bg ? `background-color:${bg};` : "";
+      const accentBorder = `border-left:${accent}px ${accentStyle} ${accentColor};`;
+
+      if (rows) {
+        // Image(s) but no buttons/bands — same reasoning as AlertBandOpts.rows: stack rows
+        // directly in the accent-bordered table, each carrying its own horizontal inset,
+        // instead of the segments path's single wrapping <td>.
+        return `<tr>
+  <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
+    <table align="center" border="0"${bgAttr} cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;${bgStyle}${accentBorder}" role="presentation">
+${indentHtml(rows.join("\n"), 6)}
+    </table>
+  </td>
+</tr>`;
+      }
+
       const wrapOpen = `<tr>
   <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
-    <table align="center" border="0"${bgAttr} cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;${bgStyle}border-left:${accent}px ${accentStyle} ${accentColor};" role="presentation">
+    <table align="center" border="0"${bgAttr} cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;${bgStyle}${accentBorder}" role="presentation">
       <tr>`;
       const wrapClose = `      </tr>
     </table>
@@ -624,19 +707,7 @@ ${indentHtml(cellsHtml, 8)}
     },
 
     image(opts: ImageOpts): string {
-      const { src, alt = "Image", tightBefore, tightAfter } = opts;
-      const padTop = tightBefore ? 0 : pad();
-      const padBottom = tightAfter ? 0 : pad();
-      // Content width inside side padding (600 − 2×20 = 560) — matches simple wrapImg
-      const w = tok.layout.containerMaxWidth - 2 * tok.layout.sidePadding;
-      return `<tr>
-  <td class="${tok.classes.imgBg}" align="center" style="padding-top:${padTop}px;padding-bottom:${padBottom}px;">
-    <a href="${tok.placeholderHref}" target="${tok.button.target}">
-      <img alt="${escapeHtml(alt)}" height="auto" src="${escapeHtml(src)}" width="${w}"
-        style="border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;max-width:${w}px;font-size:13px;"/>
-    </a>
-  </td>
-</tr>`;
+      return imageRowHtml(opts, tok);
     },
 
     recordRow(opts: RecordOpts): string {

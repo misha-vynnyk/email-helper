@@ -906,10 +906,15 @@ describe("convertAdvanced — inline override", () => {
 // ── Images end-to-end ─────────────────────────────────────────────────────────
 
 describe("convertAdvanced — images", () => {
-  it("keeps the original src so uploadedUrlMap replacement can match it", () => {
+  // src/alt are never taken from the source document — every image is re-uploaded through
+  // the app's own storage flow after conversion (matches Simple converter's wrapImg
+  // convention), which finds/replaces this exact placeholder (tok.placeholderImageSrc/Alt).
+  it("never renders the document's own image src/alt — always the storage placeholder", () => {
     const html = convertAdvanced('<p><span><img src="https://lh7.googleusercontent.com/xyz" alt="Banner"></span></p>');
-    expect(html).toContain('src="https://lh7.googleusercontent.com/xyz"');
-    expect(html).toContain('alt="Banner"');
+    expect(html).not.toContain("https://lh7.googleusercontent.com/xyz");
+    expect(html).not.toContain('alt="Banner"');
+    expect(html).toContain(`src="${tokens.placeholderImageSrc}"`);
+    expect(html).toContain(`alt="${tokens.placeholderImageAlt}"`);
   });
 
   it("wraps the image in a placeholder link inside an img-bg-block cell", () => {
@@ -921,7 +926,7 @@ describe("convertAdvanced — images", () => {
   it("image between paragraphs keeps document order", () => {
     const html = convertAdvanced("<p>before</p><p><img src='mid.png'></p><p>after</p>");
     const iBefore = html.indexOf("before");
-    const iImg = html.indexOf("mid.png");
+    const iImg = html.indexOf(`class="${tokens.classes.imgBg}"`);
     const iAfter = html.indexOf("after");
     expect(iBefore).toBeGreaterThan(-1);
     expect(iImg).toBeGreaterThan(iBefore);

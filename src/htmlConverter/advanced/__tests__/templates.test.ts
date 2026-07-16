@@ -395,42 +395,73 @@ describe("borderSpecToStyle", () => {
 // ── image template ────────────────────────────────────────────────────────────
 
 describe("buildTemplates — image", () => {
-  it("renders img wrapped in a placeholder link (matches simple wrapImg)", () => {
-    const html = tmpl.image({ src: "https://cdn.example.com/pic.png", alt: "Promo" });
+  // src/alt are NEVER read from the source document — every advanced-converter image is
+  // re-uploaded through the app's own storage flow after conversion (matches Simple
+  // converter's wrapImg/signatureImg convention, src/htmlConverter/templates.ts), which
+  // finds/replaces this exact placeholder. tok.placeholderImageSrc/Alt are the only source.
+  it("renders img wrapped in a placeholder link, using tok.placeholderImageSrc/Alt (matches simple wrapImg)", () => {
+    const html = tmpl.image({});
     expect(html).toContain(`href="${tokens.placeholderHref}"`);
-    expect(html).toContain('src="https://cdn.example.com/pic.png"');
-    expect(html).toContain('alt="Promo"');
+    expect(html).toContain(`src="${tokens.placeholderImageSrc}"`);
+    expect(html).toContain(`alt="${tokens.placeholderImageAlt}"`);
     expect(html).toContain(`class="${tokens.classes.imgBg}"`);
   });
 
-  it("width equals containerMaxWidth − 2×sidePadding (560 by default)", () => {
-    const html = tmpl.image({ src: "x.png" });
-    const w = tokens.layout.containerMaxWidth - 2 * tokens.layout.sidePadding;
-    expect(html).toContain(`width="${w}"`);
-    expect(html).toContain(`max-width:${w}px`);
+  it("ignores src/alt even if a caller passes them (IR built outside the type system)", () => {
+    const html = tmpl.image({ ...({ src: "https://docs.google.com/leaked-blob", alt: "from the doc" } as object) });
+    expect(html).not.toContain("leaked-blob");
+    expect(html).not.toContain('alt="from the doc"');
+    expect(html).toContain(`src="${tokens.placeholderImageSrc}"`);
   });
 
-  it("falls back to alt=\"Image\" when alt is absent", () => {
-    const html = tmpl.image({ src: "x.png" });
-    expect(html).toContain('alt="Image"');
-  });
-
-  it("escapes quotes in src and alt attributes", () => {
-    const html = tmpl.image({ src: 'x.png" onerror="alert(1)', alt: '"><script>' });
-    expect(html).not.toContain('onerror="alert(1)"');
-    expect(html).not.toContain("<script>");
+  it("width equals tok.layout.placeholderImageWidth (560 by default)", () => {
+    const html = tmpl.image({});
+    expect(html).toContain(`width="${tokens.layout.placeholderImageWidth}"`);
+    expect(html).toContain(`max-width:${tokens.layout.placeholderImageWidth}px`);
   });
 
   it("uses tok.layout.blockPadY for outer padding", () => {
-    const html = tmpl.image({ src: "x.png" });
+    const html = tmpl.image({});
     expect(html).toContain(`padding-top:${tokens.layout.blockPadY}px`);
     expect(html).toContain(`padding-bottom:${tokens.layout.blockPadY}px`);
   });
 
-  it("profile override of sidePadding changes rendered width", () => {
+  // placeholderImageWidth is its own hand-picked constant per Simple-converter provider
+  // (560/562/400 — see Tokens.layout.placeholderImageWidth doc comment), NOT derived from
+  // containerMaxWidth/sidePadding — overriding sidePadding alone must not move it.
+  it("profile override of sidePadding does NOT change the rendered image width", () => {
     const tok = mergeTokens(tokens, { layout: { sidePadding: 30 } });
-    const html = buildTemplates(tok).image({ src: "x.png" });
-    expect(html).toContain(`width="${tok.layout.containerMaxWidth - 60}"`);
+    const html = buildTemplates(tok).image({});
+    expect(html).toContain(`width="${tokens.layout.placeholderImageWidth}"`);
+  });
+
+  it("profile override of placeholderImageWidth changes the rendered width (e.g. TTT's 400)", () => {
+    const tok = mergeTokens(tokens, { layout: { placeholderImageWidth: 400 } });
+    const html = buildTemplates(tok).image({});
+    expect(html).toContain('width="400"');
+    expect(html).toContain("max-width:400px");
+  });
+
+  // Locks the real profiles to the Simple converter's own hardcoded per-provider constants
+  // (ttt/templates.ts's FULL_IMAGE_WIDTH="400", alphaone/templates.ts's width="562") — neither
+  // follows containerMaxWidth − 2×sidePadding, so a formula-based width would silently drift
+  // from what the Simple converter (and the app's real upload/replace flow) actually expects.
+  it("TTT profile renders width=400, matching ttt/templates.ts's FULL_IMAGE_WIDTH", () => {
+    const html = buildTemplates(mergeTokens(tokens, tttProfile)).image({});
+    expect(html).toContain('width="400"');
+    expect(html).toContain("max-width:400px");
+  });
+
+  it("AlfaOne profile renders width=562, matching alphaone/templates.ts's wrapImg", () => {
+    const html = buildTemplates(mergeTokens(tokens, alphaoneProfile)).image({});
+    expect(html).toContain('width="562"');
+    expect(html).toContain("max-width:562px");
+  });
+
+  it("profile override of placeholderImageSrc changes the rendered src (e.g. TTT/AlfaOne bucket)", () => {
+    const tok = mergeTokens(tokens, { placeholderImageSrc: "https://ogfinstorage.com/" });
+    const html = buildTemplates(tok).image({});
+    expect(html).toContain('src="https://ogfinstorage.com/"');
   });
 });
 

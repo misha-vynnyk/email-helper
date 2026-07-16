@@ -772,3 +772,60 @@ describe("classifyTable — list items keep a bullet/number marker when flattene
     expect(lines[2][0].text).toBe("1. Restarted");
   });
 });
+
+// ── Images as direct cell children (GDocs' <p><span><img></span></p> wrapping means
+// these arrive as standalone ImageNodes, not part of any paragraph's runs) ─────────
+// Regression for a real GDocs doc: a dark 1×1 box (headline + CTA line + a plain
+// screenshot image, no <a>) silently dropped the image with no warning — the cell
+// flatteners only switched on child.type "p"/"table", never "img".
+
+describe("classifyTable — images as direct cell children", () => {
+  const img = { type: "img" as const, src: "https://example.com/pitch.png", alt: "Pitch" };
+
+  it("dark bg (alertBand) keeps the image as an images segment at its position", () => {
+    const cell = makeCell({ bg: "#000000", children: [makePara("Watch the pitch"), img] });
+    const result = classifyTable(makeTable([[cell]]));
+    expect(result?.kind).toBe("alertBand");
+    const images = (result?.props as Record<string, unknown>)["images"] as Array<{ atLine: number; props: { src: string } }>;
+    expect(images).toHaveLength(1);
+    expect(images[0].props.src).toBe("https://example.com/pitch.png");
+    expect(images[0].atLine).toBe(1);
+  });
+
+  it("dark bg with an image alone does not get swallowed into a buttonBand", () => {
+    // findHref's promotion (single logical line, no buttons/bands) must not fire just
+    // because the cell happens to have no OTHER content besides one image.
+    const cell = makeCell({ bg: "#000000", children: [img] });
+    const result = classifyTable(makeTable([[cell]]));
+    expect(result?.kind).toBe("alertBand");
+  });
+
+  it("border-left accent (calloutLeft) keeps the image as an images segment", () => {
+    const cell = makeCell({
+      border: { left: { color: "#047857" } },
+      children: [makePara("Quoted text"), img],
+    });
+    const result = classifyTable(makeTable([[cell]]));
+    expect(result?.kind).toBe("calloutLeft");
+    const images = (result?.props as Record<string, unknown>)["images"] as Array<{ atLine: number; props: { src: string } }>;
+    expect(images).toHaveLength(1);
+    expect(images[0].props.src).toBe("https://example.com/pitch.png");
+  });
+
+  it("light bg with no border (alertBand fallback) keeps the image too", () => {
+    const cell = makeCell({ bg: "#f5f5f5", children: [makePara("Note"), img] });
+    const result = classifyTable(makeTable([[cell]]));
+    expect(result?.kind).toBe("alertBand");
+    const images = (result?.props as Record<string, unknown>)["images"] as Array<{ atLine: number; props: { src: string } }>;
+    expect(images).toHaveLength(1);
+  });
+
+  it("statsGrid cells have no rendered shape for images — warns instead of silently dropping", () => {
+    const cellA = makeCell({ bg: "#f5f5f5", children: [makePara("Capital Raised"), img] });
+    const cellB = makeCell({ bg: "#f5f5f5", children: [makePara("Investors")] });
+    const warn = jest.fn();
+    const result = classifyTable(makeTable([[cellA, cellB]]), undefined, warn);
+    expect(result?.kind).toBe("statsGrid");
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("Зображення в клітинці"));
+  });
+});

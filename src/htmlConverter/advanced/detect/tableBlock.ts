@@ -7,7 +7,7 @@ import { tokens as defaultTokens } from "../config/tokens";
 import { isBgRedundant, isDarkBg } from "../ir/color";
 import { joinLinesWithSpace } from "../ir/runs";
 import { isGapBoundary } from "../ir/spacing";
-import type { AlertBandProps, BorderSide, BorderSpec, ButtonBandProps,CellNode, ComponentNode, Paragraph, Run,StructuralNode, TableNode, WarnFn } from "../ir/types";
+import type { AlertBandProps, BorderSide, BorderSpec, ButtonBandProps,CellNode, ComponentNode, ImageProps, Paragraph, Run,StructuralNode, TableNode, WarnFn } from "../ir/types";
 import { WARN } from "../warnings";
 
 /** Recurses back into classify.ts — threaded in to avoid a circular import. */
@@ -102,6 +102,13 @@ function flattenLinesWithBreaks(cell: CellNode, tok: Tokens, warn?: WarnFn): { l
           prevP = null;
         }
       }
+    } else if (child.type === "img") {
+      // This flattener has no rendered shape for an image (textDivider/statsGrid/recordRow
+      // cells, or a nested table that didn't resolve to a button/band) — surface the loss
+      // instead of silently dropping it. flattenCellForAlertBand (below) is the flattener
+      // that actually keeps images, for the cell kinds that can render them.
+      warn?.(WARN.imageDroppedInCell);
+      prevP = null;
     }
   }
   return { lines, paraBreaks };
@@ -143,12 +150,14 @@ function flattenCellForAlertBand(
   paraBreaks: Set<number>;
   buttons: { atLine: number; props: ButtonBandProps }[];
   bands: { atLine: number; props: AlertBandProps }[];
+  images: { atLine: number; props: ImageProps }[];
   align?: "left" | "center" | "right";
 } {
   const lines: Run[][] = [];
   const paraBreaks = new Set<number>();
   const buttons: { atLine: number; props: ButtonBandProps }[] = [];
   const bands: { atLine: number; props: AlertBandProps }[] = [];
+  const images: { atLine: number; props: ImageProps }[] = [];
   let align: "left" | "center" | "right" | undefined;
   let prevP: Paragraph | null = null;
   const listState: ListMarkerState = { active: false, ordered: false, groupId: undefined, n: 0 };
@@ -184,9 +193,16 @@ function flattenCellForAlertBand(
           prevP = null;
         }
       }
+    } else if (child.type === "img") {
+      // GDocs wraps each image in its own <p><span><img></span></p> — since that <p> has
+      // no text, fromDom's parseParagraph returns null for it and the image survives as a
+      // standalone node here instead of inside a paragraph's runs. Keep it as a real <img>
+      // row at its position instead of the flattener silently swallowing it.
+      images.push({ atLine: lines.length, props: { src: child.src, alt: child.alt } });
+      prevP = null;
     }
   }
-  return { lines, paraBreaks, buttons, bands, align };
+  return { lines, paraBreaks, buttons, bands, images, align };
 }
 
 function findHref(cell: CellNode, tok: Tokens): string | null {
@@ -299,14 +315,15 @@ function classifySingleCell(
     // close its color is to white — use the raw border here, not the near-white-filtered one.
     // Nested tables that resolve to a real button (a CTA nested inside the banner) survive
     // as actual buttons — see flattenCellForAlertBand — everything else still flattens.
-    const { lines, paraBreaks, buttons, bands, align } = flattenCellForAlertBand(cell, tok, warn, classifyChildren);
+    const { lines, paraBreaks, buttons, bands, images, align } = flattenCellForAlertBand(cell, tok, warn, classifyChildren);
     // Only promote to buttonBand (wraps the ENTIRE cell in one <a>) when the cell is a
-    // single logical line with no nested button/band of its own — a real one-line CTA.
+    // single logical line with no nested button/band/image of its own — a real one-line CTA.
     // A multi-line dark box (e.g. a banner headline + a "fake link" line styled
     // blue/underlined with no real <a> + a footer line) must stay an alertBand: findHref
     // would happily match the fake-link line and swallow the whole box — including
     // unrelated text — into one giant link.
-    const href = lines.length <= 1 && buttons.length === 0 && bands.length === 0 ? findHref(cell, tok) : null;
+    const href = lines.length <= 1 && buttons.length === 0 && bands.length === 0 && images.length === 0
+      ? findHref(cell, tok) : null;
     if (href) {
       return { kind: "buttonBand", props: { runs: joinLinesWithSpace(lines), href, bg, border: cell.border } };
     }
@@ -316,6 +333,7 @@ function classifySingleCell(
         lines, paraBreaks, bg, border: cell.border,
         buttons: buttons.length ? buttons : undefined,
         bands: bands.length ? bands : undefined,
+        images: images.length ? images : undefined,
         align,
       },
     };
@@ -342,13 +360,14 @@ function classifySingleCell(
   // being flattened to plain text (see flattenLinesWithBreaks' nestedTableFlattened path).
   const isLeftAccentOnly = Boolean(border?.left) && !border?.top && !border?.right && !border?.bottom;
   if (isLeftAccentOnly) {
-    const { lines, paraBreaks, buttons, bands } = flattenCellForAlertBand(cell, tok, warn, classifyChildren);
+    const { lines, paraBreaks, buttons, bands, images } = flattenCellForAlertBand(cell, tok, warn, classifyChildren);
     return {
       kind: "calloutLeft",
       props: {
         lines, paraBreaks, bg, accentColor: border!.left!.color, accentWidthPx: border!.left!.widthPx, accentStyle: border!.left!.style,
         buttons: buttons.length ? buttons : undefined,
         bands: bands.length ? bands : undefined,
+        images: images.length ? images : undefined,
       },
     };
   }
@@ -362,10 +381,21 @@ function classifySingleCell(
   }
 
   // Light bg with no border declared in the source → keep the bg as a plain colored box.
-  // Never synthesize an accent border the document never had.
+  // Never synthesize an accent border the document never had. Same flattener as the dark-bg
+  // branch above (not the plainer flattenLinesWithBreaks) so a nested button/band/image
+  // inside a light-colored box survives too, instead of only dark boxes getting that support.
   {
-    const { lines, paraBreaks } = flattenLinesWithBreaks(cell, tok, warn);
-    return { kind: "alertBand", props: { lines, paraBreaks, bg: bg! } };
+    const { lines, paraBreaks, buttons, bands, images, align } = flattenCellForAlertBand(cell, tok, warn, classifyChildren);
+    return {
+      kind: "alertBand",
+      props: {
+        lines, paraBreaks, bg: bg!,
+        buttons: buttons.length ? buttons : undefined,
+        bands: bands.length ? bands : undefined,
+        images: images.length ? images : undefined,
+        align,
+      },
+    };
   }
 }
 
