@@ -242,9 +242,10 @@ function cellToChild(cell: CellNode, tok: Tokens, warn?: WarnFn): ComponentNode 
     kind: "paragraph",
     props: {
       lines: flattenLines(cell, tok, warn),
-      // "center" fallback: stats cards read best centered when the author left the
-      // cell unaligned — but an explicit alignment on the cell OR its first <p> wins.
-      align: cellAlign(cell, "center"),
+      // Fallback (tok.statsGridDefaultAlign) only applies when NEITHER the cell nor its first
+      // <p> declares an align — an explicit alignment always wins. See the token's own doc
+      // comment (config/tokens.ts) for why this is a guess, not something read from the doc.
+      align: cellAlign(cell, tok.statsGridDefaultAlign),
       size: "small" as const,
       bg: cell.bg,
       border: cell.border,
@@ -255,6 +256,14 @@ function cellToChild(cell: CellNode, tok: Tokens, warn?: WarnFn): ComponentNode 
 
 // ── Column widths ─────────────────────────────────────────────────────────────
 
+// A column's width counts as "equal-intended" when its deviation from the row's average is
+// within this fraction of that average — e.g. 292/328 (620 total, avg 310): both deviate
+// ~5.8% from 310, well inside 15%, so the row is treated as a 2-up equal grid (50/50), not a
+// deliberate 47/53 split. A real asymmetric layout (e.g. a 200/400 sidebar+content row, each
+// ~33% off the 300 average) exceeds the tolerance and keeps its actual ratio. Chosen to match
+// the existing 0.15 threshold already used for the "narrow accent column" heuristic below.
+const EQUAL_WIDTH_TOLERANCE = 0.15;
+
 /**
  * Convert raw <colgroup> widths to integer percentages summing to 100, using
  * the largest-remainder method: floor each share, then hand out the leftover
@@ -263,6 +272,9 @@ function cellToChild(cell: CellNode, tok: Tokens, warn?: WarnFn): ComponentNode 
  * GDocs pixel widths — e.g. 156/155/155/156 (a rounding artifact of GDocs'
  * pt→px export, not an intentional layout) previously became 25/24/24/27
  * instead of the intended 25/25/25/25.
+ * Columns within EQUAL_WIDTH_TOLERANCE of the average are treated as an intentional
+ * equal-width grid and split evenly (see EQUAL_WIDTH_TOLERANCE) rather than preserving GDocs'
+ * noisy pixel ratio — genuinely different columns still keep their real proportions.
  * Returns undefined when widths are missing/mismatched (e.g. colspan rows or
  * cols without a width attribute) — callers fall back to the equal split.
  */
@@ -270,7 +282,11 @@ function toWidthPercents(colWidths: number[] | undefined, ncells: number): numbe
   if (!colWidths || colWidths.length !== ncells || ncells < 2) return undefined;
   const total = colWidths.reduce((s, w) => s + w, 0);
   if (total <= 0) return undefined;
-  const shares = colWidths.map(w => (w / total) * 100);
+  const avg = total / colWidths.length;
+  const isNearEqual = colWidths.every(w => Math.abs(w - avg) / avg <= EQUAL_WIDTH_TOLERANCE);
+  const shares = isNearEqual
+    ? colWidths.map(() => 100 / ncells)
+    : colWidths.map(w => (w / total) * 100);
   const pcts = shares.map(s => Math.floor(s));
   let remainder = 100 - pcts.reduce((s, p) => s + p, 0);
   const order = shares

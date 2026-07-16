@@ -2,6 +2,7 @@
 // Import config so fontFamily and brand colors are never duplicated.
 // Profile overrides (TTT, Alfa, …) live in advanced/profiles/*.ts and extend this object.
 import { config } from "../../utils/config";
+import type { Align } from "../ir/types";
 
 // Explicit interface keeps types wide (number, string) so profile overrides
 // don't clash with the literal types produced by `as const`.
@@ -33,6 +34,16 @@ export interface Tokens {
   /** Matches the Simple converter's fixed alt text for not-yet-uploaded images — same across
    *  every provider (see src/htmlConverter/templates.ts's wrapImg), so no profile override. */
   placeholderImageAlt: string;
+  /**
+   * Alignment a statsGrid cell falls back to when NEITHER the cell nor its first <p> declares
+   * one (see detect/tableBlock.ts's cellToChild/cellAlign). GDocs omits `text-align` for the
+   * CSS default (left) just like it omits any other default value — "no text-align" isn't
+   * "unknown", it's "left" — so this fallback is a converter-side guess, not a fact read from
+   * the document. "center" was chosen because a past real stat-card doc read best that way;
+   * flip to "left" here if a real doc needs the literal CSS-default reading instead — no code
+   * change required.
+   */
+  statsGridDefaultAlign: Align;
   font: {
     stack: string;
     lineHeight: number;
@@ -119,6 +130,7 @@ export const tokens: Tokens = {
   placeholderHref: "urlhere",
   placeholderImageSrc: config.storageUrl,  // "https://storage.5th-elementagency.com/" — matches Simple's default provider
   placeholderImageAlt: "Video preview",
+  statsGridDefaultAlign: "left",
   font: {
     // Pulled from shared config — one place to update for all converters and profiles
     stack: config.fontFamily,  // "'Roboto', Arial, Helvetica, sans-serif"
@@ -186,6 +198,7 @@ export type TokensOverride = {
   accentBullet?: string;
   placeholderHref?: string;
   placeholderImageSrc?: string;
+  statsGridDefaultAlign?: Align;
 };
 
 export function mergeTokens(base: Tokens, override: TokensOverride): Tokens {
@@ -200,5 +213,6 @@ export function mergeTokens(base: Tokens, override: TokensOverride): Tokens {
     placeholderHref: override.placeholderHref ?? base.placeholderHref,
     placeholderImageSrc: override.placeholderImageSrc ?? base.placeholderImageSrc,
     placeholderImageAlt: base.placeholderImageAlt,
+    statsGridDefaultAlign: override.statsGridDefaultAlign ?? base.statsGridDefaultAlign,
   } as Tokens;
 }

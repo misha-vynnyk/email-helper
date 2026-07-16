@@ -637,7 +637,12 @@ ${indentHtml(buttonTableHtml(innerHtml, href, bg, tok, radius, border), 4)}
         .map((cell, i) => {
           const w = widths?.[i] ?? (i === cells.length - 1 ? 100 - pct * (cells.length - 1) : pct);
           const textColor = cell.bg && isDarkBg(cell.bg, tok) ? tok.color.white : tok.color.black;
-          const cellStyle = baseStyle({ align: cell.align ?? "center", fontSize: tok.font.cellPx, color: textColor }, tok);
+          // cell.align always comes from cellToChild (detect/tableBlock.ts), which never
+          // returns undefined — this ?? is only a defensive fallback for a GridCell built
+          // outside that path (e.g. directly in a test). Reads the same token as
+          // cellToChild's own fallback so there's exactly one place to change the default,
+          // not two that could silently drift apart.
+          const cellStyle = baseStyle({ align: cell.align ?? tok.statsGridDefaultAlign, fontSize: tok.font.cellPx, color: textColor }, tok);
           const bgAttr = cell.bg ? ` bgcolor="${cell.bg}"` : "";
           const bgStyle = cell.bg ? `background-color:${cell.bg};` : "";
           // background-color grouped with the rest of the "look" properties (right after
