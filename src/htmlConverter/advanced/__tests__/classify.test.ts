@@ -611,19 +611,28 @@ describe("classify — margin-sum boundary rule", () => {
     return { type: "p", size: "body", align: "left", lines: [[{ text }]], ...extra };
   }
 
-  it("merges a small-margin boundary (2pt + 2pt < threshold) with a single <br>", () => {
+  // Derived from the token, not hardcoded pt values — a fixture that happens to sit under/over
+  // a hardcoded number silently breaks (or silently stops testing anything meaningful) the next
+  // time gapMarginThresholdPt is retuned. `under` sums (with itself) to half the threshold;
+  // `over` sums to 1.5x the threshold while EACH SIDE ALONE still stays under it — that "neither
+  // side alone reaches the threshold, only their sum does" case is exactly what this rule tests.
+  const T = tokens.layout.gapMarginThresholdPt;
+  const under = T / 4;
+  const over = T * 0.75;
+
+  it("merges a small-margin boundary (well under gapMarginThresholdPt on both sides) with a single <br>", () => {
     const result = classify([
-      marginPara("one", { marginTopPt: 2, marginBottomPt: 2 }),
-      marginPara("two", { marginTopPt: 2, marginBottomPt: 2 }),
+      marginPara("one", { marginTopPt: under, marginBottomPt: under }),
+      marginPara("two", { marginTopPt: under, marginBottomPt: under }),
     ]);
     expect(result).toHaveLength(1);
     expect((result[0].props as Record<string, unknown>)["paraBreaks"]).toBeUndefined();
   });
 
-  it("keeps the <br><br> gap when the boundary sum reaches the threshold (4pt + 14pt)", () => {
+  it("keeps the <br><br> gap when the boundary SUM reaches gapMarginThresholdPt, even though neither side alone does", () => {
     const result = classify([
-      marginPara("disclaimer one", { marginTopPt: 14, marginBottomPt: 4 }),
-      marginPara("disclaimer two", { marginTopPt: 14, marginBottomPt: 4 }),
+      marginPara("disclaimer one", { marginTopPt: over, marginBottomPt: over }),
+      marginPara("disclaimer two", { marginTopPt: over, marginBottomPt: over }),
     ]);
     const breaks = (result[0].props as Record<string, unknown>)["paraBreaks"] as Set<number>;
     expect(breaks.has(1)).toBe(true);
@@ -666,8 +675,8 @@ describe("classify — margin-sum boundary rule", () => {
   });
 
   it("cross-style small-margin boundary zeroes the paddings (tightAfter/tightBefore)", () => {
-    const headline: Paragraph = { type: "p", size: "headline", align: "left", lines: [[{ text: "Head" }]], marginTopPt: 2, marginBottomPt: 2 };
-    const body: Paragraph = { type: "p", size: "body", align: "left", lines: [[{ text: "Body" }]], marginTopPt: 2, marginBottomPt: 2 };
+    const headline: Paragraph = { type: "p", size: "headline", align: "left", lines: [[{ text: "Head" }]], marginTopPt: under, marginBottomPt: under };
+    const body: Paragraph = { type: "p", size: "body", align: "left", lines: [[{ text: "Body" }]], marginTopPt: under, marginBottomPt: under };
     const result = classify([headline, body]);
     expect(result).toHaveLength(2);
     expect((result[0].props as Record<string, unknown>)["tightAfter"]).toBe(true);
