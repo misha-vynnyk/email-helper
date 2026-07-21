@@ -667,6 +667,7 @@ ${indentHtml(buttonTableHtml(innerHtml, href, bg, tok, radius, border), 4)}
       const p = pad();
       const cy = tok.layout.gridCellPadY;
       const cx = tok.layout.gridCellPadX;
+      const wraps = n > tok.layout.gridInlineBlockThreshold;
       const cellsHtml = cells
         .map((cell, i) => {
           const w = widths?.[i] ?? (i === cells.length - 1 ? 100 - pct * (cells.length - 1) : pct);
@@ -690,8 +691,12 @@ ${indentHtml(buttonTableHtml(innerHtml, href, bg, tok, radius, border), 4)}
           const borderCss = cellBorder
             ? borderSpecToStyle(cellBorder, tok, tok.layout.recordBorderPx)
             : effectiveBorderColor ? `border:${tok.layout.recordBorderPx}px solid ${effectiveBorderColor};` : "";
-          return `<td valign="top" align="center" class="${tok.classes.inlineCell}" width="${w}%"${bgAttr}
-  style="display:inline-block;width:${w}%;max-width:100%;min-width:${tok.layout.gridMinWidth}px;${borderCss}${bgStyle}">
+          const cellClass = wraps ? ` class="${tok.classes.inlineCell}"` : "";
+          const cellStyleAttr = wraps
+            ? `display:inline-block;width:${w}%;max-width:100%;min-width:${tok.layout.gridMinWidth}px;${borderCss}${bgStyle}`
+            : `width:${w}%;max-width:100%;${borderCss}${bgStyle}`;
+          return `<td valign="top" align="center"${cellClass} width="${w}%"${bgAttr}
+  style="${cellStyleAttr}">
   <table border="0" cellspacing="0" cellpadding="0" role="presentation" width="100%" style="width:100%;">
     <tr>
       <td style="${cellStyle} padding-top:${cy}px;padding-right:${cx}px;padding-bottom:${cy}px;padding-left:${cx}px;">

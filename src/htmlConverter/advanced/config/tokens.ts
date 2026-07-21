@@ -60,6 +60,14 @@ export interface Tokens {
     blockPadY: number;
     spacerPx: number;
     gridMinWidth: number;
+    /**
+     * statsGrid column count above which cells switch to wrapping inline-block layout
+     * (display:inline-block + min-width, so cards stack on narrow screens). At or below
+     * this count, cells stay fixed side-by-side <td width="N%"> — 2-3 column grids read as
+     * a deliberate row and shouldn't reflow. Cards default: 4+ columns wraps, matching the
+     * point where fixed-width cards get too narrow to read on mobile without wrapping.
+     */
+    gridInlineBlockThreshold: number;
     quotePadX: number;
     calloutAccentPx: number;
     calloutBoxBorderPx: number;
@@ -151,6 +159,7 @@ export const tokens: Tokens = {
     blockPadY: 14,   // top + bottom padding per block row (matches Simple)
     spacerPx: 16,   // height of the spacer <td> between sections
     gridMinWidth: 100,
+    gridInlineBlockThreshold: 3,   // >3 columns wraps (inline-block); 3 or fewer stays fixed side-by-side
     quotePadX: 20,   // h4 quote paragraph left/right indent (matches Simple converter)
     calloutAccentPx: 10,   // calloutLeft left-border width
     calloutBoxBorderPx: 1,   // calloutBox frame border width (all declared sides)
@@ -168,7 +177,7 @@ export const tokens: Tokens = {
     // gap (<br><br>). GDocs authors' "paragraph style" spacing (0–4pt per side) reads
     // as tight lines; deliberate section spacing (14pt+) reads as a gap. Blank lines
     // (top-level <br>) and § override this in either direction.
-    gapMarginThresholdPt: 10,
+    gapMarginThresholdPt: 6,
     listIndentPx: 20,   // <ul>/<ol> left indent (matches quotePadX)
     placeholderImageWidth: 560,   // matches Simple converter's default wrapImg width="560"
   },
