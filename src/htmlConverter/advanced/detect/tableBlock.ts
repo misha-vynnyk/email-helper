@@ -230,11 +230,19 @@ function hasMeaningfulContent(cell: CellNode, tok: Tokens): boolean {
  * Effective text alignment of a cell. GDocs puts `text-align` on the inner <p>,
  * not the <td> — cell.align only covers an explicit `align`/`text-align` on the
  * cell itself, so fall back to the first paragraph child's align.
+ *
+ * A <th> with NEITHER signal set still isn't ambiguous — browsers center a header
+ * cell's content by default (a user-agent stylesheet rule, invisible to our parser,
+ * which only reads explicit inline CSS/attributes). That native default is honored
+ * ahead of the generic per-caller `fallback` (usually "left"), but only when no
+ * explicit align exists anywhere — an author-declared align, on the cell or its
+ * paragraph, always wins over the tag's default.
  */
 function cellAlign(cell: CellNode, fallback: "left" | "center" | "right" = "left"): "left" | "center" | "right" {
   if (cell.align) return cell.align;
   const firstPara = cell.children.find((c): c is Paragraph => c.type === "p");
-  return firstPara?.align ?? fallback;
+  if (firstPara?.align) return firstPara.align;
+  return cell.isHeader ? "center" : fallback;
 }
 
 function cellToChild(cell: CellNode, tok: Tokens, warn?: WarnFn): ComponentNode {

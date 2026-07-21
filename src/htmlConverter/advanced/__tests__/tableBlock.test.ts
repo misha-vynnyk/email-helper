@@ -735,6 +735,55 @@ describe("classifyTable — cell alignment read from the inner paragraph", () =>
     expect(rows[0].cells[1].align).toBe("center");
     expect(rows[1].cells[1].align).toBe("center");
   });
+
+  // Bug repro: a <thead><th colspan=N> title with no explicit text-align anywhere (neither
+  // on the <th> nor its <p>) rendered left-aligned — browsers center a <th>'s content by
+  // default (a user-agent stylesheet rule our parser, reading only explicit inline CSS,
+  // never saw), so the "no explicit signal" case fell through to the generic "left" fallback
+  // instead of honoring the tag's own native default.
+  it("a <th> cell with no explicit align anywhere defaults to center (native <th> semantics), not the generic fallback", () => {
+    const titleCell = makeCell({ colspan: 2, isHeader: true, children: [makePara("TITLE")] });
+    const table = makeTable([
+      [titleCell],
+      [makeCell(), makeCell()],
+      [makeCell(), makeCell()],
+    ]);
+    const result = classifyTable(table);
+    const props = result?.props as Record<string, unknown>;
+    expect((props["band"] as Record<string, unknown>)["align"]).toBe("center");
+  });
+
+  it("a <th> cell's OWN explicit align still wins over the header-default center", () => {
+    const titleCell = makeCell({ colspan: 2, isHeader: true, align: "left", children: [makePara("TITLE")] });
+    const table = makeTable([
+      [titleCell],
+      [makeCell(), makeCell()],
+    ]);
+    const result = classifyTable(table);
+    const props = result?.props as Record<string, unknown>;
+    expect((props["band"] as Record<string, unknown>)["align"]).toBe("left");
+  });
+
+  it("a <th> cell's paragraph explicit align still wins over the header-default center", () => {
+    const titleCell = makeCell({ colspan: 2, isHeader: true, children: [alignedPara("TITLE", "right")] });
+    const table = makeTable([
+      [titleCell],
+      [makeCell(), makeCell()],
+    ]);
+    const result = classifyTable(table);
+    const props = result?.props as Record<string, unknown>;
+    expect((props["band"] as Record<string, unknown>)["align"]).toBe("right");
+  });
+
+  it("a plain <td> (not isHeader) with no explicit align anywhere still falls back to the generic default (left for recordRow)", () => {
+    const table = makeTable([
+      [makeCell(), makeCell()],
+      [makeCell(), makeCell()],
+    ]);
+    const result = classifyTable(table);
+    const rows = (result?.props as Record<string, unknown>)["rows"] as Array<{ cells: Array<{ align?: string }> }>;
+    expect(rows[0].cells[0].align).toBe("left");
+  });
 });
 
 // ── Nested colored band inside a dark box survives (F10) ─────────────────────

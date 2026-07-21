@@ -86,6 +86,12 @@ export interface CellNode {
   bg?: string;
   border?: BorderSpec;      // for classification (§4) and border color — not for metrics
   align?: "left" | "center" | "right";
+  /** True for a <th> (vs <td>) — browsers center a header cell's content by default even
+   *  with no explicit text-align anywhere in the source (a user-agent stylesheet rule our
+   *  parser, which only reads explicit inline CSS, never sees). Consulted as the alignment
+   *  fallback (detect/tableBlock.ts's cellAlign) only when neither the cell nor its first
+   *  paragraph declares an explicit align — an explicit declaration always wins. */
+  isHeader?: boolean;
   children: StructuralNode[];
 }
 

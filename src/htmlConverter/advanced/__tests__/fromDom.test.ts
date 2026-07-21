@@ -347,6 +347,18 @@ describe("fromDom — TABLE", () => {
     expect(result).toHaveLength(0);
   });
 
+  // <th> centers by default in every browser (user-agent stylesheet) — cellAlign
+  // (detect/tableBlock.ts) relies on this flag when neither the cell nor its paragraph
+  // declares an explicit align. <td> has no such default.
+  it("marks a <th> cell as isHeader; a <td> cell is not", () => {
+    const result = nodes(`
+      <table><tr><th>Header</th><td>Data</td></tr></table>
+    `);
+    const table = result[0] as TableNode;
+    expect(table.rows[0].cells[0].isHeader).toBe(true);
+    expect(table.rows[0].cells[1].isHeader).toBe(false);
+  });
+
   // Bug repro: two tables separated by an author-typed blank line (top-level <br>) were
   // silently merged into one recordRow because the gap signal never reached the second
   // TableNode — see TableNode.gapBefore and classify.ts's recordRow merge guard.
