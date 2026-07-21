@@ -763,6 +763,43 @@ describe("convertAdvanced — two adjacent but separate <ul>s stay two lists", (
   });
 });
 
+// Bug report: two unrelated multi-row tables with the same column count (a comparison
+// table, then — separated only by an author-typed blank line — an unrelated pricing
+// table) were silently fused into one recordRow. GDocs wraps each pasted table in its own
+// <div dir="ltr">, so the <br> sits between the two DIVs, not between the two TABLEs.
+describe("convertAdvanced — two adjacent but separate multi-row tables stay separate", () => {
+  const cell = (text: string) => `<td><p><span>${text}</span></p></td>`;
+  const twoTables =
+    '<div dir="ltr"><table><colgroup><col width="100"/><col width="100"/><col width="100"/></colgroup>' +
+    "<tbody>" +
+    `<tr>${cell("METRIC")}${cell("MODE MOBILE")}${cell("TYPICAL PRE-IPO")}</tr>` +
+    `<tr>${cell("Revenue Growth")}${cell("32,481%")}${cell("&lt;500%")}</tr>` +
+    "</tbody></table></div>" +
+    "<br />" +
+    '<div dir="ltr"><table><colgroup><col width="100"/><col width="100"/><col width="100"/></colgroup>' +
+    "<tbody>" +
+    `<tr>${cell("INVEST")}${cell("BONUS SHARES")}${cell("TOTAL SHARES")}</tr>` +
+    `<tr>${cell("$1,950+")}${cell("5% Bonus")}${cell("2,050 per $1K")}</tr>` +
+    "</tbody></table></div>";
+
+  it("produces no tablesMergedMismatch warning", () => {
+    const { warnings } = convertAdvancedDetailed(twoTables);
+    expect(warnings).toEqual([]);
+  });
+
+  it("keeps the two tables as two separate recordRow blocks, not one merged 4-row table", () => {
+    const html = convertAdvanced(twoTables);
+    const metricIdx = html.indexOf("METRIC");
+    const investIdx = html.indexOf("INVEST");
+    expect(metricIdx).toBeGreaterThan(-1);
+    expect(investIdx).toBeGreaterThan(metricIdx);
+    // Each recordRow ComponentNode renders its own "padding-top:14px;padding-bottom:14px;"
+    // <td> wrapping a single nested <table>. A merged recordRow would produce only ONE such
+    // wrapper (holding all 4 rows); two separate blocks produce two.
+    expect((html.match(/padding-top:14px;padding-bottom:14px;/g) ?? []).length).toBe(2);
+  });
+});
+
 // Regression, Ітерація 9c (fix-advanced.md): a table cell is always flattened to plain
 // text (no real <ul> reachable from inside a cell) — <li>-derived paragraphs used to lose
 // their bullet/number marker entirely. Two back-to-back DIFFERENT lists inside one cell

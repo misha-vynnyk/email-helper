@@ -347,6 +347,46 @@ describe("fromDom — TABLE", () => {
     expect(result).toHaveLength(0);
   });
 
+  // Bug repro: two tables separated by an author-typed blank line (top-level <br>) were
+  // silently merged into one recordRow because the gap signal never reached the second
+  // TableNode — see TableNode.gapBefore and classify.ts's recordRow merge guard.
+  it("a top-level <br> directly before a table sets its gapBefore", () => {
+    const result = nodes(`
+      <table><tr><td>A1</td><td>A2</td></tr></table>
+      <br />
+      <table><tr><td>B1</td><td>B2</td></tr></table>
+    `);
+    const tables = result.filter((n) => n.type === "table") as TableNode[];
+    expect(tables).toHaveLength(2);
+    expect(tables[0].gapBefore).toBeUndefined();
+    expect(tables[1].gapBefore).toBe(true);
+  });
+
+  // GDocs wraps every pasted table in its own <div dir="ltr">, so the real-world shape is
+  // "</table></div><br/><div><table>...", i.e. the <br> sits between the two DIVs, not
+  // between the two TABLEs directly.
+  it("a top-level <br> before a <div>-wrapped table sets the table's gapBefore", () => {
+    const result = nodes(`
+      <div><table><tr><td>A1</td><td>A2</td></tr></table></div>
+      <br />
+      <div><table><tr><td>B1</td><td>B2</td></tr></table></div>
+    `);
+    const tables = result.filter((n) => n.type === "table") as TableNode[];
+    expect(tables).toHaveLength(2);
+    expect(tables[0].gapBefore).toBeUndefined();
+    expect(tables[1].gapBefore).toBe(true);
+  });
+
+  it("no <br> between two <div>-wrapped tables leaves gapBefore unset (still eligible to merge)", () => {
+    const result = nodes(`
+      <div><table><tr><td>A1</td><td>A2</td></tr></table></div>
+      <div><table><tr><td>B1</td><td>B2</td></tr></table></div>
+    `);
+    const tables = result.filter((n) => n.type === "table") as TableNode[];
+    expect(tables).toHaveLength(2);
+    expect(tables[1].gapBefore).toBeUndefined();
+  });
+
   it("cell bg-color is normalized to canonical hex", () => {
     const result = nodes(`
       <table>

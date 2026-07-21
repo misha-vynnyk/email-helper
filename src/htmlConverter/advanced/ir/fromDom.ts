@@ -457,14 +457,26 @@ export function fromDom(
     if (tag === "DIV" || tag === "BLOCKQUOTE" || tag === "SECTION" ||
         tag === "ARTICLE" || tag === "HEADER" || tag === "FOOTER" ||
         tag === "FIGURE" || tag === "MAIN" || tag === "ASIDE") {
-      nodes.push(...fromDom(el, bg, tok, warn));
+      // GDocs wraps each <table> in its own <div dir="ltr">, so a top-level <br> that
+      // precedes such a div (e.g. two adjacent tables separated by a blank line) sits
+      // OUTSIDE it — the recursive fromDom(el, ...) call below starts with its own fresh
+      // pendingGap/pendingTight and never sees the outer one. Apply it to the div's first
+      // child here, the same way applyPending does for a direct <p>/<table> sibling.
+      const children = fromDom(el, bg, tok, warn);
+      const first = children[0];
+      if (first?.type === "p") applyPending(first);
+      else if (first?.type === "table" && pendingGap) first.gapBefore = true;
+      nodes.push(...children);
       pendingGap = pendingTight = false;
       continue;
     }
 
     if (tag === "TABLE") {
       const table = parseTable(el, bg, tok, warn);
-      if (table) nodes.push(table);
+      if (table) {
+        if (pendingGap) table.gapBefore = true;
+        nodes.push(table);
+      }
       pendingGap = pendingTight = false;
       continue;
     }

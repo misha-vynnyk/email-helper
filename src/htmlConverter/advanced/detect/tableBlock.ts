@@ -7,7 +7,7 @@ import { tokens as defaultTokens } from "../config/tokens";
 import { isBgRedundant, isDarkBg } from "../ir/color";
 import { joinLinesWithSpace } from "../ir/runs";
 import { isGapBoundary } from "../ir/spacing";
-import type { AlertBandProps, BorderSide, BorderSpec, ButtonBandProps,CellNode, ComponentNode, ImageProps, Paragraph, Run,StructuralNode, TableNode, WarnFn } from "../ir/types";
+import type { AlertBandProps, BorderSide, BorderSpec, ButtonBandProps, CellNode, ComponentNode, ImageProps, Paragraph, Run, StructuralNode, TableNode, WarnFn } from "../ir/types";
 import { WARN } from "../warnings";
 
 /** Recurses back into classify.ts — threaded in to avoid a circular import. */
@@ -536,6 +536,7 @@ export function classifyTable(
       props: {
         widths: toWidthPercents(node.colWidths, uniformCells),
         borderColor,
+        gapBefore: node.gapBefore,
         rows: rows.map(r => ({
           bg: r.cells.every(c => c.bg === r.cells[0].bg) ? r.cells[0].bg : undefined,
           cells: rowCells(r.cells, tok, warn),
