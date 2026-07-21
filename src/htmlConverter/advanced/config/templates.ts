@@ -152,6 +152,10 @@ export interface RecordOpts {
   widths?: number[];
   /** Cell border color from the source document; no border drawn when absent */
   borderColor?: string;
+  /** A leading full-width band (e.g. a GDocs <thead><th colspan=N> title) rendered as its own
+   *  <tr>, with `rows` wrapped in a nested table below it instead of being folded into the
+   *  same flat table as a mismatched 1-cell row. See RecordRowProps.band (ir/types.ts). */
+  band?: { innerHtml: string; align?: string; bg?: string; border?: BorderSpec; borderColor?: string };
   rows: Array<{
     bg?: string;
     /**
@@ -240,6 +244,33 @@ ${indentHtml(innerHtml, 6)}
  *  this same rule. Never applied with fewer than 4 sides present — `border:` resets literally
  *  all four sides, so a partial spec (e.g. a border-left-only accent bar) must never gain
  *  sides the source document never declared. */
+/** Per-side background of whatever sits across that edge — e.g. the cell to the left for
+ *  `left`, the row above for `top`. Only recordRow currently has a real "neighbor" concept
+ *  (adjacent cells/rows within the same table); every other bordered block renders standalone,
+ *  with no sibling component passed in to compare against. */
+type NeighborBg = Partial<Record<keyof BorderSpec, string | undefined>>;
+
+/** Drops border sides whose declared color matches the cell's own effective background, OR
+ *  the background of whatever sits across that specific edge (`neighborBg`) — a border is a
+ *  thin strip between two fills; it reads as invisible if it matches EITHER side, not just
+ *  its own, because the strip then looks like a seamless extension of whichever fill it
+ *  matches. Keeping such a declaration in the markup is pure noise (and, worse, can still
+ *  trip the "opposite side declared" double-border suppression in recordRow as if a visible
+ *  line were there). Colors reaching here are already canonicalized hex (ir/color.ts), so
+ *  plain string equality is enough. */
+function dropBgMatchingSides(border: BorderSpec | undefined, bg: string | undefined, neighborBg?: NeighborBg): BorderSpec | undefined {
+  if (!border) return border;
+  const filtered: BorderSpec = {};
+  for (const side of ["top", "right", "bottom", "left"] as const) {
+    const s = border[side];
+    if (!s) continue;
+    const blendsIntoOwn = bg !== undefined && s.color === bg;
+    const blendsIntoNeighbor = neighborBg?.[side] !== undefined && s.color === neighborBg[side];
+    if (!blendsIntoOwn && !blendsIntoNeighbor) filtered[side] = s;
+  }
+  return Object.values(filtered).some(Boolean) ? filtered : undefined;
+}
+
 export function borderSpecToStyle(border: BorderSpec | undefined, tok: Tokens = defaultTokens, widthPx?: number): string {
   if (!border) return "";
   const bw = widthPx ?? tok.layout.calloutBoxBorderPx;
@@ -288,7 +319,7 @@ export function buttonTableHtml(label: string, href: string, bg: string, tok: To
   const { height, padding, innerPadding, target } = tok.button;
   const r = radiusOverride !== undefined ? radiusOverride : tok.button.radius;
   const radiusStyle = r > 0 ? `border-radius:${r}px;` : "";
-  const borderStyle = borderSpecToStyle(border, tok);
+  const borderStyle = borderSpecToStyle(dropBgMatchingSides(border, bg), tok);
   const textColor = isDarkBg(bg, tok) ? tok.color.white : tok.color.black;
   const style = baseStyle({ align: "center", fontWeight: "bold", color: textColor }, tok);
   const safeHref = escapeHtml(href);
@@ -369,7 +400,7 @@ ${indentHtml(btnTable, 4)}
     if (seg.kind === "band") {
       const bandColor = isDarkBg(seg.bg, tok) ? tok.color.white : tok.color.black;
       const bandStyle = baseStyle({ align: seg.align ?? "left", color: bandColor }, tok);
-      const bandBorder = borderSpecToStyle(seg.border, tok);
+      const bandBorder = borderSpecToStyle(dropBgMatchingSides(seg.border, seg.bg), tok);
       const bh = tok.layout.alertBandPadH;
       const bv = tok.layout.alertBandPadV;
       return `<tr>
@@ -457,7 +488,7 @@ ${indentHtml(itemsHtml, 6)}
       const { innerHtml, segments, rows, bg, border, align = "left" } = opts;
       const textColor = isDarkBg(bg, tok) ? tok.color.white : tok.color.black;
       const p = pad();
-      const borderStyle = borderSpecToStyle(border, tok);
+      const borderStyle = borderSpecToStyle(dropBgMatchingSides(border, bg), tok);
 
       if (rows) {
         // Image(s) but no buttons/bands — stack rows directly in the bg/border table, each
@@ -517,7 +548,10 @@ ${indentHtml(wrapBlockStyle(innerHtml!, style, tok), 10)}
       const accentStyle = opts.accentStyle ?? "solid";
       const bgAttr = bg ? ` bgcolor="${bg}"` : "";
       const bgStyle = bg ? `background-color:${bg};` : "";
-      const accentBorder = `border-left:${accent}px ${accentStyle} ${accentColor};`;
+      // An accent the same color as the box's own fill would be invisible — same principle
+      // as dropBgMatchingSides, applied here by hand since the accent is a single manually
+      // built declaration, not a BorderSpec.
+      const accentBorder = accentColor === bg ? "" : `border-left:${accent}px ${accentStyle} ${accentColor};`;
 
       if (rows) {
         // Image(s) but no buttons/bands — same reasoning as AlertBandOpts.rows: stack rows
@@ -566,7 +600,7 @@ ${wrapClose}`;
     // that contains its own buttonBand) — only the sides present in `border` are drawn.
     calloutBox(childrenHtml: string | undefined, opts: CalloutBoxOpts): string {
       const { border, bg, innerHtml, align = "left" } = opts;
-      const borderStyle = borderSpecToStyle(border, tok);
+      const borderStyle = borderSpecToStyle(dropBgMatchingSides(border, bg), tok);
       const p = pad();
       const px = tok.layout.calloutPadX;
       const bgAttr = bg ? ` bgcolor="${bg}"` : "";
@@ -643,23 +677,24 @@ ${indentHtml(buttonTableHtml(innerHtml, href, bg, tok, radius, border), 4)}
           // cellToChild's own fallback so there's exactly one place to change the default,
           // not two that could silently drift apart.
           const cellStyle = baseStyle({ align: cell.align ?? tok.statsGridDefaultAlign, fontSize: tok.font.cellPx, color: textColor }, tok);
+          // bg declared exactly once, on the outer sizing <td> — the one that also
+          // carries the border, so the whole card (edge + fill) comes from a single
+          // element instead of being split across the outer <td> and the nested table.
           const bgAttr = cell.bg ? ` bgcolor="${cell.bg}"` : "";
           const bgStyle = cell.bg ? `background-color:${cell.bg};` : "";
-          // background-color grouped with the rest of the "look" properties (right after
-          // color), padding appended last — same flow as blockRow's spanStyle+extraStyle,
-          // instead of interrupting padding with a trailing bg declaration.
-          const cellTdStyle = bgStyle ? `${cellStyle}${bgStyle}` : cellStyle;
-          const effectiveBorderColor = cell.borderColor ?? borderColor;
+          const rawBorderColor = cell.borderColor ?? borderColor;
+          const effectiveBorderColor = rawBorderColor && rawBorderColor !== cell.bg ? rawBorderColor : undefined;
           // Full per-side spec (e.g. a white divider on one side between two same-colored cells)
           // takes precedence over the single collapsed color, same convention as recordRow.
-          const borderCss = cell.border
-            ? borderSpecToStyle(cell.border, tok, tok.layout.recordBorderPx)
+          const cellBorder = dropBgMatchingSides(cell.border, cell.bg);
+          const borderCss = cellBorder
+            ? borderSpecToStyle(cellBorder, tok, tok.layout.recordBorderPx)
             : effectiveBorderColor ? `border:${tok.layout.recordBorderPx}px solid ${effectiveBorderColor};` : "";
           return `<td valign="top" align="center" class="${tok.classes.inlineCell}" width="${w}%"${bgAttr}
   style="display:inline-block;width:${w}%;max-width:100%;min-width:${tok.layout.gridMinWidth}px;${borderCss}${bgStyle}">
   <table border="0" cellspacing="0" cellpadding="0" role="presentation" width="100%" style="width:100%;">
     <tr>
-      <td${bgAttr ? `${bgAttr}\n       ` : ""} style="${cellTdStyle} padding-top:${cy}px;padding-right:${cx}px;padding-bottom:${cy}px;padding-left:${cx}px;">
+      <td style="${cellStyle} padding-top:${cy}px;padding-right:${cx}px;padding-bottom:${cy}px;padding-left:${cx}px;">
 ${indentHtml(wrapBlockStyle(cell.innerHtml, cellStyle, tok), 8)}
       </td>
     </tr>
@@ -716,13 +751,21 @@ ${indentHtml(cellsHtml, 8)}
     },
 
     recordRow(opts: RecordOpts): string {
-      const { rows, widths, borderColor } = opts;
+      const { rows, widths, borderColor, band } = opts;
       if (!rows.length) return "";
       const p = pad();
       const ry = tok.layout.recordCellPadY;
       const rx = tok.layout.recordCellPadX;
 
       const nrows = rows.length;
+      // Effective bg at a given (row, column) — same fallback convention as the cell-level
+      // `bg` below (cell.bg ?? row.bg). Used to look up a neighbor's fill when deciding
+      // whether a border side would visually blend into it.
+      const cellBgAt = (rowIdx: number, colIdx: number): string | undefined => {
+        const r = rows[rowIdx];
+        const c = r?.cells[colIdx];
+        return c ? (c.bg ?? r.bg) : undefined;
+      };
       const rowsHtml = rows
         .map((row, rowIdx) => {
           // Fallback color for cells with no bg of their own — derived from the row's
@@ -754,17 +797,30 @@ ${indentHtml(cellsHtml, 8)}
               // where the neighboring cell's edge would double up. A "bottom-only" divider table
               // (no top declared) has nothing to double against, so every row keeps its rule,
               // matching the split-border technique already used by statsGrid.
-              const hasExplicitBorder = cell.border && Object.values(cell.border).some(Boolean);
-              const effectiveBorderColor = cell.borderColor ?? borderColor;
-              const drawBottom = Boolean(cell.border?.bottom) && (isLastRow || !cell.border?.top);
-              const drawRight = Boolean(cell.border?.right) && (isLastCol || !cell.border?.left);
+              // Neighbor fills, per side — left/right cell in the same row, row above/below at
+              // the same column; the row above the first data row is the band (if any). A side
+              // whose color matches its neighbor's fill (not just its own) is just as invisible.
+              const neighborBg: NeighborBg = {
+                left: i > 0 ? cellBgAt(rowIdx, i - 1) : undefined,
+                right: i < ncols - 1 ? cellBgAt(rowIdx, i + 1) : undefined,
+                top: rowIdx > 0 ? cellBgAt(rowIdx - 1, i) : band?.bg,
+                bottom: rowIdx < nrows - 1 ? cellBgAt(rowIdx + 1, i) : undefined,
+              };
+              const cellBorder = dropBgMatchingSides(cell.border, bg, neighborBg);
+              const hasExplicitBorder = cellBorder && Object.values(cellBorder).some(Boolean);
+              const rawBorderColor = cell.borderColor ?? borderColor;
+              const effectiveBorderColor = rawBorderColor && rawBorderColor !== bg && rawBorderColor !== neighborBg.bottom
+                ? rawBorderColor
+                : undefined;
+              const drawBottom = Boolean(cellBorder?.bottom) && (isLastRow || !cellBorder?.top);
+              const drawRight = Boolean(cellBorder?.right) && (isLastCol || !cellBorder?.left);
               const borderStyle = hasExplicitBorder
                 ? borderSpecToStyle(
                   {
-                    top: cell.border!.top,
-                    left: cell.border!.left,
-                    bottom: drawBottom ? cell.border!.bottom : undefined,
-                    right: drawRight ? cell.border!.right : undefined,
+                    top: cellBorder!.top,
+                    left: cellBorder!.left,
+                    bottom: drawBottom ? cellBorder!.bottom : undefined,
+                    right: drawRight ? cellBorder!.right : undefined,
                   },
                   tok,
                   tok.layout.recordBorderPx,
@@ -785,10 +841,64 @@ ${indentHtml(cellsHtml, 2)}
         })
         .join("\n");
 
-      return `<tr>
+      if (!band) {
+        return `<tr>
   <td style="padding-top:${p}px;padding-bottom:${p}px;">
     <table border="0" cellspacing="0" cellpadding="0" role="presentation" width="100%" style="width:100%;border-collapse:collapse;">
 ${indentHtml(rowsHtml, 6)}
+    </table>
+  </td>
+</tr>`;
+      }
+
+      // Full-width band above the N-column grid: rendered as its own <tr> in the outer
+      // table, same cell/padding/border conventions as a data cell (recordCellPadX/Y,
+      // per-side border) but with no width attribute — its <td> is the row's only cell,
+      // so it naturally spans 100%. The grid rows move into a nested table (same
+      // convention as splitRow's right-hand column) instead of sharing the outer table
+      // with a row that has a different physical cell count.
+      const bandTextColor = band.bg && isDarkBg(band.bg, tok) ? tok.color.white : tok.color.black;
+      const bandAlign = band.align ?? "left";
+      const bandStyle = baseStyle({ align: bandAlign, fontSize: tok.font.cellPx, color: bandTextColor }, tok);
+      const bandBgAttr = band.bg ? ` bgcolor="${band.bg}"` : "";
+      // The band spans every column, so its bottom neighbor is only a single well-defined
+      // fill when the first data row's cells all share the same effective bg — a row with
+      // per-cell mixed backgrounds has no one color to compare the band's full-width edge
+      // against, so the neighbor check is skipped for that (mixed) case, own-bg check only.
+      const firstRow = rows[0];
+      const firstRowBg = cellBgAt(0, 0);
+      const firstRowUniformBg = firstRow.cells.every((_, colIdx) => cellBgAt(0, colIdx) === firstRowBg)
+        ? firstRowBg
+        : undefined;
+      const bandBorder = dropBgMatchingSides(band.border, band.bg, { bottom: firstRowUniformBg });
+      const bandHasExplicitBorder = bandBorder && Object.values(bandBorder).some(Boolean);
+      const bandRawBorderColor = band.borderColor;
+      const bandBorderColor = bandRawBorderColor && bandRawBorderColor !== band.bg && bandRawBorderColor !== firstRowUniformBg
+        ? bandRawBorderColor
+        : undefined;
+      const bandBorderStyle = bandHasExplicitBorder
+        ? borderSpecToStyle(bandBorder!, tok, tok.layout.recordBorderPx)
+        : bandBorderColor
+          ? `border-bottom:${tok.layout.recordBorderPx}px solid ${bandBorderColor};`
+          : "";
+      const bandCellHtml = `<td align="${bandAlign}"${bandBgAttr}
+  style="${bandStyle} padding-top:${ry}px;padding-right:${rx}px;padding-bottom:${ry}px;padding-left:${rx}px;${bandBorderStyle}">
+${indentHtml(wrapBlockStyle(band.innerHtml, bandStyle, tok), 2)}
+</td>`;
+
+      return `<tr>
+  <td style="padding-top:${p}px;padding-bottom:${p}px;">
+    <table border="0" cellspacing="0" cellpadding="0" role="presentation" width="100%" style="width:100%;border-collapse:collapse;">
+      <tr>
+${indentHtml(bandCellHtml, 8)}
+      </tr>
+      <tr>
+        <td align="center">
+          <table align="center" border="0" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;" role="presentation">
+${indentHtml(rowsHtml, 12)}
+          </table>
+        </td>
+      </tr>
     </table>
   </td>
 </tr>`;

@@ -401,9 +401,20 @@ export function renderNode(
 
     case "recordRow": {
       const p = node.props;
+      const bandCell = p.band;
+      const band = bandCell
+        ? {
+          innerHtml: renderLines(bandCell.lines, tok, bandCell.bg && isDarkBg(bandCell.bg, tok) ? tok.color.white : tok.color.black),
+          align: bandCell.align,
+          bg: bandCell.bg,
+          border: bandCell.border,
+          borderColor: bandCell.borderColor,
+        }
+        : undefined;
       const opts: RecordOpts = {
         widths: p.widths,
         borderColor: p.borderColor,
+        band,
         rows: p.rows.map(row => ({
           bg: row.bg,
           cells: row.cells.map(c => {

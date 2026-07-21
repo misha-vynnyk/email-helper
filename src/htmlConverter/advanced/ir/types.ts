@@ -288,6 +288,14 @@ export interface RecordRowProps {
    *  by pushMerged's recordRow merge (classify.ts), never read at render time. See
    *  TableNode.gapBefore for semantics. */
   gapBefore?: boolean;
+  /** A leading full-width row (GDocs <thead><th colspan=N> title, or a plain <tr> whose
+   *  single cell's colspan already spans every column) — kept separate from `rows` instead
+   *  of being folded into the N-column grid as a 1-cell row, which would leave that <tr>
+   *  with a different physical cell count than every other row in the same flat <table>
+   *  (no colspan attribute is emitted, so it silently renders as a misaligned first column
+   *  instead of a full-width band). Rendered as its own <tr>, with `rows` wrapped in a
+   *  nested table below it — see recordRow() in config/templates.ts. */
+  band?: RecordCellData;
 }
 
 export interface SplitRowProps {
