@@ -365,6 +365,7 @@ function parseTable(el: Element, bg: string, tok: Tokens, warn?: WarnFn): TableN
         bg: cellBg,
         border,
         align: cellAlign,
+        isHeader: cellEl.tagName.toUpperCase() === "TH",
         colspan: colspan > 1 ? colspan : undefined,
         children,
       };
