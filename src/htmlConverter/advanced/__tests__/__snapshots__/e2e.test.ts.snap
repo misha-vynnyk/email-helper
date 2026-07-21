@@ -484,8 +484,7 @@ exports[`convertAdvanced — tickr-promo fixture snapshot — full document 1`] 
                         style=\\"display:inline-block;width:25%;max-width:100%;min-width:100px;border:1px solid #cccccc;background-color:#f1ede6;\\">
                         <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;\\">
                           <tr>
-                            <td bgcolor=\\"#f1ede6\\"
-                              style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;background-color:#f1ede6; padding-top:10px;padding-right:6px;padding-bottom:10px;padding-left:6px;\\">
+                            <td style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000; padding-top:10px;padding-right:6px;padding-bottom:10px;padding-left:6px;\\">
                               <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;\\">
                                 <b style=\\"color:#0a2463;\\">32,481%</b> <br>
                                 <span style=\\"color:#666666;\\">3-Yr Revenue Growth</span>
@@ -498,8 +497,7 @@ exports[`convertAdvanced — tickr-promo fixture snapshot — full document 1`] 
                         style=\\"display:inline-block;width:25%;max-width:100%;min-width:100px;border:1px solid #cccccc;background-color:#f1ede6;\\">
                         <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;\\">
                           <tr>
-                            <td bgcolor=\\"#f1ede6\\"
-                              style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;background-color:#f1ede6; padding-top:10px;padding-right:6px;padding-bottom:10px;padding-left:6px;\\">
+                            <td style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000; padding-top:10px;padding-right:6px;padding-bottom:10px;padding-left:6px;\\">
                               <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;\\">
                                 <b style=\\"color:#0a2463;\\">490M&#43;</b> <br>
                                 <span style=\\"color:#666666;\\">Total Users</span>
@@ -512,8 +510,7 @@ exports[`convertAdvanced — tickr-promo fixture snapshot — full document 1`] 
                         style=\\"display:inline-block;width:25%;max-width:100%;min-width:100px;border:1px solid #cccccc;background-color:#f1ede6;\\">
                         <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;\\">
                           <tr>
-                            <td bgcolor=\\"#f1ede6\\"
-                              style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;background-color:#f1ede6; padding-top:10px;padding-right:6px;padding-bottom:10px;padding-left:6px;\\">
+                            <td style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000; padding-top:10px;padding-right:6px;padding-bottom:10px;padding-left:6px;\\">
                               <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;\\">
                                 <b style=\\"color:#0a2463;\\">&#36;11.8M</b> <br>
                                 <span style=\\"color:#666666;\\">Actual EBITDA 2025</span>
@@ -526,8 +523,7 @@ exports[`convertAdvanced — tickr-promo fixture snapshot — full document 1`] 
                         style=\\"display:inline-block;width:25%;max-width:100%;min-width:100px;border:1px solid #cccccc;background-color:#0a2463;\\">
                         <table border=\\"0\\" cellspacing=\\"0\\" cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;\\">
                           <tr>
-                            <td bgcolor=\\"#0a2463\\"
-                              style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#ffffff;background-color:#0a2463; padding-top:10px;padding-right:6px;padding-bottom:10px;padding-left:6px;\\">
+                            <td style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#ffffff; padding-top:10px;padding-right:6px;padding-bottom:10px;padding-left:6px;\\">
                               <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:14px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#ffffff;\\">
                                 <b>&#36;0.50</b> <br>
                                 Until May 29

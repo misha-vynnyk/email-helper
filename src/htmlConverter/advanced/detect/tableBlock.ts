@@ -526,10 +526,21 @@ export function classifyTable(
 
   // Multi-row, multi-col → recordRow
   if (ncols >= 2) {
-    const cellCounts = new Set(rows.map(r => r.cells.length));
-    const uniformCells = cellCounts.size === 1 ? rows[0].cells.length : 0;
+    // GDocs <thead><th colspan=N> title above an N-column <tbody> (or a plain leading <tr>
+    // whose one cell's colspan already spans every column): pull it out as `band` instead
+    // of letting it fall into `rows` as a 1-cell row — every other row in this table has N
+    // physical cells, so a mismatched 1-cell row would render without a colspan attribute
+    // (colspan is classification-only input, never re-emitted) and silently misalign as a
+    // narrow first column instead of the full-width band the source document shows.
+    const hasBand = rows[0].cells.length === 1 &&
+      (rows[0].cells[0].colspan ?? 1) >= ncols && rows.length > 1;
+    const bandRow = hasBand ? rows[0] : undefined;
+    const gridRows = hasBand ? rows.slice(1) : rows;
+
+    const cellCounts = new Set(gridRows.map(r => r.cells.length));
+    const uniformCells = cellCounts.size === 1 ? gridRows[0].cells.length : 0;
     const borderColor = firstBorderColor(
-      rows.flatMap(r => r.cells).find(c => c.border)?.border,
+      gridRows.flatMap(r => r.cells).find(c => c.border)?.border,
     );
     return {
       kind: "recordRow",
@@ -537,7 +548,8 @@ export function classifyTable(
         widths: toWidthPercents(node.colWidths, uniformCells),
         borderColor,
         gapBefore: node.gapBefore,
-        rows: rows.map(r => ({
+        band: bandRow ? rowCells(bandRow.cells, tok, warn)[0] : undefined,
+        rows: gridRows.map(r => ({
           bg: r.cells.every(c => c.bg === r.cells[0].bg) ? r.cells[0].bg : undefined,
           cells: rowCells(r.cells, tok, warn),
         })),

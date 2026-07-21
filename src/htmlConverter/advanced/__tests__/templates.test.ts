@@ -116,6 +116,29 @@ describe("buildTemplates — border on buttonBand/alertBand", () => {
     const html = tmpl.alertBand({ innerHtml: "alert", bg: "#000000" });
     expect(html).not.toContain("border-left:");
   });
+
+  // A border painted the same color as its own fill is invisible — same principle as
+  // recordRow's dropBgMatchingSides, applied wherever a bg/border pair is rendered.
+  it("buttonBand drops a border side whose color matches the button's own bg", () => {
+    const html = tmpl.buttonBand({
+      innerHtml: "click",
+      href: "https://example.com",
+      bg: "#000000",
+      border: { top: { color: "#000000" }, left: { color: "#ffffff" } },
+    });
+    expect(html).not.toContain("border-top:");
+    expect(html).toContain("border-left:");
+    expect(html).toContain("#ffffff");
+  });
+
+  it("alertBand drops the border when its color matches the band's own bg", () => {
+    const html = tmpl.alertBand({
+      innerHtml: "alert",
+      bg: "#000000",
+      border: { left: { color: "#000000" } },
+    });
+    expect(html).not.toContain("border-left:");
+  });
 });
 
 // ── blockRow padding ──────────────────────────────────────────────────────────
@@ -233,6 +256,194 @@ describe("buildTemplates — recordRow per-cell borderColor", () => {
   });
 });
 
+// ── recordRow band (full-width title above an N-column grid) ─────────────────
+
+describe("buildTemplates — recordRow band", () => {
+  const rows = [{ cells: [{ innerHtml: "a" }, { innerHtml: "b" }] }];
+
+  it("without a band, renders the grid rows directly in the outer table (unchanged shape)", () => {
+    const html = tmpl.recordRow({ rows });
+    expect(html).not.toContain('align="center">\n');
+    // Exactly one <table>...<table> nesting level (the outer per-component table only).
+    expect((html.match(/<table/g) ?? []).length).toBe(1);
+  });
+
+  it("with a band, renders it as its own full-width row before a nested grid table", () => {
+    const html = tmpl.recordRow({
+      rows,
+      band: { innerHtml: "TITLE", bg: "#1f4e79", align: "center" },
+    });
+    expect(html).toContain("TITLE");
+    expect(html).toContain('bgcolor="#1f4e79"');
+    // Two <table>s: the outer per-component table and the nested grid table.
+    expect((html.match(/<table/g) ?? []).length).toBe(2);
+    // The band's own <tr> must close before the nested grid table opens.
+    const bandCloseIdx = html.indexOf("</tr>");
+    const nestedTableIdx = html.indexOf('<table align="center"');
+    expect(bandCloseIdx).toBeGreaterThan(-1);
+    expect(nestedTableIdx).toBeGreaterThan(bandCloseIdx);
+  });
+
+  it("band cell has no width attribute — it spans full width as the row's only cell", () => {
+    const html = tmpl.recordRow({ rows, band: { innerHtml: "TITLE", bg: "#1f4e79" } });
+    const bandTdOpen = html.match(/<td align="left" bgcolor="#1f4e79"[\s\S]*?style="/)?.[0] ?? "";
+    expect(bandTdOpen).not.toContain("width=");
+  });
+});
+
+// ── recordRow border suppressed when it matches the cell's own bg ────────────
+
+describe("buildTemplates — recordRow border color same as background is dropped", () => {
+  it("per-side border spec: a side whose color equals the cell's own bg is not drawn", () => {
+    const html = tmpl.recordRow({
+      rows: [{ cells: [{
+        innerHtml: "a",
+        bg: "#0a2463",
+        border: { top: { color: "#0a2463" }, left: { color: "#ffffff" } },
+      }] }],
+    });
+    expect(html).not.toContain("border-top");
+    expect(html).toContain("border-left:1px solid #ffffff;");
+  });
+
+  it("all border sides matching bg → no border declaration at all", () => {
+    const html = tmpl.recordRow({
+      rows: [{ cells: [{
+        innerHtml: "a",
+        bg: "#0a2463",
+        border: { top: { color: "#0a2463" }, bottom: { color: "#0a2463" } },
+      }] }],
+    });
+    expect(html).not.toContain("border-top");
+    expect(html).not.toContain("border-bottom");
+    expect(html).not.toContain("border:");
+  });
+
+  it("single-color borderColor fallback equal to bg is dropped", () => {
+    const html = tmpl.recordRow({
+      rows: [{ cells: [{ innerHtml: "a", bg: "#f2f2f2", borderColor: "#f2f2f2" }] }],
+    });
+    expect(html).not.toContain("border-bottom:1px solid #f2f2f2");
+  });
+
+  it("border still renders when its color differs from the cell's bg", () => {
+    const html = tmpl.recordRow({
+      rows: [{ cells: [{ innerHtml: "a", bg: "#0a2463", borderColor: "#ffffff" }] }],
+    });
+    expect(html).toContain("border-bottom:1px solid #ffffff");
+  });
+
+  it("band: a border side matching the band's own bg is dropped", () => {
+    const html = tmpl.recordRow({
+      rows: [{ cells: [{ innerHtml: "a" }, { innerHtml: "b" }] }],
+      band: {
+        innerHtml: "TITLE",
+        bg: "#1f4e79",
+        border: { top: { color: "#1f4e79" }, bottom: { color: "#ffffff" } },
+      },
+    });
+    expect(html).not.toContain("border-top");
+    expect(html).toContain("border-bottom:1px solid #ffffff;");
+  });
+});
+
+// ── recordRow border matching a NEIGHBOR's bg is also dropped ────────────────
+
+describe("buildTemplates — recordRow border color matching a neighbor's bg is dropped", () => {
+  it("right border matching the RIGHT cell's bg is dropped, even though it differs from its own bg", () => {
+    const html = tmpl.recordRow({
+      rows: [{ cells: [
+        { innerHtml: "a", bg: "#ffffff", border: { right: { color: "#0a2463" } } },
+        { innerHtml: "b", bg: "#0a2463" },
+      ] }],
+    });
+    expect(html).not.toContain("border-right");
+  });
+
+  it("left border matching the LEFT cell's bg is dropped", () => {
+    const html = tmpl.recordRow({
+      rows: [{ cells: [
+        { innerHtml: "a", bg: "#0a2463" },
+        { innerHtml: "b", bg: "#ffffff", border: { left: { color: "#0a2463" } } },
+      ] }],
+    });
+    expect(html).not.toContain("border-left");
+  });
+
+  it("top border matching the ROW ABOVE's cell (same column) bg is dropped", () => {
+    const html = tmpl.recordRow({
+      rows: [
+        { cells: [{ innerHtml: "a", bg: "#0a2463" }] },
+        { cells: [{ innerHtml: "b", bg: "#ffffff", border: { top: { color: "#0a2463" } } }] },
+      ],
+    });
+    expect(html).not.toContain("border-top");
+  });
+
+  it("bottom border matching the ROW BELOW's cell (same column) bg is dropped", () => {
+    const html = tmpl.recordRow({
+      rows: [
+        { cells: [{ innerHtml: "a", bg: "#ffffff", border: { bottom: { color: "#0a2463" } } }] },
+        { cells: [{ innerHtml: "b", bg: "#0a2463" }] },
+      ],
+    });
+    expect(html).not.toContain("border-bottom");
+  });
+
+  it("single-color borderColor fallback matching the row below's bg is dropped", () => {
+    const html = tmpl.recordRow({
+      rows: [
+        { cells: [{ innerHtml: "a", bg: "#ffffff", borderColor: "#0a2463" }] },
+        { cells: [{ innerHtml: "b", bg: "#0a2463" }] },
+      ],
+    });
+    expect(html).not.toContain("border-bottom:1px solid #0a2463");
+  });
+
+  it("top border of the first data row matching the BAND's bg is dropped", () => {
+    const html = tmpl.recordRow({
+      rows: [{ cells: [
+        { innerHtml: "a", bg: "#ffffff", border: { top: { color: "#1f4e79" } } },
+        { innerHtml: "b", bg: "#ffffff" },
+      ] }],
+      band: { innerHtml: "TITLE", bg: "#1f4e79" },
+    });
+    expect(html).not.toContain("border-top");
+  });
+
+  it("band's bottom border matching the first row's UNIFORM bg is dropped", () => {
+    const html = tmpl.recordRow({
+      rows: [{ cells: [
+        { innerHtml: "a", bg: "#f2f2f2" },
+        { innerHtml: "b", bg: "#f2f2f2" },
+      ] }],
+      band: { innerHtml: "TITLE", bg: "#1f4e79", border: { bottom: { color: "#f2f2f2" } } },
+    });
+    expect(html).not.toContain("border-bottom");
+  });
+
+  it("band's bottom border is kept when the first row has MIXED per-cell backgrounds (no single neighbor to compare)", () => {
+    const html = tmpl.recordRow({
+      rows: [{ cells: [
+        { innerHtml: "a", bg: "#f2f2f2" },
+        { innerHtml: "b", bg: "#ffffff" },
+      ] }],
+      band: { innerHtml: "TITLE", bg: "#1f4e79", border: { bottom: { color: "#f2f2f2" } } },
+    });
+    expect(html).toContain("border-bottom:1px solid #f2f2f2;");
+  });
+
+  it("border is kept when it differs from both its own bg and every neighbor's bg", () => {
+    const html = tmpl.recordRow({
+      rows: [{ cells: [
+        { innerHtml: "a", bg: "#ffffff", border: { right: { color: "#ff0000" } } },
+        { innerHtml: "b", bg: "#0a2463" },
+      ] }],
+    });
+    expect(html).toContain("border-right:1px solid #ff0000;");
+  });
+});
+
 // ── statsGrid per-cell background ─────────────────────────────────────────────
 
 describe("buildTemplates — statsGrid highlighted cell", () => {
@@ -283,6 +494,12 @@ describe("buildTemplates — calloutLeft", () => {
     expect(html).toContain('bgcolor="#fff3cd"');
   });
 
+  // An accent bar the same color as the box's own fill would be invisible.
+  it("drops the accent border when its color matches the box's own bg", () => {
+    const html = tmpl.calloutLeft("x", { accentColor: "#fff3cd", bg: "#fff3cd" });
+    expect(html).not.toContain("border-left:");
+  });
+
   it("renders a dashed accent when the source declared one", () => {
     const html = tmpl.calloutLeft("x", { accentColor: "#aabbcc", accentStyle: "dashed" });
     expect(html).toMatch(/border-left:\d+px dashed #aabbcc/);
@@ -297,6 +514,50 @@ describe("buildTemplates — calloutLeft", () => {
   it("falls back to the calloutPadX token when the source declares no indent", () => {
     const html = tmpl.calloutLeft("x", { accentColor: "#aabbcc" });
     expect(html).toContain(`padding-left:${tokens.layout.calloutPadX}px;padding-right:${tokens.layout.calloutPadX}px;`);
+  });
+});
+
+// ── calloutBox border vs bg ────────────────────────────────────────────────────
+
+describe("buildTemplates — calloutBox border color same as background is dropped", () => {
+  it("drops a border side whose color matches the box's own bg", () => {
+    const html = tmpl.calloutBox(undefined, {
+      border: { top: { color: "#111111" }, left: { color: "#ff0000" } },
+      bg: "#111111",
+      innerHtml: "x",
+    });
+    expect(html).not.toContain("border-top:");
+    expect(html).toContain("border-left:");
+    expect(html).toContain("#ff0000");
+  });
+
+  it("keeps the border unchanged when there is no bg to compare against", () => {
+    const html = tmpl.calloutBox(undefined, {
+      border: { top: { color: "#111111" } },
+      innerHtml: "x",
+    });
+    expect(html).toContain("border-top:");
+  });
+});
+
+// ── statsGrid border vs bg ──────────────────────────────────────────────────────
+
+describe("buildTemplates — statsGrid border color same as background is dropped", () => {
+  it("per-side border spec: a side matching the cell's own bg is dropped", () => {
+    const html = tmpl.statsGrid(
+      [{ innerHtml: "x", bg: "#0a2463", border: { top: { color: "#0a2463" }, left: { color: "#ffffff" } } }],
+      { n: 1 },
+    );
+    expect(html).not.toContain("border-top");
+    expect(html).toContain("border-left:1px solid #ffffff;");
+  });
+
+  it("single-color borderColor fallback equal to the cell's bg is dropped", () => {
+    const html = tmpl.statsGrid(
+      [{ innerHtml: "x", bg: "#f1ede6", borderColor: "#f1ede6" }],
+      { n: 1 },
+    );
+    expect(html).not.toContain("border:1px solid #f1ede6");
   });
 });
 

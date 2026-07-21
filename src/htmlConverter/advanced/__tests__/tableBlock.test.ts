@@ -389,6 +389,45 @@ describe("classifyTable — multi-cell", () => {
     expect(lines[1]).toEqual([{ text: "Immersed App" }]);
   });
 
+  // Structural bug: a GDocs <thead><th colspan=N> title above an N-column <tbody> used to
+  // fall into `rows` as a 1-cell row sitting in the same flat table as every 2-cell data
+  // row — an invalid/mismatched table (no colspan re-emitted) that renders the title as a
+  // narrow first column instead of a full-width band. It must be pulled out as `band`.
+  it("leading full-width row (colspan spanning all columns) is split out as `band`, not folded into rows", () => {
+    const titleCell = makeCell({ colspan: 2, children: [makePara("TITLE")] });
+    const table = makeTable([
+      [titleCell],
+      [makeCell(), makeCell()],
+      [makeCell(), makeCell()],
+    ]);
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("recordRow");
+    const props = result?.props as Record<string, unknown>;
+    expect(props["band"]).toBeDefined();
+    const rows = props["rows"] as unknown[];
+    expect(rows).toHaveLength(2);
+  });
+
+  it("a leading single-cell row WITHOUT colspan spanning all columns stays a plain 1-cell row, not a band", () => {
+    const narrowCell = makeCell({ children: [makePara("not a title")] });
+    const table = makeTable([
+      [narrowCell],
+      [makeCell(), makeCell()],
+    ]);
+    const result = classifyTable(table);
+    const props = result?.props as Record<string, unknown>;
+    expect(props["band"]).toBeUndefined();
+    const rows = props["rows"] as unknown[];
+    expect(rows).toHaveLength(2);
+  });
+
+  it("a single-row single-cell table (no other rows) is not treated as a band — classified normally", () => {
+    const table = makeTable([[makeCell({ colspan: 2 })]]);
+    const result = classifyTable(table);
+    // Falls into the single-row single-cell branch (classifySingleCell), never recordRow.
+    expect(result?.kind).not.toBe("recordRow");
+  });
+
   it("multiple rows with single column → null (each row processed independently)", () => {
     const table = makeTable([
       [makeCell()],

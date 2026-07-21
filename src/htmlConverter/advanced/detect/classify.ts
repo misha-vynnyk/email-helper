@@ -209,7 +209,8 @@ function pushMerged(result: ComponentNode[], comp: ComponentNode, tok: Tokens, w
   // TableNode.gapBefore — see ir/fromDom.ts) is an explicit "these are two separate tables"
   // signal that overrides the same-column-count merge below, even when both happen to have
   // the same number of columns (e.g. two unrelated 3-column tables in one document).
-  if (comp.kind === "recordRow" && last?.kind === "recordRow" && !comp.props.gapBefore) {
+  if (comp.kind === "recordRow" && last?.kind === "recordRow" && !comp.props.gapBefore &&
+      !last.props.band && !comp.props.band) {
     const lastRows = last.props.rows;
     const newRows = comp.props.rows;
     if (lastRows[0]?.cells?.length === newRows[0]?.cells?.length) {
