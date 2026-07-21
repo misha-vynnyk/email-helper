@@ -61,6 +61,7 @@ router.post("/send-email", async (req, res) => {
       connectionTimeout: 10000, // 10 seconds
       greetingTimeout: 10000,
       socketTimeout: 10000,
+      family: 4, // avoid EHOSTUNREACH from unroutable IPv6 addresses on this network
     });
 
     // Verify connection
@@ -122,6 +123,7 @@ router.post("/verify-smtp", async (req, res) => {
         user: smtp.user,
         pass: smtp.pass,
       },
+      family: 4,
     });
 
     await transporter.verify();

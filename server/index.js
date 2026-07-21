@@ -130,6 +130,14 @@ const startServer = (port, host) => {
     const server = (host ? app.listen(port, host, onListening) : app.listen(port, onListening)).on("error", (err) => {
       reject(err);
     });
+    // Node's default keepAliveTimeout (5s) is shorter than typical gaps between
+    // requests through the Vite dev proxy's pooled connections. When the backend
+    // closes an idle socket first, the proxy's agent can still hand it a stale
+    // connection for the next request, producing "write EPIPE". Raising this well
+    // above any realistic idle gap prevents that race. headersTimeout must stay
+    // greater than keepAliveTimeout (Node requirement).
+    server.keepAliveTimeout = 65000;
+    server.headersTimeout = 66000;
   });
 };
 
