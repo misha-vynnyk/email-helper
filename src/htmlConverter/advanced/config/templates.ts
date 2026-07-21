@@ -4,7 +4,7 @@
 
 import { escapeHtml } from "../escape";
 import { isDarkBg } from "../ir/color";
-import type { Align,BorderSpec, Run } from "../ir/types";
+import type { Align, BorderSpec, Run } from "../ir/types";
 import type { Tokens } from "./tokens";
 import { tokens as defaultTokens } from "./tokens";
 

@@ -4,7 +4,7 @@
  */
 import { saveAs } from "file-saver";
 import { Check as CheckIcon, X as CloseIcon } from "lucide-react";
-import React, { useEffect,useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import { HistoryPrompt } from "./components/HistoryPrompt";
 import { ImageGrid } from "./components/ImageGrid";
@@ -94,7 +94,7 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
 
   // Background AI processor hook logic
   const analysisEnabled = Boolean(imageAnalysisSettings?.enabled && (imageAnalysisSettings.engine === "ocr" || imageAnalysisSettings.useAiBackend));
-  
+
   const processedFiles = React.useMemo(() => {
     return images
       .filter((img) => (img.status === "done" && img.convertedBlob) || (img.status === "pending" && isCrossOrigin(img.src)))
@@ -103,10 +103,10 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
 
   const effectiveAnalysisSettings = React.useMemo(() => {
     if (!imageAnalysisSettings) return undefined;
-    const maxFiles = (imageAnalysisSettings.autoAnalyzeMaxFiles && imageAnalysisSettings.autoAnalyzeMaxFiles > 0) 
-      ? imageAnalysisSettings.autoAnalyzeMaxFiles 
+    const maxFiles = (imageAnalysisSettings.autoAnalyzeMaxFiles && imageAnalysisSettings.autoAnalyzeMaxFiles > 0)
+      ? imageAnalysisSettings.autoAnalyzeMaxFiles
       : 50;
-    
+
     return {
       ...imageAnalysisSettings,
       autoAnalyzeMaxFiles: imageAnalysisSettings.runMode === "auto" ? maxFiles : 0
