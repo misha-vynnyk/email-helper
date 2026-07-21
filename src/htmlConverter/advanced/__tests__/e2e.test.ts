@@ -76,31 +76,39 @@ describe("convertAdvanced — plain-text fixture", () => {
 // ── paragraph-gap regression ──────────────────────────────────────────────────
 
 describe("convertAdvanced — paragraph gaps and the pairwise zero-margin signal", () => {
+  // Derived from the token, not hardcoded pt values — a fixture that happens to sit under/over
+  // a hardcoded number silently breaks (or silently stops testing anything meaningful) the next
+  // time gapMarginThresholdPt is retuned. `tight` sums (with itself) to well under the
+  // threshold; `generous` sums to well over it.
+  const T = tokens.layout.gapMarginThresholdPt;
+  const tight = T / 4;
+  const generous = T;
+
   // Regression (kept from the reverted chain-relative margin heuristic): one
   // large-margin opener must NOT make the following normally-spaced paragraphs
   // collapse. The pairwise rule reads only explicit 0+0 boundaries — a non-zero
   // margin on either side of a boundary keeps the <br><br>, and there is no chain
   // memory to cascade.
   it("keeps <br><br> between generously-spaced prose paragraphs after a large-margin opener", () => {
-    // Boundary sums here are 6+6 = 12pt ≥ threshold → real gaps; the 18pt opener is a
-    // margin-TOP and never contributes to a boundary sum, so it can't cascade.
+    // Boundary sums here are generous+generous = 2T ≥ threshold → real gaps; the opener's
+    // margin-top is never part of a boundary sum (nothing precedes it), so it can't cascade.
     const input = `
       <div>
-        <p style="margin-top:18pt;margin-bottom:6pt;text-align:left"><span style="font-size:11pt">Everyone is talking about SpaceX.</span></p>
-        <p style="margin-top:6pt;margin-bottom:6pt;text-align:left"><span style="font-size:11pt">I get it. It's a great story.</span></p>
-        <p style="margin-top:6pt;margin-bottom:6pt;text-align:left"><span style="font-size:11pt">But there's a bigger one.</span></p>
-        <p style="margin-top:6pt;margin-bottom:6pt;text-align:left"><span style="font-size:11pt">Let me explain why.</span></p>
+        <p style="margin-top:${generous * 3}pt;margin-bottom:${generous}pt;text-align:left"><span style="font-size:11pt">Everyone is talking about SpaceX.</span></p>
+        <p style="margin-top:${generous}pt;margin-bottom:${generous}pt;text-align:left"><span style="font-size:11pt">I get it. It's a great story.</span></p>
+        <p style="margin-top:${generous}pt;margin-bottom:${generous}pt;text-align:left"><span style="font-size:11pt">But there's a bigger one.</span></p>
+        <p style="margin-top:${generous}pt;margin-bottom:${generous}pt;text-align:left"><span style="font-size:11pt">Let me explain why.</span></p>
       </div>`;
     const { html } = convertAdvancedDetailed(input);
     const doubles = (html.match(/<br><br>/g) ?? []).length;
     expect(doubles).toBe(3); // a blank line between each of the 4 paragraphs
   });
 
-  it("merges small-margin prose boundaries (2pt+2pt < threshold) with a single <br>", () => {
+  it("merges small-margin prose boundaries (well under gapMarginThresholdPt) with a single <br>", () => {
     const input = `
       <div>
-        <p style="margin-top:2pt;margin-bottom:2pt;text-align:left">First line of the stack.</p>
-        <p style="margin-top:2pt;margin-bottom:2pt;text-align:left">Second line of the stack.</p>
+        <p style="margin-top:${tight}pt;margin-bottom:${tight}pt;text-align:left">First line of the stack.</p>
+        <p style="margin-top:${tight}pt;margin-bottom:${tight}pt;text-align:left">Second line of the stack.</p>
       </div>`;
     const { html } = convertAdvancedDetailed(input);
     expect(html).not.toContain("<br><br>");
@@ -124,11 +132,11 @@ describe("convertAdvanced — paragraph gaps and the pairwise zero-margin signal
     expect(gap).toContain("<br>");
   });
 
-  it("a large one-sided margin (0 + 14pt) still reads as a gap — the SUM decides", () => {
+  it("a large one-sided margin (0 + well over threshold) still reads as a gap — the SUM decides", () => {
     const input = `
       <div>
         <p style="margin-top:0pt;margin-bottom:0pt;text-align:left">First paragraph.</p>
-        <p style="margin-top:14pt;margin-bottom:0pt;text-align:left">Second paragraph.</p>
+        <p style="margin-top:${generous * 3}pt;margin-bottom:0pt;text-align:left">Second paragraph.</p>
       </div>`;
     const { html } = convertAdvancedDetailed(input);
     expect(html).toContain("<br><br>");
