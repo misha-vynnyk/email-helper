@@ -441,9 +441,12 @@ exports[`convertAdvanced — tickr-promo fixture snapshot — full document 1`] 
                   <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
                     <em style=\\"color:#666666;\\">By Katherine Holden  ·  Pre-IPO Research Desk</em>
                     <br><br>
-                    Everyone is talking about SpaceX. <br>
-                    &#36;1.75 trillion valuation. Potentially the largest IPO in history. Rockets. Satellites. Elon. <br>
-                    I get it. It's a great story. <br>
+                    Everyone is talking about SpaceX.
+                    <br><br>
+                    &#36;1.75 trillion valuation. Potentially the largest IPO in history. Rockets. Satellites. Elon.
+                    <br><br>
+                    I get it. It's a great story.
+                    <br><br>
                     But while that story dominates the headlines — a different one has been quietly unfolding.
                   </span>
                 </td>
@@ -455,7 +458,8 @@ exports[`convertAdvanced — tickr-promo fixture snapshot — full document 1`] 
                       <td align=\\"left\\"
                         style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-left:10px;padding-right:10px;padding-top:14px;padding-bottom:14px;\\">
                         <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
-                          <em style=\\"color:#c2410c;\\">&quot;Just like Uber turned cars into cash and Airbnb transformed spare rooms into revenue, Mode Mobile turns everyday smartphones into EarnPhones that literally pay you back.&quot;</em> <br>
+                          <em style=\\"color:#c2410c;\\">&quot;Just like Uber turned cars into cash and Airbnb transformed spare rooms into revenue, Mode Mobile turns everyday smartphones into EarnPhones that literally pay you back.&quot;</em>
+                          <br><br>
                           <em style=\\"color:#666666;\\">— Kevin Harrington, Original Shark Tank Investor</em>
                         </span>
                       </td>
@@ -467,10 +471,14 @@ exports[`convertAdvanced — tickr-promo fixture snapshot — full document 1`] 
                 <td align=\\"left\\"
                   style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-top:14px;padding-bottom:14px;\\">
                   <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
-                    Mode Mobile built EarnOS — a platform that pays 490 million users for everyday smartphone activity. <br>
-                    When Starlink eliminates dead zones globally, Mode's technology reaches 3 billion new users in markets that never had reliable connectivity. The platform was built before that moment arrived. <br>
-                    The numbers are real: &#36;115M&#43; lifetime revenue. &#36;11.8M actual EBITDA. Deloitte's #1 fastest growing software company in North America. 32,481% in three years. <br>
-                    Nasdaq &#36;MODE reserved. IPO targeted within 18 months. Two previous rounds sold out entirely. <br>
+                    Mode Mobile built EarnOS — a platform that pays 490 million users for everyday smartphone activity.
+                    <br><br>
+                    When Starlink eliminates dead zones globally, Mode's technology reaches 3 billion new users in markets that never had reliable connectivity. The platform was built before that moment arrived.
+                    <br><br>
+                    The numbers are real: &#36;115M&#43; lifetime revenue. &#36;11.8M actual EBITDA. Deloitte's #1 fastest growing software company in North America. 32,481% in three years.
+                    <br><br>
+                    Nasdaq &#36;MODE reserved. IPO targeted within 18 months. Two previous rounds sold out entirely.
+                    <br><br>
                     <b>Pre-IPO shares are still available at &#36;0.50.</b> Until May 29.
                   </span>
                 </td>
@@ -560,7 +568,8 @@ exports[`convertAdvanced — tickr-promo fixture snapshot — full document 1`] 
                             <td align=\\"left\\"
                               style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-top:14px;padding-bottom:14px;\\">
                               <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
-                                <b>SERIES A  ·  REG A&#43; SEC-QUALIFIED  ·  &#36;0.50/SHARE  ·  CLOSES MAY 29</b> <br>
+                                <b>SERIES A  ·  REG A&#43; SEC-QUALIFIED  ·  &#36;0.50/SHARE  ·  CLOSES MAY 29</b>
+                                <br><br>
                                 <span style=\\"color:#666666;\\">&#36;1,000 minimum  ·  Up to 20% bonus shares  ·  No accreditation required</span>
                               </span>
                             </td>
