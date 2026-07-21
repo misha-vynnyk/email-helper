@@ -260,6 +260,23 @@ describe("classify — recordRow merging", () => {
     expect(rows).toHaveLength(4);
   });
 
+  // Bug: two unrelated same-column-count tables separated by an author-typed blank line
+  // (top-level <br> — see TableNode.gapBefore, set by ir/fromDom.ts) were silently fused
+  // into one recordRow. gapBefore is the explicit "these are two separate tables" signal
+  // that must block the merge below, even though nothing else here (ncols, borderColor,
+  // widths) tells the two tables apart.
+  it("does NOT merge recordRows separated by an explicit gapBefore", () => {
+    const t1 = makeTable([[makeCell(), makeCell()], [makeCell(), makeCell()]]);
+    const t2: TableNode = {
+      ...makeTable([[makeCell(), makeCell()], [makeCell(), makeCell()]]),
+      gapBefore: true,
+    };
+    const result = classify([t1, t2]);
+    expect(result).toHaveLength(2);
+    expect(result[0].kind).toBe("recordRow");
+    expect(result[1].kind).toBe("recordRow");
+  });
+
   // Fix #4: different ncols must NOT merge
   it("does NOT merge recordRows with different column counts", () => {
     const t2col = makeTable([[makeCell(), makeCell()], [makeCell(), makeCell()]]);

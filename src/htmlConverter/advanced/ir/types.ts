@@ -98,6 +98,12 @@ export interface TableNode {
   type: "table";
   rows: RowNode[];
   colWidths?: number[];  // relative widths from <colgroup><col> (raw px values, any sum)
+  /** An author-typed blank line (top-level <br>, mirrors Paragraph.gapBefore) immediately
+   *  precedes this table — an explicit "these are separate things" signal that stops
+   *  detect/tableBlock.ts's recordRow from silently fusing it with an immediately preceding
+   *  same-column-count table (the fusion itself is intentional: GDocs sometimes serializes
+   *  one logical table as several consecutive <table> elements with NO gap between them). */
+  gapBefore?: boolean;
 }
 
 /** Collector for non-fatal conversion issues (silently-dropped/flattened content). */
@@ -278,6 +284,10 @@ export interface RecordRowProps {
   rows: RecordRowData[];
   widths?: number[];
   borderColor?: string;
+  /** Input-only merge signal propagated from the source TableNode (fromDom.ts) — consumed
+   *  by pushMerged's recordRow merge (classify.ts), never read at render time. See
+   *  TableNode.gapBefore for semantics. */
+  gapBefore?: boolean;
 }
 
 export interface SplitRowProps {
