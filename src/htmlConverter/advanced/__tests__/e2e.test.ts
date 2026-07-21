@@ -96,11 +96,11 @@ describe("convertAdvanced — paragraph gaps and the pairwise zero-margin signal
     expect(doubles).toBe(3); // a blank line between each of the 4 paragraphs
   });
 
-  it("merges small-margin prose boundaries (4pt+4pt < threshold) with a single <br>", () => {
+  it("merges small-margin prose boundaries (2pt+2pt < threshold) with a single <br>", () => {
     const input = `
       <div>
-        <p style="margin-top:4pt;margin-bottom:4pt;text-align:left">First line of the stack.</p>
-        <p style="margin-top:4pt;margin-bottom:4pt;text-align:left">Second line of the stack.</p>
+        <p style="margin-top:2pt;margin-bottom:2pt;text-align:left">First line of the stack.</p>
+        <p style="margin-top:2pt;margin-bottom:2pt;text-align:left">Second line of the stack.</p>
       </div>`;
     const { html } = convertAdvancedDetailed(input);
     expect(html).not.toContain("<br><br>");

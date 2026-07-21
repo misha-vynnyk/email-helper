@@ -611,10 +611,10 @@ describe("classify — margin-sum boundary rule", () => {
     return { type: "p", size: "body", align: "left", lines: [[{ text }]], ...extra };
   }
 
-  it("merges a small-margin boundary (4pt + 4pt < threshold) with a single <br>", () => {
+  it("merges a small-margin boundary (2pt + 2pt < threshold) with a single <br>", () => {
     const result = classify([
-      marginPara("one", { marginTopPt: 4, marginBottomPt: 4 }),
-      marginPara("two", { marginTopPt: 4, marginBottomPt: 4 }),
+      marginPara("one", { marginTopPt: 2, marginBottomPt: 2 }),
+      marginPara("two", { marginTopPt: 2, marginBottomPt: 2 }),
     ]);
     expect(result).toHaveLength(1);
     expect((result[0].props as Record<string, unknown>)["paraBreaks"]).toBeUndefined();
@@ -666,8 +666,8 @@ describe("classify — margin-sum boundary rule", () => {
   });
 
   it("cross-style small-margin boundary zeroes the paddings (tightAfter/tightBefore)", () => {
-    const headline: Paragraph = { type: "p", size: "headline", align: "left", lines: [[{ text: "Head" }]], marginTopPt: 4, marginBottomPt: 4 };
-    const body: Paragraph = { type: "p", size: "body", align: "left", lines: [[{ text: "Body" }]], marginTopPt: 4, marginBottomPt: 4 };
+    const headline: Paragraph = { type: "p", size: "headline", align: "left", lines: [[{ text: "Head" }]], marginTopPt: 2, marginBottomPt: 2 };
+    const body: Paragraph = { type: "p", size: "body", align: "left", lines: [[{ text: "Body" }]], marginTopPt: 2, marginBottomPt: 2 };
     const result = classify([headline, body]);
     expect(result).toHaveLength(2);
     expect((result[0].props as Record<string, unknown>)["tightAfter"]).toBe(true);
