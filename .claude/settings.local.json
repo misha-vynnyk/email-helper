@@ -94,7 +94,9 @@
       "Bash(mkdir -p \"/Users/mykhailovynnyk/Documents/Obsidian/LoWiki/concepts/pages\")",
       "Bash(wc -l \"/Users/mykhailovynnyk/Documents/Obsidian/LoWiki/raw/ryanmcdermottclean-code-javascript Clean Code concepts adapted for JavaScript.md\" \"/Users/mykhailovynnyk/Documents/Obsidian/LoWiki/raw/stackNavigatorclean-code-javascript-ua bathtub Концепції чистого коду, адаптовані під JavaScript.md\" *)",
       "Read(//Users/mykhailovынnyk/Documents/Obsidian/LoWiki/raw/**)",
-      "Bash(brew install *)"
+      "Bash(brew install *)",
+      "Bash(curl -sI http://localhost:5173/verify-test-image.jpg)",
+      "Bash(curl -sI http://localhost:5173/email-helper/verify-test-image.jpg)"
     ],
     "additionalDirectories": [
       "/dev",
