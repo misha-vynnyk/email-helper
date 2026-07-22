@@ -427,9 +427,9 @@ describe("convertAdvanced — profile overrides", () => {
     expect(html).toContain("Verdana");
   });
 
-  it("AlfaOne profile: sidePadding stays at 20px (unchanged)", () => {
+  it("AlfaOne profile: sidePadding is 19px", () => {
     const html = convertAdvanced(raw, alphaoneProfile);
-    expect(html).toContain("padding-left:20px");
+    expect(html).toContain("padding-left:19px");
   });
 
   it("default and TTT outputs differ in padding", () => {

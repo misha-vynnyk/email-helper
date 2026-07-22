@@ -101,7 +101,14 @@ export interface Tokens {
     textDecoration: string;  // text-decoration on the <a> link inside a button
   };
   tags: {
-    bold: string;  // "b" or "strong" — inline bold runs AND bold block wrapper (headline)
+    bold: string;  // "b" or "strong" — INLINE bold runs only (all 3 Simple converters use "b" here)
+    /**
+     * Block-level tag for a headline paragraph (h1/h2). Separate from `bold` because the
+     * default Simple converter (templates.ts's centerHeadline/headline) wraps the headline
+     * block in `<strong>` while still using `<b>` for inline bold runs elsewhere on the page
+     * — TTT and AlfaOne use `<b>` for both roles (ttt/templates.ts, alphaone/templates.ts).
+     */
+    headlineWrap: string;  // "b" or "strong"
     italic: string;  // "em" or "i"
     underline: string;  // "u"
     colorWrap: string;  // "span" — wrapper for color-only runs
@@ -182,7 +189,7 @@ export const tokens: Tokens = {
     placeholderImageWidth: 560,   // matches Simple converter's default wrapImg width="560"
   },
   button: { radius: 10, height: 51, padding: "3px 5px", innerPadding: "9px 15px", target: "_blank", textDecoration: "none" },
-  tags: { bold: "b", italic: "em", underline: "u", colorWrap: "span", blockWrap: "span" },
+  tags: { bold: "b", headlineWrap: "strong", italic: "em", underline: "u", colorWrap: "span", blockWrap: "span" },
   accentBullet: "&#9656; ",
   // CSS class names shared with the Simple converter stylesheet — do NOT rename
   classes: {
