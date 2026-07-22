@@ -40,10 +40,29 @@ describe("buildTemplates — document()", () => {
     expect(html).toContain(`height="${tttTok.layout.spacerPx}"`);
   });
 
-  it("AlfaOne profile sidePadding stays at default (20px)", () => {
+  it("AlfaOne profile uses sidePadding:19px", () => {
     const tok = mergeTokens(tokens, alphaoneProfile);
     const html = buildTemplates(tok).document("<tr><td>x</td></tr>");
-    expect(html).toContain("padding-left:20px");
+    expect(html).toContain("padding-left:19px");
+    expect(html).toContain("padding-right:19px");
+  });
+
+  // Locks the real profiles to the Simple converter's own per-provider class names
+  // (ttt/templates.ts's fullStructure, alphaone/templates.ts's fullStructure) — the default
+  // Simple converter's names (templates.ts) must not leak into these two providers' markup.
+  it("TTT profile uses main-table/content-wrapper/inner-content-wrapper/space-between-sections class names", () => {
+    const html = buildTemplates(mergeTokens(tokens, tttProfile)).document("<tr><td>x</td></tr>");
+    expect(html).toContain('class="main-table"');
+    expect(html).toContain('class="content-wrapper"');
+    expect(html).toContain('class="inner-content-wrapper"');
+    expect(html).toContain('class="space-between-sections"');
+  });
+
+  it("AlfaOne profile uses primary-table-wrapper/content-space-main-wrapper class names, keeps content-inner-table", () => {
+    const html = buildTemplates(mergeTokens(tokens, alphaoneProfile)).document("<tr><td>x</td></tr>");
+    expect(html).toContain('class="primary-table-wrapper"');
+    expect(html).toContain('class="content-space-main-wrapper"');
+    expect(html).toContain('class="content-inner-table"');
   });
 });
 
@@ -79,6 +98,28 @@ describe("buildTemplates — escHref in buttonTableHtml", () => {
     });
     expect(html).toContain("&lt;");
     expect(html).toContain("&gt;");
+  });
+});
+
+// ── buttonBand class name per profile ─────────────────────────────────────────
+
+describe("buildTemplates — buttonBand class name per profile", () => {
+  // Locks classes.btnWrap to each Simple converter's own buttonTableHtml class name:
+  // default "btn-edit-p" (templates.ts), TTT "creative-button" (ttt/templates.ts), AlfaOne
+  // "custom-button" (alphaone/templates.ts).
+  it("default uses btn-edit-p", () => {
+    const html = tmpl.buttonBand({ innerHtml: "click", href: "https://example.com", bg: "#000000" });
+    expect(html).toContain('class="btn-edit-p"');
+  });
+
+  it("TTT profile uses creative-button", () => {
+    const html = buildTemplates(mergeTokens(tokens, tttProfile)).buttonBand({ innerHtml: "click", href: "https://example.com", bg: "#000000" });
+    expect(html).toContain('class="creative-button"');
+  });
+
+  it("AlfaOne profile uses custom-button", () => {
+    const html = buildTemplates(mergeTokens(tokens, alphaoneProfile)).buttonBand({ innerHtml: "click", href: "https://example.com", bg: "#000000" });
+    expect(html).toContain('class="custom-button"');
   });
 });
 
@@ -177,6 +218,49 @@ describe("buildTemplates — profile font stacks", () => {
     const tok = mergeTokens(tokens, alphaoneProfile);
     const html = buildTemplates(tok).paragraph({ innerHtml: "text", size: "body" });
     expect(html).toContain("Verdana");
+  });
+
+  // Locks headlinePx to alphaone/templates.ts's centerHeadline/headline fontSize: "24px"
+  // (default Simple converter is 22px — see tokens.font.headlinePx).
+  it("AlfaOne profile headline paragraph renders at 24px, not the default 22px", () => {
+    const tok = mergeTokens(tokens, alphaoneProfile);
+    const html = buildTemplates(tok).paragraph({ innerHtml: "text", size: "headline" });
+    expect(html).toContain("24px");
+    expect(html).not.toContain("22px");
+  });
+
+  // Locks the headline block-wrapper tag per provider: default Simple converter's
+  // centerHeadline/headline pass tag: "strong" (templates.ts); TTT and AlfaOne both pass
+  // tag: "b" (ttt/templates.ts, alphaone/templates.ts).
+  it("default headline paragraph renders wrapped in <strong>, not <b>", () => {
+    const html = tmpl.paragraph({ innerHtml: "text", size: "headline" });
+    expect(html).toContain("<strong");
+    expect(html).not.toContain("<b ");
+    expect(html).not.toContain("<b>");
+  });
+
+  it("TTT/AlfaOne profile headline paragraphs render wrapped in <b>, not <strong>", () => {
+    const tttHtml = buildTemplates(mergeTokens(tokens, tttProfile)).paragraph({ innerHtml: "text", size: "headline" });
+    const alphaoneHtml = buildTemplates(mergeTokens(tokens, alphaoneProfile)).paragraph({ innerHtml: "text", size: "headline" });
+    for (const html of [tttHtml, alphaoneHtml]) {
+      expect(html).toContain("<b ");
+      expect(html).not.toContain("<strong");
+    }
+  });
+});
+
+// ── Profile link color ────────────────────────────────────────────────────────
+
+describe("buildTemplates — profile link colors", () => {
+  // Locks color.link to alphaone/formatter.ts's ALPHAONE_LINK_COLOR = "#0404e4"
+  // (default Simple converter uses config.colors.link = "#0000EE").
+  it("AlfaOne profile overrides color.link to #0404e4", () => {
+    const tok = mergeTokens(tokens, alphaoneProfile);
+    expect(tok.color.link).toBe("#0404e4");
+  });
+
+  it("default and TTT keep the base link color (#0000EE)", () => {
+    expect(mergeTokens(tokens, tttProfile).color.link).toBe(tokens.color.link);
   });
 });
 
@@ -724,6 +808,20 @@ describe("buildTemplates — image", () => {
     const html = buildTemplates(tok).image({});
     expect(html).toContain('src="https://ogfinstorage.com/"');
   });
+
+  // AlfaOne's wrapImg <td> uses class="image-full-wrapper" (alphaone/templates.ts), not the
+  // default/TTT "img-bg-block" (signatureImg's own "image-block" has no advanced equivalent —
+  // signatureImg isn't implemented in the advanced converter, see markers.ts).
+  it("AlfaOne profile renders class=\"image-full-wrapper\", not img-bg-block", () => {
+    const html = buildTemplates(mergeTokens(tokens, alphaoneProfile)).image({});
+    expect(html).toContain('class="image-full-wrapper"');
+    expect(html).not.toContain("img-bg-block");
+  });
+
+  it("TTT profile keeps class=\"img-bg-block\", same as default", () => {
+    const html = buildTemplates(mergeTokens(tokens, tttProfile)).image({});
+    expect(html).toContain(`class="${tokens.classes.imgBg}"`);
+  });
 });
 
 // ── spacer template ───────────────────────────────────────────────────────────
@@ -849,13 +947,31 @@ describe("blockRow", () => {
     expect(html).toContain("padding-bottom:30px");
   });
 
-  it("uses tok.tags.bold wrapper when fontWeight=bold", () => {
+  it("uses tok.tags.headlineWrap wrapper when fontWeight=bold", () => {
     const html = blockRow("x", { fontWeight: "bold" }, tokens);
-    expect(html).toContain(`<${tokens.tags.bold}`);
+    expect(html).toContain(`<${tokens.tags.headlineWrap}`);
   });
 
   it("uses tok.tags.blockWrap wrapper when fontWeight is not bold", () => {
     const html = blockRow("x", { fontWeight: "normal" }, tokens);
     expect(html).toContain(`<${tokens.tags.blockWrap}`);
+  });
+
+  // Locks the non-headline block wrapper tag per provider: default Simple converter's
+  // createHtmlBlock defaults `tag` to "span" (templates.ts:29); TTT and AlfaOne both default
+  // it to "div" (ttt/templates.ts:51, alphaone/templates.ts:33).
+  it("default body block renders wrapped in <span>, not <div>", () => {
+    const html = blockRow("x", { fontWeight: "normal" }, tokens);
+    expect(html).toContain("<span");
+    expect(html).not.toContain("<div");
+  });
+
+  it("TTT/AlfaOne profile body blocks render wrapped in <div>, not <span>", () => {
+    const tttHtml = blockRow("x", { fontWeight: "normal" }, mergeTokens(tokens, tttProfile));
+    const alphaoneHtml = blockRow("x", { fontWeight: "normal" }, mergeTokens(tokens, alphaoneProfile));
+    for (const html of [tttHtml, alphaoneHtml]) {
+      expect(html).toContain("<div");
+      expect(html).not.toContain("<span");
+    }
   });
 });

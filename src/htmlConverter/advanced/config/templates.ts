@@ -222,8 +222,8 @@ export function blockRow(
   const spanStyle = baseStyle(coreOpts, tok);
   // td gets extraStyle (e.g. quote padding-left/right) + block padding-top/bottom
   const tdExtra = extraStyle ? ` ${extraStyle}` : "";
-  // headline → tok.tags.bold (e.g. "b" or "strong"); all others → tok.tags.blockWrap (e.g. "span" or "div")
-  const tag = coreOpts.fontWeight === "bold" ? tok.tags.bold : tok.tags.blockWrap;
+  // headline → tok.tags.headlineWrap (e.g. "b" or "strong"); all others → tok.tags.blockWrap (e.g. "span" or "div")
+  const tag = coreOpts.fontWeight === "bold" ? tok.tags.headlineWrap : tok.tags.blockWrap;
   return `<tr>
   <td align="${align}"
     style="${spanStyle}${tdExtra} padding-top:${padTop}px;padding-bottom:${padBottom}px;">
