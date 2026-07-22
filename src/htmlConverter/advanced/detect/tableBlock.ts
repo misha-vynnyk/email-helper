@@ -306,7 +306,7 @@ function toWidthPercents(colWidths: number[] | undefined, ncells: number): numbe
 
 // ── Single-cell classification ────────────────────────────────────────────────
 
-function classifySingleCell(
+export function classifySingleCell(
   cell: CellNode,
   tok: Tokens,
   warn?: WarnFn,

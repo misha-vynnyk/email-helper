@@ -238,6 +238,34 @@ describe("classify — paragraph merging", () => {
     expect(result[1].kind).toBe("alertBand");
     expect(result[2].kind).toBe("paragraph");
   });
+
+  // A multi-row, single-col table where every row is a plain colored fill (GDocs' stacked-
+  // band layout: a dark header row over a colored sub-band row, each cell carrying its own
+  // background-color) merges into ONE bandStack — the bands render flush inside a single
+  // shared wrapper (one source table → one output table), and every cell's bg survives.
+  it("merges a multi-row single-col colored table into one bandStack", () => {
+    const stacked = makeTable([
+      [makeCell([makePara("THE ANTIDOTE TO OLD AGE")], "#0f3530")],
+      [makeCell([makePara("WHAT THEY DON'T WANT YOU TO SEE")], "#c8102e")],
+    ]);
+    const result = classify([stacked]);
+    expect(result).toHaveLength(1);
+    expect(result[0].kind).toBe("bandStack");
+    const rows = (result[0].props as Record<string, unknown>)["rows"] as { bg: string }[];
+    expect(rows.map(r => r.bg)).toEqual(["#0f3530", "#c8102e"]);
+  });
+
+  // A transparent, borderless cell in a multi-row single-col table still unwraps to its
+  // children (classifySingleCell → null) — the bg-preserving path must not swallow it.
+  it("unwraps a transparent cell in a multi-row single-col table", () => {
+    const stacked = makeTable([
+      [makeCell([makePara("plain one")])],
+      [makeCell([makePara("plain two")])],
+    ]);
+    const result = classify([stacked]);
+    expect(result).toHaveLength(1);
+    expect(result[0].kind).toBe("paragraph");
+  });
 });
 
 // ── recordRow merging ─────────────────────────────────────────────────────────
