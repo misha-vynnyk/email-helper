@@ -50,7 +50,7 @@ npm run automation:upload -- ./image.png [category] [--provider default|alphaone
 
 1. Template Library → **Storage** → **Add location**
 2. Задай назву і **абсолютний шлях** до папки з шаблонами
-3. Mac: `/Users/логін/Documents/templates` · Windows: `/C:/Users/логін/Documents/templates`
+3. Mac: `/Users/логін/Documents/templates` · Windows: `C:\Users\логін\Documents\templates` (без ведучого слеша перед літерою диска)
 
 Можна додати кілька папок — шаблони з усіх з'являться в списку.
 

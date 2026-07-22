@@ -93,10 +93,16 @@
       "Read(//Users/mykhailovynnyk/Documents/Obsidian/LoWiki/**)",
       "Bash(mkdir -p \"/Users/mykhailovynnyk/Documents/Obsidian/LoWiki/concepts/pages\")",
       "Bash(wc -l \"/Users/mykhailovynnyk/Documents/Obsidian/LoWiki/raw/ryanmcdermottclean-code-javascript Clean Code concepts adapted for JavaScript.md\" \"/Users/mykhailovynnyk/Documents/Obsidian/LoWiki/raw/stackNavigatorclean-code-javascript-ua bathtub Концепції чистого коду, адаптовані під JavaScript.md\" *)",
-      "Read(//Users/mykhailovынnyk/Documents/Obsidian/LoWiki/raw/**)",
       "Bash(brew install *)",
       "Bash(curl -sI http://localhost:5173/verify-test-image.jpg)",
-      "Bash(curl -sI http://localhost:5173/email-helper/verify-test-image.jpg)"
+      "Bash(cat \"/Users/mykhailovynnyk/Documents/Obsidian/LoWiki/CLAUDE.md\" 2>/dev/null | head -100)",
+      "Bash(tail -80 \"/Users/mykhailovynnyk/Documents/Obsidian/LoWiki/email-helper/pages/advanced-converter-status.md\")",
+      "Read(//Users/mykhailovynnyk/Documents/Obsidian/LoWiki/email-helper/pages/**)",
+      "Bash(xargs -I{} echo {})",
+      "Bash(grep -rIl \"PaddleOCR\\\\|Gemma\\\\|FastAPI\\\\|fastapi\" . --include=\"*.py\" --include=\"*.ts\" --include=\"*.md\" -not -path \"*/node_modules/*\")",
+      "Bash(cat /Users/mykhailovynnyk/Documents/Obsidian/LoWiki/email-helper/index.md 2>/dev/null | head -60)",
+      "Read(//Users/mykhailovynnyk/Documents/Obsidian/LoWiki/email-helper/**)",
+      "Bash(sed -n '1,60p' \"/Users/mykhailovynnyk/Documents/Obsidian/LoWiki/email-helper/pages/advanced-converter-status.md\" | grep -n \"2026-07-2\\\\|## \\\\|Останні\\\\|фікс\\\\|bg\" | head -30)"
     ],
     "additionalDirectories": [
       "/dev",

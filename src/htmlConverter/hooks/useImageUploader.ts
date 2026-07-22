@@ -1,8 +1,8 @@
-import { useCallback, useRef,useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { getApiBase, isApiAvailable } from "../../config/api";
 import { getElectronAPI } from "../../hooks/useElectronAPI";
-import { STORAGE_PROVIDERS_CONFIG,STORAGE_URL_PREFIX, UPLOAD_CONFIG } from "../constants";
+import { STORAGE_PROVIDERS_CONFIG, STORAGE_URL_PREFIX, UPLOAD_CONFIG } from "../constants";
 import { ImageFormat, ProcessedImage, UploadResult, UploadSession } from "../types";
 import { copyToClipboard } from "../utils/clipboard";
 import { getFileExtension, getImageFormat, isCrossOrigin } from "../utils/imageUtils";
