@@ -312,6 +312,21 @@ export function renderNode(
       return tmpl.alertBand(opts);
     }
 
+    case "bandStack": {
+      // Stacked colored bands from one single-col source table — render as flush rows of
+      // one shared table (see BandStackProps). Per-row text color follows each band's bg.
+      const rows = node.props.rows.map(r => {
+        const textColor = isDarkBg(r.bg, tok) ? tok.color.white : tok.color.black;
+        return {
+          bg: r.bg,
+          align: r.align,
+          border: r.border,
+          innerHtml: renderLines(r.lines, tok, textColor, r.paraBreaks),
+        };
+      });
+      return tmpl.bandStack({ rows });
+    }
+
     case "buttonBand": {
       const p = node.props;
       const textColor = isDarkBg(p.bg, tok) ? tok.color.white : tok.color.black;

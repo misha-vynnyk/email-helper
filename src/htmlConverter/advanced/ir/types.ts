@@ -323,6 +323,29 @@ export interface SpacerProps {
   heightPx?: number;
 }
 
+/** One colored band inside a bandStack — a single cell's content plus its fill. */
+export interface BandStackRow {
+  bg: string;
+  lines: Run[][];
+  paraBreaks?: Set<number>;
+  align?: Align;
+  /** Source cell border (rare for stacked bands, kept for fidelity). */
+  border?: BorderSpec;
+}
+
+/**
+ * A GDocs single-column, multi-row table where every row is a plain colored fill (no
+ * nested buttons/images/borders) — e.g. a dark headline band directly over a red
+ * sub-band. Rendered as ONE table (matching the source): a single outer block-padded
+ * wrapper around stacked `<td bgcolor>` rows, so the bands sit flush with no external
+ * gap between them (a table row has no margin — only each cell's own inner padding).
+ * A heterogeneous stack (some transparent/bordered rows) instead falls back to
+ * per-cell classification in classify.ts.
+ */
+export interface BandStackProps {
+  rows: BandStackRow[];
+}
+
 export type ComponentNode =
   | { kind: "paragraph"; props: ParagraphProps }
   | { kind: "list"; props: ListProps }
@@ -335,6 +358,7 @@ export type ComponentNode =
   | { kind: "recordRow"; props: RecordRowProps }
   | { kind: "splitRow"; props: SplitRowProps }
   | { kind: "image"; props: ImageProps }
+  | { kind: "bandStack"; props: BandStackProps }
   | { kind: "spacer"; props: SpacerProps };
 
 export type ComponentKind = ComponentNode["kind"];

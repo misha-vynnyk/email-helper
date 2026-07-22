@@ -340,6 +340,64 @@ describe("renderNode — calloutBox", () => {
   });
 });
 
+// ── renderNode — bandStack ─────────────────────────────────────────────────────
+// Stacked colored bands from one single-col source table render as flush <td bgcolor>
+// rows inside ONE shared wrapper (one source table → one output table).
+
+describe("renderNode — bandStack", () => {
+  function makeBandStack(): ComponentNode {
+    return {
+      kind: "bandStack",
+      props: {
+        rows: [
+          { bg: "#0f3530", lines: [[{ text: "THE ANTIDOTE TO OLD AGE" }]], align: "center" },
+          { bg: "#c8102e", lines: [[{ text: "WHAT THEY DON'T WANT YOU TO SEE" }]], align: "center" },
+        ],
+      },
+    };
+  }
+
+  it("renders both bg colors as stacked <td bgcolor> rows", () => {
+    const result = renderNode(makeBandStack(), tmpl, tokens);
+    expect(result).toContain('bgcolor="#0f3530"');
+    expect(result).toContain('bgcolor="#c8102e"');
+    expect(result).toContain("THE ANTIDOTE TO OLD AGE");
+    expect(result).toContain("WHAT THEY DON'T WANT YOU TO SEE");
+  });
+
+  it("uses ONE shared outer table for the whole stack (not one per band)", () => {
+    const result = renderNode(makeBandStack(), tmpl, tokens);
+    expect((result.match(/<table/g) ?? []).length).toBe(1);
+  });
+
+  it("has NO external block gap between the stacked bands", () => {
+    // The block padding (blockPadY) lands only on the single outer wrapper <td>, above
+    // the first band and below the last — never between the rows, so the bands sit flush.
+    const result = renderNode(makeBandStack(), tmpl, tokens);
+    const p = tokens.layout.blockPadY;
+    // Exactly one wrapper carries the outer block padding.
+    const wrappers = result.match(new RegExp(`padding-top:${p}px;padding-bottom:${p}px;`, "g")) ?? [];
+    expect(wrappers.length).toBe(1);
+    // Each band's own <td> uses only the internal cell padding, never the block gap.
+    expect(result).toContain(`padding-top:${tokens.layout.alertBandPadV}px`);
+  });
+
+  it("gives a light-bg band dark text and a dark-bg band white text", () => {
+    const node: ComponentNode = {
+      kind: "bandStack",
+      props: {
+        rows: [
+          { bg: "#0f3530", lines: [[{ text: "dark" }]] },
+          { bg: "#f5f5f5", lines: [[{ text: "light" }]] },
+        ],
+      },
+    };
+    const result = renderNode(node, tmpl, tokens);
+    expect(result).toContain(tokens.color.white);
+    expect(result).toContain(tokens.color.black);
+  });
+});
+
 // ── renderNode — statsGrid width distribution ─────────────────────────────────
 
 describe("renderNode — statsGrid", () => {

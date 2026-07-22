@@ -53,6 +53,19 @@ export interface AlertBandOpts {
   rows?: string[];
 }
 
+export interface BandStackRowOpt {
+  bg: string;
+  /** Pre-rendered inner content (renderLines output). */
+  innerHtml: string;
+  align?: "left" | "center" | "right";
+  border?: BorderSpec;
+}
+
+export interface BandStackOpts {
+  /** Stacked colored bands, rendered flush as <td bgcolor> rows of one shared table. */
+  rows: BandStackRowOpt[];
+}
+
 export type AlertBandSegment =
   | { kind: "text"; html: string }
   | { kind: "button"; label: string; href: string; bg: string; radius?: number; border?: BorderSpec }
@@ -534,6 +547,35 @@ ${indentHtml(rowsHtml, 12)}
 ${indentHtml(wrapBlockStyle(innerHtml!, style, tok), 10)}
         </td>
       </tr>
+    </table>
+  </td>
+</tr>`;
+    },
+
+    /**
+     * Stacked colored bands from ONE single-column source table — one outer block-padded
+     * wrapper around flush <td bgcolor> rows (see BandStackProps). Each row keeps the same
+     * per-band text color / inner padding as a standalone alertBand; the shared wrapper
+     * means the block gap lands only above the first and below the last band, not between.
+     */
+    bandStack(opts: BandStackOpts): string {
+      const p = pad();
+      const ph = tok.layout.alertBandPadH;
+      const pv = tok.layout.alertBandPadV;
+      const rowsHtml = opts.rows.map(r => {
+        const textColor = isDarkBg(r.bg, tok) ? tok.color.white : tok.color.black;
+        const style = baseStyle({ align: r.align ?? "left", color: textColor }, tok);
+        const borderStyle = borderSpecToStyle(dropBgMatchingSides(r.border, r.bg), tok);
+        return `<tr>
+  <td bgcolor="${r.bg}" style="${style} padding-left:${ph}px;padding-right:${ph}px;padding-top:${pv}px;padding-bottom:${pv}px;${borderStyle}">
+${indentHtml(wrapBlockStyle(r.innerHtml, style, tok), 4)}
+  </td>
+</tr>`;
+      }).join("\n");
+      return `<tr>
+  <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
+    <table align="center" border="0" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;" role="presentation">
+${indentHtml(rowsHtml, 6)}
     </table>
   </td>
 </tr>`;

@@ -6,7 +6,7 @@ import { isGapBoundary } from "../ir/spacing";
 import type { ComponentNode, ParagraphProps, Run,StructuralNode, TableNode, WarnFn } from "../ir/types";
 import { WARN } from "../warnings";
 import { classifyFlow } from "./flowBlock";
-import { classifyTable } from "./tableBlock";
+import { classifySingleCell, classifyTable } from "./tableBlock";
 
 // Manually-typed list/checklist markers — GDocs paragraphs that fake a list with a leading
 // glyph instead of real <ul>/<li> markup. Only used as a PAIR signal (both adjacent
@@ -241,12 +241,52 @@ export function classify(nodes: StructuralNode[], tok: Tokens = defaultTokens, w
       if (component) {
         pushMerged(result, component, tok, warn);
       } else {
-        for (const row of (node as TableNode).rows) {
-          for (const cell of row.cells) {
-            for (const comp of classify(cell.children, tok, warn)) {
-              pushMerged(result, comp, tok, warn);
+        // classifyTable returned null → a multi-row single-col table (every row is one
+        // cell). Each such cell may be its own colored band / bordered callout, with the
+        // bg + border living on the <td> itself, not its children. Re-classify the whole
+        // cell via classifySingleCell so that styling survives — iterating cell.children
+        // alone would silently drop the cell's bg/border (e.g. a stacked dark header +
+        // red sub-band renders as plain uncolored text). When the cell is transparent and
+        // borderless, classifySingleCell returns null and we fall back to its children.
+        // Classify each row's single cell once. When EVERY row is a plain colored fill
+        // (an alertBand with no nested button/band/image), the table is a stack of flush
+        // colored bands — merge them into ONE bandStack so they render inside a single
+        // shared wrapper with no gap between rows, matching the source table's zero
+        // inter-row margin (a dark headline band directly over a red sub-band). A
+        // heterogeneous stack (a transparent or bordered row mixed in) falls back to
+        // emitting each cell's component individually — bg still preserved via
+        // classifySingleCell; transparent/borderless cells unwrap to their children.
+        const tableRows = (node as TableNode).rows;
+        const cellComps = tableRows.map(r =>
+          r.cells.length === 1 ? classifySingleCell(r.cells[0], tok, warn, classifyChildren) : null);
+        const isPlainBand = (c: ComponentNode | null): c is Extract<ComponentNode, { kind: "alertBand" }> =>
+          c?.kind === "alertBand" && !c.props.buttons?.length && !c.props.bands?.length && !c.props.images?.length;
+        if (tableRows.length >= 2 && cellComps.every(isPlainBand)) {
+          pushMerged(result, {
+            kind: "bandStack",
+            props: {
+              rows: cellComps.map(c => ({
+                bg: c.props.bg,
+                lines: c.props.lines,
+                paraBreaks: c.props.paraBreaks,
+                align: c.props.align,
+                border: c.props.border,
+              })),
+            },
+          }, tok, warn);
+        } else {
+          tableRows.forEach((row, i) => {
+            const cellComp = cellComps[i];
+            if (cellComp) {
+              pushMerged(result, cellComp, tok, warn);
+            } else {
+              for (const cell of row.cells) {
+                for (const comp of classify(cell.children, tok, warn)) {
+                  pushMerged(result, comp, tok, warn);
+                }
+              }
             }
-          }
+          });
         }
       }
     } else if (node.type === "p") {
