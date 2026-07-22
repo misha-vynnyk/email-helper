@@ -13,7 +13,8 @@
 - **Storage Upload:** завантаження на різні storage-провайдери:
   - **default** → `storage.5th-elementagency.com` (категорії `finance|health`)
   - **alphaone** → `alphaonest.com` (без категорій)
-    Налаштування в `automation/config.json`.
+  - **ttt** → `ogfinstorage.com` (без категорій)
+    Налаштування в `src/htmlConverter/storageProviders.json` (fallback — `automation/config.json`).
 - **Історія:** останні 50 сесій у LocalStorage, копіювання URL, заміна посилань у вихідному коді.
 
 ---
@@ -28,10 +29,8 @@
 
 1. **Extract Images** (або вставити HTML) → зображення зʼявляться в списку.
 2. **Налаштування** — Format (JPEG/WebP), Quality, Max Width, Auto Process, Preserve Format.
-3. **Storage provider** — у верхніх чекбоксах є **AlfaOne**:
-   - вимкнено → `default`
-   - увімкнено → `alphaone`
-4. **Upload to Storage** — в `default` обрати Category (Finance/Health), у `alphaone` категорія схована; Folder Name (авто з імені файлу), запустити завантаження.
+3. **Storage Profile** — пігулка-перемикач у File Naming Bar з трьома варіантами: **Default / AlfaOne / TTT**.
+4. **Upload to Storage** — в `Default` обрати Category (Finance/Health), у `AlfaOne`/`TTT` категорія схована (завжди `finance`); Folder Name (авто з імені файлу), запустити завантаження.
 5. **Замінити в Output** — після завантаження підставити отримані URLs у згенерований HTML/MJML.
 
 ## Деталі
