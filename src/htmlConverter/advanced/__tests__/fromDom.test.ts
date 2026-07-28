@@ -26,8 +26,8 @@ describe("fromDom — heading size roles", () => {
     expect(firstParagraph("<h1>Title</h1>").size).toBe("headline");
   });
 
-  it("H2 → size=headline", () => {
-    expect(firstParagraph("<h2>Title</h2>").size).toBe("headline");
+  it("H2 → size=body (not headline — only H1 is a headline)", () => {
+    expect(firstParagraph("<h2>Title</h2>").size).toBe("body");
   });
 
   it("H3 → size=body (not headline)", () => {

@@ -27,7 +27,7 @@ const LINE_BREAK = "\n";
 // (GDocs serializes the full computed style on every run) and is deliberately never
 // read: px values are always the size tokens (body/small/headline/cell in tokens.ts).
 function sizeFromTag(tag: string): "body" | "small" | "headline" {
-  if (tag === "H1" || tag === "H2") return "headline";
+  if (tag === "H1") return "headline";
   if (tag === "H5" || tag === "H6") return "small";
   return "body";
 }

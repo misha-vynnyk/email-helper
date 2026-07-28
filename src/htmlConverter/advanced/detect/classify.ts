@@ -102,7 +102,7 @@ function pushMerged(result: ComponentNode[], comp: ComponentNode, tok: Tokens, w
       last.props.bg === comp.props.bg) {
     const lastLines = last.props.lines;
     const newLines = comp.props.lines;
-    if (newLines.length === 0 && !comp.props.buttons?.length && !comp.props.bands?.length) return;
+    if (newLines.length === 0 && !comp.props.buttons?.length && !comp.props.bands?.length && !comp.props.tables?.length) return;
     const breakIdx = lastLines.length;
     const isTight = last.props.tightNext === true || comp.props.tightBefore === true ||
       !isGapBoundary(last.props, comp.props, tok);
@@ -114,6 +114,10 @@ function pushMerged(result: ComponentNode[], comp: ComponentNode, tok: Tokens, w
     // the merged lines array so their atLine still points at the right spot; dropped
     // silently before this fix (see fix-advanced.md, Ітерація 6).
     const offsetAtLine = <T,>(items: { atLine: number; props: T }[] | undefined, by: number) =>
+      items?.map(i => ({ ...i, atLine: i.atLine + by }));
+    // tables entries carry `node` instead of `props` (see AlertBandProps.tables) — same
+    // atLine-offset shift, different field name.
+    const offsetTableAtLine = (items: { atLine: number; node: ComponentNode }[] | undefined, by: number) =>
       items?.map(i => ({ ...i, atLine: i.atLine + by }));
     const mergeArr = <T,>(a: T[] | undefined, b: T[] | undefined): T[] | undefined => {
       const merged = [...(a ?? []), ...(b ?? [])];
@@ -129,6 +133,7 @@ function pushMerged(result: ComponentNode[], comp: ComponentNode, tok: Tokens, w
         marginBottomPt: comp.props.marginBottomPt,
         buttons: mergeArr(last.props.buttons, offsetAtLine(comp.props.buttons, breakIdx)),
         bands: mergeArr(last.props.bands, offsetAtLine(comp.props.bands, breakIdx)),
+        tables: mergeArr(last.props.tables, offsetTableAtLine(comp.props.tables, breakIdx)),
       },
     };
     return;
@@ -260,7 +265,7 @@ export function classify(nodes: StructuralNode[], tok: Tokens = defaultTokens, w
         const cellComps = tableRows.map(r =>
           r.cells.length === 1 ? classifySingleCell(r.cells[0], tok, warn, classifyChildren) : null);
         const isPlainBand = (c: ComponentNode | null): c is Extract<ComponentNode, { kind: "alertBand" }> =>
-          c?.kind === "alertBand" && !c.props.buttons?.length && !c.props.bands?.length && !c.props.images?.length;
+          c?.kind === "alertBand" && !c.props.buttons?.length && !c.props.bands?.length && !c.props.images?.length && !c.props.tables?.length;
         if (tableRows.length >= 2 && cellComps.every(isPlainBand)) {
           pushMerged(result, {
             kind: "bandStack",

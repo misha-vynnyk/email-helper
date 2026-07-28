@@ -59,6 +59,7 @@ server/ollama-settings.json
 
 # Local ideas / notes (not tracked)
 idea/
+figma-to-html/
 
 # Personal Claude Code memory-compiler tool + its captured conversation logs
 # (own nested git repo, not project source — see AGENTS.md inside it)

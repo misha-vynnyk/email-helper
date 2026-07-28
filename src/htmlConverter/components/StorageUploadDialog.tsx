@@ -340,7 +340,7 @@ export default function StorageUploadDialog({ open, onClose, storageProvider = "
                   )}
                 </div>
 
-                <div className='flex flex-col gap-2 max-h-[45vh] overflow-y-auto pr-2 -mr-2 scrollbar-thin scrollbar-thumb-muted-foreground/30 scrollbar-track-transparent'>
+                <div className='flex flex-col gap-2 max-h-[45vh] overflow-y-auto pr-2 -mr-2 custom-scrollbar'>
                   {orderedFiles.map((file, index) => (
                     <FileListItem
                       key={file.id}

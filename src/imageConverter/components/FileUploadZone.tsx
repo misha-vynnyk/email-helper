@@ -89,7 +89,7 @@ export default function FileUploadZone({ files, addFiles, removeFile, downloadFi
         onDragLeave={() => setIsDragOver(false)}
         onDrop={handleDrop}
         className={`
-          relative h-[calc(100vh-250px)] rounded-2xl transition-all duration-300 overflow-hidden
+          relative h-[calc(100vh-250px)] rounded-2xl transition-all duration-300 overflow-y-auto overflow-x-hidden custom-scrollbar
           ${isDragOver ? "ring-2 ring-primary/20" : ""}
           ${files.length === 0 ? "border-2 border-dashed border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg min-h-[280px]" : "bg-transparent"}
         `}>

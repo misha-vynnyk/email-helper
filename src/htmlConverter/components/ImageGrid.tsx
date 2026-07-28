@@ -13,7 +13,7 @@ export function ImageGrid({ images, globalFormat, onDownload, onRemove, onFormat
   if (images.length === 0) return null;
 
   return (
-    <div className='flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent'>
+    <div className='flex gap-2 overflow-x-auto pb-2 custom-scrollbar'>
       {images.map((img) => (
         <ImageItem key={img.id} image={img} globalFormat={globalFormat} onDownload={onDownload} onRemove={onRemove} onFormatChange={onFormatChange} />
       ))}

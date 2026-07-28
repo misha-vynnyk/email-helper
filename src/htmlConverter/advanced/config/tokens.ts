@@ -74,6 +74,15 @@ export interface Tokens {
     calloutPadX: number;
     alertBandPadH: number;
     alertBandPadV: number;
+    /**
+     * Horizontal inset for a nested grid/row table (statsGrid/recordRow/progressBar — see
+     * AlertBandProps.tables) embedded inside an alertBand/calloutLeft container, applied to
+     * its own outer <td> alongside its normal padding-top/bottom. Deliberately a separate
+     * token from alertBandPadH/calloutPadX (the container's own TEXT inset) — a nested table
+     * is a distinct visual unit from the surrounding prose and may need retuning
+     * independently of it, even though both happen to default to the same value today.
+     */
+    nestedBlockPadX: number;
     gridCellPadY: number;
     gridCellPadX: number;
     recordCellPadY: number;
@@ -81,7 +90,21 @@ export interface Tokens {
     recordBorderPx: number;
     buttonSubtitlePadTop: number;
     gapMarginThresholdPt: number;
+    /**
+     * Minimum run of consecutive spaces (GDocs' &nbsp;-padding idiom, already collapsed to
+     * regular spaces by fromDom) between two runs on the same line before it's read as a
+     * deliberate "pseudo-column" gap rather than ordinary double-spacing in prose — see
+     * detect/flowBlock.ts's text-split detection. Chosen well above a typical 2-3 space
+     * decorative gap so plain text is never misread as a table.
+     */
+    textSplitGapMinSpaces: number;
     listIndentPx: number;
+    /**
+     * Vertical fill of a progressBar cell (no text/border, just a colored block) — the row
+     * has no natural height without text, so this top-only padding gives it one, matching
+     * the GDocs convention of a colored <td> containing nothing but a <br>.
+     */
+    progressBarPadTopPx: number;
     /**
      * Base width for the placeholder image (imageRowHtml) — a hand-picked constant per
      * provider, NOT derived from containerMaxWidth/sidePadding. Matches the Simple converter's
@@ -173,6 +196,7 @@ export const tokens: Tokens = {
     calloutPadX: 10,   // callout left/right inner padding
     alertBandPadH: 10,   // alertBand horizontal inner padding
     alertBandPadV: 4,   // alertBand vertical inner padding
+    nestedBlockPadX: 10,   // horizontal inset for a nested grid/row table inside alertBand/calloutLeft
     gridCellPadY: 10,   // statsGrid card cell padding top/bottom
     gridCellPadX: 6,   // statsGrid card cell padding left/right
     recordCellPadY: 6,   // recordRow cell padding top/bottom
@@ -185,7 +209,9 @@ export const tokens: Tokens = {
     // as tight lines; deliberate section spacing (14pt+) reads as a gap. Blank lines
     // (top-level <br>) and § override this in either direction.
     gapMarginThresholdPt: 6,
+    textSplitGapMinSpaces: 6,   // consecutive spaces before an nbsp-padded run reads as a pseudo-column gap
     listIndentPx: 20,   // <ul>/<ol> left indent (matches quotePadX)
+    progressBarPadTopPx: 24,   // vertical fill height for a text-less progressBar cell
     placeholderImageWidth: 560,   // matches Simple converter's default wrapImg width="560"
   },
   button: { radius: 10, height: 51, padding: "3px 5px", innerPadding: "9px 15px", target: "_blank", textDecoration: "none" },

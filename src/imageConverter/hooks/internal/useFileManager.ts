@@ -113,23 +113,32 @@ export function useFileManager(settings: ConversionSettings) {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      // Large blobs (e.g. GIFs) can still be spooling when clicked; revoking
+      // the URL right away can cut the download off before it starts.
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     },
     [settings.format, settings.preserveFormat]
   );
 
+  // Chrome silently drops downloads triggered back-to-back in the same tick
+  // once it decides too many "automatic" downloads fired at once, so bulk
+  // downloads are staggered instead of fired in a single synchronous loop.
+  const downloadFilesStaggered = useCallback(
+    (ids: string[]) => {
+      ids.forEach((id, index) => setTimeout(() => downloadFile(id), index * 300));
+    },
+    [downloadFile]
+  );
+
   const downloadAll = useCallback(() => {
     const completedFiles = filesRef.current.filter((f) => f.status === "done" && f.convertedBlob);
-    completedFiles.forEach((file) => downloadFile(file.id));
-  }, [downloadFile]);
+    downloadFilesStaggered(completedFiles.map((file) => file.id));
+  }, [downloadFilesStaggered]);
 
   const downloadSelected = useCallback(() => {
-    filesRef.current.forEach((file) => {
-      if (file.selected && file.status === "done") {
-        downloadFile(file.id);
-      }
-    });
-  }, [downloadFile]);
+    const selectedFiles = filesRef.current.filter((file) => file.selected && file.status === "done");
+    downloadFilesStaggered(selectedFiles.map((file) => file.id));
+  }, [downloadFilesStaggered]);
 
   const selectedCount = files.filter((f) => f.selected).length;
 

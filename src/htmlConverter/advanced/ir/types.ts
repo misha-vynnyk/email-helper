@@ -208,6 +208,13 @@ export interface AlertBandProps {
    * `atLine` convention as `buttons`/`bands`.
    */
   images?: { atLine: number; props: ImageProps }[];
+  /**
+   * Nested tables that resolve to their own grid/row component (statsGrid, recordRow,
+   * progressBar) instead of a button/band/plain-band — kept as a real nested table
+   * (own columns/dividers/colors) instead of being flattened to plain sequential text,
+   * which would lose the grid structure. Same `atLine` convention as `buttons`/`bands`.
+   */
+  tables?: { atLine: number; node: ComponentNode }[];
   /** Text alignment from the source cell's paragraphs — defaults to left. */
   align?: Align;
 }
@@ -240,6 +247,8 @@ export interface CalloutLeftProps {
   bands?: { atLine: number; props: AlertBandProps }[];
   /** Images that were direct children of the source cell — same convention as AlertBandProps.images. */
   images?: { atLine: number; props: ImageProps }[];
+  /** Nested grid/row tables (statsGrid, recordRow, progressBar) — same convention as AlertBandProps.tables. */
+  tables?: { atLine: number; node: ComponentNode }[];
   /**
    * Input-only merge signals for consecutive <p>-with-border-left paragraphs (see
    * Paragraph.border) — consumed by pushMerged's calloutLeft merge case (same boundary
@@ -309,6 +318,21 @@ export interface SplitRowProps {
   right: Run[];
 }
 
+/**
+ * A GDocs single-row, multi-cell table where NO cell has meaningful text content but at
+ * least one has a solid non-white fill — e.g. a two-tone "progress" bar (a green segment
+ * next to a dark one, proportioned by column width). Distinct from `statsGrid` (which
+ * always carries per-cell text): rendered as flush colored blocks with no border/text
+ * wrapper, since GDocs' border declarations on these cells are typically just a
+ * same-color-as-fill residual, not an intentional divider (see detect/tableBlock.ts).
+ */
+export interface ProgressBarProps {
+  n: number;
+  widths?: number[];
+  /** Fill color per cell, in column order — same length as `n`. */
+  colors: string[];
+}
+
 export interface ImageProps {
   src: string;
   alt?: string;
@@ -357,6 +381,7 @@ export type ComponentNode =
   | { kind: "statsGrid"; props: StatsGridProps; children: ComponentNode[] }
   | { kind: "recordRow"; props: RecordRowProps }
   | { kind: "splitRow"; props: SplitRowProps }
+  | { kind: "progressBar"; props: ProgressBarProps }
   | { kind: "image"; props: ImageProps }
   | { kind: "bandStack"; props: BandStackProps }
   | { kind: "spacer"; props: SpacerProps };
