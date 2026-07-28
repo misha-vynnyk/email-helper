@@ -37,7 +37,6 @@ export default defineConfig(() => {
       },
     },
     optimizeDeps: {
-      include: ["@emotion/react", "@emotion/styled", "@mui/material", "@mui/icons-material"],
       exclude: ["@usewaypoint/block-library"],
     },
     build: {
