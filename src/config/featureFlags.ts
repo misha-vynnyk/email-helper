@@ -10,3 +10,7 @@ export const EMAIL_VALIDATOR_ENABLED = false;
 // Block Library is hidden for the v1.0 release.
 // Flip to true to bring the tab back in the main navigation.
 export const BLOCK_LIBRARY_ENABLED = false;
+
+// Figma Import (Stage 1: read + validate only, no renderer yet) is local-only —
+// flip to true in your own checkout to work on the tab.
+export const FIGMA_IMPORT_ENABLED = false;

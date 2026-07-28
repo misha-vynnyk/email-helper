@@ -5,10 +5,10 @@
 
 import { create } from "zustand";
 
-import { BLOCK_LIBRARY_ENABLED } from "../config/featureFlags";
+import { BLOCK_LIBRARY_ENABLED, FIGMA_IMPORT_ENABLED } from "../config/featureFlags";
 
 type AppState = {
-  selectedMainTab: "email" | "blocks" | "templates" | "images" | "converter";
+  selectedMainTab: "email" | "blocks" | "templates" | "images" | "converter" | "figma-import";
   samplesDrawerOpen: boolean;
 };
 
@@ -16,9 +16,12 @@ type AppState = {
 const loadSelectedTab = (): AppState["selectedMainTab"] => {
   try {
     const saved = localStorage.getItem("app-selected-main-tab");
-    if (saved && ["email", "blocks", "templates", "images", "converter"].includes(saved)) {
+    if (saved && ["email", "blocks", "templates", "images", "converter", "figma-import"].includes(saved)) {
       // A previously saved tab may point to a feature that is now hidden.
       if (saved === "blocks" && !BLOCK_LIBRARY_ENABLED) {
+        return "email";
+      }
+      if (saved === "figma-import" && !FIGMA_IMPORT_ENABLED) {
         return "email";
       }
       return saved as AppState["selectedMainTab"];
