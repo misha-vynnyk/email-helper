@@ -102,7 +102,11 @@
       "Bash(grep -rIl \"PaddleOCR\\\\|Gemma\\\\|FastAPI\\\\|fastapi\" . --include=\"*.py\" --include=\"*.ts\" --include=\"*.md\" -not -path \"*/node_modules/*\")",
       "Bash(cat /Users/mykhailovynnyk/Documents/Obsidian/LoWiki/email-helper/index.md 2>/dev/null | head -60)",
       "Read(//Users/mykhailovynnyk/Documents/Obsidian/LoWiki/email-helper/**)",
-      "Bash(sed -n '1,60p' \"/Users/mykhailovynnyk/Documents/Obsidian/LoWiki/email-helper/pages/advanced-converter-status.md\" | grep -n \"2026-07-2\\\\|## \\\\|Останні\\\\|фікс\\\\|bg\" | head -30)"
+      "Bash(sed -n '1,60p' \"/Users/mykhailovynnyk/Documents/Obsidian/LoWiki/email-helper/pages/advanced-converter-status.md\" | grep -n \"2026-07-2\\\\|## \\\\|Останні\\\\|фікс\\\\|bg\" | head -30)",
+      "Bash(grep -n \"select:TodoWrite\" /dev/null; true)",
+      "Read(//dev/**)",
+      "Bash(echo \"SKILLS diff exit: $?\")",
+      "Bash(echo \"LESSONS diff exit: $?\")"
     ],
     "additionalDirectories": [
       "/dev",

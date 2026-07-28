@@ -16,6 +16,7 @@ import {
   imageRowHtml,
   type ListOpts,
   type ParagraphOpts,
+  type ProgressBarOpts,
   type RecordOpts,
   type SplitRowOpts,
   templates as defaultTemplates,
@@ -229,15 +230,17 @@ function buildAlertBandSegments(
 }
 
 /**
- * Text/image rows for a cell that has image(s) but no buttons/bands of its own — used
- * instead of buildAlertBandSegments so this common case (a banner headline + a screenshot,
- * no CTA) gets AlertBandOpts.rows' direct-nesting shape (each row carries its own horizontal
- * inset) rather than the segments path's extra side-padding wrapper table, which stays
- * reserved for the button/band case (see e2e.test.ts's "standard block side padding"
- * regression — that shape must not change just because images also got support here).
+ * Text/image/table rows for a cell that has image(s)/nested-table(s) but no buttons/bands
+ * of its own — used instead of buildAlertBandSegments so this common case (a banner
+ * headline + a screenshot, or a stat card + an embedded grid, no CTA) gets AlertBandOpts.rows'
+ * direct-nesting shape (each row carries its own horizontal inset) rather than the segments
+ * path's extra side-padding wrapper table, which stays reserved for the button/band case
+ * (see e2e.test.ts's "standard block side padding" regression — that shape must not change
+ * just because images/tables also got support here).
  */
 function buildImageOnlyRows(
-  p: Pick<AlertBandProps, "lines" | "paraBreaks" | "images">,
+  p: Pick<AlertBandProps, "lines" | "paraBreaks" | "images" | "tables">,
+  tmpl: Templates,
   tok: Tokens,
   textColor: string,
   align: "left" | "center" | "right",
@@ -257,11 +260,23 @@ function buildImageOnlyRows(
       rows.push(blockRow(html, { align, color: textColor, extraStyle: `padding-left:${padX}px;padding-right:${padX}px;` }, tok));
     }
   };
-  const images = [...(p.images ?? [])].sort((a, b) => a.atLine - b.atLine);
-  for (const im of images) {
-    flushTextGroup(im.atLine);
-    rows.push(imageRowHtml(im.props, tok, padX));
-    groupStart = im.atLine;
+  const nested = [
+    ...(p.images ?? []).map(im => ({ atLine: im.atLine, kind: "image" as const, props: im.props })),
+    ...(p.tables ?? []).map(t => ({ atLine: t.atLine, kind: "table" as const, node: t.node })),
+  ].sort((a, b) => a.atLine - b.atLine);
+  for (const item of nested) {
+    flushTextGroup(item.atLine);
+    if (item.kind === "image") {
+      rows.push(imageRowHtml(item.props, tok, padX));
+    } else {
+      // A nested grid/row table (statsGrid/recordRow/progressBar) keeps its own columns/
+      // dividers/colors — rendered through the normal ComponentNode path and nested as-is,
+      // same as any other pre-rendered <tr> in this list. Its own horizontal inset
+      // (tok.layout.nestedBlockPadX) is distinct from this row-builder's `padX` — the
+      // latter is the container's own TEXT/image inset, threaded in from the caller.
+      rows.push(renderNode(item.node, tmpl, tok, tok.layout.nestedBlockPadX));
+    }
+    groupStart = item.atLine;
   }
   flushTextGroup(p.lines.length);
   return rows;
@@ -273,6 +288,10 @@ export function renderNode(
   node: ComponentNode,
   tmpl: Templates = defaultTemplates,
   tok: Tokens = defaultTokens,
+  /** Horizontal inset applied to statsGrid/recordRow/progressBar's own outer <td> — 0 for
+   *  a top-level node (already inside the document's own side padding), non-zero when
+   *  nested inside an alertBand/calloutLeft container (see buildImageOnlyRows). */
+  padX = 0,
 ): string {
   switch (node.kind) {
     case "paragraph": {
@@ -303,8 +322,8 @@ export function renderNode(
         // side-padding wrapper (AlertBandOpts.segments) stays as-is; images alongside a
         // button/band ride along in the same segment list (buildAlertBandSegments).
         opts = { segments: buildAlertBandSegments(p, tok, textColor), bg: p.bg, border: p.border, align: p.align };
-      } else if (p.images?.length) {
-        const rows = buildImageOnlyRows(p, tok, textColor, p.align ?? "left", tok.layout.alertBandPadH);
+      } else if (p.images?.length || p.tables?.length) {
+        const rows = buildImageOnlyRows(p, tmpl, tok, textColor, p.align ?? "left", tok.layout.alertBandPadH);
         opts = { rows, bg: p.bg, border: p.border, align: p.align };
       } else {
         opts = { innerHtml: renderLines(p.lines, tok, textColor, p.paraBreaks), bg: p.bg, border: p.border, align: p.align };
@@ -352,8 +371,8 @@ export function renderNode(
     case "calloutLeft": {
       const p = node.props;
       const hasButtonsOrBands = Boolean(p.buttons?.length || p.bands?.length);
-      const hasImagesOnly = !hasButtonsOrBands && Boolean(p.images?.length);
-      const innerHtml = hasButtonsOrBands || hasImagesOnly ? "" : renderLines(p.lines, tok, tok.color.black, p.paraBreaks);
+      const hasImagesOrTablesOnly = !hasButtonsOrBands && Boolean(p.images?.length || p.tables?.length);
+      const innerHtml = hasButtonsOrBands || hasImagesOrTablesOnly ? "" : renderLines(p.lines, tok, tok.color.black, p.paraBreaks);
       const opts: CalloutOpts = {
         accentColor: p.accentColor,
         accentWidthPx: p.accentWidthPx,
@@ -361,8 +380,8 @@ export function renderNode(
         accentPadX: p.accentPadX,
         bg: p.bg,
         segments: hasButtonsOrBands ? buildAlertBandSegments(p, tok, tok.color.black) : undefined,
-        rows: hasImagesOnly
-          ? buildImageOnlyRows(p, tok, tok.color.black, "left", p.accentPadX ?? tok.layout.calloutPadX)
+        rows: hasImagesOrTablesOnly
+          ? buildImageOnlyRows(p, tmpl, tok, tok.color.black, "left", p.accentPadX ?? tok.layout.calloutPadX)
           : undefined,
       };
       return tmpl.calloutLeft(innerHtml, opts);
@@ -410,6 +429,7 @@ export function renderNode(
         n: node.props.n || cells.length,
         widths: node.props.widths,
         borderColor: node.props.borderColor,
+        padX: padX || undefined,
       };
       return tmpl.statsGrid(cells, opts);
     }
@@ -430,6 +450,7 @@ export function renderNode(
         widths: p.widths,
         borderColor: p.borderColor,
         band,
+        padX: padX || undefined,
         rows: p.rows.map(row => ({
           bg: row.bg,
           cells: row.cells.map(c => {
@@ -462,6 +483,11 @@ export function renderNode(
       if (!node.props.src) return "";
       const opts: ImageOpts = { tightBefore: node.props.tightBefore, tightAfter: node.props.tightAfter };
       return tmpl.image(opts);
+    }
+
+    case "progressBar": {
+      const opts: ProgressBarOpts = { n: node.props.n, widths: node.props.widths, colors: node.props.colors, padX: padX || undefined };
+      return tmpl.progressBar(opts);
     }
 
     // No classify/detect path ever produces kind:"spacer" — this branch is reachable

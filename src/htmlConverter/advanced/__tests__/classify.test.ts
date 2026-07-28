@@ -724,3 +724,99 @@ describe("classify — margin-sum boundary rule", () => {
     expect(breaks.has(1)).toBe(false);
   });
 });
+
+// ── nbsp-padded "pseudo-column" paragraph → recordRow ─────────────────────────
+// GDocs authors sometimes fake a 2-column layout by padding one run with a long run of
+// &nbsp; (collapsed to regular spaces by fromDom, but the run survives as literal
+// whitespace since these spans carry white-space:pre-wrap) instead of a real table.
+
+describe("classify — nbsp-padded pseudo-column paragraph → recordRow", () => {
+  const gap = " ".repeat(28);
+
+  function splitPara(overrides: Partial<Paragraph> = {}): Paragraph {
+    return {
+      type: "p",
+      size: "body",
+      align: "left",
+      lines: [[
+        { text: `10,000+ investors in${gap}`, color: "#b5d4f4" },
+        { text: "$0.79 window open", bold: true, color: "#ffffff" },
+      ]],
+      ...overrides,
+    };
+  }
+
+  it("converts a wide space-gap between two runs into a 2-column, 50/50 recordRow", () => {
+    const result = classify([splitPara()]);
+    expect(result).toHaveLength(1);
+    expect(result[0].kind).toBe("recordRow");
+    const props = result[0].props as Record<string, unknown>;
+    expect(props.widths).toEqual([50, 50]);
+    const rows = props.rows as Array<{ cells: Array<{ lines: Array<Array<{ text: string }>> }> }>;
+    expect(rows).toHaveLength(1);
+    expect(rows[0].cells).toHaveLength(2);
+    expect(rows[0].cells[0].lines[0][0].text).toBe("10,000+ investors in"); // trailing spaces stripped
+    expect(rows[0].cells[1].lines[0][0].text).toBe("$0.79 window open");
+  });
+
+  it("preserves each run's own formatting (color/bold) in its cell", () => {
+    const result = classify([splitPara()]);
+    const rows = (result[0].props as Record<string, unknown>).rows as Array<{ cells: Array<{ lines: Array<Array<{ color?: string; bold?: boolean }>> }> }>;
+    expect(rows[0].cells[0].lines[0][0].color).toBe("#b5d4f4");
+    expect(rows[0].cells[1].lines[0][0].bold).toBe(true);
+    expect(rows[0].cells[1].lines[0][0].color).toBe("#ffffff");
+  });
+
+  it("does not fire below the gap threshold (ordinary double-spaced prose)", () => {
+    const para = splitPara({ lines: [[{ text: "A short   gap" }, { text: "here" }]] });
+    const result = classify([para]);
+    expect(result[0].kind).toBe("paragraph");
+  });
+
+  it("does not fire across more than 2 runs on the line", () => {
+    const para = splitPara({
+      lines: [[{ text: `left${gap}` }, { text: "mid" }, { text: "right" }]],
+    });
+    const result = classify([para]);
+    expect(result[0].kind).toBe("paragraph");
+  });
+
+  it("does not fire when the paragraph has its own bg", () => {
+    const withBg = classify([splitPara({ bg: "#000000" })]);
+    expect(withBg[0].kind).toBe("paragraph");
+  });
+
+  it("does not fire when the paragraph has a border — routes to the existing border handling instead", () => {
+    // A left-only border is a distinct, already-handled convention (calloutLeft) — the
+    // text-split check requires !border and correctly never gets a chance to run here.
+    const leftAccent = classify([splitPara({ border: { left: { color: "#000000" } } })]);
+    expect(leftAccent[0].kind).toBe("calloutLeft");
+    // A full frame has no dedicated flow-level handling — falls to plain paragraph
+    // (border dropped, same as before text-split detection existed).
+    const fullBorder = classify([splitPara({
+      border: { top: { color: "#000" }, right: { color: "#000" }, bottom: { color: "#000" }, left: { color: "#000" } },
+    })]);
+    expect(fullBorder[0].kind).toBe("paragraph");
+  });
+
+  it("does not fire when either run carries a real link", () => {
+    const para = splitPara({
+      lines: [[
+        { text: `10,000+ investors in${gap}`, href: "https://example.com" },
+        { text: "$0.79 window open" },
+      ]],
+    });
+    const result = classify([para]);
+    expect(result[0].kind).toBe("paragraph");
+  });
+
+  it("does not fire on a centered paragraph", () => {
+    const result = classify([splitPara({ align: "center" })]);
+    expect(result[0].kind).toBe("paragraph");
+  });
+
+  it("does not fire on a heading/list paragraph", () => {
+    expect(classify([splitPara({ size: "headline" })])[0].kind).toBe("paragraph");
+    expect(classify([splitPara({ listItem: true })])[0].kind).toBe("list");
+  });
+});

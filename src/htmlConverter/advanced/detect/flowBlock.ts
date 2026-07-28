@@ -5,6 +5,41 @@ import { tokens as defaultTokens } from "../config/tokens";
 import { joinLinesWithSpace } from "../ir/runs";
 import type { ComponentNode, Run,StructuralNode } from "../ir/types";
 
+/**
+ * GDocs' manual "pseudo-column" idiom: instead of a real table, the author pads a run of
+ * text with a long stretch of &nbsp; (already collapsed to regular spaces by fromDom, but
+ * the run length survives since these spans carry white-space:pre-wrap) to visually push a
+ * second, differently-styled run to the right. Detected narrowly — a single line, exactly
+ * two runs, no link on either — so ordinary double-spaced prose is never misread as a table;
+ * see fix-advanced.md-style conservative scoping used throughout this file's other checks.
+ */
+export function detectTextSplit(lines: Run[][], tok: Tokens): { left: Run; right: Run } | null {
+  if (lines.length !== 1 || lines[0].length !== 2) return null;
+  const [first, second] = lines[0];
+  if (first.href || second.href) return null;
+  const gapRe = new RegExp(`^(.*\\S)( {${tok.layout.textSplitGapMinSpaces},})$`, "s");
+  const m = first.text.match(gapRe);
+  if (!m) return null;
+  const rightText = second.text.trim();
+  if (!rightText) return null;
+  return { left: { ...first, text: m[1] }, right: { ...second, text: rightText } };
+}
+
+/** A 2-column, 50/50, borderless recordRow from a detectTextSplit result — reuses the
+ *  existing recordRow render path entirely (no new template/render code). */
+export function textSplitToRecordRow(split: { left: Run; right: Run }): ComponentNode {
+  return {
+    kind: "recordRow",
+    props: {
+      widths: [50, 50],
+      rows: [{ cells: [
+        { lines: [[split.left]], align: "left" },
+        { lines: [[split.right]], align: "left" },
+      ] }],
+    },
+  };
+}
+
 export function classifyFlow(nodes: StructuralNode[], tok: Tokens = defaultTokens): ComponentNode[] {
   const result: ComponentNode[] = [];
   for (const node of nodes) {
@@ -64,6 +99,18 @@ export function classifyFlow(nodes: StructuralNode[], tok: Tokens = defaultToken
         },
       });
       continue;
+    }
+
+    // Plain, unstyled body text only — a colored/bordered/non-left-aligned paragraph is a
+    // more deliberate authoring choice, and the source gives no real signal that "gap the
+    // wrong shape" belongs there too (conservative: fall through to plain text instead of
+    // guessing). See detectTextSplit's own doc comment for the detection itself.
+    if (size === "body" && !bg && !border && (!align || align === "left")) {
+      const split = detectTextSplit(lines, tok);
+      if (split) {
+        result.push(textSplitToRecordRow(split));
+        continue;
+      }
     }
 
     result.push({ kind: "paragraph", props: { lines, align, size, paraBreaks, tightNext, tightBefore, marginTopPt, marginBottomPt, gapBefore } });

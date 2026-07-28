@@ -956,3 +956,149 @@ describe("classifyTable — images as direct cell children", () => {
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("Зображення в клітинці"));
   });
 });
+
+// ── Purely decorative colored row (e.g. a two-tone "progress" bar) — no cell carries
+// text, but at least one carries a real fill. Distinct from statsGrid (which always has
+// per-cell text) and from the narrow-empty-column accent-bar idiom (which requires the
+// empty cell to be meaningfully narrower than its sibling).
+
+describe("classifyTable — progressBar (decorative colored row, no text)", () => {
+  const emptyCell = (bg: string): CellNode => ({ type: "cell", bg, children: [] });
+
+  it("classifies a 2-cell text-less colored row as progressBar with colors in column order", () => {
+    const table: TableNode = {
+      type: "table",
+      rows: [{ type: "row", cells: [emptyCell("#5dcaa5"), emptyCell("#06183a")] }],
+      colWidths: [483, 136],
+    };
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("progressBar");
+    const props = result?.props as Record<string, unknown>;
+    expect(props.colors).toEqual(["#5dcaa5", "#06183a"]);
+    expect(props.n).toBe(2);
+    // 483/136 (619 total) rounds to 78/22, not a naive 50/50 split — same
+    // largest-remainder width logic as statsGrid (toWidthPercents).
+    expect(props.widths).toEqual([78, 22]);
+  });
+
+  it("classifies a 3-cell text-less colored row the same way", () => {
+    const table = makeTable([[emptyCell("#ff0000"), emptyCell("#00ff00"), emptyCell("#0000ff")]]);
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("progressBar");
+    expect((result?.props as Record<string, unknown>).colors).toEqual(["#ff0000", "#00ff00", "#0000ff"]);
+  });
+
+  it("does not fire when no cell has a real (non-white) fill — falls through to statsGrid", () => {
+    const table = makeTable([[emptyCell("#ffffff"), emptyCell("#ffffff")]]);
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("statsGrid");
+  });
+
+  it("does not fire when every cell has actual text — stays statsGrid", () => {
+    const table = makeTable([[makeCell({ bg: "#5dcaa5" }), makeCell({ bg: "#06183a" })]]);
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("statsGrid");
+  });
+});
+
+// ── Nested statsGrid/recordRow/progressBar inside a bigger box — same class of bug as
+// the button/band/image promotion above: a shape the pipeline already knows how to
+// classify on its own wasn't reaching that path when nested one level deeper, and
+// silently collapsed to plain sequential text (or, for a text-less progressBar,
+// vanished entirely — flattenLinesWithBreaks has no lines to flatten).
+
+describe("classifyTable — nested grid/row tables promoted instead of flattened to text", () => {
+  const fullBorder = {
+    top: { color: "#0a2463" }, right: { color: "#0a2463" },
+    bottom: { color: "#0a2463" }, left: { color: "#0a2463" },
+  };
+
+  it("keeps a nested statsGrid as a tables segment instead of collapsing its columns to text", () => {
+    const nestedGrid = makeTable([[
+      makeCell({ bg: "#0a2463", children: [makePara("1.5M+"), makePara("USERS")] }),
+      makeCell({ bg: "#0a2463", children: [makePara("75K+"), makePara("VISOR WAITLIST")] }),
+    ]]);
+    const outer = makeCell({ bg: "#0a2463", border: fullBorder, children: [makePara("headline"), nestedGrid] });
+    const warn = jest.fn();
+    const result = classifyTable(makeTable([[outer]]), undefined, warn);
+    expect(result?.kind).toBe("alertBand");
+    const tables = (result?.props as Record<string, unknown>)["tables"] as Array<{ atLine: number; node: { kind: string } }>;
+    expect(tables).toHaveLength(1);
+    expect(tables[0].node.kind).toBe("statsGrid");
+    expect(tables[0].atLine).toBe(1);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("keeps a nested (text-less) progressBar as a tables segment instead of it vanishing", () => {
+    const nestedBar = makeTable([[
+      { type: "cell" as const, bg: "#5dcaa5", children: [] },
+      { type: "cell" as const, bg: "#06183a", children: [] },
+    ]]);
+    const outer = makeCell({ bg: "#0a2463", border: fullBorder, children: [makePara("headline"), nestedBar] });
+    const warn = jest.fn();
+    const result = classifyTable(makeTable([[outer]]), undefined, warn);
+    expect(result?.kind).toBe("alertBand");
+    const tables = (result?.props as Record<string, unknown>)["tables"] as Array<{ atLine: number; node: { kind: string } }>;
+    expect(tables).toHaveLength(1);
+    expect(tables[0].node.kind).toBe("progressBar");
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("promotes a nested statsGrid inside a calloutLeft (border-left accent) cell too", () => {
+    const nestedGrid = makeTable([[
+      makeCell({ children: [makePara("A")] }),
+      makeCell({ children: [makePara("B")] }),
+    ]]);
+    const outer = makeCell({ border: { left: { color: "#047857" } }, children: [makePara("intro"), nestedGrid] });
+    const warn = jest.fn();
+    const result = classifyTable(makeTable([[outer]]), undefined, warn);
+    expect(result?.kind).toBe("calloutLeft");
+    const tables = (result?.props as Record<string, unknown>)["tables"] as Array<{ node: { kind: string } }>;
+    expect(tables).toHaveLength(1);
+    expect(tables[0].node.kind).toBe("statsGrid");
+    expect(warn).not.toHaveBeenCalled();
+  });
+});
+
+// ── nbsp-padded pseudo-column paragraph, nested inside a table cell — a paragraph inside
+// a cell never goes through classifyFlow at all (flattenCellForAlertBand handles cell
+// children directly), so the same detection needs its own hook here.
+
+describe("classifyTable — nbsp-padded pseudo-column paragraph inside a cell promoted to recordRow", () => {
+  const gap = " ".repeat(28);
+  const splitPara: Paragraph = {
+    type: "p", size: "body", align: "left",
+    lines: [[
+      { text: `10,000+ investors in${gap}`, color: "#b5d4f4" },
+      { text: "$0.79 window open", bold: true, color: "#ffffff" },
+    ]],
+  };
+
+  it("promotes it into `tables` as a 2-column recordRow instead of flattening to one line with a wall of spaces", () => {
+    const outer = makeCell({ bg: "#0a2463", children: [makePara("headline"), splitPara] });
+    const warn = jest.fn();
+    const result = classifyTable(makeTable([[outer]]), undefined, warn);
+    expect(result?.kind).toBe("alertBand");
+    const tables = (result?.props as Record<string, unknown>)["tables"] as Array<{ atLine: number; node: { kind: string; props: Record<string, unknown> } }>;
+    expect(tables).toHaveLength(1);
+    expect(tables[0].node.kind).toBe("recordRow");
+    expect(tables[0].atLine).toBe(1);
+    expect(tables[0].node.props.widths).toEqual([50, 50]);
+    // The flattened text lines (from the OTHER, plain paragraph) never contain the raw gap.
+    const lines = (result?.props as Record<string, unknown>)["lines"] as Array<Array<{ text: string }>>;
+    expect(lines.some(l => l.some(r => r.text.includes(gap)))).toBe(false);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("still flattens to plain text below the gap threshold", () => {
+    const shortGapPara: Paragraph = {
+      type: "p", size: "body", align: "left",
+      lines: [[{ text: "A short   gap" }, { text: "here" }]],
+    };
+    const outer = makeCell({ bg: "#0a2463", children: [shortGapPara] });
+    const result = classifyTable(makeTable([[outer]]));
+    expect(result?.kind).toBe("alertBand");
+    const tables = (result?.props as Record<string, unknown>)["tables"];
+    expect(tables).toBeUndefined();
+  });
+});

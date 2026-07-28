@@ -266,6 +266,71 @@ describe("buildTemplates — profile link colors", () => {
 
 // ── statsGrid border ──────────────────────────────────────────────────────────
 
+describe("buildTemplates — progressBar()", () => {
+  it("renders one bgcolor <td> per color, in order, with no text", () => {
+    const html = tmpl.progressBar({ n: 2, colors: ["#5dcaa5", "#06183a"] });
+    expect(html.indexOf('bgcolor="#5dcaa5"')).toBeLessThan(html.indexOf('bgcolor="#06183a"'));
+  });
+
+  it("uses the given widths, not an equal split, when provided", () => {
+    const html = tmpl.progressBar({ n: 2, widths: [78, 22], colors: ["#5dcaa5", "#06183a"] });
+    expect(html).toContain('width="78%"');
+    expect(html).toContain('width="22%"');
+  });
+
+  it("falls back to an equal split when widths are absent", () => {
+    const html = tmpl.progressBar({ n: 2, colors: ["#5dcaa5", "#06183a"] });
+    expect(html).toContain('width="50%"');
+  });
+
+  it("uses progressBarPadTopPx for the cell's top padding", () => {
+    const tok = mergeTokens(tokens, { layout: { progressBarPadTopPx: 30 } });
+    const html = buildTemplates(tok).progressBar({ n: 2, colors: ["#5dcaa5", "#06183a"] });
+    expect(html).toContain("padding-top:30px;");
+  });
+
+  // A truly empty <td> gets stripped by the shared cleanEmptyHtmlTags pass every
+  // conversion runs through (src/htmlConverter/utils/htmlUtils.ts) — &#160; (not a
+  // literal space) is the same convention already used by document()'s spacer row.
+  it("puts &#160; inside each cell so it survives cleanEmptyHtmlTags", () => {
+    const html = tmpl.progressBar({ n: 2, colors: ["#5dcaa5", "#06183a"] });
+    expect(html).not.toMatch(/<td[^>]*><\/td>/);
+    expect(html.match(/&#160;/g)).toHaveLength(2);
+  });
+
+  // &#160; inherits the ambient font-size/line-height by default — its own line box would
+  // stack on top of padding-top and inflate the bar well past progressBarPadTopPx. Zeroing
+  // font-size/line-height (same technique statsGrid's outer table already uses) keeps
+  // padding-top as the sole height driver.
+  it("neutralizes the &#160;'s own line box so padding-top alone drives the cell height", () => {
+    const html = tmpl.progressBar({ n: 2, colors: ["#5dcaa5", "#06183a"] });
+    const cellStyles = html.match(/<td bgcolor="[^"]*"[^>]*style="([^"]*)"/g) ?? [];
+    expect(cellStyles).toHaveLength(2);
+    for (const cell of cellStyles) {
+      expect(cell).toContain("font-size:0;");
+      expect(cell).toContain("line-height:0;");
+      expect(cell).toContain("mso-line-height-rule:exactly;");
+    }
+  });
+
+  it("never renders a border on the cells — GDocs' same-color-as-fill residual is dropped by design", () => {
+    const html = tmpl.progressBar({ n: 2, colors: ["#5dcaa5", "#06183a"] });
+    // border="0" on the outer wrapper table is a plain HTML attribute, not a border
+    // declaration — only the colored <td> cells' own style must stay border-free.
+    expect(html).not.toMatch(/<td[^>]*style="[^"]*border/);
+  });
+
+  it("adds horizontal inset to the outer <td> when padX is given (nested inside a container)", () => {
+    const html = tmpl.progressBar({ n: 2, colors: ["#5dcaa5", "#06183a"], padX: 10 });
+    expect(html).toContain("padding-left:10px;padding-right:10px;");
+  });
+
+  it("adds no horizontal inset when padX is absent (top-level)", () => {
+    const html = tmpl.progressBar({ n: 2, colors: ["#5dcaa5", "#06183a"] });
+    expect(html).not.toContain("padding-left:");
+  });
+});
+
 describe("buildTemplates — statsGrid gridBorder", () => {
   // Design principle: never synthesize a border the source document didn't declare.
   it("renders no border when neither cell nor grid declares a borderColor", () => {
@@ -295,6 +360,42 @@ describe("buildTemplates — statsGrid gridBorder", () => {
     );
     expect(html).toContain("#ff0000");
     expect(html).toContain("#00ff00");
+  });
+});
+
+// ── Horizontal inset when nested inside an alertBand/calloutLeft container (see
+// AlertBandProps.tables / render/toEmailHtml.ts's buildImageOnlyRows) — shared by every
+// grid/row template that can be embedded this way.
+
+describe("buildTemplates — nested-table padX (statsGrid/recordRow/progressBar)", () => {
+  // Cells always carry their own padding-left (gridCellPadX/recordCellPadX) regardless of
+  // padX — assertions check the OUTER wrapper <td> specifically (padding-bottom immediately
+  // followed by padding-left, the exact adjacency padXCss produces), not "padding-left:" anywhere.
+  const outerHasInset = (html: string) => /padding-bottom:\d+px;padding-left:10px;padding-right:10px;"/.test(html);
+  const outerHasNoInset = (html: string) => /padding-bottom:\d+px;">/.test(html);
+
+  it("statsGrid adds horizontal inset to its outer <td> only when padX is given", () => {
+    const withPad = tmpl.statsGrid([{ innerHtml: "a" }, { innerHtml: "b" }], { n: 2, padX: 10 });
+    const withoutPad = tmpl.statsGrid([{ innerHtml: "a" }, { innerHtml: "b" }], { n: 2 });
+    expect(outerHasInset(withPad)).toBe(true);
+    expect(outerHasNoInset(withoutPad)).toBe(true);
+  });
+
+  it("recordRow (no band) adds horizontal inset to its outer <td> only when padX is given", () => {
+    const rows = [{ cells: [{ innerHtml: "a" }, { innerHtml: "b" }] }];
+    const withPad = tmpl.recordRow({ rows, padX: 10 });
+    const withoutPad = tmpl.recordRow({ rows });
+    expect(outerHasInset(withPad)).toBe(true);
+    expect(outerHasNoInset(withoutPad)).toBe(true);
+  });
+
+  it("recordRow (with band) adds horizontal inset to the outer <td> only when padX is given", () => {
+    const rows = [{ cells: [{ innerHtml: "a" }, { innerHtml: "b" }] }];
+    const band = { innerHtml: "title" };
+    const withPad = tmpl.recordRow({ rows, band, padX: 10 });
+    const withoutPad = tmpl.recordRow({ rows, band });
+    expect(outerHasInset(withPad)).toBe(true);
+    expect(outerHasNoInset(withoutPad)).toBe(true);
   });
 });
 

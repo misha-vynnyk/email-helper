@@ -9,6 +9,7 @@ import { joinLinesWithSpace } from "../ir/runs";
 import { isGapBoundary } from "../ir/spacing";
 import type { AlertBandProps, BorderSide, BorderSpec, ButtonBandProps, CellNode, ComponentNode, ImageProps, Paragraph, Run, StructuralNode, TableNode, WarnFn } from "../ir/types";
 import { WARN } from "../warnings";
+import { detectTextSplit, textSplitToRecordRow } from "./flowBlock";
 
 /** Recurses back into classify.ts — threaded in to avoid a circular import. */
 export type ClassifyChildrenFn = (nodes: StructuralNode[]) => ComponentNode[];
@@ -151,6 +152,7 @@ function flattenCellForAlertBand(
   buttons: { atLine: number; props: ButtonBandProps }[];
   bands: { atLine: number; props: AlertBandProps }[];
   images: { atLine: number; props: ImageProps }[];
+  tables: { atLine: number; node: ComponentNode }[];
   align?: "left" | "center" | "right";
 } {
   const lines: Run[][] = [];
@@ -158,6 +160,7 @@ function flattenCellForAlertBand(
   const buttons: { atLine: number; props: ButtonBandProps }[] = [];
   const bands: { atLine: number; props: AlertBandProps }[] = [];
   const images: { atLine: number; props: ImageProps }[] = [];
+  const tables: { atLine: number; node: ComponentNode }[] = [];
   let align: "left" | "center" | "right" | undefined;
   let prevP: Paragraph | null = null;
   const listState: ListMarkerState = { active: false, ordered: false, groupId: undefined, n: 0 };
@@ -169,6 +172,22 @@ function flattenCellForAlertBand(
   };
   for (const child of cell.children) {
     if (child.type === "p") {
+      // Same nbsp-padded "pseudo-column" idiom as classifyFlow's top-level detection (see
+      // detectTextSplit) — reaches here too since a paragraph inside a table cell never
+      // goes through classifyFlow at all. Promoted into `tables` (the same slot used for a
+      // real nested <table>) so it survives as an actual 2-column recordRow instead of
+      // flattening to one line of runs with a wall of literal spaces in the middle.
+      if (
+        child.size === "body" && !child.bg && !child.border && !child.listItem && !child.headingLevel &&
+        (!child.align || child.align === "left")
+      ) {
+        const split = detectTextSplit(child.lines, tok);
+        if (split) {
+          tables.push({ atLine: lines.length, node: textSplitToRecordRow(split) });
+          prevP = null;
+          continue;
+        }
+      }
       if (align === undefined && child.align) align = child.align;
       appendBlock(markListItem(child, listState), child.paraBreaks, isGapBoundary(prevP ?? {}, child, tok));
       prevP = child;
@@ -182,6 +201,18 @@ function flattenCellForAlertBand(
       }
       if (nestedComponent?.kind === "alertBand") {
         bands.push({ atLine: lines.length, props: nestedComponent.props });
+        prevP = null;
+        continue;
+      }
+      if (
+        nestedComponent?.kind === "statsGrid" ||
+        nestedComponent?.kind === "recordRow" ||
+        nestedComponent?.kind === "progressBar"
+      ) {
+        // A nested grid/row (numbers+labels, or a text-less color bar) keeps its own
+        // columns/dividers/colors as a real nested table instead of collapsing to plain
+        // sequential text (see flattenLinesWithBreaks' nestedTableFlattened path below).
+        tables.push({ atLine: lines.length, node: nestedComponent });
         prevP = null;
         continue;
       }
@@ -202,7 +233,7 @@ function flattenCellForAlertBand(
       prevP = null;
     }
   }
-  return { lines, paraBreaks, buttons, bands, images, align };
+  return { lines, paraBreaks, buttons, bands, images, tables, align };
 }
 
 function findHref(cell: CellNode, tok: Tokens): string | null {
@@ -339,14 +370,14 @@ export function classifySingleCell(
     // close its color is to white — use the raw border here, not the near-white-filtered one.
     // Nested tables that resolve to a real button (a CTA nested inside the banner) survive
     // as actual buttons — see flattenCellForAlertBand — everything else still flattens.
-    const { lines, paraBreaks, buttons, bands, images, align } = flattenCellForAlertBand(cell, tok, warn, classifyChildren);
+    const { lines, paraBreaks, buttons, bands, images, tables, align } = flattenCellForAlertBand(cell, tok, warn, classifyChildren);
     // Only promote to buttonBand (wraps the ENTIRE cell in one <a>) when the cell is a
-    // single logical line with no nested button/band/image of its own — a real one-line CTA.
-    // A multi-line dark box (e.g. a banner headline + a "fake link" line styled
-    // blue/underlined with no real <a> + a footer line) must stay an alertBand: findHref
-    // would happily match the fake-link line and swallow the whole box — including
-    // unrelated text — into one giant link.
-    const href = lines.length <= 1 && buttons.length === 0 && bands.length === 0 && images.length === 0
+    // single logical line with no nested button/band/image/table of its own — a real
+    // one-line CTA. A multi-line dark box (e.g. a banner headline + a "fake link" line
+    // styled blue/underlined with no real <a> + a footer line) must stay an alertBand:
+    // findHref would happily match the fake-link line and swallow the whole box —
+    // including unrelated text — into one giant link.
+    const href = lines.length <= 1 && buttons.length === 0 && bands.length === 0 && images.length === 0 && tables.length === 0
       ? findHref(cell, tok) : null;
     if (href) {
       return { kind: "buttonBand", props: { runs: joinLinesWithSpace(lines), href, bg, border: cell.border } };
@@ -358,6 +389,7 @@ export function classifySingleCell(
         buttons: buttons.length ? buttons : undefined,
         bands: bands.length ? bands : undefined,
         images: images.length ? images : undefined,
+        tables: tables.length ? tables : undefined,
         align,
       },
     };
@@ -384,7 +416,7 @@ export function classifySingleCell(
   // being flattened to plain text (see flattenLinesWithBreaks' nestedTableFlattened path).
   const isLeftAccentOnly = Boolean(border?.left) && !border?.top && !border?.right && !border?.bottom;
   if (isLeftAccentOnly) {
-    const { lines, paraBreaks, buttons, bands, images } = flattenCellForAlertBand(cell, tok, warn, classifyChildren);
+    const { lines, paraBreaks, buttons, bands, images, tables } = flattenCellForAlertBand(cell, tok, warn, classifyChildren);
     return {
       kind: "calloutLeft",
       props: {
@@ -392,6 +424,7 @@ export function classifySingleCell(
         buttons: buttons.length ? buttons : undefined,
         bands: bands.length ? bands : undefined,
         images: images.length ? images : undefined,
+        tables: tables.length ? tables : undefined,
       },
     };
   }
@@ -409,7 +442,7 @@ export function classifySingleCell(
   // branch above (not the plainer flattenLinesWithBreaks) so a nested button/band/image
   // inside a light-colored box survives too, instead of only dark boxes getting that support.
   {
-    const { lines, paraBreaks, buttons, bands, images, align } = flattenCellForAlertBand(cell, tok, warn, classifyChildren);
+    const { lines, paraBreaks, buttons, bands, images, tables, align } = flattenCellForAlertBand(cell, tok, warn, classifyChildren);
     return {
       kind: "alertBand",
       props: {
@@ -417,6 +450,7 @@ export function classifySingleCell(
         buttons: buttons.length ? buttons : undefined,
         bands: bands.length ? bands : undefined,
         images: images.length ? images : undefined,
+        tables: tables.length ? tables : undefined,
         align,
       },
     };
@@ -522,6 +556,22 @@ export function classifyTable(
       const comp = classifySingleCell(meaningfulCells[0], tok, warn, classifyChildren);
       if (comp) return comp;
       // null → transparent cell, fall through to statsGrid
+    }
+
+    // GDocs "progress bar" idiom: no cell carries text, but at least one carries a real
+    // (non-white) fill — a purely decorative colored row (e.g. a two-tone status bar),
+    // not a stats grid with empty labels. Border on these cells is typically just a
+    // same-color-as-fill residual (GDocs pads narrow rows with a border to force a
+    // minimum height) — dropped by design, not read as an intentional divider.
+    if (meaningfulCells.length === 0 && cells.some(c => c.bg && !isNearWhiteOrRoot(c.bg, tok))) {
+      return {
+        kind: "progressBar",
+        props: {
+          n: cells.length,
+          widths: toWidthPercents(node.colWidths, cells.length),
+          colors: cells.map(c => c.bg ?? tok.color.rootBackground),
+        },
+      };
     }
 
     const borderColor = firstBorderColor(cells.find(c => c.border)?.border);

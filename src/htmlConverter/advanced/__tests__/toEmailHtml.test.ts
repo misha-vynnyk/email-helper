@@ -743,6 +743,63 @@ describe("renderNode — alertBand with images (no buttons/bands)", () => {
   });
 });
 
+describe("renderNode — progressBar", () => {
+  it("delegates to tmpl.progressBar with n/widths/colors", () => {
+    const node: ComponentNode = {
+      kind: "progressBar",
+      props: { n: 2, widths: [78, 22], colors: ["#5dcaa5", "#06183a"] },
+    };
+    const html = renderNode(node, tmpl, tokens);
+    expect(html).toContain('bgcolor="#5dcaa5"');
+    expect(html).toContain('bgcolor="#06183a"');
+    expect(html).toContain('width="78%"');
+    expect(html).toContain('width="22%"');
+  });
+});
+
+describe("renderNode — alertBand with a nested table (no buttons/bands)", () => {
+  const node: ComponentNode = {
+    kind: "alertBand",
+    props: {
+      lines: [[{ text: "ROUND STATUS" }], [{ text: "$37M+ raised" }]],
+      paraBreaks: new Set([1]),
+      bg: "#0a2463",
+      tables: [{
+        atLine: 2,
+        node: { kind: "progressBar", props: { n: 2, widths: [78, 22], colors: ["#5dcaa5", "#06183a"] } },
+      }],
+    },
+  };
+
+  it("renders the nested table as its own row via the normal ComponentNode path", () => {
+    const html = renderNode(node, tmpl, tokens);
+    expect(html).toContain('bgcolor="#5dcaa5"');
+    expect(html).toContain('bgcolor="#06183a"');
+  });
+
+  it("keeps text and the nested table in document order", () => {
+    const html = renderNode(node, tmpl, tokens);
+    expect(html.indexOf("$37M")).toBeLessThan(html.indexOf('bgcolor="#5dcaa5"'));
+  });
+
+  it("does not wrap in the button/band segments' extra 20px side-padding table", () => {
+    const html = renderNode(node, tmpl, tokens);
+    expect(html).not.toContain(`padding-left:${tokens.layout.sidePadding}px;padding-right:${tokens.layout.sidePadding}px;`);
+  });
+
+  it("gives the nested table its own horizontal inset (nestedBlockPadX), distinct from the container's text inset", () => {
+    const html = renderNode(node, tmpl, tokens);
+    const nb = tokens.layout.nestedBlockPadX;
+    expect(html).toContain(`padding-left:${nb}px;padding-right:${nb}px;`);
+  });
+
+  it("a top-level progressBar (not nested in an alertBand) gets no horizontal inset", () => {
+    const top = renderNode({ kind: "progressBar", props: { n: 2, colors: ["#5dcaa5", "#06183a"] } }, tmpl, tokens);
+    expect(top).not.toContain("padding-left:");
+    expect(top).not.toContain("padding-right:");
+  });
+});
+
 describe("renderNode — calloutLeft with images (no buttons/bands)", () => {
   it("renders the image row inside the accent-bordered table with the callout's own horizontal inset", () => {
     const node: ComponentNode = {

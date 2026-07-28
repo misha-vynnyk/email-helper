@@ -147,6 +147,10 @@ export interface GridOpts {
   widths?: number[];
   /** Cell border color from the source document; no border drawn when absent */
   borderColor?: string;
+  /** Horizontal inset on the outer <td> — set when nested inside an alertBand/calloutLeft
+   *  container (see AlertBandProps.tables); 0/absent for a top-level grid, which already
+   *  sits inside the document's own side padding. */
+  padX?: number;
 }
 
 export interface ImageOpts {
@@ -160,6 +164,16 @@ export interface SplitRowOpts {
   rightHtml: string;
 }
 
+export interface ProgressBarOpts {
+  n: number;
+  /** Integer column widths in %, summing to 100 (from GDocs <colgroup>); equal split when absent */
+  widths?: number[];
+  /** Fill color per cell, in column order. */
+  colors: string[];
+  /** Horizontal inset on the outer <td> — see GridOpts.padX. */
+  padX?: number;
+}
+
 export interface RecordOpts {
   /** Integer column widths in %, summing to 100 (from GDocs <colgroup>); equal split when absent */
   widths?: number[];
@@ -169,6 +183,8 @@ export interface RecordOpts {
    *  <tr>, with `rows` wrapped in a nested table below it instead of being folded into the
    *  same flat table as a mismatched 1-cell row. See RecordRowProps.band (ir/types.ts). */
   band?: { innerHtml: string; align?: string; bg?: string; border?: BorderSpec; borderColor?: string };
+  /** Horizontal inset on the outer <td> — see GridOpts.padX. */
+  padX?: number;
   rows: Array<{
     bg?: string;
     /**
@@ -479,9 +495,11 @@ ${indentHtml(content, 14)}
     },
 
     // Real <ul>/<ol> — matches the simple converter's convention of keeping actual list
-    // markup (removeStylesFromLists/addBrAfterClosingP in the shared htmlUtils): no <br>
-    // between <li> items, the destination platform supplies its own list bullet/spacing
-    // styling, so only body font/color is inlined here (not a full reset).
+    // markup bare (removeStylesFromLists in the shared htmlUtils strips <ul>/<ol> down to
+    // no attributes at all) and letting it inherit body font/color from its container:
+    // here that's the <td>, same as every other block row (blockRow). The <ul>/<ol> itself
+    // only carries the structural indent, never typography — a bullet's hanging indent is
+    // layout, not style, so it stays on the tag that actually needs it.
     list(itemsHtml: string, opts: ListOpts): string {
       const { ordered } = opts;
       const tag = ordered ? "ol" : "ul";
@@ -489,8 +507,8 @@ ${indentHtml(content, 14)}
       const p = pad();
       const indent = tok.layout.listIndentPx;
       return `<tr>
-  <td style="padding-top:${p}px;padding-bottom:${p}px;">
-    <${tag} style="${style} margin:0;padding-left:${indent}px;">
+  <td style="${style} padding-top:${p}px;padding-bottom:${p}px;">
+    <${tag} style="margin:0;padding-left:${indent}px;">
 ${indentHtml(itemsHtml, 6)}
     </${tag}>
   </td>
@@ -704,9 +722,10 @@ ${indentHtml(buttonTableHtml(innerHtml, href, bg, tok, radius, border), 4)}
     },
 
     statsGrid(cells: GridCell[], opts: GridOpts): string {
-      const { n, widths, borderColor } = opts;
+      const { n, widths, borderColor, padX } = opts;
       const pct = Math.floor(100 / n);
       const p = pad();
+      const padXCss = padX ? `padding-left:${padX}px;padding-right:${padX}px;` : "";
       const cy = tok.layout.gridCellPadY;
       const cx = tok.layout.gridCellPadX;
       const wraps = n > tok.layout.gridInlineBlockThreshold;
@@ -751,7 +770,7 @@ ${indentHtml(wrapBlockStyle(cell.innerHtml, cellStyle, tok), 8)}
         .join("\n");
 
       return `<tr>
-  <td style="padding-top:${p}px;padding-bottom:${p}px;">
+  <td style="padding-top:${p}px;padding-bottom:${p}px;${padXCss}">
     <table border="0" cellspacing="0" cellpadding="0" role="presentation" width="100%"
       style="width:100%;min-width:100%;font-size:0;line-height:0;mso-line-height-rule:exactly;text-align:center;">
       <tr>
@@ -793,14 +812,48 @@ ${indentHtml(cellsHtml, 8)}
 </tr>`;
     },
 
+    // Purely decorative colored row (see ProgressBarProps) — flush <td bgcolor> cells with
+    // no text/border, proportioned by column width. Height comes from top-only padding
+    // (progressBarPadTopPx) since an empty cell has no natural height of its own.
+    progressBar(opts: ProgressBarOpts): string {
+      const { n, widths, colors, padX } = opts;
+      const pct = Math.floor(100 / n);
+      const p = pad();
+      const padXCss = padX ? `padding-left:${padX}px;padding-right:${padX}px;` : "";
+      const barTop = tok.layout.progressBarPadTopPx;
+      const cellsHtml = colors
+        .map((color, i) => {
+          const w = widths?.[i] ?? (i === colors.length - 1 ? 100 - pct * (colors.length - 1) : pct);
+          // &#160; (not a literal space) — a truly empty <td> gets stripped by the shared
+          // cleanEmptyHtmlTags pass (src/htmlConverter/utils/htmlUtils.ts), which every
+          // Simple/Advanced conversion runs through; same convention already used by
+          // document()'s spacer row to survive that exact cleanup. font-size/line-height:0
+          // (+ mso-line-height-rule for Outlook) neutralizes the &#160;'s own line box —
+          // same technique statsGrid's outer table already uses — so padding-top alone
+          // drives the cell's height instead of stacking with an inherited font's line-height.
+          return `<td bgcolor="${color}" width="${w}%" style="width:${w}%;padding-top:${barTop}px;font-size:0;line-height:0;mso-line-height-rule:exactly;">&#160;</td>`;
+        })
+        .join("\n");
+      return `<tr>
+  <td style="padding-top:${p}px;padding-bottom:${p}px;${padXCss}">
+    <table align="center" border="0" cellspacing="0" cellpadding="0" role="presentation" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;">
+      <tr>
+${indentHtml(cellsHtml, 8)}
+      </tr>
+    </table>
+  </td>
+</tr>`;
+    },
+
     image(opts: ImageOpts): string {
       return imageRowHtml(opts, tok);
     },
 
     recordRow(opts: RecordOpts): string {
-      const { rows, widths, borderColor, band } = opts;
+      const { rows, widths, borderColor, band, padX } = opts;
       if (!rows.length) return "";
       const p = pad();
+      const padXCss = padX ? `padding-left:${padX}px;padding-right:${padX}px;` : "";
       const ry = tok.layout.recordCellPadY;
       const rx = tok.layout.recordCellPadX;
 
@@ -890,7 +943,7 @@ ${indentHtml(cellsHtml, 2)}
 
       if (!band) {
         return `<tr>
-  <td style="padding-top:${p}px;padding-bottom:${p}px;">
+  <td style="padding-top:${p}px;padding-bottom:${p}px;${padXCss}">
     <table border="0" cellspacing="0" cellpadding="0" role="presentation" width="100%" style="width:100%;border-collapse:collapse;">
 ${indentHtml(rowsHtml, 6)}
     </table>
@@ -934,7 +987,7 @@ ${indentHtml(wrapBlockStyle(band.innerHtml, bandStyle, tok), 2)}
 </td>`;
 
       return `<tr>
-  <td style="padding-top:${p}px;padding-bottom:${p}px;">
+  <td style="padding-top:${p}px;padding-bottom:${p}px;${padXCss}">
     <table border="0" cellspacing="0" cellpadding="0" role="presentation" width="100%" style="width:100%;border-collapse:collapse;">
       <tr>
 ${indentHtml(bandCellHtml, 8)}
