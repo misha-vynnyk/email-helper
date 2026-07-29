@@ -14,9 +14,7 @@ function buildStoragePaths({ selectedStorage, serverCategory, formattedName, fil
   consoleParts.push(formattedName);
   const consolePath = consoleParts.filter(Boolean).join("/");
 
-  const targetURL =
-    `${consoleBaseUrl}/browser/${selectedStorage.bucket}/` +
-    `${encodeURIComponent(consolePath)}%2F`;
+  const targetURL = `${consoleBaseUrl}/bucket/${selectedStorage.bucket}/${consolePath}`;
 
   const publicParts = [selectedStorage.publicPathPrefix, selectedStorage.publicRootPrefix];
   if (selectedStorage.usesCategory) publicParts.push(serverCategory);
@@ -30,29 +28,34 @@ function buildStoragePaths({ selectedStorage, serverCategory, formattedName, fil
 // UI detection & readiness
 // ---------------------------------------------------------------------------
 
-// Waits for MinIO upload UI or login prompt, handles login if needed,
-// then polls until the upload button is visually interactive.
+// Upload button is identified by its lucide "cloud-upload" icon rather than an id —
+// the new UI renders it both in the toolbar and (when the folder is empty) again
+// inside the empty-state panel, so `.first()` is used wherever it's queried.
+const UPLOAD_BUTTON_SELECTOR = "button:has(svg.lucide-cloud-upload)";
+
+// Waits for the storage UI to become ready, or for the user to finish a manual
+// login (the app full-navigates to /login?callbackUrl=... when unauthenticated —
+// there is no in-page login button to click, so the user always logs in by hand).
 // Throws on timeout or browser close so the caller's catch handles exit.
 async function waitForStorageReady(page, { bootstrapWaitMs, loginWaitMs, config }) {
-  const uploadP = page
-    .waitForSelector("#upload-main", { timeout: bootstrapWaitMs })
-    .then(() => "upload").catch(() => null);
+  const readyP = page
+    .waitForSelector(UPLOAD_BUTTON_SELECTOR, { timeout: bootstrapWaitMs })
+    .then(() => "ready").catch(() => null);
   const loginP = page
-    .waitForSelector("button#go-to-login", { timeout: bootstrapWaitMs })
+    .waitForURL((url) => url.pathname.startsWith("/login"), { timeout: bootstrapWaitMs })
     .then(() => "login").catch(() => null);
 
   const state = await new Promise((resolve) => {
-    uploadP.then((v) => v && resolve(v));
+    readyP.then((v) => v && resolve(v));
     loginP.then((v) => v && resolve(v));
-    Promise.all([uploadP, loginP]).then(([u, l]) => resolve(u || l || null));
+    Promise.all([readyP, loginP]).then(([r, l]) => resolve(r || l || null));
   });
 
   if (state === "login") {
     playSound("error", config);
-    try { await page.click("button#go-to-login", { timeout: 1000 }); } catch {}
-    console.log(`🔒 Login required — waiting for #upload-main (${Math.round(loginWaitMs / 1000)}s)...`);
+    console.log(`🔒 Login required — please sign in manually in the browser window (waiting up to ${Math.round(loginWaitMs / 1000)}s)...`);
     try {
-      await page.waitForSelector("#upload-main", { timeout: loginWaitMs });
+      await page.waitForSelector(UPLOAD_BUTTON_SELECTOR, { timeout: loginWaitMs });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       if (msg.includes("Target page, context or browser has been closed")) {
@@ -60,28 +63,13 @@ async function waitForStorageReady(page, { bootstrapWaitMs, loginWaitMs, config 
       }
       throw new Error("ERROR:LOGIN_TIMEOUT (user did not login in time)");
     }
-  } else if (state !== "upload") {
+  } else if (state !== "ready") {
     throw new Error("UI detection failed: expected elements not found within timeout.");
   }
 
-  console.log("⏳ Checking interface readiness...");
-  let ready = false;
-  for (let i = 0; i < config.timeouts.interfaceMaxChecks; i++) {
-    ready = await page.evaluate(() => {
-      const btn = document.querySelector("#upload-main");
-      if (!btn) return false;
-      const rect = btn.getBoundingClientRect();
-      return rect.width > 0 && rect.height > 0 && window.getComputedStyle(btn).opacity > 0.7;
-    });
-    if (ready) break;
-    await new Promise((r) => setTimeout(r, config.timeouts.interfaceCheck));
-  }
-
-  if (!ready) console.warn("⚠️ Upload button may not be fully visible — proceeding anyway.");
-
   await Promise.race([
-    page.waitForSelector(".fileNameText", { timeout: 3000 }).catch(() => {}),
-    page.waitForSelector('text="Empty folder"', { timeout: 3000 }).catch(() => {}),
+    page.waitForSelector('tr[data-slot="table-row"]', { timeout: 3000 }).catch(() => {}),
+    page.waitForSelector('[data-slot="empty-title"]', { timeout: 3000 }).catch(() => {}),
   ]);
 
   console.log("✅ Interface ready.");
@@ -90,7 +78,7 @@ async function waitForStorageReady(page, { bootstrapWaitMs, loginWaitMs, config 
 // Returns true if a file with the given name is visible in the folder listing.
 async function checkFileExists(page, fileName) {
   return page.evaluate((name) => {
-    const els = document.querySelectorAll(".fileNameText");
+    const els = document.querySelectorAll('tr[data-slot="table-row"] span.truncate');
     return Array.from(els).some((el) => el.textContent.trim() === name);
   }, fileName);
 }
@@ -101,20 +89,27 @@ async function checkFileExists(page, fileName) {
 
 async function uploadFile({ page, filePath, fileName, config, selectedStorage, provider, serverFilePath, retry = false }) {
   try {
-    console.log(retry ? "🔁 Retrying upload..." : "📦 Opening upload menu...");
+    console.log(retry ? "🔁 Retrying upload..." : "📦 Opening upload dialog...");
 
-    await page.click("#upload-main", { timeout: config.timeouts.elementWait });
-    const uploadButton = await page.waitForSelector('div[label="Upload File"]', {
-      timeout: config.timeouts.elementWait + 2000,
-    });
-    console.log('🖱 Clicking "Upload File" and waiting for file chooser...');
+    await page.locator(UPLOAD_BUTTON_SELECTOR).first().click({ timeout: config.timeouts.elementWait });
 
+    const dialog = page.getByRole("dialog");
+    await dialog.waitFor({ state: "visible", timeout: config.timeouts.elementWait + 2000 });
+
+    console.log("🖱 Clicking dropzone and waiting for file chooser...");
     const [fileChooser] = await Promise.all([
       page.waitForEvent("filechooser"),
-      uploadButton.click(),
+      dialog.getByText("Drag & Drop files here or click to select").click(),
     ]);
 
     await fileChooser.setFiles(filePath);
+
+    const confirmButton = dialog.getByRole("button", { name: "Upload", exact: true });
+    await confirmButton.click({ timeout: config.timeouts.elementWait });
+
+    console.log("⏳ Uploading...");
+    await dialog.waitFor({ state: "hidden", timeout: config.timeouts.uploadDialogClose });
+
     console.log(`✅ File ${fileName} uploaded successfully!`);
 
     const publicUrl = `${(selectedStorage.publicBaseUrl || "").replace(/\/+$/, "")}/${serverFilePath}`;
@@ -144,10 +139,7 @@ async function uploadWithRetry({ page, filePath, fileName, config, selectedStora
     console.log("⏱ Waiting before retry...");
     await new Promise((r) => setTimeout(r, config.timeouts.uploadRetry));
 
-    const fileAppearedAlready = await page.evaluate((name) => {
-      const els = document.querySelectorAll(".fileNameText");
-      return Array.from(els).some((el) => el.textContent.trim() === name);
-    }, fileName);
+    const fileAppearedAlready = await checkFileExists(page, fileName);
 
     if (fileAppearedAlready) {
       console.log(`🟡 File ${fileName} appeared after delay — retry not needed.`);
