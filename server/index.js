@@ -39,10 +39,9 @@ if (process.env.ALLOWED_ORIGIN) {
   allowedOrigins.push(process.env.ALLOWED_ORIGIN);
 }
 
-// In production, allow all GitHub Pages origins for this user
+// In production, also allow the wildcard form for any path on GitHub Pages
+// (the exact origin "https://misha-vynnyk.github.io" is already in the base list above)
 if (process.env.NODE_ENV === "production") {
-  allowedOrigins.push("https://misha-vynnyk.github.io");
-  // Also allow wildcard for any path on GitHub Pages
   allowedOrigins.push(/^https:\/\/misha-vynnyk\.github\.io/);
 }
 
