@@ -10,6 +10,7 @@ import { FileNamingBar } from "./components/FileNamingBar";
 import { Header } from "./components/Header";
 import UploadHistory from "./components/UploadHistory";
 import { useEditorHotkeys } from "./hooks/internal/useEditorHotkeys";
+import { useEditorImageDrop } from "./hooks/internal/useEditorImageDrop";
 import { useMarkerHighlighter } from "./hooks/internal/useMarkerHighlighter";
 import { useHtmlConverterLogic } from "./hooks/useHtmlConverterLogic";
 import { useIsDesktop } from "./hooks/useIsDesktop";
@@ -36,6 +37,9 @@ export default function HtmlConverterPanel() {
   useMarkerHighlighter({ editorRef, enabled: ui.editorMarkerHighlight, oneBrSymbol: ui.oneBrSymbol });
   useEditorHotkeys({ editorRef, enabled: ui.editorHotkeys, oneBrSymbol: ui.oneBrSymbol });
 
+  // Image drag-and-drop — always on, not an opt-in beta toggle (base capability like paste)
+  const { isDragOver } = useEditorImageDrop({ editorRef });
+
   // Desktop gets two independently-tall columns (left content flows regardless of how
   // tall the right column is); mobile needs the result panel right after the editor,
   // ahead of the service controls. CSS Grid can't do both — a shared row would stretch
@@ -57,7 +61,7 @@ export default function HtmlConverterPanel() {
           </button>
         </div>
       </div>
-      <div ref={editorRef} contentEditable suppressContentEditableWarning className={`w-full min-h-[300px] max-h-[600px] overflow-auto bg-background border border-border/50 rounded-2xl p-6 font-mono text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary transition-all empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground shadow-inner editor-content${ui.editorMarkerHighlight ? " editor-marker-styles" : ""}`} data-placeholder={t("Paste or type text here...", "Вставте або введіть текст сюди...")} />
+      <div ref={editorRef} contentEditable suppressContentEditableWarning className={`w-full min-h-[300px] max-h-[600px] overflow-auto bg-background border border-border/50 rounded-2xl p-6 font-mono text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary transition-all empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground shadow-inner editor-content${ui.editorMarkerHighlight ? " editor-marker-styles" : ""}${isDragOver ? " ring-2 ring-primary/40" : ""}`} data-placeholder={t("Paste or type text here...", "Вставте або введіть текст сюди...")} />
     </div>
   );
 
