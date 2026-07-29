@@ -5,10 +5,15 @@ import { getElectronAPI } from "@/hooks/useElectronAPI";
 import { convertAdvancedDetailed } from "../../advanced/index";
 import { profile as alphaoneProfile } from "../../advanced/profiles/alphaone";
 import { profile as defaultProfile } from "../../advanced/profiles/default";
+import { profile as redProfile }     from "../../advanced/profiles/red";
 import { profile as tttProfile }     from "../../advanced/profiles/ttt";
-import { formatHtmlAlphaone, formatMjmlAlphaone } from "../../alphaone/formatter";
-import { formatHtml, formatMjml } from "../../formatter";
-import { formatHtmlTTT, formatMjmlTTT } from "../../ttt/formatter";
+import { buildSimpleTemplates } from "../../simple/config/templates";
+import { mergeSimpleTokens, tokens as simpleTokens } from "../../simple/config/tokens";
+import { formatHtml, formatMjml } from "../../simple/formatter";
+import { profile as simpleAlphaoneProfile } from "../../simple/profiles/alphaone";
+import { profile as simpleDefaultProfile } from "../../simple/profiles/default";
+import { profile as simpleRedProfile } from "../../simple/profiles/red";
+import { profile as simpleTttProfile } from "../../simple/profiles/ttt";
 import { replaceAltsInContent,replaceUrlsInContent, replaceUrlsInContentByMap } from "../../utils/contentReplacer";
 import type { ConverterMode,StorageProfile } from "../useHtmlConverterLogic";
 
@@ -116,6 +121,7 @@ export function useHtmlExport({
         const profileOverride =
           storageProfile === "ttt"      ? tttProfile :
           storageProfile === "alphaone" ? alphaoneProfile :
+          storageProfile === "red"      ? redProfile :
           defaultProfile;
         const conversion = convertAdvancedDetailed(rawHtml, profileOverride, oneBrSymbol);
         let result = conversion.html;
@@ -142,9 +148,16 @@ export function useHtmlExport({
         return;
       }
 
-      // Pick formatter based on active profile
-      const formatFn = storageProfile === "ttt" ? formatHtmlTTT : storageProfile === "alphaone" ? formatHtmlAlphaone : formatHtml;
-      let formattedContent = formatFn(editorContent, oneBrSymbol);
+      // Pick token profile based on active storage profile — same override object shape
+      // used for advanced conversion above, mirrored here for the simple converter.
+      const simpleProfileOverride =
+        storageProfile === "ttt"      ? simpleTttProfile :
+        storageProfile === "alphaone" ? simpleAlphaoneProfile :
+        storageProfile === "red"      ? simpleRedProfile :
+        simpleDefaultProfile;
+      const simpleTok = mergeSimpleTokens(simpleTokens, simpleProfileOverride);
+      const simpleTmpl = buildSimpleTemplates(simpleTok);
+      let formattedContent = formatHtml(editorContent, simpleTok, simpleTmpl, oneBrSymbol);
 
       if (Object.keys(uploadedUrlMap).length > 0) {
         const storageUrls = Object.values(uploadedUrlMap);
@@ -175,6 +188,12 @@ export function useHtmlExport({
       addLog("ℹ️ MJML недоступний у режимі Advanced");
       return;
     }
+    // Red profile is ported from a standalone tool that never had an MJML
+    // branch — bail the same way advanced mode does, instead of guessing values.
+    if (storageProfile === "red") {
+      addLog("ℹ️ Профіль Red підтримує лише HTML");
+      return;
+    }
     if (!editorRef.current) return;
     try {
       const editorContent = editorRef.current.innerHTML;
@@ -183,9 +202,15 @@ export function useHtmlExport({
         return;
       }
 
-      // Pick formatter based on active profile
-      const formatFn = storageProfile === "ttt" ? formatMjmlTTT : storageProfile === "alphaone" ? formatMjmlAlphaone : formatMjml;
-      let formattedContent = formatFn(editorContent, oneBrSymbol);
+      // Pick token profile based on active storage profile (mirrors handleExportHTML above).
+      // "red" already bailed out above (HTML-only), so it can't reach here.
+      const simpleProfileOverride =
+        storageProfile === "ttt"      ? simpleTttProfile :
+        storageProfile === "alphaone" ? simpleAlphaoneProfile :
+        simpleDefaultProfile;
+      const simpleTok = mergeSimpleTokens(simpleTokens, simpleProfileOverride);
+      const simpleTmpl = buildSimpleTemplates(simpleTok);
+      let formattedContent = formatMjml(editorContent, simpleTok, simpleTmpl, oneBrSymbol);
 
       if (Object.keys(uploadedUrlMap).length > 0) {
         const storageUrls = Object.values(uploadedUrlMap);

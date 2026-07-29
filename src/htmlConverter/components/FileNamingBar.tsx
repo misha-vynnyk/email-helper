@@ -24,6 +24,7 @@ const PROFILES: { value: StorageProfile; label: string }[] = [
   { value: "default", label: "Default" },
   { value: "alphaone", label: "AlfaOne" },
   { value: "ttt", label: "TTT" },
+  { value: "red", label: "Red" },
 ];
 
 export function FileNamingBar({
@@ -81,7 +82,7 @@ export function FileNamingBar({
         </button>
       )}
 
-      {/* Storage profile 3-way pill selector */}
+      {/* Storage profile pill selector */}
       <div className='flex items-center bg-card rounded-full border border-border/50 shadow-soft p-1 gap-1'>
         {PROFILES.map(({ value, label }) => (
           <button
@@ -129,18 +130,27 @@ export function FileNamingBar({
             { value: "html", label: "HTML only" },
             { value: "mjml", label: "MJML only" },
           ] as const
-        ).map(({ value, label }) => (
-          <button
-            key={value}
-            onClick={() => setExportType(value)}
-            className={`px-4 py-2 rounded-full text-sm font-bold transition-all duration-200 ${exportType === value
-              ? "bg-primary text-primary-foreground shadow-sm scale-[1.04]"
-              : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              }`}
-          >
-            {label}
-          </button>
-        ))}
+        ).map(({ value, label }) => {
+          // Red profile is HTML-only (the original tool never had an MJML branch) —
+          // grey out the MJML-producing options instead of letting them silently no-op.
+          const disabled = storageProfile === "red" && value !== "html";
+          return (
+            <button
+              key={value}
+              onClick={() => setExportType(value)}
+              disabled={disabled}
+              title={disabled ? "Red profile is HTML-only" : undefined}
+              className={`px-4 py-2 rounded-full text-sm font-bold transition-all duration-200 ${disabled
+                ? "opacity-40 cursor-not-allowed text-muted-foreground"
+                : exportType === value
+                  ? "bg-primary text-primary-foreground shadow-sm scale-[1.04]"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
