@@ -1,6 +1,10 @@
 import React from "react";
 
 import { Input } from "../components/ui/input";
+import FigmaImportDropzone from "./FigmaImportDropzone";
+import { assembleDocument } from "./render/masterShell";
+import { renderDocumentContent } from "./render/renderNode";
+import type { DesignNode } from "./types";
 import { useFigmaImportFolder } from "./useFigmaImportFolder";
 
 const OPEN_QUESTION_MARKER = "OPEN QUESTION for confirmation before build:";
@@ -23,15 +27,43 @@ function countTopLevelNodes(raw?: string): number {
   }
 }
 
+interface BuildResult {
+  desktopHtml?: string;
+  mobileHtml?: string;
+  error?: string;
+}
+
+function buildDocuments(desktopNodes: DesignNode[], mobileNodes: DesignNode[], title: string): BuildResult {
+  try {
+    const desktopHtml = assembleDocument(renderDocumentContent(desktopNodes, "desktop"), { title });
+    const mobileHtml = assembleDocument(renderDocumentContent(mobileNodes, "mobile"), { title });
+    return { desktopHtml, mobileHtml };
+  } catch (buildError) {
+    return { error: buildError instanceof Error ? buildError.message : String(buildError) };
+  }
+}
+
 export default function FigmaImportPanel() {
   const [folderPath, setFolderPath] = React.useState("");
-  const { loading, error, description, descriptionExists, desktopRaw, mobileRaw, validation, load } =
+  const [build, setBuild] = React.useState<BuildResult | null>(null);
+  const { loading, error, description, descriptionExists, desktopRaw, mobileRaw, validation, load, setFromFiles } =
     useFigmaImportFolder();
 
   const handleLoad = () => {
     if (folderPath.trim()) {
+      setBuild(null);
       load(folderPath.trim());
     }
+  };
+
+  const handleFilesReady = (files: Parameters<typeof setFromFiles>[0]) => {
+    setBuild(null);
+    setFromFiles(files);
+  };
+
+  const handleBuild = () => {
+    if (!validation?.valid || !validation.desktopNodes || !validation.mobileNodes) return;
+    setBuild(buildDocuments(validation.desktopNodes, validation.mobileNodes, folderPath.trim() || "Figma Import Preview"));
   };
 
   const openQuestions = extractOpenQuestions(description);
@@ -39,8 +71,10 @@ export default function FigmaImportPanel() {
   return (
     <div className='mx-auto flex max-w-3xl flex-col gap-4 p-6'>
       <div>
-        <h2 className='text-lg font-bold'>Figma Import — Етап 1</h2>
-        <p className='text-sm text-muted-foreground'>Читання + валідація опису/JSON пари, без асемблера.</p>
+        <h2 className='text-lg font-bold'>Figma Import — Етап 2</h2>
+        <p className='text-sm text-muted-foreground'>
+          Читання + валідація опису/JSON пари, рендер генеричних примітивів (frame/text/image/spacer) у прев'ю.
+        </p>
       </div>
 
       <div className='flex gap-2'>
@@ -57,6 +91,14 @@ export default function FigmaImportPanel() {
           {loading ? "Завантаження..." : "Load"}
         </button>
       </div>
+
+      <div className='flex items-center gap-3 text-xs text-muted-foreground'>
+        <div className='h-px flex-1 bg-border' />
+        або
+        <div className='h-px flex-1 bg-border' />
+      </div>
+
+      <FigmaImportDropzone onFilesReady={handleFilesReady} />
 
       {error && (
         <div className='rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive'>
@@ -79,6 +121,31 @@ export default function FigmaImportPanel() {
               </ul>
             </div>
           )}
+          <button
+            onClick={handleBuild}
+            className='mt-1 self-start rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition-all hover:brightness-110'>
+            Build
+          </button>
+        </div>
+      )}
+
+      {build?.error && (
+        <div className='rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive'>
+          <div className='font-bold'>Помилка рендеру</div>
+          <div className='font-mono text-xs'>{build.error}</div>
+        </div>
+      )}
+
+      {build?.desktopHtml && build?.mobileHtml && (
+        <div className='grid grid-cols-2 gap-4'>
+          <div>
+            <div className='mb-1 text-sm font-bold'>Desktop</div>
+            <iframe title='Desktop preview' srcDoc={build.desktopHtml} className='h-[600px] w-full rounded-xl border border-border' />
+          </div>
+          <div>
+            <div className='mb-1 text-sm font-bold'>Mobile</div>
+            <iframe title='Mobile preview' srcDoc={build.mobileHtml} className='h-[600px] w-full rounded-xl border border-border' />
+          </div>
         </div>
       )}
 

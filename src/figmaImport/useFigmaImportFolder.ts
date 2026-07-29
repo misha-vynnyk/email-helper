@@ -22,6 +22,22 @@ const initialState: FigmaImportFolderState = {
 export function useFigmaImportFolder() {
   const [state, setState] = useState<FigmaImportFolderState>(initialState);
 
+  const setFromFiles = useCallback(
+    (files: { descriptionContent?: string; desktopRaw: string; mobileRaw: string }) => {
+      const validation = validateDesignPair(files.desktopRaw, files.mobileRaw);
+
+      setState({
+        loading: false,
+        descriptionExists: files.descriptionContent !== undefined,
+        description: files.descriptionContent,
+        desktopRaw: files.desktopRaw,
+        mobileRaw: files.mobileRaw,
+        validation,
+      });
+    },
+    []
+  );
+
   const load = useCallback(async (folderPath: string) => {
     setState({ ...initialState, loading: true });
 
@@ -57,5 +73,5 @@ export function useFigmaImportFolder() {
     }
   }, []);
 
-  return { ...state, load };
+  return { ...state, load, setFromFiles };
 }
