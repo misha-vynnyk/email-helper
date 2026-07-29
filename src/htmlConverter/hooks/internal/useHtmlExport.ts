@@ -15,6 +15,7 @@ import { profile as simpleDefaultProfile } from "../../simple/profiles/default";
 import { profile as simpleRedProfile } from "../../simple/profiles/red";
 import { profile as simpleTttProfile } from "../../simple/profiles/ttt";
 import { replaceAltsInContent,replaceUrlsInContent, replaceUrlsInContentByMap } from "../../utils/contentReplacer";
+import { supportsMjml } from "../useHtmlConverterLogic";
 import type { ConverterMode,StorageProfile } from "../useHtmlConverterLogic";
 
 interface UseHtmlExportProps {
@@ -188,10 +189,10 @@ export function useHtmlExport({
       addLog("ℹ️ MJML недоступний у режимі Advanced");
       return;
     }
-    // Red profile is ported from a standalone tool that never had an MJML
-    // branch — bail the same way advanced mode does, instead of guessing values.
-    if (storageProfile === "red") {
-      addLog("ℹ️ Профіль Red підтримує лише HTML");
+    // Only "default" generates MJML (product decision, not a technical
+    // limitation — ttt/alphaone/red all bail the same way advanced mode does).
+    if (!supportsMjml(storageProfile)) {
+      addLog(`ℹ️ Профіль ${storageProfile.toUpperCase()} підтримує лише HTML`);
       return;
     }
     if (!editorRef.current) return;
