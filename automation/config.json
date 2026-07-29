@@ -25,7 +25,7 @@
     }
   },
   "storage": {
-    "baseUrl": "https://storage.epcnetwork.dev",
+    "baseUrl": "https://s3-browser.epcnetwork.dev",
     "publicUrl": "https://storage.5th-elementagency.com",
     "basePath": "Promo"
   },
@@ -85,8 +85,7 @@
     "pageLoad": 10000,
     "elementWait": 5000,
     "uploadRetry": 2000,
-    "interfaceCheck": 200,
-    "interfaceMaxChecks": 10,
+    "uploadDialogClose": 30000,
     "confirmFormMs": 120000
   },
   "retries": {
