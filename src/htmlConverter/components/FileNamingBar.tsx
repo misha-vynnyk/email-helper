@@ -2,6 +2,7 @@ import { CheckSquare, Minus, Plus, Square } from "lucide-react";
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 
+import { supportsMjml } from "../hooks/useHtmlConverterLogic";
 import type { ConverterMode, StorageProfile } from "../hooks/useHtmlConverterLogic";
 import { BetaBadge, type BetaBadgeHandle } from "./BetaBadge";
 
@@ -131,15 +132,15 @@ export function FileNamingBar({
             { value: "mjml", label: "MJML only" },
           ] as const
         ).map(({ value, label }) => {
-          // Red profile is HTML-only (the original tool never had an MJML branch) —
-          // grey out the MJML-producing options instead of letting them silently no-op.
-          const disabled = storageProfile === "red" && value !== "html";
+          // Only "default" generates MJML — grey out the MJML-producing options
+          // for every other profile instead of letting them silently no-op.
+          const disabled = !supportsMjml(storageProfile) && value !== "html";
           return (
             <button
               key={value}
               onClick={() => setExportType(value)}
               disabled={disabled}
-              title={disabled ? "Red profile is HTML-only" : undefined}
+              title={disabled ? `${storageProfile.toUpperCase()} profile is HTML-only` : undefined}
               className={`px-4 py-2 rounded-full text-sm font-bold transition-all duration-200 ${disabled
                 ? "opacity-40 cursor-not-allowed text-muted-foreground"
                 : exportType === value
