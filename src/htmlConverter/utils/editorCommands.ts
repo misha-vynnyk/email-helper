@@ -13,7 +13,7 @@ const HEADING_TAGS: readonly string[] = ["h1", "h4", "h5", "h6"];
  * `input` вручну.
  */
 
-function dispatchInput(editorEl: HTMLElement): void {
+export function dispatchInput(editorEl: HTMLElement): void {
   editorEl.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
@@ -61,7 +61,7 @@ const BLOCK_TAGS = new Set(["P", "DIV", "H1", "H2", "H3", "H4", "H5", "H6", "LI"
  * маркери охоплюють весь вставлений блок замість одного параграфа.
  * Фолбек на topLevelBlock — для голого тексту без жодного блокового предка.
  */
-function nearestBlock(editorEl: HTMLElement, node: Node): Node | null {
+export function nearestBlock(editorEl: HTMLElement, node: Node): Node | null {
   let cur: Node | null = node;
   while (cur && cur !== editorEl) {
     if (cur.nodeType === Node.ELEMENT_NODE && BLOCK_TAGS.has((cur as Element).tagName)) return cur;
