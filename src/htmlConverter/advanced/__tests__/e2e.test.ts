@@ -4,6 +4,7 @@ import * as path from "path";
 import { tokens } from "../config/tokens";
 import { convertAdvanced, convertAdvancedDetailed } from "../index";
 import { profile as alphaoneProfile } from "../profiles/alphaone";
+import { profile as redProfile } from "../profiles/red";
 import { profile as tttProfile } from "../profiles/ttt";
 
 const FIXTURES = path.join(__dirname, "fixtures/raw");
@@ -439,6 +440,30 @@ describe("convertAdvanced — profile overrides", () => {
     expect(defaultHtml).not.toBe(tttHtml);
     expect(defaultHtml).toContain("padding-left:20px");
     expect(tttHtml).toContain("padding-left:21px");
+  });
+
+  it("Red profile: uses the Noto Sans font stack", () => {
+    const html = convertAdvanced(raw, redProfile);
+    expect(html).toContain("Noto Sans");
+  });
+
+  it("Red profile: sidePadding is 18px", () => {
+    const html = convertAdvanced(raw, redProfile);
+    expect(html).toContain("padding-left:18px");
+    expect(html).toContain("padding-right:18px");
+  });
+
+  it("Red profile: blockPadY is 16px", () => {
+    const html = convertAdvanced(raw, redProfile);
+    expect(html).toContain("padding-top:16px");
+  });
+
+  it("Red profile: italic runs use <i>, not <em> like every other profile", () => {
+    const redHtml = convertAdvanced(raw, redProfile);
+    const defaultHtml = convertAdvanced(raw);
+    expect(redHtml).toContain("<i>Please review the attached documents carefully.</i>");
+    expect(redHtml).not.toContain("<em>Please review the attached documents carefully.</em>");
+    expect(defaultHtml).toContain("<em>Please review the attached documents carefully.</em>");
   });
 });
 

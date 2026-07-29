@@ -1,0 +1,1134 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`simple converter baseline (pre-refactor snapshots) alphaone profile formatHtml output 1`] = `
+"
+    <table width=\\"100%\\" border=\\"0\\" cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" style=\\"max-width: 100%;\\">
+        <tr>
+            <td align=\\"center\\" valign=\\"top\\">
+                <table class=\\"primary-table-wrapper\\" bgcolor=\\"#FFFFFF\\" border=\\"0\\" cellpadding=\\"0\\" cellspacing=\\"0\\"
+                       role=\\"presentation\\" width=\\"100%\\" style=\\"max-width: 600px;\\">
+                    <tr>
+                        <td class=\\"content-space-main-wrapper\\" align=\\"center\\" style=\\"padding-top: 14px; padding-left: 19px; padding-bottom: 14px; padding-right: 19px;\\">
+                            <table class=\\"content-inner-table\\" border=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\"
+                                   cellpadding=\\"0\\" width=\\"100%\\" style=\\"width: 100%;\\">
+                                
+            <tr>
+                <td align=\\"left\\" style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:24px;font-style:normal;font-weight:bold;line-height:1.5;text-align:left;color:#000000;  padding-top: 16px; padding-bottom: 16px;\\">
+                  <b style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:24px;font-style:normal;font-weight:bold;line-height:1.5;text-align:left;color:#000000;\\">
+                    Headline Title
+                  </b>
+                </td>
+            </tr>
+            
+            <tr>
+                <td align=\\"center\\" style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:24px;font-style:normal;font-weight:bold;line-height:1.5;text-align:center;color:#000000;  padding-top: 16px; padding-bottom: 16px;\\">
+                  <b style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:24px;font-style:normal;font-weight:bold;line-height:1.5;text-align:center;color:#000000;\\">
+                    Centered Headline
+                  </b>
+                </td>
+            </tr>
+            
+            <tr>
+                <td align=\\"left\\" style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-left: 20px; padding-right: 20px; padding-top: 16px; padding-bottom: 16px;\\">
+                  <div style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+                    Quote text here
+                  </div>
+                </td>
+            </tr>
+            
+            <tr>
+                <td align=\\"center\\" style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000; padding-left: 20px; padding-right: 20px; padding-top: 16px; padding-bottom: 16px;\\">
+                  <div style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;\\">
+                    Centered quote text
+                  </div>
+                </td>
+            </tr>
+            
+             <tr>
+                <td align=\\"center\\" style=\\"padding-top: 16px; padding-bottom: 16px;\\">
+                  <table cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\">
+    <tr>
+      <td class=\\"custom-button\\" height=\\"53\\" align=\\"center\\" style=\\"border-radius: 10px;font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:18px;font-style:normal;line-height:1.5;text-align:center;font-weight: bold; color: #FFFFFF; padding: 3px 4px; background-color: #25b625;\\" bgcolor=\\"#25b625\\">
+        <a href=\\"urlhere\\" target=\\"_blank\\" style=\\"font-weight: bold;text-decoration:none;color:#ffffff;padding: 10px 20px;display: block;font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:18px;font-style:normal;line-height:1.5;text-align:center;background-color: #25b625;border-radius: 10px;\\">
+          Click Me Button
+        </a>
+      </td>
+    </tr>
+  </table>
+                </td>
+              </tr>
+            
+            <tr>
+                <td align=\\"left\\" style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;  padding-top: 16px; padding-bottom: 16px;\\">
+                  <div style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+                    Small print text
+                  </div>
+                </td>
+            </tr>
+            
+            <tr>
+                <td align=\\"center\\" style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;  padding-top: 16px; padding-bottom: 16px;\\">
+                  <div style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;\\">
+                    Centered small text
+                  </div>
+                </td>
+            </tr>
+            
+            <tr>
+                <td align=\\"center\\" style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;  padding-top: 16px; padding-bottom: 16px;\\">
+                  <div style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;\\">
+                    Centered paragraph text
+                  </div>
+                </td>
+            </tr>
+            <tr>
+               <td style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;padding-top: 16px; padding-bottom: 16px;\\">
+                  <div style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+        
+
+Regular paragraph with <a href=\\"urlhere\\" style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-weight: 700;color: #0404e4;text-decoration: underline;\\">italic native link</a> inside.
+<br><br>
+<a href=\\"urlhere\\" style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-weight: 700;color: #0404e4;text-decoration: underline;\\">Blue auto-link text</a>
+<br><br>
+Line before break<br>
+Line after break
+
+</div>
+                       </td>
+                   </tr>
+                   <tr>
+                       <td class=\\"image-full-wrapper\\" align=\\"center\\" style=\\"padding-top: 16px; padding-bottom: 16px;\\">
+                           <a href=\\"urlhere\\" target=\\"_blank\\">
+                               <img alt=\\"Video preview\\" height=\\"auto\\"
+                                    src=\\"https://alphaonest.com/\\"
+                                    style=\\"border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;max-width: 562px;font-size:13px;\\"
+                                    width=\\"562\\"/>
+                           </a>
+                       </td>
+                    </tr>
+                    
+              <tr>
+                <td align=\\"left\\" style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;padding-bottom: 15px; padding-top: 15px;\\">
+                  <a align=\\"right\\" href=\\"urlhere\\" target=\\"_blank\\" style=\\"display: inline-block; float: right; width: 50%; max-width: 50%; margin-left: 18px; margin-bottom: 12px;\\">
+                    <img alt=\\"Preview\\" height=\\"224\\"
+                         align=\\"right\\"
+                         src=\\"https://alphaonest.com/\\"
+                         style=\\"border:0;display:inline-block;outline:none;text-decoration:none;height:auto;max-height: 224px;max-width: 100%; width: 100%;font-size:13px;object-fit: contain;\\"
+                         width=\\"250\\"/>
+                  </a>
+                  <div style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+                    Right side image text
+                  </div>
+                </td>
+              </tr>
+            
+              <tr>
+                <td align=\\"left\\" style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;padding-bottom: 16px; padding-top: 16px;\\">
+                  <a align=\\"left\\" href=\\"urlhere\\" target=\\"_blank\\" style=\\"display: inline-block; float: left; width: 50%; max-width: 50%; margin-right: 18px; margin-bottom: 12px;\\">
+                    <img alt=\\"Preview\\" height=\\"224\\"
+                         align=\\"left\\"
+                         src=\\"https://alphaonest.com/\\"
+                         style=\\"border:0;display:inline-block;outline:none;text-decoration:none;height:auto;max-height: 224px;max-width: 100%; width: 100%;font-size:13px;object-fit: contain;\\"
+                         width=\\"250\\"/>
+                  </a>
+                  <div style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+                    Left side image text
+                  </div>
+                </td>
+              </tr>
+            
+              <tr>
+                <td class=\\"image-block\\" align=\\"left\\" style=\\"padding-top: 16px; padding-bottom: 16px;\\">
+                  <img alt=\\"Signature\\" height=\\"auto\\"
+                       src=\\"https://alphaonest.com/\\"
+                       style=\\"border:0;display:block;outline:none;text-decoration:none;height:auto;width:220px;max-width: 220px;font-size:13px;\\"
+                       width=\\"220\\"/>
+                </td>
+              </tr>
+            
+            <tr>
+                <td align=\\"left\\" style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;  padding-top: 25px; padding-bottom: 16px;\\">
+                  <div style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+                    Footer content
+                  </div>
+                </td>
+            </tr>
+            
+            <tr>
+                <td align=\\"center\\" style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;  padding-top: 25px; padding-bottom: 16px;\\">
+                  <div style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;\\">
+                    Centered footer content
+                  </div>
+                </td>
+            </tr>
+            
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>"
+`;
+
+exports[`simple converter baseline (pre-refactor snapshots) alphaone profile formatMjml output 1`] = `
+"
+    <div style=\\"background-color:#FFFFFF;\\">
+    <!--[if mso | IE]><table align=\\"center\\" border=\\"0\\" cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" style=\\"width:600px;\\" width=\\"600\\" ><tr><td style=\\"line-height:0px;font-size:0px;mso-line-height-rule:exactly;\\"><![endif]-->
+        <div style=\\"margin:0px auto;max-width:600px;\\">
+            <table align=\\"center\\" border=\\"0\\" cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" style=\\"width:100%;\\">
+                <tbody>
+                <tr>
+                    <td style=\\"direction:ltr;font-size:0px;padding:20px 0;text-align:center;\\">
+                        <!--[if mso | IE]><table role=\\"presentation\\" border=\\"0\\" cellpadding=\\"0\\" cellspacing=\\"0\\"><tr><td style=\\"vertical-align:top;width:600px;\\" ><![endif]-->
+                        <div class=\\"mj-column-per-100 mj-outlook-group-fix\\" style=\\"font-size:0px;text-align:left;direction:ltr;display:inline-block;vertical-align:top;width:100%;\\">
+                            <table border=\\"0\\" cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" style=\\"vertical-align:top;\\" width=\\"100%\\">
+                                <tbody>
+                                    
+            
+                    <tr>
+                      <td align=\\"left\\" style=\\"font-size:0px;padding:10px 25px 10px 25px;word-break:break-word;\\">
+                        <div style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:24px;font-style:normal;font-weight:bold;line-height:1.5;text-align:left;color:#000000;\\">
+                            Headline Title
+                        </div>
+                      </td>
+                    </tr>
+                    
+                    <tr>
+                      <td align=\\"center\\" style=\\"font-size:0px;padding:10px 25px 10px 25px;word-break:break-word;\\">
+                        <div style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:24px;font-style:normal;font-weight:bold;line-height:1.5;text-align:center;color:#000000;\\">
+                            Centered Headline
+                        </div>
+                      </td>
+                    </tr>
+                    
+                    <tr>
+                      <td align=\\"left\\" style=\\"font-size:0px;padding:10px 45px 10px 45px;word-break:break-word;\\">
+                        <div style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+                            Quote text here
+                        </div>
+                      </td>
+                    </tr>
+                    
+                    <tr>
+                      <td align=\\"center\\" style=\\"font-size:0px;padding:10px 45px 10px 45px;word-break:break-word;\\">
+                        <div style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;\\">
+                            Centered quote text
+                        </div>
+                      </td>
+                    </tr>
+                    
+                    <tr>
+                      <td align=\\"center\\" style=\\"font-size:0px;padding:10px 25px; word-break:break-word;\\">
+                        <table cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\">
+    <tr>
+      <td class=\\"custom-button\\" height=\\"53\\" align=\\"center\\" style=\\"border-radius: 10px;font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:18px;font-style:normal;line-height:1.5;text-align:center;font-weight: bold; color: #FFFFFF; padding: 3px 4px; background-color: #25b625;\\" bgcolor=\\"#25b625\\">
+        <a href=\\"urlhere\\" target=\\"_blank\\" style=\\"font-weight: bold;text-decoration:none;color:#ffffff;padding: 10px 20px;display: block;font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:18px;font-style:normal;line-height:1.5;text-align:center;background-color: #25b625;border-radius: 10px;\\">
+          Click Me Button
+        </a>
+      </td>
+    </tr>
+  </table>
+                      </td>
+                    </tr>
+                    
+                    <tr>
+                      <td align=\\"left\\" style=\\"font-size:0px;padding:10px 25px 10px 25px;word-break:break-word;\\">
+                        <div style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+                            Small print text
+                        </div>
+                      </td>
+                    </tr>
+                    
+                    <tr>
+                      <td align=\\"center\\" style=\\"font-size:0px;padding:10px 25px 10px 25px;word-break:break-word;\\">
+                        <div style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;\\">
+                            Centered small text
+                        </div>
+                      </td>
+                    </tr>
+                    
+                    <tr>
+                      <td align=\\"center\\" style=\\"font-size:0px;padding:10px 25px 10px 25px;word-break:break-word;\\">
+                        <div style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;\\">
+                            Centered paragraph text
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td align=\\"left\\" style=\\"font-size:0px;padding:10px 25px;word-break:break-word;\\">
+                        <div style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+        
+
+Regular paragraph with <a href=\\"urlhere\\" style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-weight: 700;color: #0404e4;text-decoration: underline;\\">italic native link</a> inside.
+<br><br>
+<a href=\\"urlhere\\" style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-weight: 700;color: #0404e4;text-decoration: underline;\\">Blue auto-link text</a>
+<br><br>
+Line before break<br>
+Line after break
+
+</div>
+                       </td>
+                     </tr>
+                    <tr>
+                       <td align=\\"center\\" style=\\"font-size:0px;padding:10px 25px;word-break:break-word;\\">
+                         <table border=\\"0\\" cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" style=\\"border-collapse:collapse;border-spacing:0px;\\">
+                           <tbody>
+                             <tr>
+                               <td style=\\"width:562px;\\">
+                                 <a href=\\"urlhere\\" target=\\"_blank\\">
+                                   <img alt=\\"Video preview\\" src=\\"https://alphaonest.com/\\" style=\\"border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;font-size:13px;\\" width=\\"562\\" height=\\"auto\\" />
+                                 </a>
+                               </td>
+                             </tr>
+                           </tbody>
+                         </table>
+                       </td>
+                     </tr>
+                     
+                    <tr>
+                        <td align=\\"left\\" style=\\"font-size:0px;padding:10px 25px;word-break:break-word;\\">
+                            <table class=\\"content-inner-table\\" border=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\"
+                                   cellpadding=\\"0\\" width=\\"100%\\" style=\\"width: 100%;\\">
+                                <tr>
+                                    <td align=\\"left\\" style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;padding-bottom: 16px; padding-top: 16px;\\">
+                                        <a align=\\"right\\" href=\\"urlhere\\" target=\\"_blank\\" style=\\"display: inline-block; float: right; width: 50%; max-width: 50%; margin-left: 18px; margin-bottom: 12px;\\">
+                                            <img alt=\\"Preview\\" height=\\"224\\"
+                                                 align=\\"right\\"
+                                                 src=\\"https://alphaonest.com/\\"
+                                                 style=\\"border:0;display:inline-block;outline:none;text-decoration:none;height:auto;max-height: 224px;max-width: 100%; width: 100%;font-size:13px;object-fit: contain;\\"
+                                                 width=\\"250\\"/>
+                                        </a>
+                                        <div style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+                                        Right side image text
+                                      </div>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <td align=\\"left\\" style=\\"font-size:0px;padding:10px 25px;word-break:break-word;\\">
+                            <table class=\\"content-inner-table\\" border=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\"
+                                   cellpadding=\\"0\\" width=\\"100%\\" style=\\"width: 100%;\\">
+                                      <tr>
+                                        <td align=\\"left\\" style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;padding-bottom: 16px; padding-top: 16px;\\">
+                                          <a align=\\"left\\" href=\\"urlhere\\" target=\\"_blank\\" style=\\"display: inline-block; float: left; width: 50%; max-width: 50%; margin-right: 18px; margin-bottom: 12px;\\">
+                                            <img alt=\\"Preview\\" height=\\"224\\"
+                                                 align=\\"left\\"
+                                                 src=\\"https://alphaonest.com/\\"
+                                                 style=\\"border:0;display:inline-block;outline:none;text-decoration:none;height:auto;max-height: 224px;max-width: 100%; width: 100%;font-size:13px;object-fit: contain;\\"
+                                                 width=\\"250\\"/>
+                                          </a>
+                                          <div style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+                                            Left side image text
+                                          </div>
+                                        </td>
+                                      </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                      <td align=\\"left\\" style=\\"font-size:0px;padding:10px 25px;word-break:break-word;\\">
+                        <table border=\\"0\\" cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" style=\\"border-collapse:collapse;border-spacing:0px;\\">
+                          <tbody>
+                            <tr>
+                              <td style=\\"width:220px;\\">
+                                <img alt=\\"Signature\\" src=\\"https://alphaonest.com/\\" style=\\"border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;font-size:13px;\\" width=\\"220\\" height=\\"auto\\" />
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </td>
+                    </tr>
+                    
+                    <tr>
+                      <td align=\\"left\\" style=\\"font-size:0px;padding:30px 25px 10px 25px;word-break:break-word;\\">
+                        <div style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+                            Footer content
+                        </div>
+                      </td>
+                    </tr>
+                    
+                    <tr>
+                      <td align=\\"center\\" style=\\"font-size:0px;padding:30px 25px 10px 25px;word-break:break-word;\\">
+                        <div style=\\"font-family:Verdana, Geneva, Tahoma, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;\\">
+                            Centered footer content
+                        </div>
+                      </td>
+                    </tr>
+                    
+        
+                                </tbody>
+                            </table>
+                        </div>
+                        <!--[if mso | IE]></td></tr></table><![endif]-->
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <!--[if mso | IE]></td></tr></table><![endif]-->
+    </div>"
+`;
+
+exports[`simple converter baseline (pre-refactor snapshots) default profile formatHtml output 1`] = `
+"
+    <table width=\\"100%\\" border=\\"0\\" cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" style=\\"max-width: 100%;\\">
+        <tr>
+            <td align=\\"center\\" valign=\\"top\\">
+                <table class=\\"primary-table-limit content-table\\" bgcolor=\\"#FFFFFF\\" border=\\"0\\" cellspacing=\\"0\\"
+                       cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"max-width: 600px;\\">
+                    <tr>
+                        <td class=\\"content-vertical-space\\" align=\\"center\\" style=\\"padding-left: 20px; padding-right: 20px;\\">
+                            <table class=\\"content-inner-table\\" border=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\"
+                                   cellpadding=\\"0\\" width=\\"100%\\" style=\\"width: 100%;\\">
+                                <tr>
+                                    <td height=\\"16\\" width=\\"100%\\" style=\\"max-width: 100%\\" class=\\"md-horizontal-space\\"></td>
+                                </tr>
+                                
+            <tr>
+                <td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:22px;font-style:normal;font-weight:bold;line-height:1.5;text-align:left;color:#000000;  padding-top: 14px; padding-bottom: 14px;\\">
+                  <strong style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:22px;font-style:normal;font-weight:bold;line-height:1.5;text-align:left;color:#000000;\\">
+                    Headline Title
+                  </strong>
+                </td>
+            </tr>
+            
+            <tr>
+                <td align=\\"center\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:22px;font-style:normal;font-weight:bold;line-height:1.5;text-align:center;color:#000000;  padding-top: 14px; padding-bottom: 14px;\\">
+                  <strong style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:22px;font-style:normal;font-weight:bold;line-height:1.5;text-align:center;color:#000000;\\">
+                    Centered Headline
+                  </strong>
+                </td>
+            </tr>
+            
+            <tr>
+                <td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-left: 20px; padding-right: 20px; padding-top: 14px; padding-bottom: 14px;\\">
+                  <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+                    Quote text here
+                  </span>
+                </td>
+            </tr>
+            
+            <tr>
+                <td align=\\"center\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000; padding-left: 20px; padding-right: 20px; padding-top: 14px; padding-bottom: 14px;\\">
+                  <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;\\">
+                    Centered quote text
+                  </span>
+                </td>
+            </tr>
+            
+             <tr>
+                <td align=\\"center\\" style=\\"padding-top: 14px; padding-bottom: 14px;\\">
+                  <table cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\">
+    <tr>
+      <td class=\\"btn-edit-p\\" height=\\"51\\" align=\\"center\\" style=\\"border-radius: 10px;font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;line-height:1.5;text-align:center;font-weight: bold; color: #FFFFFF; padding: 3px 5px; background-color: #28b628;\\" bgcolor=\\"#28b628\\">
+        <a href=\\"urlhere\\" target=\\"_blank\\" style=\\"font-weight: bold;text-decoration:none;color:#ffffff;padding: 9px 15px;display: block;font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;line-height:1.5;text-align:center;background-color: #28b628;border-radius: 10px;\\">
+          Click Me Button
+        </a>
+      </td>
+    </tr>
+  </table>
+                </td>
+              </tr>
+            
+            <tr>
+                <td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;  padding-top: 14px; padding-bottom: 14px;\\">
+                  <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+                    Small print text
+                  </span>
+                </td>
+            </tr>
+            
+            <tr>
+                <td align=\\"center\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;  padding-top: 14px; padding-bottom: 14px;\\">
+                  <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;\\">
+                    Centered small text
+                  </span>
+                </td>
+            </tr>
+            
+            <tr>
+                <td align=\\"center\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;  padding-top: 14px; padding-bottom: 14px;\\">
+                  <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;\\">
+                    Centered paragraph text
+                  </span>
+                </td>
+            </tr>
+            <tr>
+               <td style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;padding-top: 14px; padding-bottom: 14px;\\">
+                  <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+        
+
+Regular paragraph with <a href=\\"urlhere\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: #0000EE;\\"><em>italic native link</em></a> inside.
+<br><br>
+<a href=\\"urlhere\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: #0000EE;\\">Blue auto-link text</a>
+<br><br>
+Line before break<br>
+Line after break
+</span>
+                       </td>
+                   </tr>
+                   <tr>
+                       <td class=\\"img-bg-block\\" align=\\"center\\" style=\\"padding-top: 14px; padding-bottom: 14px;\\">
+                           <a href=\\"urlhere\\" target=\\"_blank\\">
+                               <img alt=\\"Video preview\\" height=\\"auto\\"
+                                    src=\\"https://storage.5th-elementagency.com/\\"
+                                    style=\\"border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;max-width: 560px;font-size:13px;\\"
+                                    width=\\"560\\"/>
+                           </a>
+                       </td>
+                    </tr>
+                    
+              <tr>
+                <td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;padding-bottom: 14px; padding-top: 14px;\\">
+                  <a align=\\"right\\" href=\\"urlhere\\" target=\\"_blank\\" style=\\"display: inline-block; float: right; width: 50%; max-width: 50%; margin-left: 18px; margin-bottom: 12px;\\">
+                    <img alt=\\"Preview\\" height=\\"224\\"
+                         align=\\"right\\"
+                         src=\\"https://storage.5th-elementagency.com/\\"
+                         style=\\"border:0;display:inline-block;outline:none;text-decoration:none;height:auto;max-height: 224px;max-width: 100%; width: 100%;font-size:13px;object-fit: contain;\\"
+                         width=\\"250\\"/>
+                  </a>
+                  <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+                    Right side image text
+                  </span>
+                </td>
+              </tr>
+            
+              <tr>
+                <td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;padding-bottom: 14px; padding-top: 14px;\\">
+                  <a align=\\"left\\" href=\\"urlhere\\" target=\\"_blank\\" style=\\"display: inline-block; float: left; width: 50%; max-width: 50%; margin-right: 18px; margin-bottom: 12px;\\">
+                    <img alt=\\"Preview\\" height=\\"224\\"
+                         align=\\"left\\"
+                         src=\\"https://storage.5th-elementagency.com/\\"
+                         style=\\"border:0;display:inline-block;outline:none;text-decoration:none;height:auto;max-height: 224px;max-width: 100%; width: 100%;font-size:13px;object-fit: contain;\\"
+                         width=\\"250\\"/>
+                  </a>
+                  <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+                    Left side image text
+                  </span>
+                </td>
+              </tr>
+            
+              <tr>
+                <td class=\\"img-bg-block\\" align=\\"left\\" style=\\"padding-top: 14px; padding-bottom: 14px;\\">
+                  <img alt=\\"Signature\\" height=\\"auto\\"
+                       src=\\"https://storage.5th-elementagency.com/\\"
+                       style=\\"border:0;display:block;outline:none;text-decoration:none;height:auto;width:200px;max-width: 100%;font-size:13px;\\"
+                       width=\\"200\\"/>
+                </td>
+              </tr>
+            
+            <tr>
+                <td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;  padding-top: 34px; padding-bottom: 14px;\\">
+                  <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+                    Footer content
+                  </span>
+                </td>
+            </tr>
+            
+            <tr>
+                <td align=\\"center\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;  padding-top: 34px; padding-bottom: 14px;\\">
+                  <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;\\">
+                    Centered footer content
+                  </span>
+                </td>
+            </tr>
+            
+                                <tr>
+                                    <td height=\\"16\\" width=\\"100%\\" style=\\"max-width: 100%\\" class=\\"md-horizontal-space\\"></td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>"
+`;
+
+exports[`simple converter baseline (pre-refactor snapshots) default profile formatMjml output 1`] = `
+"
+    <div style=\\"background-color:#FFFFFF;\\">
+    <!--[if mso | IE]><table align=\\"center\\" border=\\"0\\" cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" style=\\"width:600px;\\" width=\\"600\\" ><tr><td style=\\"line-height:0px;font-size:0px;mso-line-height-rule:exactly;\\"><![endif]-->
+        <div style=\\"margin:0px auto;max-width:600px;\\">
+            <table align=\\"center\\" border=\\"0\\" cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" style=\\"width:100%;\\">
+                <tbody>
+                <tr>
+                    <td style=\\"direction:ltr;font-size:0px;padding:20px 0;text-align:center;\\">
+                        <!--[if mso | IE]><table role=\\"presentation\\" border=\\"0\\" cellpadding=\\"0\\" cellspacing=\\"0\\"><tr><td style=\\"vertical-align:top;width:600px;\\" ><![endif]-->
+                        <div class=\\"mj-column-per-100 mj-outlook-group-fix\\" style=\\"font-size:0px;text-align:left;direction:ltr;display:inline-block;vertical-align:top;width:100%;\\">
+                            <table border=\\"0\\" cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" style=\\"vertical-align:top;\\" width=\\"100%\\">
+                                <tbody>
+                                    
+            
+                    <tr>
+                      <td align=\\"left\\" style=\\"font-size:0px;padding:10px 25px 10px 25px;word-break:break-word;\\">
+                        <div style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:22px;font-style:normal;font-weight:bold;line-height:1.5;text-align:left;color:#000000;\\">
+                            Headline Title
+                        </div>
+                      </td>
+                    </tr>
+                    
+                    <tr>
+                      <td align=\\"center\\" style=\\"font-size:0px;padding:10px 25px 10px 25px;word-break:break-word;\\">
+                        <div style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:22px;font-style:normal;font-weight:bold;line-height:1.5;text-align:center;color:#000000;\\">
+                            Centered Headline
+                        </div>
+                      </td>
+                    </tr>
+                    
+                    <tr>
+                      <td align=\\"left\\" style=\\"font-size:0px;padding:10px 45px 10px 45px;word-break:break-word;\\">
+                        <div style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+                            Quote text here
+                        </div>
+                      </td>
+                    </tr>
+                    
+                    <tr>
+                      <td align=\\"center\\" style=\\"font-size:0px;padding:10px 45px 10px 45px;word-break:break-word;\\">
+                        <div style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;\\">
+                            Centered quote text
+                        </div>
+                      </td>
+                    </tr>
+                    
+                    <tr>
+                      <td align=\\"center\\" style=\\"font-size:0px;padding:10px 25px; word-break:break-word;\\">
+                        <table cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\">
+    <tr>
+      <td class=\\"btn-edit-p\\" height=\\"51\\" align=\\"center\\" style=\\"border-radius: 10px;font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;line-height:1.5;text-align:center;font-weight: bold; color: #FFFFFF; padding: 3px 5px; background-color: #28b628;\\" bgcolor=\\"#28b628\\">
+        <a href=\\"urlhere\\" target=\\"_blank\\" style=\\"font-weight: bold;text-decoration:none;color:#ffffff;padding: 9px 15px;display: block;font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;line-height:1.5;text-align:center;background-color: #28b628;border-radius: 10px;\\">
+          Click Me Button
+        </a>
+      </td>
+    </tr>
+  </table>
+                      </td>
+                    </tr>
+                    
+                    <tr>
+                      <td align=\\"left\\" style=\\"font-size:0px;padding:10px 25px 10px 25px;word-break:break-word;\\">
+                        <div style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+                            Small print text
+                        </div>
+                      </td>
+                    </tr>
+                    
+                    <tr>
+                      <td align=\\"center\\" style=\\"font-size:0px;padding:10px 25px 10px 25px;word-break:break-word;\\">
+                        <div style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;\\">
+                            Centered small text
+                        </div>
+                      </td>
+                    </tr>
+                    
+                    <tr>
+                      <td align=\\"center\\" style=\\"font-size:0px;padding:10px 25px 10px 25px;word-break:break-word;\\">
+                        <div style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;\\">
+                            Centered paragraph text
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td align=\\"left\\" style=\\"font-size:0px;padding:10px 25px;word-break:break-word;\\">
+                        <div style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+        
+
+Regular paragraph with <a href=\\"urlhere\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: #0000EE;\\"><em>italic native link</em></a> inside.
+<br><br>
+<a href=\\"urlhere\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: #0000EE;\\">Blue auto-link text</a>
+<br><br>
+Line before break<br>
+Line after break
+
+</div>
+                       </td>
+                     </tr>
+                    <tr>
+                       <td align=\\"center\\" style=\\"font-size:0px;padding:10px 25px;word-break:break-word;\\">
+                         <table border=\\"0\\" cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" style=\\"border-collapse:collapse;border-spacing:0px;\\">
+                           <tbody>
+                             <tr>
+                               <td style=\\"width:550px;\\">
+                                 <a href=\\"urlhere\\" target=\\"_blank\\">
+                                   <img alt=\\"Video preview\\" src=\\"https://storage.5th-elementagency.com/\\" style=\\"border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;font-size:13px;\\" width=\\"550\\" height=\\"auto\\" />
+                                 </a>
+                               </td>
+                             </tr>
+                           </tbody>
+                         </table>
+                       </td>
+                     </tr>
+                     
+                    <tr>
+                        <td align=\\"left\\" style=\\"font-size:0px;padding:10px 25px;word-break:break-word;\\">
+                            <table class=\\"content-inner-table\\" border=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\"
+                                   cellpadding=\\"0\\" width=\\"100%\\" style=\\"width: 100%;\\">
+                                <tr>
+                                    <td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;padding-bottom: 14px; padding-top: 14px;\\">
+                                        <a align=\\"right\\" href=\\"urlhere\\" target=\\"_blank\\" style=\\"display: inline-block; float: right; width: 50%; max-width: 50%; margin-left: 18px; margin-bottom: 12px;\\">
+                                            <img alt=\\"Preview\\" height=\\"224\\"
+                                                 align=\\"right\\"
+                                                 src=\\"https://storage.5th-elementagency.com/\\"
+                                                 style=\\"border:0;display:inline-block;outline:none;text-decoration:none;height:auto;max-height: 224px;max-width: 100%; width: 100%;font-size:13px;object-fit: contain;\\"
+                                                 width=\\"250\\"/>
+                                        </a>
+                                        <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+                                        Right side image text
+                                      </span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <td align=\\"left\\" style=\\"font-size:0px;padding:10px 25px;word-break:break-word;\\">
+                            <table class=\\"content-inner-table\\" border=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\"
+                                   cellpadding=\\"0\\" width=\\"100%\\" style=\\"width: 100%;\\">
+                                      <tr>
+                                        <td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;padding-bottom: 14px; padding-top: 14px;\\">
+                                          <a align=\\"left\\" href=\\"urlhere\\" target=\\"_blank\\" style=\\"display: inline-block; float: left; width: 50%; max-width: 50%; margin-right: 18px; margin-bottom: 12px;\\">
+                                            <img alt=\\"Preview\\" height=\\"224\\"
+                                                 align=\\"left\\"
+                                                 src=\\"https://storage.5th-elementagency.com/\\"
+                                                 style=\\"border:0;display:inline-block;outline:none;text-decoration:none;height:auto;max-height: 224px;max-width: 100%; width: 100%;font-size:13px;object-fit: contain;\\"
+                                                 width=\\"250\\"/>
+                                          </a>
+                                          <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+                                            Left side image text
+                                          </span>
+                                        </td>
+                                      </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                      <td align=\\"left\\" style=\\"font-size:0px;padding:10px 25px;word-break:break-word;\\">
+                        <table border=\\"0\\" cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" style=\\"border-collapse:collapse;border-spacing:0px;\\">
+                          <tbody>
+                            <tr>
+                              <td style=\\"width:180px;\\">
+                                <img alt=\\"Signature\\" src=\\"https://storage.5th-elementagency.com/\\" style=\\"border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;font-size:13px;\\" width=\\"180\\" height=\\"auto\\" />
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </td>
+                    </tr>
+                    
+                    <tr>
+                      <td align=\\"left\\" style=\\"font-size:0px;padding:30px 25px 10px 25px;word-break:break-word;\\">
+                        <div style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+                            Footer content
+                        </div>
+                      </td>
+                    </tr>
+                    
+                    <tr>
+                      <td align=\\"center\\" style=\\"font-size:0px;padding:30px 25px 10px 25px;word-break:break-word;\\">
+                        <div style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;\\">
+                            Centered footer content
+                        </div>
+                      </td>
+                    </tr>
+                    
+        
+                                </tbody>
+                            </table>
+                        </div>
+                        <!--[if mso | IE]></td></tr></table><![endif]-->
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <!--[if mso | IE]></td></tr></table><![endif]-->
+    </div>"
+`;
+
+exports[`simple converter baseline (pre-refactor snapshots) ttt profile formatHtml output 1`] = `
+"
+    <table width=\\"100%\\" border=\\"0\\" cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" style=\\"max-width: 100%;\\">
+        <tr>
+            <td align=\\"center\\" valign=\\"top\\">
+                <table class=\\"main-table\\" bgcolor=\\"#FFFFFF\\" border=\\"0\\" cellspacing=\\"0\\"
+                       cellpadding=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"max-width: 600px;\\">
+                    <tr>
+                        <td class=\\"content-wrapper\\" align=\\"center\\" style=\\"padding-left: 21px; padding-right: 21px;\\">
+                            <table class=\\"inner-content-wrapper\\" border=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\"
+                                   cellpadding=\\"0\\" width=\\"100%\\" style=\\"width: 100%;\\">
+                                <tr>
+                                    <td height=\\"15\\" width=\\"100%\\" style=\\"max-width: 100%\\" class=\\"space-between-sections\\"></td>
+                                </tr>
+                                
+        <tr>
+            <td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:22px;font-style:normal;font-weight:bold;line-height:1.5;text-align:left;color:#000000;  padding-top: 15px; padding-bottom: 15px;\\">
+              <b style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:22px;font-style:normal;font-weight:bold;line-height:1.5;text-align:left;color:#000000;\\">
+                Headline Title
+              </b>
+            </td>
+        </tr>
+        
+        <tr>
+            <td align=\\"center\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:22px;font-style:normal;font-weight:bold;line-height:1.5;text-align:center;color:#000000;  padding-top: 15px; padding-bottom: 15px;\\">
+              <b style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:22px;font-style:normal;font-weight:bold;line-height:1.5;text-align:center;color:#000000;\\">
+                Centered Headline
+              </b>
+            </td>
+        </tr>
+        
+        <tr>
+            <td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-left: 20px; padding-right: 20px; padding-top: 15px; padding-bottom: 15px;\\">
+              <div style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+                Quote text here
+              </div>
+            </td>
+        </tr>
+        
+        <tr>
+            <td align=\\"center\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000; padding-left: 20px; padding-right: 20px; padding-top: 15px; padding-bottom: 15px;\\">
+              <div style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;\\">
+                Centered quote text
+              </div>
+            </td>
+        </tr>
+        
+         <tr>
+            <td align=\\"center\\" style=\\"padding-top: 15px; padding-bottom: 15px;\\">
+              <table cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\">
+    <tr>
+      <td class=\\"creative-button\\" height=\\"51\\" align=\\"center\\" style=\\"border-radius: 10px;font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;line-height:1.5;text-align:center;font-weight: bold; color: #FFFFFF; padding: 3px 5px; background-color: #28b628;\\" bgcolor=\\"#28b628\\">
+        <a href=\\"urlhere\\" target=\\"_blank\\" style=\\"font-weight: bold;text-decoration:none;color:#ffffff;padding: 9px 15px;display: block;font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;line-height:1.5;text-align:center;background-color: #28b628;border-radius: 10px;\\">
+          Click Me Button
+        </a>
+      </td>
+    </tr>
+  </table>
+            </td>
+          </tr>
+        
+        <tr>
+            <td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;  padding-top: 15px; padding-bottom: 15px;\\">
+              <div style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+                Small print text
+              </div>
+            </td>
+        </tr>
+        
+        <tr>
+            <td align=\\"center\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;  padding-top: 15px; padding-bottom: 15px;\\">
+              <div style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;\\">
+                Centered small text
+              </div>
+            </td>
+        </tr>
+        
+        <tr>
+            <td align=\\"center\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;  padding-top: 15px; padding-bottom: 15px;\\">
+              <div style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;\\">
+                Centered paragraph text
+              </div>
+            </td>
+        </tr>
+        <tr>
+           <td style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;padding-top: 15px; padding-bottom: 15px;\\">
+              <div style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+    
+
+Regular paragraph with <a href=\\"urlhere\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: #0000EE;\\">italic native link</a> inside.
+<br><br>
+<a href=\\"urlhere\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: #0000EE;\\">Blue auto-link text</a>
+<br><br>
+Line before break<br>
+Line after break
+
+</div>
+                   </td>
+               </tr>
+               <tr>
+                   <td class=\\"img-bg-block\\" align=\\"center\\" style=\\"padding-top: 15px; padding-bottom: 15px;\\">
+                       <a href=\\"urlhere\\" target=\\"_blank\\">
+                           <img alt=\\"Video preview\\" height=\\"auto\\"
+                                src=\\"undefined/\\"
+                                style=\\"border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;max-width: 400px;font-size:13px;\\"
+                                width=\\"400\\"/>
+                       </a>
+                   </td>
+                </tr>
+                
+          <tr>
+            <td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;padding-bottom: 15px; padding-top: 15px;\\">
+              <a align=\\"right\\" href=\\"urlhere\\" target=\\"_blank\\" style=\\"display: inline-block; float: right; width: 50%; max-width: 50%; margin-left: 18px; margin-bottom: 12px;\\">
+                <img alt=\\"Preview\\" height=\\"224\\"
+                     align=\\"right\\"
+                     src=\\"undefined/\\"
+                     style=\\"border:0;display:inline-block;outline:none;text-decoration:none;height:auto;max-height: 224px;max-width: 100%; width: 100%;font-size:13px;object-fit: contain;\\"
+                     width=\\"250\\"/>
+              </a>
+              <div style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+                Right side image text
+              </div>
+            </td>
+          </tr>
+        
+          <tr>
+            <td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;padding-bottom: 15px; padding-top: 15px;\\">
+              <a align=\\"left\\" href=\\"urlhere\\" target=\\"_blank\\" style=\\"display: inline-block; float: left; width: 50%; max-width: 50%; margin-right: 18px; margin-bottom: 12px;\\">
+                <img alt=\\"Preview\\" height=\\"224\\"
+                     align=\\"left\\"
+                     src=\\"undefined/\\"
+                     style=\\"border:0;display:inline-block;outline:none;text-decoration:none;height:auto;max-height: 224px;max-width: 100%; width: 100%;font-size:13px;object-fit: contain;\\"
+                     width=\\"250\\"/>
+              </a>
+              <div style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+                Left side image text
+              </div>
+            </td>
+          </tr>
+        
+          <tr>
+            <td class=\\"img-bg-block\\" align=\\"left\\" style=\\"padding-top: 15px; padding-bottom: 15px;\\">
+               <img alt=\\"Signature\\" height=\\"auto\\"
+                    src=\\"undefined/\\"
+                    style=\\"border:0;display:block;outline:none;text-decoration:none;height:auto;width:220px;max-width: 220px;font-size:13px;\\"
+                    width=\\"220\\"/>
+            </td>
+          </tr>
+        
+        <tr>
+            <td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;  padding-top: 25px; padding-bottom: 15px;\\">
+              <div style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+                Footer content
+              </div>
+            </td>
+        </tr>
+        
+        <tr>
+            <td align=\\"center\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;  padding-top: 25px; padding-bottom: 15px;\\">
+              <div style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;\\">
+                Centered footer content
+              </div>
+            </td>
+        </tr>
+        
+                                <tr>
+                                    <td height=\\"15\\" width=\\"100%\\" style=\\"max-width: 100%\\" class=\\"space-between-sections\\"></td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>"
+`;
+
+exports[`simple converter baseline (pre-refactor snapshots) ttt profile formatMjml output 1`] = `
+"
+    <div style=\\"background-color:#FFFFFF;\\">
+    <!--[if mso | IE]><table align=\\"center\\" border=\\"0\\" cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" style=\\"width:600px;\\" width=\\"600\\" ><tr><td style=\\"line-height:0px;font-size:0px;mso-line-height-rule:exactly;\\"><![endif]-->
+        <div style=\\"margin:0px auto;max-width:600px;\\">
+            <table align=\\"center\\" border=\\"0\\" cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" style=\\"width:100%;\\">
+                <tbody>
+                <tr>
+                    <td style=\\"direction:ltr;font-size:0px;padding:20px 0;text-align:center;\\">
+                        <!--[if mso | IE]><table role=\\"presentation\\" border=\\"0\\" cellpadding=\\"0\\" cellspacing=\\"0\\"><tr><td style=\\"vertical-align:top;width:600px;\\" ><![endif]-->
+                        <div class=\\"mj-column-per-100 mj-outlook-group-fix\\" style=\\"font-size:0px;text-align:left;direction:ltr;display:inline-block;vertical-align:top;width:100%;\\">
+                            <table border=\\"0\\" cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" style=\\"vertical-align:top;\\" width=\\"100%\\">
+                                <tbody>
+                                    
+            
+                <tr>
+                  <td align=\\"left\\" style=\\"font-size:0px;padding:10px 25px 10px 25px;word-break:break-word;\\">
+                    <div style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:22px;font-style:normal;font-weight:bold;line-height:1.5;text-align:left;color:#000000;\\">
+                        Headline Title
+                    </div>
+                  </td>
+                </tr>
+                
+                <tr>
+                  <td align=\\"center\\" style=\\"font-size:0px;padding:10px 25px 10px 25px;word-break:break-word;\\">
+                    <div style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:22px;font-style:normal;font-weight:bold;line-height:1.5;text-align:center;color:#000000;\\">
+                        Centered Headline
+                    </div>
+                  </td>
+                </tr>
+                
+                <tr>
+                  <td align=\\"left\\" style=\\"font-size:0px;padding:10px 45px 10px 45px;word-break:break-word;\\">
+                    <div style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+                        Quote text here
+                    </div>
+                  </td>
+                </tr>
+                
+                <tr>
+                  <td align=\\"center\\" style=\\"font-size:0px;padding:10px 45px 10px 45px;word-break:break-word;\\">
+                    <div style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;\\">
+                        Centered quote text
+                    </div>
+                  </td>
+                </tr>
+                
+                  <tr>
+                    <td align=\\"center\\" style=\\"font-size:0px;padding:10px 25px; word-break:break-word;\\">
+                      <table cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\">
+    <tr>
+      <td class=\\"creative-button\\" height=\\"51\\" align=\\"center\\" style=\\"border-radius: 10px;font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;line-height:1.5;text-align:center;font-weight: bold; color: #FFFFFF; padding: 3px 5px; background-color: #28b628;\\" bgcolor=\\"#28b628\\">
+        <a href=\\"urlhere\\" target=\\"_blank\\" style=\\"font-weight: bold;text-decoration:none;color:#ffffff;padding: 9px 15px;display: block;font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;line-height:1.5;text-align:center;background-color: #28b628;border-radius: 10px;\\">
+          Click Me Button
+        </a>
+      </td>
+    </tr>
+  </table>
+                    </td>
+                  </tr>
+                  
+                <tr>
+                  <td align=\\"left\\" style=\\"font-size:0px;padding:10px 25px 10px 25px;word-break:break-word;\\">
+                    <div style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+                        Small print text
+                    </div>
+                  </td>
+                </tr>
+                
+                <tr>
+                  <td align=\\"center\\" style=\\"font-size:0px;padding:10px 25px 10px 25px;word-break:break-word;\\">
+                    <div style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;\\">
+                        Centered small text
+                    </div>
+                  </td>
+                </tr>
+                
+                <tr>
+                  <td align=\\"center\\" style=\\"font-size:0px;padding:10px 25px 10px 25px;word-break:break-word;\\">
+                    <div style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;\\">
+                        Centered paragraph text
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td align=\\"left\\" style=\\"font-size:0px;padding:10px 25px;word-break:break-word;\\">
+                    <div style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+    
+
+Regular paragraph with <a href=\\"urlhere\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: #0000EE;\\">italic native link</a> inside.
+<br><br>
+<a href=\\"urlhere\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration: underline;font-weight: 700; color: #0000EE;\\">Blue auto-link text</a>
+<br><br>
+Line before break<br>
+Line after break
+
+</div>
+                       </td>
+                     </tr>
+                    <tr>
+                       <td align=\\"center\\" style=\\"font-size:0px;padding:10px 25px;word-break:break-word;\\">
+                         <table border=\\"0\\" cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" style=\\"border-collapse:collapse;border-spacing:0px;\\">
+                           <tbody>
+                             <tr>
+                               <td style=\\"width:550px;\\">
+                                 <a href=\\"urlhere\\" target=\\"_blank\\">
+                                   <img alt=\\"Video preview\\" src=\\"undefined/\\" style=\\"border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;font-size:13px;\\" width=\\"550\\" height=\\"auto\\" />
+                                 </a>
+                               </td>
+                             </tr>
+                           </tbody>
+                         </table>
+                       </td>
+                     </tr>
+                     
+                  <tr>
+                      <td align=\\"left\\" style=\\"font-size:0px;padding:10px 25px;word-break:break-word;\\">
+                          <table class=\\"content-inner-table\\" border=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\"
+                                 cellpadding=\\"0\\" width=\\"100%\\" style=\\"width: 100%;\\">
+                              <tr>
+                                  <td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;padding-bottom: 15px; padding-top: 15px;\\">
+                                      <a align=\\"right\\" href=\\"urlhere\\" target=\\"_blank\\" style=\\"display: inline-block; float: right; width: 50%; max-width: 50%; margin-left: 18px; margin-bottom: 12px;\\">
+                                          <img alt=\\"Preview\\" height=\\"224\\"
+                                               align=\\"right\\"
+                                               src=\\"undefined/\\"
+                                               style=\\"border:0;display:inline-block;outline:none;text-decoration:none;height:auto;max-height: 224px;max-width: 100%; width: 100%;font-size:13px;object-fit: contain;\\"
+                                               width=\\"250\\"/>
+                                      </a>
+                                      <div style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+                                      Right side image text
+                                    </div>
+                                  </td>
+                              </tr>
+                          </table>
+                      </td>
+                  </tr>
+                  
+                  <tr>
+                      <td align=\\"left\\" style=\\"font-size:0px;padding:10px 25px;word-break:break-word;\\">
+                          <table class=\\"content-inner-table\\" border=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\"
+                                 cellpadding=\\"0\\" width=\\"100%\\" style=\\"width: 100%;\\">
+                                <tr>
+                                  <td align=\\"left\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;padding-bottom: 15px; padding-top: 15px;\\">
+                                    <a align=\\"left\\" href=\\"urlhere\\" target=\\"_blank\\" style=\\"display: inline-block; float: left; width: 50%; max-width: 50%; margin-right: 18px; margin-bottom: 12px;\\">
+                                      <img alt=\\"Preview\\" height=\\"224\\"
+                                           align=\\"left\\"
+                                           src=\\"undefined/\\"
+                                           style=\\"border:0;display:inline-block;outline:none;text-decoration:none;height:auto;max-height: 224px;max-width: 100%; width: 100%;font-size:13px;object-fit: contain;\\"
+                                           width=\\"250\\"/>
+                                    </a>
+                                    <div style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+                                      Left side image text
+                                    </div>
+                                  </td>
+                                </tr>
+                          </table>
+                      </td>
+                  </tr>
+                  
+                <tr>
+                  <td align=\\"left\\" style=\\"font-size:0px;padding:10px 25px;word-break:break-word;\\">
+                    <table border=\\"0\\" cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" style=\\"border-collapse:collapse;border-spacing:0px;\\">
+                      <tbody>
+                        <tr>
+                          <td style=\\"width:220px;\\">
+                            <img alt=\\"Signature\\" src=\\"undefined/\\" style=\\"border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;font-size:13px;\\" width=\\"220\\" height=\\"auto\\" />
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </td>
+                </tr>
+                
+                <tr>
+                  <td align=\\"left\\" style=\\"font-size:0px;padding:30px 25px 10px 25px;word-break:break-word;\\">
+                    <div style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+                        Footer content
+                    </div>
+                  </td>
+                </tr>
+                
+                <tr>
+                  <td align=\\"center\\" style=\\"font-size:0px;padding:30px 25px 10px 25px;word-break:break-word;\\">
+                    <div style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:center;color:#000000;\\">
+                        Centered footer content
+                    </div>
+                  </td>
+                </tr>
+                
+        
+                                </tbody>
+                            </table>
+                        </div>
+                        <!--[if mso | IE]></td></tr></table><![endif]-->
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <!--[if mso | IE]></td></tr></table><![endif]-->
+    </div>"
+`;
