@@ -40,7 +40,7 @@ ollama pull gemma3:4b
 ```batch
 set BRAVE_EXECUTABLE_PATH=C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe
 ```
-Деталі: `AUTOMATION_SETUP_WINDOWS.md`.
+Деталі: `archive/AUTOMATION_SETUP_WINDOWS.md`.
 
 **Кілька інстансів одночасно:**
 ```bash

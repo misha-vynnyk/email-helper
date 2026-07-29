@@ -143,8 +143,8 @@ email-helper-copy/
 ├── automation/config.json      # Storage providers config
 ├── .env.example                # Environment variables template
 ├── README.md                   # Ukrainian project docs
-├── AUTOMATION.md               # Automation module docs
-└── HTML_CONVERTER.md           # HTML Converter docs
+├── TEAM_GUIDE.md                # Per-tab usage guide (supersedes the old AUTOMATION.md/HTML_CONVERTER.md)
+└── archive/                    # Superseded/historical docs, kept for reference
 ```
 
 ---
