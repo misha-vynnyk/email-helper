@@ -61,7 +61,10 @@ class FigmaImportManager {
         this.workspaceManager = (0, workspaceManager_1.getWorkspaceManager)();
     }
     async validateFolderPath(folderPath) {
-        const normalized = path.normalize(path.resolve(folderPath));
+        if (!path.isAbsolute(folderPath)) {
+            return { valid: false, reason: "Folder path must be absolute" };
+        }
+        const normalized = path.normalize(folderPath);
         if (!(0, fs_1.existsSync)(normalized)) {
             return { valid: false, reason: "Folder does not exist" };
         }
@@ -82,7 +85,7 @@ class FigmaImportManager {
         return { valid: true };
     }
     async readFolder(folderPath) {
-        const normalized = path.normalize(path.resolve(folderPath));
+        const normalized = path.normalize(folderPath);
         const [description, desktopJson, mobileJson] = await Promise.all([
             this.readFile(path.join(normalized, FILE_NAMES.description)),
             this.readFile(path.join(normalized, FILE_NAMES.desktopJson)),

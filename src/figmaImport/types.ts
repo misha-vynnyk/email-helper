@@ -95,6 +95,9 @@ export interface ImageNode extends BaseNode {
 export interface ButtonIcon extends ImageNode {
   side: "left" | "right";
   gapPx: number;
+  widthPx: number; // a button icon is a small fixed-size glyph, not a fill-container image like
+  heightPx: number; // plain ImageNode (renderImage always renders width:100%) — confirmed against
+  // the real button-with-icon-* example (20x20px icon) in content-blocks-template.html.
 }
 
 export interface ButtonNode extends BaseNode {
@@ -105,11 +108,19 @@ export interface ButtonNode extends BaseNode {
   textColor?: string;
   border?: BorderSide;
   cornerRadius?: CornerRadius;
-  targetHeightPx: number;
+  widthPx: number; // own max-width cap (grow-to-fill via width:100% up to this cap) — confirmed
+  // against real markup (content-blocks-template.html): a button needs its own width
+  // independent of its wrapping frame, which is often fluid/100%.
+  targetHeightPx: number; // fallback `height` attribute; the real visual mechanism is
+  // lineHeight + explicit padding below, not a computed pair — confirmed against real markup.
   fontFamily: string;
   fontSizePx: number;
   fontWeight: number;
-  lineHeightPx: number;
+  lineHeight: number; // unitless multiplier (real markup uses `line-height: 1`), not a px value
+  paddingTopPx: number;
+  paddingBottomPx: number;
+  paddingLeftPx: number;
+  paddingRightPx: number;
   textTransform?: TextTransform;
   icon?: ButtonIcon;
 }
@@ -118,6 +129,31 @@ export interface DividerNode extends BaseNode {
   type: "divider";
   color: string;
   thicknessPx?: number;
+}
+
+// dedicated type, not a frame+image composition — resolved 2026-07-28 against the user's own
+// filled-in "divider-logo" block (a whole snippet: two line cells + a centered icon, own width).
+export interface DividerLogoNode extends BaseNode {
+  type: "dividerLogo";
+  widthPx: number;
+  lineColor: string;
+  lineThicknessPx?: number;
+  iconAltDescription: string;
+  iconWidthPx: number;
+  iconGapPx: number; // padding on both sides of the icon cell
+}
+
+// dedicated type, not a plain ImageNode — resolved 2026-07-28: a header image caps at its own
+// measured widthPx (numeric `width` attribute + max-width) and always opens in a new tab, unlike
+// a generic in-frame ImageNode (renderImage.ts), which always fills its container at width:100%.
+// Covers both the single-image and desktop/mobile-swap header variants identically — swap is
+// purely two HeaderImageNode instances sharing an id, one per file via `visibility` (see
+// "Button/Divider/Header — цілі сніпети" in FIGMA_TEMPLATE_IMPORT_PLAN.md).
+export interface HeaderImageNode extends BaseNode {
+  type: "headerImage";
+  widthPx: number;
+  altDescription: string;
+  href?: string;
 }
 
 export interface SpacerNode extends BaseNode {
@@ -135,5 +171,7 @@ export type DesignNode =
   | ImageNode
   | ButtonNode
   | DividerNode
+  | DividerLogoNode
+  | HeaderImageNode
   | SpacerNode
   | PromoCopyNode;

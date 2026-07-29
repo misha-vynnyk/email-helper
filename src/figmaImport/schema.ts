@@ -160,6 +160,8 @@ const buttonIconSchema = z
     ...imageNodeShape,
     side: z.enum(["left", "right"]),
     gapPx: z.number(),
+    widthPx: z.number(),
+    heightPx: z.number(),
   })
   .strict();
 
@@ -173,11 +175,16 @@ const buttonNodeSchema = z
     textColor: z.string().optional(),
     border: borderSideSchema.optional(),
     cornerRadius: cornerRadiusSchema.optional(),
+    widthPx: z.number(),
     targetHeightPx: z.number(),
     fontFamily: z.string(),
     fontSizePx: z.number(),
     fontWeight: z.number().min(100).max(900),
-    lineHeightPx: z.number(),
+    lineHeight: z.number(),
+    paddingTopPx: z.number(),
+    paddingBottomPx: z.number(),
+    paddingLeftPx: z.number(),
+    paddingRightPx: z.number(),
     textTransform: textTransformSchema.optional(),
     icon: buttonIconSchema.optional(),
   })
@@ -189,6 +196,29 @@ const dividerNodeSchema = z
     type: z.literal("divider"),
     color: z.string(),
     thicknessPx: z.number().optional(),
+  })
+  .strict();
+
+const dividerLogoNodeSchema = z
+  .object({
+    ...baseNodeShape,
+    type: z.literal("dividerLogo"),
+    widthPx: z.number(),
+    lineColor: z.string(),
+    lineThicknessPx: z.number().optional(),
+    iconAltDescription: z.string().min(1, "iconAltDescription is required"),
+    iconWidthPx: z.number(),
+    iconGapPx: z.number(),
+  })
+  .strict();
+
+const headerImageNodeSchema = z
+  .object({
+    ...baseNodeShape,
+    type: z.literal("headerImage"),
+    widthPx: z.number(),
+    altDescription: z.string().min(1, "altDescription is required"),
+    href: z.string().optional(),
   })
   .strict();
 
@@ -213,6 +243,8 @@ export const designNodeSchema: z.ZodType<DesignNode> = z.discriminatedUnion("typ
   imageNodeSchema,
   buttonNodeSchema,
   dividerNodeSchema,
+  dividerLogoNodeSchema,
+  headerImageNodeSchema,
   spacerNodeSchema,
   promoCopyNodeSchema,
 ]);

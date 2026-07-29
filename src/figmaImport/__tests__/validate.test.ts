@@ -103,6 +103,58 @@ describe("validateDesignPair", () => {
     expect(result.errors).toEqual([]);
   });
 
+  it("passes for a frame containing a nested child frame (recursive schema)", () => {
+    const nestedFrame = {
+      id: "outer-frame",
+      type: "frame",
+      direction: "column",
+      padding: { top: 0, right: 0, bottom: 0, left: 0 },
+      children: [
+        {
+          id: "inner-frame",
+          type: "frame",
+          direction: "row",
+          padding: { top: 8, right: 8, bottom: 8, left: 8 },
+          children: [validDivider],
+        },
+      ],
+    };
+
+    const result = validateDesignPair(json([nestedFrame]), json([nestedFrame]));
+
+    expect(result.valid).toBe(true);
+    expect(result.errors).toEqual([]);
+  });
+
+  it("fails with a specific message when a required field is missing on a nested child frame", () => {
+    const brokenNestedFrame = {
+      id: "outer-frame-2",
+      type: "frame",
+      direction: "column",
+      padding: { top: 0, right: 0, bottom: 0, left: 0 },
+      children: [
+        {
+          id: "inner-frame-broken",
+          type: "frame",
+          direction: "row",
+          // `padding` intentionally omitted on the nested child
+          children: [],
+        },
+      ],
+    };
+
+    const result = validateDesignPair(json([brokenNestedFrame]), json([brokenNestedFrame]));
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContainEqual(
+      expect.objectContaining({
+        file: "desktop",
+        path: "0.children.0.padding",
+        message: expect.stringContaining("Required"),
+      })
+    );
+  });
+
   it("fails with a JSON syntax error message when a file isn't valid JSON", () => {
     const result = validateDesignPair("{not valid json", json([validDivider]));
 
