@@ -9,7 +9,7 @@ import { useUploadHistory } from "./internal/useUploadHistory";
 import { useBrowserDetection } from "./useBrowserDetection";
 import { useHtmlConverterSettings } from "./useHtmlConverterSettings";
 
-export type StorageProfile = "default" | "alphaone" | "ttt";
+export type StorageProfile = "default" | "alphaone" | "ttt" | "red";
 export type ExportType = "html" | "mjml" | "both";
 export type UploadMode = "playwright" | "electron";
 export type ConverterMode = "simple" | "advanced";
@@ -42,7 +42,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
   const [storageProfile, setStorageProfile] = useState<StorageProfile>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.STORAGE_PROFILE);
-      if (stored === "alphaone" || stored === "ttt" || stored === "default") {
+      if (stored === "alphaone" || stored === "ttt" || stored === "default" || stored === "red") {
         return stored as StorageProfile;
       }
     } catch {

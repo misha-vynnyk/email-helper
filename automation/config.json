@@ -22,6 +22,11 @@
       "debugPort": 9224,
       "userDataDir": "{{HOME}}/Library/Application Support/BravePlaywright-TerraTrans",
       "autoCloseTab": false
+    },
+    "red": {
+      "debugPort": 9225,
+      "userDataDir": "{{HOME}}/Library/Application Support/BravePlaywright-Red",
+      "autoCloseTab": false
     }
   },
   "storage": {
@@ -69,6 +74,18 @@
       "publicPathPrefix": "files",
       "publicRootPrefix": "creatives",
       "folderPrefix": "creative-"
+    },
+    "red": {
+      "bucket": "redeagle",
+      "usesCategory": false,
+      "consoleRootPrefix": "promo",
+      "loginWaitMs": 600000,
+      "bootstrapWaitMs": 30000,
+      "closeTabAfterBatch": true,
+      "publicBaseUrl": "https://reagstr.com",
+      "publicPathPrefix": "files",
+      "publicRootPrefix": "promo",
+      "folderPrefix": "lift-"
     }
   },
   "ui": {
