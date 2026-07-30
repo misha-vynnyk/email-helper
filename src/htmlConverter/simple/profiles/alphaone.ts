@@ -29,6 +29,9 @@ export const profile: SimpleTokensOverride = {
     innerTableClassName: "content-inner-table",
     sidePaddingH: "19px",
     spacer: { hasRows: false, verticalPaddingV: "14px" },
+    // Original script's middle <table> writes cellpadding before cellspacing (opposite
+    // of default/ttt's own cellspacing-first order).
+    cellPaddingFirst: true,
   },
   detectItalicNativeLinks: false,
 };

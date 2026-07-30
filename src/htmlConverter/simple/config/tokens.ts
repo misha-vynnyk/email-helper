@@ -100,6 +100,14 @@ export interface SimpleTokens {
      * discriminated union rather than a number that could be zero.
      */
     spacer: { hasRows: true; className: string; heightPx: number } | { hasRows: false; verticalPaddingV: string };
+    /**
+     * Attribute order on the profile-classed middle `<table>`: `cellspacing` before
+     * `cellpadding` (false — default/ttt's own scripts already write it this way) or the
+     * reverse (true — alphaone/red's own scripts). HTML attribute order has zero effect on
+     * rendering, but profiles exist to capture the source's exact byte sequence, not just
+     * its visible output — see the memory note on "even 1-char divergences get a token".
+     */
+    cellPaddingFirst: boolean;
   };
 
   /**
@@ -179,6 +187,7 @@ export const tokens: SimpleTokens = {
     innerTableClassName: "content-inner-table",
     sidePaddingH: "20px",
     spacer: { hasRows: true, className: "md-horizontal-space", heightPx: 16 },
+    cellPaddingFirst: false,
   },
   detectItalicNativeLinks: true,
 };

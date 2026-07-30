@@ -56,6 +56,9 @@ export const profile: SimpleTokensOverride = {
     innerTableClassName: "layout-inner-block",
     sidePaddingH: "18px",
     spacer: { hasRows: true, className: "section-gap", heightPx: 14 },
+    // Same order as alphaone's original script: cellpadding before cellspacing on the
+    // middle <table>, opposite of default/ttt.
+    cellPaddingFirst: true,
   },
   detectItalicNativeLinks: false,
 };

@@ -125,11 +125,12 @@ export function EditorSelectionToolbar({ editorRef, converterMode, oneBrSymbol, 
           );
         }
         // title не спрацьовує на disabled-кнопці в частині рушіїв — тримаємо його на span-обгортці
+        const unsupportedInAdvanced = isAdvanced && !marker.worksInAdvanced;
         return (
           <span key={marker.open} className='flex items-center gap-1'>
             {divider}
-            <span title={isAdvanced ? t("Not supported in advanced mode", "Не підтримується в advanced-режимі") : t(marker.labelEn, marker.labelUk)}>
-              <button onMouseDown={keepSelection} onClick={() => wrapSelectionWithMarkers(editorEl, marker.open, marker.close)} disabled={isAdvanced} className={`${buttonBase} ${buttonIdleMuted}`}>
+            <span title={unsupportedInAdvanced ? t("Not supported in advanced mode", "Не підтримується в advanced-режимі") : t(marker.labelEn, marker.labelUk)}>
+              <button onMouseDown={keepSelection} onClick={() => wrapSelectionWithMarkers(editorEl, marker.open, marker.close)} disabled={unsupportedInAdvanced} className={`${buttonBase} ${buttonIdleMuted}`}>
                 {marker.short}
               </button>
             </span>

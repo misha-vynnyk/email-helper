@@ -89,6 +89,12 @@ describe("alphaone profile", () => {
     expect(merged.fullStructure.spacer.hasRows).toBe(false);
   });
 
+  it("writes cellpadding before cellspacing on the middle table, unlike default/ttt", () => {
+    const merged = mergeSimpleTokens(tokens, alphaoneProfile);
+    expect(merged.fullStructure.cellPaddingFirst).toBe(true);
+    expect(tokens.fullStructure.cellPaddingFirst).toBe(false);
+  });
+
   it("overrides exactly the documented set of fields (drift guard)", () => {
     expect(Object.keys(alphaoneProfile).sort()).toEqual(
       [
@@ -140,6 +146,11 @@ describe("red profile", () => {
     const merged = mergeSimpleTokens(tokens, redProfile);
     expect(merged.wrapImg.fontSizeHtml).toBe("12px");
     expect(tokens.wrapImg.fontSizeHtml).toBe("13px");
+  });
+
+  it("writes cellpadding before cellspacing on the middle table, same as alphaone, unlike default/ttt", () => {
+    const merged = mergeSimpleTokens(tokens, redProfile);
+    expect(merged.fullStructure.cellPaddingFirst).toBe(true);
   });
 
   it("has dedicated spacer rows in fullStructure (like default/ttt, unlike alphaone)", () => {
