@@ -21,8 +21,10 @@ export const profile: SimpleTokensOverride = {
   button: { className: "creative-button" },
   footerPaddingTopHtml: "25px",
   footerPaddingBottomHtml: "15px",
-  signature: { widthHtml: "220", widthMjml: "220", maxWidthHtml: "220px" },
-  wrapImg: { widthHtml: "400" },
+  // className "image-block" (not the base "img-bg-block") matches the original
+  // ttt/templates.ts's signatureImg/wrapImg byte-for-byte.
+  signature: { className: "image-block", widthHtml: "220", widthMjml: "220", maxWidthHtml: "220px" },
+  wrapImg: { className: "image-block", widthHtml: "400" },
   fullStructure: {
     tableClassName: "main-table",
     contentClassName: "content-wrapper",

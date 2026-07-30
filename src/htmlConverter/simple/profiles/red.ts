@@ -47,7 +47,9 @@ export const profile: SimpleTokensOverride = {
   // Explicit in the original (not tied to blockPaddingV=16px), same shape as the rightSideImg quirk above.
   footerPaddingBottomHtml: "15px",
   signature: { className: "image-block", widthHtml: "220", widthMjml: "220", maxWidthHtml: "220px" },
-  wrapImg: { className: "full-img-block", widthHtml: "564", widthMjml: "564" },
+  // fontSizeHtml: the original script's wrapImg <img> style uses "12px" here — every
+  // other profile (and this same script's own signatureImg) uses "13px".
+  wrapImg: { className: "full-img-block", widthHtml: "564", widthMjml: "564", fontSizeHtml: "12px" },
   fullStructure: {
     tableClassName: "layout-table-wrapper",
     contentClassName: "layout-content-wrapper",
