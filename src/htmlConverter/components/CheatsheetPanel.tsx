@@ -2,6 +2,7 @@ import { Check, ChevronDown, ChevronUp, Copy } from "lucide-react";
 import { useState } from "react";
 
 import { buildMarkers } from "../markers";
+import { DEFAULT_UI_SETTINGS } from "../hooks/useHtmlConverterSettings";
 
 function CopyChip({ text, display }: { text: string; display?: string }) {
   const [copied, setCopied] = useState(false);
@@ -20,7 +21,7 @@ function CopyChip({ text, display }: { text: string; display?: string }) {
   );
 }
 
-export function CheatsheetPanel({ oneBrSymbol = "§" }: { oneBrSymbol?: string }) {
+export function CheatsheetPanel({ oneBrSymbol = DEFAULT_UI_SETTINGS.oneBrSymbol }: { oneBrSymbol?: string }) {
   const [open, setOpen] = useState(false);
   const markers = buildMarkers(oneBrSymbol);
 
