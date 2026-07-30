@@ -141,6 +141,34 @@
     background-color: transparent !important;
   }
 
+  /* Pasted content (Word/Google Docs) often carries fixed pixel/point widths on
+     tables, divs, and spans. Without a cap those push the editor wider than its
+     grid column at narrow desktop widths, popping text out of the rounded border
+     instead of wrapping or scrolling inside it. */
+  div[contenteditable="true"].editor-content {
+    overflow-wrap: anywhere;
+  }
+
+  div[contenteditable="true"].editor-content * {
+    max-width: 100% !important;
+  }
+
+  div[contenteditable="true"].editor-content table {
+    table-layout: fixed;
+    width: 100% !important;
+  }
+
+  /* table-layout:fixed still uses each cell's own specified `width` (e.g.
+     Word/Google Docs' style="width:624pt") to size columns, and per spec the
+     table's used width is the *greater* of its own width and the summed column
+     widths — so a wide cell blows past the table's 100% cap regardless of the
+     max-width rule above, which only clamps max-width, not width. Clearing the
+     cells' width lets the table's own 100% actually govern column sizing. */
+  div[contenteditable="true"].editor-content td,
+  div[contenteditable="true"].editor-content th {
+    width: auto !important;
+  }
+
   /* Revert media elements so they display in their original colors */
   .dark div[contenteditable="true"].editor-content img,
   .dark div[contenteditable="true"].editor-content svg,
@@ -164,8 +192,74 @@
   }
 
   /* Visual structure for heading markers when "Підсвічування позначок" is on.
-     Typography + border only: no color/background-color, so the dark-mode invert
-     and the transparent-background rule stay unaffected. */
+     Typography + border only for the heading itself: no color/background-color,
+     so the dark-mode invert and the transparent-background rule stay unaffected
+     — pasted headings can carry any inline color from the source doc, so a
+     filled *heading* would render as an arbitrarily-colored blob. The small
+     "H#" badge is a pure UI label though (not part of the pasted content), so
+     it's allowed its own translucent theme background/border and is positioned
+     to float above the heading's left border, slightly overlapping its top-left
+     corner. It takes color/background from the app's own --muted-foreground /
+     --muted / --border theme variables instead of the pasted document's color.
+     Because it still sits inside the ancestor's
+     `.dark ... > * { filter: invert(1) hue-rotate(180deg) }` subtree, it
+     re-applies the same filter to itself in dark mode to cancel that out (same
+     trick already used to revert img/svg colors above) — otherwise our
+     theme-correct colors would get inverted a second time. */
+  div[contenteditable="true"].editor-content.editor-marker-styles h1,
+  div[contenteditable="true"].editor-content.editor-marker-styles h4,
+  div[contenteditable="true"].editor-content.editor-marker-styles h5,
+  div[contenteditable="true"].editor-content.editor-marker-styles h6 {
+    position: relative;
+  }
+
+  div[contenteditable="true"].editor-content.editor-marker-styles h1::before,
+  div[contenteditable="true"].editor-content.editor-marker-styles h4::before,
+  div[contenteditable="true"].editor-content.editor-marker-styles h5::before,
+  div[contenteditable="true"].editor-content.editor-marker-styles h6::before {
+    position: absolute;
+    top: -1.45em;
+    left: -1rem;
+    z-index: 1;
+    font-family: ui-sans-serif, system-ui, sans-serif;
+    font-size: 0.62rem;
+    font-weight: 700;
+    line-height: 1.4;
+    letter-spacing: 0.06em;
+    padding: 0.05rem 0.4rem;
+    border-radius: 0.3rem;
+    background-color: hsl(var(--muted) / 0.05);
+    border: 1px solid hsl(var(--border));
+    color: hsl(var(--muted-foreground));
+    backdrop-filter: blur(3px);
+    box-shadow: 0 1px 2px hsl(0 0% 0% / 0.08);
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .dark div[contenteditable="true"].editor-content.editor-marker-styles h1::before,
+  .dark div[contenteditable="true"].editor-content.editor-marker-styles h4::before,
+  .dark div[contenteditable="true"].editor-content.editor-marker-styles h5::before,
+  .dark div[contenteditable="true"].editor-content.editor-marker-styles h6::before {
+    filter: invert(1) hue-rotate(180deg);
+  }
+
+  div[contenteditable="true"].editor-content.editor-marker-styles h1::before {
+    content: "H1";
+  }
+
+  div[contenteditable="true"].editor-content.editor-marker-styles h4::before {
+    content: "H4";
+  }
+
+  div[contenteditable="true"].editor-content.editor-marker-styles h5::before {
+    content: "H5";
+  }
+
+  div[contenteditable="true"].editor-content.editor-marker-styles h6::before {
+    content: "H6";
+  }
+
   div[contenteditable="true"].editor-content.editor-marker-styles h1 {
     font-size: 1.4em;
     font-weight: 800;
