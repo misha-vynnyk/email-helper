@@ -1033,6 +1033,63 @@ describe("convertAdvancedDetailed — warnings", () => {
   });
 });
 
+// ── i-r-s/i-l-s side-image marker, full pipeline ──────────────────────────────
+// EditorSelectionToolbar's wrapSelectionWithMarkers inserts these as bare
+// <div>i-r-s</div>/<div>i-r-s-e</div> elements around the selected block(s) — this
+// exercises the whole preprocess → normalize → fromDom → classify → render chain.
+
+describe("convertAdvanced — i-r-s/i-l-s side-image marker", () => {
+  it("wraps the selected paragraph with a right-floated placeholder image", () => {
+    const raw = "<p>Before</p><div>i-r-s</div><p>Wrapped sentence</p><div>i-r-s-e</div><p>After</p>";
+    const html = convertAdvanced(raw);
+    expect(html).toContain("Before");
+    expect(html).toContain("Wrapped sentence");
+    expect(html).toContain("After");
+    expect(html).toContain("float:right");
+    expect(html).toContain(`src="${tokens.placeholderImageSrc}"`);
+    expect(html).not.toContain("i-r-s");
+  });
+
+  it("wraps the selected paragraph with a left-floated placeholder image", () => {
+    const raw = "<div>i-l-s</div><p>Wrapped sentence</p><div>i-l-s-e</div>";
+    const html = convertAdvanced(raw);
+    expect(html).toContain("Wrapped sentence");
+    expect(html).toContain("float:left");
+    expect(html).not.toContain("i-l-s");
+  });
+
+  it("wraps multiple paragraphs of plain body text in one flowing block", () => {
+    const raw = "<div>i-r-s</div><p>Line one.</p><p>Line two.</p><div>i-r-s-e</div>";
+    const html = convertAdvanced(raw);
+    expect(html).toContain("Line one.");
+    expect(html).toContain("Line two.");
+    expect(html).toContain("float:right");
+  });
+
+  it("an unclosed marker is stripped and produces a warning, no vanished content", () => {
+    const raw = "<p>Before</p><div>i-r-s</div><p>After</p>";
+    const { html, warnings } = convertAdvancedDetailed(raw);
+    expect(html).toContain("Before");
+    expect(html).toContain("After");
+    expect(html).not.toContain("float:");
+    expect(warnings.some(w => w.includes("i-r-s"))).toBe(true);
+  });
+
+  it("a headline mixed into the wrap is never dropped, and warns instead of mis-rendering", () => {
+    const raw = '<div>i-r-s</div><h1>Big Title</h1><p>Body text</p><div>i-r-s-e</div>';
+    const { html, warnings } = convertAdvancedDetailed(raw);
+    expect(html).toContain("Big Title");
+    expect(html).toContain("Body text");
+    expect(warnings.some(w => w.includes("i-r-s"))).toBe(true);
+  });
+
+  it("clean single-paragraph wrap produces no warnings", () => {
+    const raw = "<div>i-r-s</div><p>Wrapped sentence</p><div>i-r-s-e</div>";
+    const { warnings } = convertAdvancedDetailed(raw);
+    expect(warnings).toEqual([]);
+  });
+});
+
 describe("convertAdvancedDetailed — tok reaches IR construction", () => {
   // #808080 has luminance ≈0.502: not dark with default darkLuma=0.5 (black text),
   // dark with darkLuma=0.6 (white text). Verifies profile tokens flow into ir/color.

@@ -5,10 +5,10 @@
 import { isLinkColor } from "../../utils/colorUtils";
 import type { Tokens } from "../config/tokens";
 import { tokens as defaultTokens } from "../config/tokens";
+import { WARN } from "../warnings";
 import { canonicalizeBg,canonicalizeText } from "./color";
 import { getAlign, isBold, isExplicitNonBold, isExplicitNonItalic, isExplicitNonUnderline, isItalic, isUnderline, parseStyle } from "./style";
-import { WARN } from "../warnings";
-import type { BorderSide, BorderSpec, CellNode, ImageNode, Paragraph, RowNode, Run,StructuralNode, TableNode, WarnFn } from "./types";
+import type { BorderSide, BorderSpec, CellNode, ImageNode, Paragraph, RowNode, Run, SideImageWrapNode,StructuralNode, TableNode, WarnFn } from "./types";
 
 // ── Inline run collection ─────────────────────────────────────────────────────
 
@@ -452,6 +452,22 @@ export function fromDom(
       }
       nodes.push(...after);
       if (after.length > 0) pendingGap = pendingTight = false;
+      continue;
+    }
+
+    // resolveSideImageMarkers (preprocess.ts) rewrites a `i-r-s`…`i-r-s-e` /
+    // `i-l-s`…`i-l-s-e` marker pair into this synthetic wrapper before fromDom
+    // ever runs — must be checked before the generic DIV branch below (DIV is
+    // also in that tag set) since it needs its children KEPT TOGETHER as one
+    // node (so classify.ts can float a placeholder image beside them), not
+    // flattened into the surrounding flow like a plain container div.
+    if (tag === "DIV" && el.hasAttribute("data-side-image")) {
+      const side = el.getAttribute("data-side-image") === "left" ? "left" : "right";
+      const children = fromDom(el, bg, tok, warn);
+      const wrapNode: SideImageWrapNode = { type: "sideImageWrap", side, children };
+      if (pendingTight) wrapNode.tightBefore = true;
+      nodes.push(wrapNode);
+      pendingGap = pendingTight = false;
       continue;
     }
 

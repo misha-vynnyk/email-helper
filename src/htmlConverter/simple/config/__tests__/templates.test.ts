@@ -178,5 +178,12 @@ describe("buildSimpleTemplates — token substitution per key", () => {
       expect(out).toContain('class="content-space-main-wrapper"');
       expect(out).toContain("padding-top: 14px; padding-left: 19px; padding-bottom: 14px; padding-right: 19px;");
     });
+
+    it("middle-table cellspacing/cellpadding attribute order matches each profile's own script byte-for-byte", () => {
+      expect(defaultTemplates.htmlTemplates.fullStructure("")).toContain('border="0" cellspacing="0" cellpadding="0" role="presentation"');
+      expect(tttTemplates.htmlTemplates.fullStructure("")).toContain('border="0" cellspacing="0" cellpadding="0" role="presentation"');
+      expect(alphaoneTemplates.htmlTemplates.fullStructure("")).toContain('border="0" cellpadding="0" cellspacing="0" role="presentation"');
+      expect(redTemplates.htmlTemplates.fullStructure("")).toContain('border="0" cellpadding="0" cellspacing="0" role="presentation"');
+    });
   });
 });

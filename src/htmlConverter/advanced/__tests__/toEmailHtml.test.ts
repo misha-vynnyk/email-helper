@@ -340,6 +340,86 @@ describe("renderNode — calloutBox", () => {
   });
 });
 
+// ── renderNode — sideImage (i-r-s/i-l-s marker) ────────────────────────────────
+
+describe("renderNode — sideImage", () => {
+  function makeWrap(side: "left" | "right", children: ComponentNode[]): ComponentNode {
+    return { kind: "sideImage", props: { side }, children };
+  }
+
+  it("a single plain body paragraph takes the flowing (floated) path", () => {
+    const node = makeWrap("right", [{ kind: "paragraph", props: { lines: [[{ text: "Wrapped text" }]], size: "body" } }]);
+    const result = renderNode(node, tmpl, tokens);
+    expect(result).toContain("float:right");
+    expect(result).toContain("Wrapped text");
+    // the flowing path is ONE <tr>/<td> — no separate row for the text
+    expect((result.match(/<tr>/g) ?? []).length).toBe(1);
+  });
+
+  it("side=left floats left", () => {
+    const node = makeWrap("left", [{ kind: "paragraph", props: { lines: [[{ text: "Wrapped text" }]], size: "body" } }]);
+    const result = renderNode(node, tmpl, tokens);
+    expect(result).toContain("float:left");
+  });
+
+  it("multiple plain body paragraphs still take the flowing path, joined with a break", () => {
+    const node = makeWrap("right", [
+      { kind: "paragraph", props: { lines: [[{ text: "Line one" }]], size: "body" } },
+      { kind: "paragraph", props: { lines: [[{ text: "Line two" }]], size: "body" } },
+    ]);
+    const result = renderNode(node, tmpl, tokens);
+    expect(result).toContain("Line one");
+    expect(result).toContain("Line two");
+    expect((result.match(/<tr>/g) ?? []).length).toBe(1);
+  });
+
+  it("a list child alone takes the flowing path", () => {
+    const node = makeWrap("right", [
+      { kind: "list", props: { items: [[{ text: "Item A" }]], ordered: false } },
+    ]);
+    const result = renderNode(node, tmpl, tokens);
+    expect(result).toContain("<li>Item A</li>");
+    expect(result).toContain("float:right");
+  });
+
+  // Out-of-spec usage (a headline mixed in, or an image/table) must never silently drop
+  // content — it falls back to a plain standalone image row + the children rendered
+  // normally, giving up the wrap-around visual instead of mis-sizing/dropping anything.
+  it("a headline mixed in falls back to a standalone image + normal rows (no float, nothing dropped)", () => {
+    const node = makeWrap("right", [
+      { kind: "paragraph", props: { lines: [[{ text: "Big Title" }]], size: "headline" } },
+      { kind: "paragraph", props: { lines: [[{ text: "Body text" }]], size: "body" } },
+    ]);
+    const result = renderNode(node, tmpl, tokens);
+    expect(result).not.toContain("float:");
+    expect(result).toContain("Big Title");
+    expect(result).toContain("Body text");
+    expect(result).toContain(`src="${tokens.placeholderImageSrc}"`);
+  });
+
+  it("an image mixed in falls back without dropping the image or the text", () => {
+    const node = makeWrap("left", [
+      { kind: "paragraph", props: { lines: [[{ text: "Caption" }]], size: "body" } },
+      { kind: "image", props: { src: "https://example.com/x.png" } },
+    ]);
+    const result = renderNode(node, tmpl, tokens);
+    expect(result).not.toContain("float:");
+    expect(result).toContain("Caption");
+    // two <img> tags: the fallback's own standalone placeholder + the nested image's own row
+    expect((result.match(/<img/g) ?? []).length).toBe(2);
+  });
+
+  it("zeroes top padding on the flowing path when tightBefore is set", () => {
+    const node: ComponentNode = {
+      kind: "sideImage",
+      props: { side: "right", tightBefore: true },
+      children: [{ kind: "paragraph", props: { lines: [[{ text: "text" }]], size: "body" } }],
+    };
+    const result = renderNode(node, tmpl, tokens);
+    expect(result).toContain("padding-top:0px");
+  });
+});
+
 // ── renderNode — bandStack ─────────────────────────────────────────────────────
 // Stacked colored bands from one single-col source table render as flush <td bgcolor>
 // rows inside ONE shared wrapper (one source table → one output table).

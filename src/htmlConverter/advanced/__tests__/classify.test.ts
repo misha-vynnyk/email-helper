@@ -1,6 +1,6 @@
 import { tokens } from "../config/tokens";
 import { classify } from "../detect/classify";
-import type { CellNode,Paragraph, StructuralNode, TableNode } from "../ir/types";
+import type { CellNode,Paragraph, SideImageWrapNode,StructuralNode, TableNode } from "../ir/types";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -480,6 +480,77 @@ describe("classify — § around images", () => {
     const result = classify([makePara("intro"), img, makePara("outro")]);
     expect((result[1].props as Record<string, unknown>)["tightBefore"]).toBeUndefined();
     expect((result[1].props as Record<string, unknown>)["tightAfter"]).toBeUndefined();
+  });
+});
+
+// ── i-r-s/i-l-s side-image wrap ───────────────────────────────────────────────
+
+describe("classify — sideImageWrap", () => {
+  function makeWrap(side: "left" | "right", children: StructuralNode[], tightBefore?: boolean): SideImageWrapNode {
+    return { type: "sideImageWrap", side, children, tightBefore };
+  }
+
+  it("a single body paragraph becomes a sideImage component carrying the child", () => {
+    const result = classify([makeWrap("right", [makePara("wrapped text")])]);
+    expect(result).toHaveLength(1);
+    expect(result[0].kind).toBe("sideImage");
+    expect((result[0].props as { side: string }).side).toBe("right");
+    expect((result[0] as unknown as { children: unknown[] }).children).toHaveLength(1);
+  });
+
+  it("preserves side=left", () => {
+    const result = classify([makeWrap("left", [makePara("wrapped text")])]);
+    expect((result[0].props as { side: string }).side).toBe("left");
+  });
+
+  it("consecutive body paragraphs inside the wrap merge into one child (pushMerged applies inside classify(node.children))", () => {
+    const result = classify([makeWrap("right", [makePara("line 1"), makePara("line 2")])]);
+    const children = (result[0] as unknown as { children: { kind: string; props: Record<string, unknown> }[] }).children;
+    expect(children).toHaveLength(1);
+    expect((children[0].props["lines"] as unknown[]).length).toBe(2);
+  });
+
+  it("drops the wrap entirely when the selection was empty", () => {
+    const result = classify([makeWrap("right", [])]);
+    expect(result).toHaveLength(0);
+  });
+
+  it("a headline mixed into the wrap is NOT dropped, but is flagged as unsupported for the flowing layout", () => {
+    const warn = jest.fn();
+    const result = classify([makeWrap("right", [makePara("Title", "headline"), makePara("body text")])], tokens, warn);
+    expect(result).toHaveLength(1);
+    expect((result[0] as unknown as { children: unknown[] }).children).toHaveLength(2);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("i-r-s"));
+  });
+
+  it("a plain body paragraph alone does NOT trigger the mixed-content warning", () => {
+    const warn = jest.fn();
+    classify([makeWrap("right", [makePara("body text")])], tokens, warn);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("§ at the end of the paragraph right before the wrap zeroes the gap on both sides", () => {
+    const result = classify([makePara("intro", "body", "left", { tightNext: true }), makeWrap("right", [makePara("wrapped")])]);
+    expect(result).toHaveLength(2);
+    expect((result[0].props as Record<string, unknown>)["tightAfter"]).toBe(true);
+    expect((result[1].props as Record<string, unknown>)["tightBefore"]).toBe(true);
+  });
+
+  it("§ right after the closing marker zeroes the wrap's bottom padding", () => {
+    const result = classify([makeWrap("right", [makePara("wrapped")]), makePara("after", "body", "left", { tightBefore: true })]);
+    expect(result).toHaveLength(2);
+    expect((result[0].props as Record<string, unknown>)["tightAfter"]).toBe(true);
+  });
+
+  it("a wrap without § keeps full padding on both sides", () => {
+    const result = classify([makePara("intro"), makeWrap("right", [makePara("wrapped")]), makePara("outro")]);
+    expect((result[1].props as Record<string, unknown>)["tightBefore"]).toBeUndefined();
+    expect((result[1].props as Record<string, unknown>)["tightAfter"]).toBeUndefined();
+  });
+
+  it("propagates tightBefore set on the wrap node itself (§ before the opening marker)", () => {
+    const result = classify([makeWrap("right", [makePara("wrapped")], true)]);
+    expect((result[0].props as Record<string, unknown>)["tightBefore"]).toBe(true);
   });
 });
 

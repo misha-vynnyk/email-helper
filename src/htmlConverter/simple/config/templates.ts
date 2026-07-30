@@ -258,25 +258,24 @@ export function buildSimpleTemplates(tok: SimpleTokens): { htmlTemplates: Simple
                             <${tok.blockWrapTag} style="${htmlBodyStyle}">`;
     },
 
-    // Attribute order on the outer table (`cellspacing`/`cellpadding`) is
-    // normalized to one order here; the original alphaone/templates.ts wrote
-    // them in the opposite order (`cellpadding` then `cellspacing`) —
-    // HTML attribute order has no visual/semantic effect, so this falls
-    // under the same approved whitespace-normalization umbrella as the
-    // rest of this factory (see file header).
+    // Attribute order on the middle <table> (`cellspacing`/`cellpadding`) is tokenized —
+    // see Tokens["fullStructure"]["cellPaddingFirst"] — since default/ttt's own scripts
+    // write `cellspacing` first while alphaone/red's write `cellpadding` first, and
+    // profiles capture the source's exact byte order, not just its rendered output (HTML
+    // attribute order itself has no visual/semantic effect either way).
     fullStructure: (content) => {
       const fs = tok.fullStructure;
       const spacerRow = fs.spacer.hasRows ? `<tr>\n                                    <td height="${fs.spacer.heightPx}" width="100%" style="max-width: 100%" class="${fs.spacer.className}"></td>\n                                </tr>` : "";
       const contentPadding = fs.spacer.hasRows
         ? `padding-left: ${fs.sidePaddingH}; padding-right: ${fs.sidePaddingH};`
         : `padding-top: ${fs.spacer.verticalPaddingV}; padding-left: ${fs.sidePaddingH}; padding-bottom: ${fs.spacer.verticalPaddingV}; padding-right: ${fs.sidePaddingH};`;
+      const cellAttrs = fs.cellPaddingFirst ? `cellpadding="0" cellspacing="0"` : `cellspacing="0" cellpadding="0"`;
 
       return `
     <table width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="max-width: 100%;">
         <tr>
             <td align="center" valign="top">
-                <table class="${fs.tableClassName}" bgcolor="#FFFFFF" border="0" cellspacing="0"
-                       cellpadding="0" role="presentation" width="100%" style="max-width: 600px;">
+                <table class="${fs.tableClassName}" bgcolor="#FFFFFF" border="0" ${cellAttrs} role="presentation" width="100%" style="max-width: 600px;">
                     <tr>
                         <td class="${fs.contentClassName}" align="center" style="${contentPadding}">
                             <table class="${fs.innerTableClassName}" border="0" cellspacing="0" role="presentation"

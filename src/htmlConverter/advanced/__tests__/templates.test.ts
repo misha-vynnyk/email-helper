@@ -824,6 +824,63 @@ describe("buildTemplates — image", () => {
   });
 });
 
+// ── i-r-s/i-l-s side-image template ───────────────────────────────────────────
+
+describe("buildTemplates — sideImage", () => {
+  it("floats the placeholder image right and places the text in the same <td>", () => {
+    const html = tmpl.sideImage("wrapped text", { side: "right" });
+    expect(html).toContain("float:right");
+    expect(html).toContain("wrapped text");
+    // one shared <td> — no second <tr>/<td> for the text (that's what makes the float wrap)
+    expect((html.match(/<td/g) ?? []).length).toBe(1);
+  });
+
+  it("floats the placeholder image left", () => {
+    const html = tmpl.sideImage("wrapped text", { side: "left" });
+    expect(html).toContain("float:left");
+  });
+
+  it("uses tok.placeholderImageSrc/Alt/Href, matching the standalone image template", () => {
+    const html = tmpl.sideImage("text", { side: "right" });
+    expect(html).toContain(`href="${tokens.placeholderHref}"`);
+    expect(html).toContain(`src="${tokens.placeholderImageSrc}"`);
+    expect(html).toContain(`alt="${tokens.placeholderImageAlt}"`);
+  });
+
+  it("uses the fixed sideImageWidthPx/HeightPx (250x224), NOT placeholderImageWidth", () => {
+    const html = tmpl.sideImage("text", { side: "right" });
+    expect(html).toContain(`width="${tokens.layout.sideImageWidthPx}"`);
+    expect(html).toContain(`height="${tokens.layout.sideImageHeightPx}"`);
+    expect(html).not.toContain(`width="${tokens.layout.placeholderImageWidth}"`);
+  });
+
+  it("uses tok.layout.blockPadY for outer padding by default", () => {
+    const html = tmpl.sideImage("text", { side: "right" });
+    expect(html).toContain(`padding-top:${tokens.layout.blockPadY}px`);
+    expect(html).toContain(`padding-bottom:${tokens.layout.blockPadY}px`);
+  });
+
+  it("zeroes top padding when tightBefore is set", () => {
+    const html = tmpl.sideImage("text", { side: "right", tightBefore: true });
+    expect(html).toContain("padding-top:0px");
+  });
+
+  it("zeroes bottom padding when tightAfter is set", () => {
+    const html = tmpl.sideImage("text", { side: "right", tightAfter: true });
+    expect(html).toContain("padding-bottom:0px");
+  });
+
+  it("defaults align to left when not provided", () => {
+    const html = tmpl.sideImage("text", { side: "right" });
+    expect(html).toContain("text-align:left");
+  });
+
+  it("respects an explicit center align on the wrapped text", () => {
+    const html = tmpl.sideImage("text", { side: "right", align: "center" });
+    expect(html).toContain("text-align:center");
+  });
+});
+
 // ── spacer template ───────────────────────────────────────────────────────────
 
 describe("buildTemplates — spacer", () => {
