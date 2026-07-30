@@ -18,6 +18,7 @@ import {
   type ParagraphOpts,
   type ProgressBarOpts,
   type RecordOpts,
+  type SideImageOpts,
   type SplitRowOpts,
   templates as defaultTemplates,
   type TextDividerOpts,
@@ -488,6 +489,33 @@ export function renderNode(
     case "progressBar": {
       const opts: ProgressBarOpts = { n: node.props.n, widths: node.props.widths, colors: node.props.colors, padX: padX || undefined };
       return tmpl.progressBar(opts);
+    }
+
+    case "sideImage": {
+      const p = node.props;
+      // Mirrors classify.ts's own "flowable" check — only plain body/no-variant
+      // paragraphs and lists can share the wrap's single flowing <td> (see
+      // SideImageProps / tmpl.sideImage's doc comment for why: a differently-sized
+      // paragraph flattened into one shared <span> would render at the wrong size).
+      const flowable = node.children.every(c =>
+        (c.kind === "paragraph" && c.props.size === "body" && !c.props.variant) || c.kind === "list");
+      if (flowable) {
+        const firstPara = node.children.find(
+          (c): c is Extract<ComponentNode, { kind: "paragraph" }> => c.kind === "paragraph",
+        );
+        const align = firstPara?.props.align ?? "left";
+        const innerHtml = node.children
+          .map(c => c.kind === "paragraph" ? renderParagraphInner(c.props, tok) : c.kind === "list" ? renderListInline(c.props, tok) : "")
+          .join("<br><br>\n");
+        const opts: SideImageOpts = { side: p.side, align, tightBefore: p.tightBefore, tightAfter: p.tightAfter };
+        return tmpl.sideImage(innerHtml, opts);
+      }
+      // Out-of-spec content (a headline mixed in, an image, a table) — never drop it,
+      // just give up on the wrap-around visual: a plain standalone image row (reusing
+      // the existing top-level image template) followed by the children rendered
+      // normally. classify.ts already emitted WARN.sideImageMixedContent for this case.
+      const imageOpts: ImageOpts = { tightBefore: p.tightBefore };
+      return `${tmpl.image(imageOpts)}\n${renderAll(node.children, tmpl, tok)}`;
     }
 
     // No classify/detect path ever produces kind:"spacer" — this branch is reachable

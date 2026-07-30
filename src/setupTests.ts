@@ -33,6 +33,15 @@ jest.mock(
           publicRootPrefix: "creatives",
           folderPrefix: "creative-",
         },
+        red: {
+          bucket: "redeagle",
+          usesCategory: false,
+          consoleRootPrefix: "promo",
+          publicBaseUrl: "https://reagstr.com",
+          publicPathPrefix: "files",
+          publicRootPrefix: "promo",
+          folderPrefix: "lift-",
+        },
       },
       browserProfiles: {
         default: { debugPort: 9222, userDataDir: "" },

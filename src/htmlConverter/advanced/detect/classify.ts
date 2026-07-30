@@ -152,10 +152,17 @@ function pushMerged(result: ComponentNode[], comp: ComponentNode, tok: Tokens, w
     comp = { ...comp, props: { ...comp.props, tightBefore: true } };
   }
 
-  // § at the start of a paragraph that follows an image ("[image] §text") — the image
-  // can't merge with text, but the "no gap" intent still applies: zero the image's
-  // bottom padding; the paragraph's own tightBefore already zeroes its top padding.
+  // § at the start of a paragraph that follows an image or an i-r-s/i-l-s side-image
+  // wrap ("[image] §text") — neither can merge with text, but the "no gap" intent
+  // still applies: zero the previous block's bottom padding; the paragraph's own
+  // tightBefore already zeroes its top padding. Two separate branches (rather than
+  // one `last?.kind === "image" || last?.kind === "sideImage"` condition) because
+  // spreading `last.props` into a fresh object loses the kind/props correlation
+  // TypeScript needs to keep the result assignable to the ComponentNode union.
   if (comp.kind === "paragraph" && last?.kind === "image" && comp.props.tightBefore === true) {
+    result[result.length - 1] = { ...last, props: { ...last.props, tightAfter: true } };
+  }
+  if (comp.kind === "paragraph" && last?.kind === "sideImage" && comp.props.tightBefore === true) {
     result[result.length - 1] = { ...last, props: { ...last.props, tightAfter: true } };
   }
 
@@ -303,6 +310,28 @@ export function classify(nodes: StructuralNode[], tok: Tokens = defaultTokens, w
       // § at the end of the paragraph right before this image ("text§ [image]") —
       // mirror of the image-then-paragraph case in pushMerged: zero the paragraph's
       // bottom padding and the image's top padding.
+      const last = result[result.length - 1];
+      if (last?.kind === "paragraph" && last.props.tightNext === true) {
+        result[result.length - 1] = { ...last, props: { ...last.props, tightAfter: true } };
+        comp.props.tightBefore = true;
+      }
+      result.push(comp);
+    } else if (node.type === "sideImageWrap") {
+      const children = classify(node.children, tok, warn);
+      if (children.length === 0) continue;  // empty wrap (author selected nothing) — drop it
+      // The realistic/intended use (see markers.ts's hint: "wrap only normal text, no
+      // picture") is one or more plain body paragraphs — pushMerged already fuses
+      // consecutive same-style body paragraphs into one, so this is almost always a
+      // single node here. Anything else (a headline mixed in, a list, an image/table)
+      // still renders — never silently dropped — but toEmailHtml.ts's render falls back
+      // to a plain stacked layout instead of floating the image beside the text, since
+      // a headline-sized paragraph flattened into the wrap's single shared <span> would
+      // otherwise render at the wrong font size.
+      const flowable = children.every(c =>
+        (c.kind === "paragraph" && c.props.size === "body" && !c.props.variant) || c.kind === "list");
+      if (!flowable) warn?.(WARN.sideImageMixedContent);
+      const comp: ComponentNode = { kind: "sideImage", props: { side: node.side, tightBefore: node.tightBefore }, children };
+      // § at the end of the paragraph right before this wrap — same convention as image.
       const last = result[result.length - 1];
       if (last?.kind === "paragraph" && last.props.tightNext === true) {
         result[result.length - 1] = { ...last, props: { ...last.props, tightAfter: true } };

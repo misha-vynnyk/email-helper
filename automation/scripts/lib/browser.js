@@ -45,7 +45,7 @@ async function isCdpAvailable(port) {
 // path, no exec permission) — spawn() reports that asynchronously via an 'error'
 // event, and without a listener Node treats it as an uncaught exception that
 // kills this script mid-flight with no useful message reaching the caller.
-function launchBraveDetached(executablePath, userDataDir, debugPort) {
+function launchBraveDetached(executablePath, userDataDir, debugPort, targetURL) {
   return new Promise((resolve, reject) => {
     const args = [
       `--user-data-dir=${userDataDir}`,
@@ -58,6 +58,8 @@ function launchBraveDetached(executablePath, userDataDir, debugPort) {
       "--disable-component-extensions-with-background-pages",
       "--no-restore-session-state", // skip session restore — prevents phantom windows
     ];
+    // Open straight to the target tab instead of a blank New Tab page.
+    if (targetURL) args.push(targetURL);
     const child = spawnChild(executablePath, args, { detached: true, stdio: "ignore" });
     child.once("error", (err) => reject(err));
     child.once("spawn", () => {
@@ -97,7 +99,7 @@ function guardAgainstLatePages(context, keepPage, durationMs) {
 // If that fails, launches a new Brave instance and connects (STEP 2).
 // storageBaseUrl — used to detect an existing storage tab for the active provider.
 // Returns { browser, context, page }.
-async function connectOrLaunch(executablePath, debugPort, userDataDir, storageBaseUrl) {
+async function connectOrLaunch(executablePath, debugPort, userDataDir, storageBaseUrl, targetURL) {
   const cdpUrl = `http://127.0.0.1:${debugPort}`;
 
   let storageHost = "";
@@ -188,7 +190,7 @@ async function connectOrLaunch(executablePath, debugPort, userDataDir, storageBa
     }
 
     try {
-      await launchBraveDetached(executablePath, userDataDir, actualPort);
+      await launchBraveDetached(executablePath, userDataDir, actualPort, targetURL);
       console.log(`📂 USER DATA DIR: ${userDataDir}`);
 
       let cdpReady = false;

@@ -41,7 +41,7 @@ export function convertAdvancedDetailed(
   const warnings: string[] = [];
   const warn = (msg: string) => warnings.push(msg);
 
-  const html        = preprocess(rawHtml, oneBrSymbol);
+  const html        = preprocess(rawHtml, oneBrSymbol, warn);
   const bodyEl      = normalize(html);
   // fromDom's listGroupId counter is module-level (recursion would reset a local one) —
   // reset it here, the single entry point into one document's fromDom-recursion tree.

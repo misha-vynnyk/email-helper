@@ -121,17 +121,18 @@ export class BlockFileManager {
     // Use original block HTML without wrapping
     const htmlEscaped = block.html.replace(/\\/g, "\\\\").replace(/`/g, "\\`").replace(/\$/g, "\\$");
 
-    // Format keywords with single quotes
-    const keywordsFormatted = `[${block.keywords.map((k) => `'${k}'`).join(", ")}]`;
+    // Metadata is user-controlled: JSON.stringify so it can never break out of its literal
+    // (a raw '${...}' interpolation would let a value like name="'; process.exit(); //" inject code)
+    const keywordsFormatted = `[${block.keywords.map((k) => JSON.stringify(k)).join(", ")}]`;
 
     return `import { EmailBlock } from '../types/block';
 
 const ${this.toPascalCase(block.id)}: EmailBlock = {
-  id: '${block.id}',
-  name: '${block.name}',
-  category: '${block.category}',
+  id: ${JSON.stringify(block.id)},
+  name: ${JSON.stringify(block.name)},
+  category: ${JSON.stringify(block.category)},
   keywords: ${keywordsFormatted},
-  preview: '${previewValue}',
+  preview: ${JSON.stringify(previewValue)},
   html: \`
 ${htmlEscaped}
   \`.trim(),

@@ -99,13 +99,16 @@ export function EditorSelectionToolbar({ editorRef, converterMode, oneBrSymbol, 
   // Виділення не повинно скидатись кліком по кнопці
   const keepSelection = (e: React.MouseEvent) => e.preventDefault();
 
-  const buttonBase = "px-2 py-1 rounded-md text-xs font-mono font-semibold transition-colors select-none disabled:opacity-40 disabled:cursor-not-allowed";
-  const buttonIdle = "text-foreground hover:bg-muted";
-  const buttonActive = "bg-primary text-primary-foreground";
+  const buttonBase = "px-2 py-1 rounded-md text-xs font-mono font-semibold transition-colors select-none border disabled:opacity-40 disabled:cursor-not-allowed";
+  const buttonIdle = "text-foreground bg-muted/40 border-border/60 hover:bg-muted hover:border-border";
+  const buttonIdleMuted = "text-muted-foreground bg-muted/40 border-border/60 hover:bg-muted hover:border-border hover:text-foreground";
+  const buttonActive = "bg-primary text-primary-foreground border-primary";
 
   return createPortal(
-    <div ref={toolbarRef} role='toolbar' aria-label={t("Marker toolbar", "Панель маркерів")} style={{ position: "fixed", left: position?.left ?? 0, top: position?.top ?? 0, visibility: position ? "visible" : "hidden" }} className='z-50 flex items-center gap-0.5 bg-card border border-border/50 rounded-xl shadow-soft p-1'>
-      {markers.map((marker) => {
+    <div ref={toolbarRef} role='toolbar' aria-label={t("Marker toolbar", "Панель маркерів")} style={{ position: "fixed", left: position?.left ?? 0, top: position?.top ?? 0, visibility: position ? "visible" : "hidden" }} className='z-50 flex items-center gap-1 bg-card border border-border rounded-xl shadow-lg p-1'>
+      {markers.map((marker, index) => {
+        const divider = marker.kind === "wrapper" && markers[index - 1]?.kind !== "wrapper" ? <span aria-hidden='true' className='w-px self-stretch bg-border mx-0.5' /> : null;
+
         if (marker.kind === "heading") {
           const active = activeHeading === marker.tag;
           return (
@@ -122,11 +125,15 @@ export function EditorSelectionToolbar({ editorRef, converterMode, oneBrSymbol, 
           );
         }
         // title не спрацьовує на disabled-кнопці в частині рушіїв — тримаємо його на span-обгортці
+        const unsupportedInAdvanced = isAdvanced && !marker.worksInAdvanced;
         return (
-          <span key={marker.open} title={isAdvanced ? t("Not supported in advanced mode", "Не підтримується в advanced-режимі") : t(marker.labelEn, marker.labelUk)}>
-            <button onMouseDown={keepSelection} onClick={() => wrapSelectionWithMarkers(editorEl, marker.open, marker.close)} disabled={isAdvanced} className={`${buttonBase} ${buttonIdle} text-muted-foreground`}>
-              {marker.short}
-            </button>
+          <span key={marker.open} className='flex items-center gap-1'>
+            {divider}
+            <span title={unsupportedInAdvanced ? t("Not supported in advanced mode", "Не підтримується в advanced-режимі") : t(marker.labelEn, marker.labelUk)}>
+              <button onMouseDown={keepSelection} onClick={() => wrapSelectionWithMarkers(editorEl, marker.open, marker.close)} disabled={unsupportedInAdvanced} className={`${buttonBase} ${buttonIdleMuted}`}>
+                {marker.short}
+              </button>
+            </span>
           </span>
         );
       })}

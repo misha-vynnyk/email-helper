@@ -4,6 +4,7 @@ import * as path from "path";
 import { tokens } from "../config/tokens";
 import { convertAdvanced, convertAdvancedDetailed } from "../index";
 import { profile as alphaoneProfile } from "../profiles/alphaone";
+import { profile as redProfile } from "../profiles/red";
 import { profile as tttProfile } from "../profiles/ttt";
 
 const FIXTURES = path.join(__dirname, "fixtures/raw");
@@ -439,6 +440,30 @@ describe("convertAdvanced — profile overrides", () => {
     expect(defaultHtml).not.toBe(tttHtml);
     expect(defaultHtml).toContain("padding-left:20px");
     expect(tttHtml).toContain("padding-left:21px");
+  });
+
+  it("Red profile: uses the Noto Sans font stack", () => {
+    const html = convertAdvanced(raw, redProfile);
+    expect(html).toContain("Noto Sans");
+  });
+
+  it("Red profile: sidePadding is 18px", () => {
+    const html = convertAdvanced(raw, redProfile);
+    expect(html).toContain("padding-left:18px");
+    expect(html).toContain("padding-right:18px");
+  });
+
+  it("Red profile: blockPadY is 16px", () => {
+    const html = convertAdvanced(raw, redProfile);
+    expect(html).toContain("padding-top:16px");
+  });
+
+  it("Red profile: italic runs use <i>, not <em> like every other profile", () => {
+    const redHtml = convertAdvanced(raw, redProfile);
+    const defaultHtml = convertAdvanced(raw);
+    expect(redHtml).toContain("<i>Please review the attached documents carefully.</i>");
+    expect(redHtml).not.toContain("<em>Please review the attached documents carefully.</em>");
+    expect(defaultHtml).toContain("<em>Please review the attached documents carefully.</em>");
   });
 });
 
@@ -1005,6 +1030,63 @@ describe("convertAdvancedDetailed — warnings", () => {
     const { html, warnings } = convertAdvancedDetailed(raw);
     expect(html).toContain("inner text");
     expect(warnings.some(w => w.includes("Вкладену таблицю"))).toBe(true);
+  });
+});
+
+// ── i-r-s/i-l-s side-image marker, full pipeline ──────────────────────────────
+// EditorSelectionToolbar's wrapSelectionWithMarkers inserts these as bare
+// <div>i-r-s</div>/<div>i-r-s-e</div> elements around the selected block(s) — this
+// exercises the whole preprocess → normalize → fromDom → classify → render chain.
+
+describe("convertAdvanced — i-r-s/i-l-s side-image marker", () => {
+  it("wraps the selected paragraph with a right-floated placeholder image", () => {
+    const raw = "<p>Before</p><div>i-r-s</div><p>Wrapped sentence</p><div>i-r-s-e</div><p>After</p>";
+    const html = convertAdvanced(raw);
+    expect(html).toContain("Before");
+    expect(html).toContain("Wrapped sentence");
+    expect(html).toContain("After");
+    expect(html).toContain("float:right");
+    expect(html).toContain(`src="${tokens.placeholderImageSrc}"`);
+    expect(html).not.toContain("i-r-s");
+  });
+
+  it("wraps the selected paragraph with a left-floated placeholder image", () => {
+    const raw = "<div>i-l-s</div><p>Wrapped sentence</p><div>i-l-s-e</div>";
+    const html = convertAdvanced(raw);
+    expect(html).toContain("Wrapped sentence");
+    expect(html).toContain("float:left");
+    expect(html).not.toContain("i-l-s");
+  });
+
+  it("wraps multiple paragraphs of plain body text in one flowing block", () => {
+    const raw = "<div>i-r-s</div><p>Line one.</p><p>Line two.</p><div>i-r-s-e</div>";
+    const html = convertAdvanced(raw);
+    expect(html).toContain("Line one.");
+    expect(html).toContain("Line two.");
+    expect(html).toContain("float:right");
+  });
+
+  it("an unclosed marker is stripped and produces a warning, no vanished content", () => {
+    const raw = "<p>Before</p><div>i-r-s</div><p>After</p>";
+    const { html, warnings } = convertAdvancedDetailed(raw);
+    expect(html).toContain("Before");
+    expect(html).toContain("After");
+    expect(html).not.toContain("float:");
+    expect(warnings.some(w => w.includes("i-r-s"))).toBe(true);
+  });
+
+  it("a headline mixed into the wrap is never dropped, and warns instead of mis-rendering", () => {
+    const raw = '<div>i-r-s</div><h1>Big Title</h1><p>Body text</p><div>i-r-s-e</div>';
+    const { html, warnings } = convertAdvancedDetailed(raw);
+    expect(html).toContain("Big Title");
+    expect(html).toContain("Body text");
+    expect(warnings.some(w => w.includes("i-r-s"))).toBe(true);
+  });
+
+  it("clean single-paragraph wrap produces no warnings", () => {
+    const raw = "<div>i-r-s</div><p>Wrapped sentence</p><div>i-r-s-e</div>";
+    const { warnings } = convertAdvancedDetailed(raw);
+    expect(warnings).toEqual([]);
   });
 });
 

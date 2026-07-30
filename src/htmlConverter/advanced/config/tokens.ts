@@ -114,6 +114,14 @@ export interface Tokens {
      * 2×sidePadding=558, so it must come from its own token, not a formula).
      */
     placeholderImageWidth: number;
+    /**
+     * Fixed size for the `i-r-s`/`i-l-s` floated side image — matches the Simple
+     * converter's hardcoded rightSideImg/leftSideImg width="250" height="224",
+     * confirmed identical (not per-provider) across templates.ts, ttt/templates.ts
+     * and alphaone/templates.ts, unlike placeholderImageWidth above.
+     */
+    sideImageWidthPx: number;
+    sideImageHeightPx: number;
   };
   button: {
     radius: number;
@@ -213,6 +221,8 @@ export const tokens: Tokens = {
     listIndentPx: 20,   // <ul>/<ol> left indent (matches quotePadX)
     progressBarPadTopPx: 24,   // vertical fill height for a text-less progressBar cell
     placeholderImageWidth: 560,   // matches Simple converter's default wrapImg width="560"
+    sideImageWidthPx: 250,   // matches Simple converter's rightSideImg/leftSideImg width="250"
+    sideImageHeightPx: 224,   // matches Simple converter's rightSideImg/leftSideImg height="224"
   },
   button: { radius: 10, height: 51, padding: "3px 5px", innerPadding: "9px 15px", target: "_blank", textDecoration: "none" },
   tags: { bold: "b", headlineWrap: "strong", italic: "em", underline: "u", colorWrap: "span", blockWrap: "span" },

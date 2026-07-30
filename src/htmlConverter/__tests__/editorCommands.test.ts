@@ -182,4 +182,37 @@ describe("wrapSelectionWithMarkers", () => {
 
     expect(editor.innerHTML).toBe("<p>content</p>");
   });
+
+  it("обгортає лише вибраний параграф, а не весь docs-internal-guid wrapper (реальна вставка з Google Docs)", () => {
+    // Google Docs завжди огортає вставлений контент у <b id="docs-internal-guid-...">,
+    // тому параграфи — НЕ прямі діти editorEl. Підтверджено в реальному Chromium
+    // (playwright-core, headless): без фіксу ця обгортка (а не обраний <p>) резолвиться
+    // як "topLevelBlock", і маркери охоплюють увесь вставлений блок цілком.
+    const editor = createEditor(
+      '<b id="docs-internal-guid-abc" style="font-weight:normal;">' +
+        "<p>First paragraph.</p>" +
+        "<p>Second paragraph, this is the target.</p>" +
+        "<p>Third paragraph.</p>" +
+        "</b>"
+    );
+    const secondP = editor.querySelectorAll("p")[1];
+    selectNodeContents(secondP.firstChild!);
+
+    wrapSelectionWithMarkers(editor, "i-r-s", "i-r-s-e");
+
+    const wrapper = editor.querySelector("b")!;
+    expect(wrapper.innerHTML).toBe(
+      "<p>First paragraph.</p><div>i-r-s</div><p>Second paragraph, this is the target.</p><div>i-r-s-e</div><p>Third paragraph.</p>"
+    );
+  });
+
+  it("не кидає виняток, коли обраний блок вкладений глибше (не прямий нащадок editorEl)", () => {
+    const editor = createEditor('<div class="wrap"><div class="inner"><p>deep text</p></div></div>');
+    selectNodeContents(editor.querySelector("p")!.firstChild!);
+
+    expect(() => wrapSelectionWithMarkers(editor, "ftr-s", "ftr-e")).not.toThrow();
+
+    const inner = editor.querySelector(".inner")!;
+    expect(inner.innerHTML).toBe("<div>ftr-s</div><p>deep text</p><div>ftr-e</div>");
+  });
 });

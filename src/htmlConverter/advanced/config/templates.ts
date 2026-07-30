@@ -159,6 +159,16 @@ export interface ImageOpts {
   tightAfter?: boolean;
 }
 
+export interface SideImageOpts {
+  side: "left" | "right";
+  /** The wrapped content's own alignment (only meaningful for the flowing-text
+   *  path — see render/toEmailHtml.ts's "sideImage" case); "left" when absent. */
+  align?: Align;
+  /** § next to the wrap — zero the corresponding padding (see SideImageProps). */
+  tightBefore?: boolean;
+  tightAfter?: boolean;
+}
+
 export interface SplitRowOpts {
   leftHtml: string;
   rightHtml: string;
@@ -847,6 +857,31 @@ ${indentHtml(cellsHtml, 8)}
 
     image(opts: ImageOpts): string {
       return imageRowHtml(opts, tok);
+    },
+
+    // i-r-s/i-l-s marker (markers.ts) — a floated placeholder image (fixed size,
+    // matching the Simple converter's rightSideImg/leftSideImg) with the wrapped
+    // text flowing around it in the SAME <td>, which is what makes the float
+    // actually wrap the text instead of just sitting above/below it.
+    sideImage(innerHtml: string, opts: SideImageOpts): string {
+      const { side, align = "left", tightBefore, tightAfter } = opts;
+      const padTop = tightBefore ? 0 : pad();
+      const padBottom = tightAfter ? 0 : pad();
+      const style = baseStyle({ align }, tok);
+      const w = tok.layout.sideImageWidthPx;
+      const h = tok.layout.sideImageHeightPx;
+      const marginSide = side === "right" ? "margin-left" : "margin-right";
+      return `<tr>
+  <td align="left" style="padding-top:${padTop}px;padding-bottom:${padBottom}px;">
+    <a align="${side}" href="${tok.placeholderHref}" target="${tok.button.target}" style="display:inline-block;float:${side};width:50%;max-width:50%;${marginSide}:18px;margin-bottom:12px;">
+      <img alt="${escapeHtml(tok.placeholderImageAlt)}" height="${h}" align="${side}" src="${escapeHtml(tok.placeholderImageSrc)}" width="${w}"
+        style="border:0;display:inline-block;outline:none;text-decoration:none;height:auto;max-height:${h}px;max-width:100%;width:100%;font-size:13px;object-fit:contain;"/>
+    </a>
+    <${tok.tags.blockWrap} style="${style}">
+${indentHtml(innerHtml, 6)}
+    </${tok.tags.blockWrap}>
+  </td>
+</tr>`;
     },
 
     recordRow(opts: RecordOpts): string {

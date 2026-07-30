@@ -1,6 +1,7 @@
 const express = require("express");
 const multer = require("multer");
 const sharp = require("sharp");
+const { isPrivateOrLocalHost } = require("../utils/ssrfGuard");
 
 const router = express.Router();
 
@@ -307,6 +308,11 @@ router.post("/convert-from-url", async (req, res) => {
       }
     } catch {
       return res.status(400).json({ error: "invalid url" });
+    }
+
+    // Block requests to localhost/private IPs to prevent SSRF
+    if (isPrivateOrLocalHost(parsed.hostname.toLowerCase())) {
+      return res.status(403).json({ error: "Private/internal URLs are not allowed" });
     }
 
     const referer = `${parsed.origin}/`;

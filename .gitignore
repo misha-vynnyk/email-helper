@@ -61,6 +61,9 @@ server/ollama-settings.json
 idea/
 figma-to-html/
 
+# Figma import reference material (design refs, planning docs) — local scratch, not project source
+figma-to-html/
+
 # Personal Claude Code memory-compiler tool + its captured conversation logs
 # (own nested git repo, not project source — see AGENTS.md inside it)
 claude-memory-compiler/

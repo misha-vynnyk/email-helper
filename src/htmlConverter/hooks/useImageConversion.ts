@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useRef,useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useDebounce } from "@/hooks/useDebounce";
 
 import { getApiBase, isApiAvailable } from "../../config/api";
-import { IMAGE_DEFAULTS,STORAGE_KEYS } from "../constants";
-import type { ImageFormat, ImageSettings,ProcessedImage } from "../types";
+import { IMAGE_DEFAULTS, STORAGE_KEYS } from "../constants";
+import type { ImageFormat, ImageSettings, ProcessedImage } from "../types";
 import { detectTransparency, getImageFormat, isCrossOrigin, isSignatureImageAlt } from "../utils/imageUtils";
 
 export interface UseImageConversionProps {
@@ -278,12 +278,12 @@ export function useImageConversion({ editorRef, onLog, onVisibilityChange, autoP
           prev.map((img) =>
             img.id === id
               ? {
-                  ...img,
-                  status: "done" as const,
-                  convertedBlob: result.blob,
-                  convertedSize: result.blob.size,
-                  originalSize,
-                }
+                ...img,
+                status: "done" as const,
+                convertedBlob: result.blob,
+                convertedSize: result.blob.size,
+                originalSize,
+              }
               : img
           )
         );
@@ -293,10 +293,10 @@ export function useImageConversion({ editorRef, onLog, onVisibilityChange, autoP
           prev.map((img) =>
             img.id === id
               ? {
-                  ...img,
-                  status: "error" as const,
-                  error: error instanceof Error ? error.message : "Error",
-                }
+                ...img,
+                status: "error" as const,
+                error: error instanceof Error ? error.message : "Error",
+              }
               : img
           )
         );
@@ -380,7 +380,7 @@ export function useImageConversion({ editorRef, onLog, onVisibilityChange, autoP
         const img = eligible[i];
         const src = img.src;
         const id = `${Date.now()}-${i}`;
-        const name = `image-${i + 1}`;
+        const name = `img-${i + 1}`;
         const hasTransparency = await detectTransparency(src);
         newImages.push({
           id,
