@@ -1,5 +1,6 @@
 import { Download, Trash2 } from "lucide-react";
-import { useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 
 import { CheatsheetPanel } from "./components/CheatsheetPanel";
@@ -46,6 +47,36 @@ export default function HtmlConverterPanel() {
   // the shorter column to match the taller one — so the two arrangements are built as
   // distinct JSX trees below and switched on viewport width instead.
   const isDesktop = useIsDesktop(1024);
+
+  // The two layout trees are structurally different (see `key` comment below), so the
+  // editor's actual slot in the DOM tree changes across the isDesktop flip. contentEditable
+  // is uncontrolled — its live content and the listeners useEditorSync/useEditorHotkeys/etc.
+  // attached once at mount only survive as long as the underlying DOM node does.
+  //
+  // editorCard is portaled into `editorContainer`, a bare DOM node created once via the
+  // useState initializer (so it exists synchronously on the very first render — unlike a
+  // ref populated from a slot's mount callback, which would need an extra commit before
+  // becoming non-null, missing the once-on-mount effects above). React only tracks what's
+  // *inside* a portal container, never the container's own position, so a layout effect is
+  // free to physically move `editorContainer` between slot divs with plain appendChild
+  // whenever isDesktop flips. Moving it directly (without the portal) corrupted React's own
+  // reconciliation instead — it still owned that DOM position and threw on the next update
+  // ("insertBefore ... is not a child of this node") because we'd yanked the node out from
+  // under it. The portal keeps editorCard's real DOM node (content, focus, listeners) alive
+  // and correctly tracked no matter which slot it currently lives in.
+  const [editorContainer] = useState(() => {
+    const el = document.createElement("div");
+    el.style.display = "contents";
+    return el;
+  });
+  const editorSlotRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const slot = editorSlotRef.current;
+    if (slot && editorContainer.parentElement !== slot) {
+      slot.appendChild(editorContainer);
+    }
+  }, [isDesktop, editorContainer]);
 
   const editorCard = (
     <div className='bg-card flex flex-col rounded-[2rem] p-5 md:p-8 shadow-soft hover:shadow-lg border border-border/50 hover:border-border transition-all duration-300 group'>
@@ -138,12 +169,33 @@ export default function HtmlConverterPanel() {
           <Header ui={ui} setUi={setUi} imageAnalysis={imageAnalysis} setImageAnalysis={setImageAnalysis} autoProcess={state.autoProcess} setAutoProcess={actions.setAutoProcess} aiBackendStatus={aiBackendStatus} unseenLogCount={state.unseenLogCount} uploadMode={state.uploadMode} setUploadMode={actions.setUploadMode} browserDetectionStatus={state.browserDetectionStatus} />
         </div>
 
-        {/* MAIN LAYOUT */}
+        {/* MAIN LAYOUT
+            `key` on each branch's root forces React to unmount/remount across the
+            isDesktop flip instead of reconciling by position. Without it, both
+            branches are plain <div>s at the same tree slot: React sees the same
+            element TYPE and diffs children index-by-index rather than swapping
+            trees, even though the desktop tree has an extra col-span-7 wrapper
+            the mobile tree doesn't. That off-by-one nesting splices the editor's
+            live contentEditable DOM (uncontrolled, so React never re-renders it)
+            onto whatever div lines up positionally in the other tree — observed
+            as pasted content reappearing inside the header's button row with the
+            buttons themselves gone.
+
+            editorCard is exempted via the portal below, but everything else under
+            these roots (cheatsheet, fileNamingBar, diagnostics, imageProcessorBox,
+            exportPanel) still fully remounts on every isDesktop flip — e.g. resizing
+            the window across the 1024px breakpoint, not just switching devices. That
+            resets their local UI state: ExportPanel's html/mjml tab, DiagnosticsPanel's
+            logs/raw tab, CheatsheetPanel's expanded state, ImageProcessor's upload
+            dialog and snackbar. Accepted trade-off — the two trees are genuinely
+            different shapes (nested columns vs. a flat list, different ordering), so
+            without the key React would reconcile these components against each other
+            positionally instead of remounting cleanly, which is worse. */}
         {isDesktop ? (
-          <div className='grid grid-cols-12 gap-6 items-start'>
+          <div key='desktop-layout' className='grid grid-cols-12 gap-6 items-start'>
             {/* LEFT COLUMN (7 cols) */}
             <div className='col-span-7 flex flex-col gap-6'>
-              {editorCard}
+              <div ref={editorSlotRef} />
               {cheatsheet}
               {fileNamingBar}
               {diagnostics}
@@ -157,8 +209,8 @@ export default function HtmlConverterPanel() {
         ) : (
           // Mobile order: editor first, then the result (what the user came for),
           // then the service controls that configure it.
-          <div className='flex flex-col gap-6'>
-            {editorCard}
+          <div key='mobile-layout' className='flex flex-col gap-6'>
+            <div ref={editorSlotRef} />
             {imageProcessorBox}
             {exportPanel}
             {cheatsheet}
@@ -166,6 +218,10 @@ export default function HtmlConverterPanel() {
             {diagnostics}
           </div>
         )}
+
+        {/* Portaled into editorContainer, which the layout effect above keeps physically
+            parented under whichever slot div is currently active — see comment above. */}
+        {createPortal(editorCard, editorContainer)}
 
         {/* UPLOAD HISTORY */}
         {ui.showUploadHistory && (

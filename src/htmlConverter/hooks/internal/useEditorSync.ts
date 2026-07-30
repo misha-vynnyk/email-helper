@@ -91,10 +91,14 @@ export function useEditorSync({
             }
 
             if (!inserted) {
-              // Fallback to manual range insertion
+              // Fallback to manual range insertion. window.getSelection() is
+              // document-wide, not scoped to this editor — if the caret isn't
+              // actually inside editorEl (stale/cleared selection, focus
+              // elsewhere), inserting at it would drop pasted content into
+              // whatever unrelated element the selection points at instead.
               const selection = window.getSelection();
-              if (selection && selection.rangeCount > 0) {
-                const range = selection.getRangeAt(0);
+              const range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+              if (selection && range && editorEl.contains(range.commonAncestorContainer)) {
                 range.deleteContents();
                 const fragment = range.createContextualFragment(processedHtml);
                 range.insertNode(fragment);
