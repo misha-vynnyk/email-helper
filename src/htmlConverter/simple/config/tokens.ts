@@ -75,6 +75,15 @@ export interface SimpleTokens {
     widthHtml: string;
     /** MJML full-width image table width: default/ttt share a fixed "550" regardless of their differing HTML widths; alphaone instead matches its own HTML width (562). */
     widthMjml: string;
+    /**
+     * `font-size` on the HTML `<img>`'s inline style (fallback-text size if the image
+     * fails to load) — "13px" everywhere except the Red profile's original script,
+     * which hardcodes "12px" here specifically (its signature image and every other
+     * profile's wrapImg still use 13px). A one-character, easy-to-miss divergence —
+     * kept as its own token rather than folded into an assumed-shared constant,
+     * since profiles exist precisely to capture the source's exact values.
+     */
+    fontSizeHtml: string;
   };
 
   fullStructure: {
@@ -163,7 +172,7 @@ export const tokens: SimpleTokens = {
   footerPaddingTopHtml: "34px",
   footerPaddingBottomHtml: "14px",
   signature: { className: "img-bg-block", widthHtml: "200", widthMjml: "180", maxWidthHtml: "100%" },
-  wrapImg: { className: "img-bg-block", widthHtml: "560", widthMjml: "550" },
+  wrapImg: { className: "img-bg-block", widthHtml: "560", widthMjml: "550", fontSizeHtml: "13px" },
   fullStructure: {
     tableClassName: "primary-table-limit content-table",
     contentClassName: "content-vertical-space",

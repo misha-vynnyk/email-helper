@@ -136,6 +136,12 @@ describe("red profile", () => {
     expect(tokens.button.radius).toBe("10px");
   });
 
+  it("has a distinct wrapImg.fontSizeHtml (12px vs the shared 13px default)", () => {
+    const merged = mergeSimpleTokens(tokens, redProfile);
+    expect(merged.wrapImg.fontSizeHtml).toBe("12px");
+    expect(tokens.wrapImg.fontSizeHtml).toBe("13px");
+  });
+
   it("has dedicated spacer rows in fullStructure (like default/ttt, unlike alphaone)", () => {
     const merged = mergeSimpleTokens(tokens, redProfile);
     expect(merged.fullStructure.spacer.hasRows).toBe(true);

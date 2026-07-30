@@ -81,6 +81,7 @@ describe("buildSimpleTemplates — token substitution per key", () => {
 
       const tttHtml = tttTemplates.htmlTemplates.signatureImg("");
       expect(tttHtml).toContain('width="220"');
+      expect(tttHtml).toContain('class="image-block"');
       const tttMjml = tttTemplates.mjmlTemplates.signatureImg("");
       expect(tttMjml).toContain('width="220"');
 
@@ -99,7 +100,9 @@ describe("buildSimpleTemplates — token substitution per key", () => {
   describe("wrapImg", () => {
     it("HTML uses wrapImg.widthHtml/className per profile; MJML width is shared (550) for default/ttt but AlfaOne matches its own HTML width (562)", () => {
       expect(defaultTemplates.htmlTemplates.wrapImg("")).toContain('width="560"');
-      expect(tttTemplates.htmlTemplates.wrapImg("")).toContain('width="400"');
+      const tttHtml = tttTemplates.htmlTemplates.wrapImg("");
+      expect(tttHtml).toContain('width="400"');
+      expect(tttHtml).toContain('class="image-block"');
       const alphaoneHtml = alphaoneTemplates.htmlTemplates.wrapImg("");
       expect(alphaoneHtml).toContain('width="562"');
       expect(alphaoneHtml).toContain('class="image-full-wrapper"');
@@ -107,6 +110,18 @@ describe("buildSimpleTemplates — token substitution per key", () => {
       expect(defaultTemplates.mjmlTemplates.wrapImg("")).toContain('width="550"');
       expect(tttTemplates.mjmlTemplates.wrapImg("")).toContain('width="550"');
       expect(alphaoneTemplates.mjmlTemplates.wrapImg("")).toContain('width="562"');
+    });
+
+    it("HTML font-size: 13px everywhere except Red, whose original script hardcodes 12px here specifically", () => {
+      expect(defaultTemplates.htmlTemplates.wrapImg("")).toContain("font-size:13px;");
+      expect(tttTemplates.htmlTemplates.wrapImg("")).toContain("font-size:13px;");
+      expect(alphaoneTemplates.htmlTemplates.wrapImg("")).toContain("font-size:13px;");
+      const redHtml = redTemplates.htmlTemplates.wrapImg("");
+      expect(redHtml).toContain("font-size:12px;");
+      expect(redHtml).toContain('class="full-img-block"');
+      expect(redHtml).toContain('width="564"');
+      // Red's own signatureImg still uses 13px — the 12px quirk is wrapImg-only.
+      expect(redTemplates.htmlTemplates.signatureImg("")).toContain("font-size:13px;");
     });
   });
 
