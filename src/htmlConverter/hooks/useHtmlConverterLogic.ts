@@ -9,10 +9,20 @@ import { useUploadHistory } from "./internal/useUploadHistory";
 import { useBrowserDetection } from "./useBrowserDetection";
 import { useHtmlConverterSettings } from "./useHtmlConverterSettings";
 
-export type StorageProfile = "default" | "alphaone" | "ttt";
+export type StorageProfile = "default" | "alphaone" | "ttt" | "red";
 export type ExportType = "html" | "mjml" | "both";
 export type UploadMode = "playwright" | "electron";
 export type ConverterMode = "simple" | "advanced";
+
+/**
+ * Only "default" generates MJML — ttt/alphaone/red are all HTML-only, per an
+ * explicit product decision (not a technical limitation: ttt/alphaone's MJML
+ * output was verified working before this restriction was requested). New
+ * profiles default to HTML-only unless added here.
+ */
+export function supportsMjml(profile: StorageProfile): boolean {
+  return profile === "default";
+}
 
 interface UseHtmlConverterLogicProps {
   editorRef: React.RefObject<HTMLDivElement>;
@@ -42,7 +52,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
   const [storageProfile, setStorageProfile] = useState<StorageProfile>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.STORAGE_PROFILE);
-      if (stored === "alphaone" || stored === "ttt" || stored === "default") {
+      if (stored === "alphaone" || stored === "ttt" || stored === "default" || stored === "red") {
         return stored as StorageProfile;
       }
     } catch {
@@ -81,6 +91,13 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
   // Persist settings when they change
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.STORAGE_PROFILE, storageProfile);
+  }, [storageProfile]);
+
+  // HTML-only profiles (everything except "default") must not leave exportType
+  // on "both"/"mjml" — otherwise "Do Everything" still fires a second download
+  // for a file handleExportMJML deliberately left empty/stale for this profile.
+  useEffect(() => {
+    if (!supportsMjml(storageProfile)) setExportType("html");
   }, [storageProfile]);
 
   useEffect(() => {

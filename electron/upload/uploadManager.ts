@@ -84,9 +84,16 @@ function networkErrorMessage(code: number, desc: string): string {
   }
 }
 
+// Storage console UI markers — kept in one place since both the Electron path
+// here and automation/scripts/lib/storage.js (Playwright path) target the same
+// frontend and need to stay in sync if it changes again.
+const UPLOAD_BUTTON_SELECTOR = "button:has(svg.lucide-cloud-upload)";
+const DIALOG_SELECTOR = '[role="dialog"]';
+const DROPZONE_TEXT = "Drag & Drop files here or click to select";
+
 // Wraps loadURL with a hard timeout and handles network-level errors.
-// ERR_ABORTED (-3) is treated as success because MinIO Console SPA
-// may fire did-fail-load for the original URL when doing a JS/meta redirect.
+// ERR_ABORTED (-3) is treated as success because the storage console is an SPA
+// that may fire did-fail-load for the original URL when doing a client-side redirect.
 function loadUrlWithTimeout(
   win: BrowserWindow,
   url: string,
@@ -116,14 +123,16 @@ function loadUrlWithTimeout(
   });
 }
 
-// Polls for a CSS selector up to timeoutMs. Respects isCancelled flag
-// and gracefully handles the case where the window was closed mid-poll.
-function waitForSelector(
+// Polls a JS expression evaluated in the page up to timeoutMs, resolving with
+// its first truthy value. Respects isCancelled and gracefully handles the case
+// where the window was closed or navigated away mid-poll.
+function waitForCondition(
   win: BrowserWindow,
-  selector: string,
+  jsExpression: string,
   timeoutMs: number,
-  isCancelled: () => boolean
-): Promise<void> {
+  isCancelled: () => boolean,
+  timeoutMessage: string
+): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const deadline = Date.now() + timeoutMs;
     const interval = setInterval(async () => {
@@ -133,15 +142,13 @@ function waitForSelector(
         return;
       }
       try {
-        const found = await win.webContents.executeJavaScript(
-          `!!document.querySelector(${JSON.stringify(selector)})`
-        );
-        if (found) {
+        const value = await win.webContents.executeJavaScript(jsExpression);
+        if (value) {
           clearInterval(interval);
-          resolve();
+          resolve(value);
         } else if (Date.now() > deadline) {
           clearInterval(interval);
-          reject(new Error(`Елемент "${selector}" не з'явився за ${timeoutMs / 1000}s`));
+          reject(new Error(timeoutMessage));
         }
       } catch {
         // executeJavaScript can throw during page navigation (not just on window close).
@@ -153,6 +160,43 @@ function waitForSelector(
       }
     }, 500);
   });
+}
+
+// Polls for a CSS selector up to timeoutMs.
+function waitForSelector(
+  win: BrowserWindow,
+  selector: string,
+  timeoutMs: number,
+  isCancelled: () => boolean
+): Promise<void> {
+  return waitForCondition(
+    win,
+    `!!document.querySelector(${JSON.stringify(selector)})`,
+    timeoutMs,
+    isCancelled,
+    `Елемент "${selector}" не з'явився за ${timeoutMs / 1000}s`
+  ) as Promise<void>;
+}
+
+// Races the storage toolbar becoming ready against the app full-navigating to
+// its /login route (unauthenticated session) — mirrors the same race in
+// automation/scripts/lib/storage.js's waitForStorageReady.
+function waitForReadyOrLogin(
+  win: BrowserWindow,
+  timeoutMs: number,
+  isCancelled: () => boolean
+): Promise<"ready" | "login"> {
+  return waitForCondition(
+    win,
+    `(() => {
+      if (location.pathname.startsWith("/login")) return "login";
+      if (document.querySelector(${JSON.stringify(UPLOAD_BUTTON_SELECTOR)})) return "ready";
+      return null;
+    })()`,
+    timeoutMs,
+    isCancelled,
+    `UI сховища не завантажилось за ${timeoutMs / 1000}s`
+  ) as Promise<"ready" | "login">;
 }
 
 // Resolves after ms or immediately if window is closed (avoids hanging sleeps).
@@ -253,7 +297,7 @@ export async function uploadFile(
 
     const folderPath  = [consoleRoot, effectiveCat, formattedName].filter(Boolean).join("/");
     const consoleHost = (storageConfig as Record<string, string>).consoleUrl ?? "http://localhost:9001";
-    const targetUrl   = `${consoleHost}/browser/${bucket}/${encodeURIComponent(folderPath)}%2F`;
+    const targetUrl   = `${consoleHost}/bucket/${bucket}/${folderPath}`;
 
     if (!reuseWindow) {
       // ── Step 1: Initial page load ───────────────────────────────────────
@@ -267,30 +311,44 @@ export async function uploadFile(
 
       if (isCancelled()) return cancelResult();
 
-      // ── Step 2: Wait for upload UI (allows login) ───────────────────────
-      // Always wait for #upload-main with a generous timeout so the user has
-      // time to log in if needed. On subsequent uploads this is skipped.
-      uploadWindow.setTitle("Storage — якщо потрібно, увійдіть (вікно закриється автоматично)");
+      // ── Step 2: Ready vs. login-required — the app full-navigates to its
+      // own /login route when unauthenticated (no in-page login button) ───
+      uploadWindow.setTitle("Storage — перевірка стану...");
+      let state: "ready" | "login";
       try {
-        await waitForSelector(uploadWindow, "#upload-main", loginTimeoutMs, isCancelled);
+        state = await waitForReadyOrLogin(uploadWindow, bootstrapWaitMs, isCancelled);
       } catch (err) {
-        if (isCancelError(err)) return cancelResult("Upload скасовано — вікно закрито під час авторизації");
-        return { success: false, error: "Timeout (10 хв) — кнопка завантаження не з'явилась. Перевірте, чи вдалось увійти у сховище" };
+        if (isCancelError(err)) return cancelResult();
+        return { success: false, error: `Timeout (${Math.round(bootstrapWaitMs / 1000)}s) — UI сховища не завантажилось. Перевірте VPN/доступність сервера.` };
       }
-
       if (isCancelled()) return cancelResult();
 
-      // After login MinIO may redirect to /browser root — re-navigate to target folder
-      const currentUrl: string = await uploadWindow.webContents.executeJavaScript(`window.location.href`).catch(() => "");
-      if (!currentUrl.includes(bucket)) {
-        uploadWindow.setTitle("Storage — навігація до папки...");
+      if (state === "login") {
+        // Login is always done manually (SSO opens its own window) — just wait
+        // for the toolbar to reappear, with a generous timeout.
+        uploadWindow.setTitle("Storage — якщо потрібно, увійдіть (вікно закриється автоматично)");
         try {
-          await loadUrlWithTimeout(uploadWindow, targetUrl, 30_000, isCancelled);
-          await sleep(uploadWindow, 2_000);
-        } catch {
-          // Non-fatal: React Router may have already navigated client-side
+          await waitForSelector(uploadWindow, UPLOAD_BUTTON_SELECTOR, loginTimeoutMs, isCancelled);
+        } catch (err) {
+          if (isCancelError(err)) return cancelResult("Upload скасовано — вікно закрито під час авторизації");
+          return { success: false, error: "Timeout (10 хв) — кнопка завантаження не з'явилась. Перевірте, чи вдалось увійти у сховище" };
         }
+
         if (isCancelled()) return cancelResult();
+
+        // The app's callbackUrl should return us to the target folder automatically —
+        // re-navigate defensively in case it landed somewhere else instead.
+        const afterLoginUrl: string = await uploadWindow.webContents.executeJavaScript(`window.location.href`).catch(() => "");
+        if (!afterLoginUrl.includes(bucket)) {
+          uploadWindow.setTitle("Storage — навігація до папки...");
+          try {
+            await loadUrlWithTimeout(uploadWindow, targetUrl, 30_000, isCancelled);
+            await sleep(uploadWindow, 2_000);
+          } catch {
+            // Non-fatal: the app may already have client-side routed there
+          }
+          if (isCancelled()) return cancelResult();
+        }
       }
 
     } else {
@@ -310,20 +368,25 @@ export async function uploadFile(
       }
 
       // Verify we're still authenticated (session could have expired)
-      const uploadReady: boolean = await uploadWindow.webContents.executeJavaScript(
-        `!!document.querySelector('#upload-main')`
-      ).catch(() => false);
-
-      if (!uploadReady) {
-        try {
-          await waitForSelector(uploadWindow, "#upload-main", bootstrapWaitMs, isCancelled);
-        } catch (err) {
-          if (isCancelError(err)) return cancelResult();
-          return { success: false, error: "Сесія сховища закінчилась — спробуйте ще раз (відкриється вікно входу)" };
-        }
+      let state: "ready" | "login";
+      try {
+        state = await waitForReadyOrLogin(uploadWindow, bootstrapWaitMs, isCancelled);
+      } catch (err) {
+        if (isCancelError(err)) return cancelResult();
+        return { success: false, error: "Сесія сховища закінчилась — спробуйте ще раз (відкриється вікно входу)" };
       }
-
       if (isCancelled()) return cancelResult();
+
+      if (state === "login") {
+        uploadWindow.setTitle("Storage — сесія закінчилась, увійдіть вручну (вікно закриється автоматично)");
+        try {
+          await waitForSelector(uploadWindow, UPLOAD_BUTTON_SELECTOR, loginTimeoutMs, isCancelled);
+        } catch (err) {
+          if (isCancelError(err)) return cancelResult("Upload скасовано — вікно закрито під час авторизації");
+          return { success: false, error: "Timeout (10 хв) — кнопка завантаження не з'явилась. Перевірте, чи вдалось увійти у сховище" };
+        }
+        if (isCancelled()) return cancelResult();
+      }
     }
 
     // ── Step 3: Duplicate check ─────────────────────────────────────────────
@@ -331,7 +394,7 @@ export async function uploadFile(
     const filename = path.basename(req.tempPath);
 
     const fileExists: boolean = await uploadWindow.webContents.executeJavaScript(
-      `Array.from(document.querySelectorAll('.fileNameText')).some(el => el.textContent.trim() === ${JSON.stringify(filename)})`
+      `Array.from(document.querySelectorAll('tr[data-slot="table-row"] span.truncate')).some(el => el.textContent.trim() === ${JSON.stringify(filename)})`
     ).catch(() => false);
 
     if (fileExists) {
@@ -345,7 +408,7 @@ export async function uploadFile(
 
     // ── Steps 4-6: Upload with retry ───────────────────────────────────────
     const checkInListing = () => uploadWindow.webContents.executeJavaScript(
-      `Array.from(document.querySelectorAll('.fileNameText')).some(el => el.textContent.trim() === ${JSON.stringify(filename)})`
+      `Array.from(document.querySelectorAll('tr[data-slot="table-row"] span.truncate')).some(el => el.textContent.trim() === ${JSON.stringify(filename)})`
     ).catch(() => false) as Promise<boolean>;
 
     let uploaded = false;
@@ -360,21 +423,23 @@ export async function uploadFile(
         if (uploaded) break;
       }
 
-      // ── Step 4: Open upload menu ──────────────────────────────────────────
+      // ── Step 4: Open the upload dialog ────────────────────────────────────
       uploadWindow.setTitle("Storage — завантаження файлу...");
-      await uploadWindow.webContents.executeJavaScript(`document.querySelector('#upload-main').click()`);
+      await uploadWindow.webContents.executeJavaScript(
+        `document.querySelector(${JSON.stringify(UPLOAD_BUTTON_SELECTOR)})?.click()`
+      );
 
       try {
-        await waitForSelector(uploadWindow, 'div[label="Upload File"]', elementWaitMs, isCancelled);
+        await waitForSelector(uploadWindow, DIALOG_SELECTOR, elementWaitMs, isCancelled);
       } catch (err) {
         if (isCancelError(err)) return cancelResult();
-        uploadError = "Меню завантаження не відкрилось — можливо, змінився UI сховища";
+        uploadError = "Діалог завантаження не відкрився — можливо, змінився UI сховища";
         continue attemptLoop;
       }
       if (isCancelled()) return cancelResult();
 
       // ── Step 5: Attach debugger and suppress native file dialog ───────────
-      // Must happen BEFORE clicking "Upload File" so the OS file picker (Finder
+      // Must happen BEFORE clicking the dropzone so the OS file picker (Finder
       // on macOS) never appears. Page.setInterceptFileChooserDialog tells
       // Chromium to suppress the native dialog — identical to what Playwright's
       // page.waitForEvent("filechooser") does internally.
@@ -388,22 +453,30 @@ export async function uploadFile(
         continue attemptLoop;
       }
 
-      await uploadWindow.webContents.executeJavaScript(`document.querySelector('div[label="Upload File"]').click()`);
+      // Click the dropzone inside the dialog — it wraps a hidden <input type="file">.
+      await uploadWindow.webContents.executeJavaScript(`
+        (() => {
+          const dialog = document.querySelector(${JSON.stringify(DIALOG_SELECTOR)});
+          const dropzone = dialog && Array.from(dialog.querySelectorAll("*"))
+            .find((el) => el.children.length === 0 && el.textContent && el.textContent.trim() === ${JSON.stringify(DROPZONE_TEXT)});
+          if (dropzone) dropzone.click();
+        })()
+      `);
 
       try {
-        await waitForSelector(uploadWindow, 'input[type="file"]', elementWaitMs, isCancelled);
+        await waitForSelector(uploadWindow, `${DIALOG_SELECTOR} input[type="file"]`, elementWaitMs, isCancelled);
       } catch (err) {
         if (isCancelError(err)) return cancelResult();
         uploadError = "Поле вибору файлу не з'явилось — можливо, змінився UI сховища";
         continue attemptLoop;
       }
 
-      // ── Step 6: Set file via CDP ───────────────────────────────────────────
+      // ── Step 6: Set file via CDP, then confirm the upload inside the dialog ─
       try {
         const { root } = await dbg.sendCommand("DOM.getDocument");
         const { nodeId } = await dbg.sendCommand("DOM.querySelector", {
           nodeId: root.nodeId,
-          selector: 'input[type="file"]',
+          selector: `${DIALOG_SELECTOR} input[type="file"]`,
         });
         if (!nodeId) {
           uploadError = "Поле вибору файлу не знайдено на сторінці";
@@ -421,6 +494,35 @@ export async function uploadFile(
           debuggerAttached = false;
         } catch {}
       }
+
+      // The dialog shows the picked filename and enables its own confirm "Upload"
+      // button (distinct element from the toolbar button that opened the dialog).
+      try {
+        await waitForCondition(
+          uploadWindow,
+          `(() => {
+            const dialog = document.querySelector(${JSON.stringify(DIALOG_SELECTOR)});
+            const btn = dialog && Array.from(dialog.querySelectorAll("button")).find((b) => b.textContent.trim() === "Upload");
+            return !!(btn && !btn.disabled);
+          })()`,
+          elementWaitMs,
+          isCancelled,
+          "Кнопка підтвердження завантаження не стала активною"
+        );
+      } catch (err) {
+        if (isCancelError(err)) return cancelResult();
+        uploadError = "Кнопка підтвердження завантаження не з'явилась — можливо, файл не обрався";
+        continue attemptLoop;
+      }
+      if (isCancelled()) return cancelResult();
+
+      await uploadWindow.webContents.executeJavaScript(`
+        (() => {
+          const dialog = document.querySelector(${JSON.stringify(DIALOG_SELECTOR)});
+          const btn = dialog && Array.from(dialog.querySelectorAll("button")).find((b) => b.textContent.trim() === "Upload");
+          if (btn) btn.click();
+        })()
+      `);
 
       // ── Step 6: Wait for file to appear in folder listing ─────────────────
       uploadWindow.setTitle("Storage — очікування завершення...");

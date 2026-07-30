@@ -34,7 +34,7 @@ npm run dev:ai
 set BRAVE_EXECUTABLE_PATH=C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe
 ```
 
-Деталі: [AUTOMATION_SETUP_WINDOWS.md](AUTOMATION_SETUP_WINDOWS.md), [automation/README.md](automation/README.md).
+Деталі: [AUTOMATION_SETUP_WINDOWS.md](archive/AUTOMATION_SETUP_WINDOWS.md), [automation/README.md](automation/README.md).
 
 ## Storage Upload (default / alphaone / ttt)
 

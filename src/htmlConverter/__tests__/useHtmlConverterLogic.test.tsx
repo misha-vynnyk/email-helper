@@ -72,6 +72,51 @@ describe("useHtmlConverterLogic", () => {
     expect(result.current.state.storageProfile).toBe("ttt");
   });
 
+  it("forces exportType to \"html\" when switching to a non-default profile (ttt/alphaone/red are HTML-only)", () => {
+    const { result } = renderHook(() => useHtmlConverterLogic(defaultProps));
+
+    act(() => {
+      result.current.actions.setExportType("both");
+    });
+    expect(result.current.state.exportType).toBe("both");
+
+    act(() => {
+      result.current.actions.setStorageProfile("red");
+    });
+    expect(result.current.state.exportType).toBe("html");
+  });
+
+  it("does the same for ttt/alphaone, not just red", () => {
+    const { result } = renderHook(() => useHtmlConverterLogic(defaultProps));
+
+    act(() => {
+      result.current.actions.setExportType("mjml");
+      result.current.actions.setStorageProfile("ttt");
+    });
+    expect(result.current.state.exportType).toBe("html");
+
+    act(() => {
+      result.current.actions.setExportType("both");
+      result.current.actions.setStorageProfile("alphaone");
+    });
+    expect(result.current.state.exportType).toBe("html");
+  });
+
+  it("does NOT force exportType away from \"both\" for the default profile", () => {
+    const { result } = renderHook(() => useHtmlConverterLogic(defaultProps));
+
+    act(() => {
+      result.current.actions.setStorageProfile("ttt");
+    });
+    expect(result.current.state.exportType).toBe("html");
+
+    act(() => {
+      result.current.actions.setExportType("both");
+      result.current.actions.setStorageProfile("default");
+    });
+    expect(result.current.state.exportType).toBe("both");
+  });
+
   it("should log messages when log panel is active", () => {
     const { result } = renderHook(() => useHtmlConverterLogic(defaultProps));
 
