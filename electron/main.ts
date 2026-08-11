@@ -141,7 +141,7 @@ interface WindowState {
   isMaximized?: boolean;
 }
 
-const DEFAULT_WINDOW_STATE: WindowState = { width: 1400, height: 900 };
+const DEFAULT_WINDOW_STATE: WindowState = { width: 1200, height: 800 };
 const WINDOW_STATE_SAVE_DEBOUNCE_MS = 500;
 
 function windowStatePath(): string {
