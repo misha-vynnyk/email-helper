@@ -13,7 +13,7 @@ const HEADING_TAGS: readonly string[] = ["h1", "h4", "h5", "h6"];
  * `input` вручну.
  */
 
-function dispatchInput(editorEl: HTMLElement): void {
+export function dispatchInput(editorEl: HTMLElement): void {
   editorEl.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
@@ -49,15 +49,36 @@ function topLevelBlock(editorEl: HTMLElement, node: Node): Node | null {
   return cur.parentNode === editorEl ? cur : null;
 }
 
+const BLOCK_TAGS = new Set(["P", "DIV", "H1", "H2", "H3", "H4", "H5", "H6", "LI", "UL", "OL", "BLOCKQUOTE", "TABLE", "TR", "TD", "PRE"]);
+
+/**
+ * Найближчий блоковий предок node (P/DIV/заголовки/LI/...), незалежно від глибини
+ * вкладеності. На відміну від topLevelBlock, коректно працює й тоді, коли
+ * параграфи НЕ є прямими дітьми editorEl — типовий випадок реальної вставки
+ * з Google Docs, яка огортає весь вміст у <b id="docs-internal-guid-...">
+ * (те саме, що normalize.ts:156 вирізає для Advanced-конвеєра, але тут — для
+ * живого DOM редактора). Без цього topLevelBlock резолвить у сам wrapper і
+ * маркери охоплюють весь вставлений блок замість одного параграфа.
+ * Фолбек на topLevelBlock — для голого тексту без жодного блокового предка.
+ */
+export function nearestBlock(editorEl: HTMLElement, node: Node): Node | null {
+  let cur: Node | null = node;
+  while (cur && cur !== editorEl) {
+    if (cur.nodeType === Node.ELEMENT_NODE && BLOCK_TAGS.has((cur as Element).tagName)) return cur;
+    cur = cur.parentNode;
+  }
+  return topLevelBlock(editorEl, node);
+}
+
 function fallbackFormatBlock(editorEl: HTMLElement, tag: string): void {
   const sel = window.getSelection();
   if (!sel || !sel.anchorNode || !editorEl.contains(sel.anchorNode)) return;
-  const block = topLevelBlock(editorEl, sel.anchorNode);
+  const block = nearestBlock(editorEl, sel.anchorNode);
   if (!block) return;
 
   const replacement = document.createElement(tag);
   if (block.nodeType === Node.TEXT_NODE) {
-    editorEl.replaceChild(replacement, block);
+    block.parentNode?.replaceChild(replacement, block);
     replacement.appendChild(block);
   } else {
     const el = block as Element;
@@ -111,7 +132,7 @@ export function wrapSelectionWithMarkers(editorEl: HTMLElement, open: string, cl
 
   // Контейнером може бути сам editorEl (triple-click / select all) — тоді блок за offset.
   const resolveBlock = (container: Node, offset: number, isEnd: boolean): Node | null => {
-    if (container !== editorEl) return topLevelBlock(editorEl, container);
+    if (container !== editorEl) return nearestBlock(editorEl, container);
     const children = editorEl.childNodes;
     if (children.length === 0) return null;
     const idx = isEnd ? Math.min(offset, children.length) - 1 : Math.min(offset, children.length - 1);
@@ -120,18 +141,20 @@ export function wrapSelectionWithMarkers(editorEl: HTMLElement, open: string, cl
 
   const startBlock = resolveBlock(range.startContainer, range.startOffset, false);
   const endBlock = resolveBlock(range.endContainer, range.endOffset, true);
-  if (!startBlock || !endBlock) return;
+  if (!startBlock || !endBlock || !startBlock.parentNode || !endBlock.parentNode) return;
 
   const openEl = document.createElement("div");
   openEl.textContent = open;
   const closeEl = document.createElement("div");
   closeEl.textContent = close;
 
-  editorEl.insertBefore(openEl, startBlock);
+  // Вставляємо відносно РЕАЛЬНОГО батька резолвленого блока, не завжди editorEl —
+  // block може бути вкладеним глибше за прямих дітей (див. nearestBlock).
+  startBlock.parentNode.insertBefore(openEl, startBlock);
   if (endBlock.nextSibling) {
-    editorEl.insertBefore(closeEl, endBlock.nextSibling);
+    endBlock.parentNode.insertBefore(closeEl, endBlock.nextSibling);
   } else {
-    editorEl.appendChild(closeEl);
+    endBlock.parentNode.appendChild(closeEl);
   }
   dispatchInput(editorEl);
 }

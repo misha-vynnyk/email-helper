@@ -343,13 +343,13 @@ router.post("/api/storage-upload", async (req, res) => {
           errorMessage = "Upload timeout (5 minutes). Check your internet connection.";
         } else if (stderrText.includes("ERROR:LOGIN_REQUIRED")) {
           statusCode = 401;
-          errorMessage = "Потрібен логін в MinIO Console (Brave профіль для цього provider). Відкрий AlfaOne, залогінься, і повтори upload.";
+          errorMessage = "Потрібен логін у сховищі (Brave профіль для цього provider). Відкрий вкладку, залогінься вручну, і повтори upload.";
         } else if (stderrText.includes("ERROR:LOGIN_TIMEOUT")) {
           statusCode = 408;
           errorMessage = "Timeout: користувач не залогінився вчасно.";
         } else if (stderrText.includes("ERROR:UPLOAD_UI_TIMEOUT")) {
           statusCode = 408;
-          errorMessage = "Timeout: MinIO UI не завантажилось. Перевірте, чи підключено VPN та чи доступний сервер сховища.";
+          errorMessage = "Timeout: UI сховища не завантажилось. Перевірте, чи підключено VPN та чи доступний сервер сховища.";
         } else if (stderrText.includes("ERROR:BROWSER_CLOSED") || stderrText.includes("Target page, context or browser has been closed")) {
           statusCode = 499;
           errorMessage = "Браузер було закрито — завантаження скасовано.";
@@ -364,9 +364,9 @@ router.post("/api/storage-upload", async (req, res) => {
           errorMessage = "Не вдалося підключитись до локального Brave CDP (remote debugging). Перевір, що Brave дозволено запускатись і порт не зайнятий.";
         } else if (stderr && stderr.includes("ENOTFOUND")) {
           errorMessage = "Storage server not found. Check your internet connection.";
-        } else if (stderrText.includes("page.waitForSelector") && stderrText.includes("#upload-main")) {
+        } else if (stderrText.includes("UI detection failed")) {
           statusCode = 401;
-          errorMessage = "MinIO UI не показало Upload (ймовірно потрібен логін або інша сторінка). Відкрий AlfaOne, залогінься, і повтори upload.";
+          errorMessage = "UI сховища не показало кнопку Upload (ймовірно потрібен логін або інша сторінка). Відкрий вкладку, залогінься вручну, і повтори upload.";
         } else if (stderr) {
           errorMessage = `Upload failed: ${stderr.substring(0, 200)}`;
         }

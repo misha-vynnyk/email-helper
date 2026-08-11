@@ -5,6 +5,7 @@
  * with CORS headers. This server-side proxy fetches them without CORS limits.
  */
 const express = require("express");
+const { isPrivateOrLocalHost } = require("../utils/ssrfGuard");
 const router = express.Router();
 
 router.get("/api/image-proxy", async (req, res) => {
@@ -28,7 +29,7 @@ router.get("/api/image-proxy", async (req, res) => {
 
   // Block requests to localhost/private IPs to prevent SSRF
   const hostname = parsedUrl.hostname.toLowerCase();
-  if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "0.0.0.0" || hostname.startsWith("192.168.") || hostname.startsWith("10.") || hostname.startsWith("172.")) {
+  if (isPrivateOrLocalHost(hostname)) {
     return res.status(403).json({ error: "Private/internal URLs are not allowed" });
   }
 

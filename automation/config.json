@@ -22,10 +22,15 @@
       "debugPort": 9224,
       "userDataDir": "{{HOME}}/Library/Application Support/BravePlaywright-TerraTrans",
       "autoCloseTab": false
+    },
+    "red": {
+      "debugPort": 9225,
+      "userDataDir": "{{HOME}}/Library/Application Support/BravePlaywright-Red",
+      "autoCloseTab": false
     }
   },
   "storage": {
-    "baseUrl": "https://storage.epcnetwork.dev",
+    "baseUrl": "https://s3-browser.epcnetwork.dev",
     "publicUrl": "https://storage.5th-elementagency.com",
     "basePath": "Promo"
   },
@@ -69,6 +74,18 @@
       "publicPathPrefix": "files",
       "publicRootPrefix": "creatives",
       "folderPrefix": "creative-"
+    },
+    "red": {
+      "bucket": "redeagle",
+      "usesCategory": false,
+      "consoleRootPrefix": "promo",
+      "loginWaitMs": 600000,
+      "bootstrapWaitMs": 30000,
+      "closeTabAfterBatch": true,
+      "publicBaseUrl": "https://reagstr.com",
+      "publicPathPrefix": "files",
+      "publicRootPrefix": "promo",
+      "folderPrefix": "lift-"
     }
   },
   "ui": {
@@ -85,8 +102,7 @@
     "pageLoad": 10000,
     "elementWait": 5000,
     "uploadRetry": 2000,
-    "interfaceCheck": 200,
-    "interfaceMaxChecks": 10,
+    "uploadDialogClose": 30000,
     "confirmFormMs": 120000
   },
   "retries": {

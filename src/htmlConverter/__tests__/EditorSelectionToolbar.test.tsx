@@ -217,17 +217,30 @@ describe("EditorSelectionToolbar — вставка § та wrapper-маркер
     expect(editor.textContent).toContain("i-r-s-e");
   });
 
-  it("wrapper-кнопки вимкнені в advanced-режимі з підказкою на обгортці", () => {
+  it("i-r/i-l лишаються активними в advanced-режимі (worksInAdvanced: true)", () => {
     render(<Harness converterMode='advanced' />);
     selectFirstParagraphText();
     flush();
 
     const wrapperButton = screen.getByRole("button", { name: "i-r" });
+    expect(wrapperButton).not.toBeDisabled();
+    expect(wrapperButton.parentElement).toHaveAttribute("title", "Фото праворуч");
+
+    fireEvent.click(wrapperButton);
+    expect(screen.getByTestId("editor").textContent).toContain("i-r-s");
+  });
+
+  it("інші wrapper-кнопки (sign/ftr/ftr-c) лишаються вимкненими в advanced-режимі з підказкою на обгортці", () => {
+    render(<Harness converterMode='advanced' />);
+    selectFirstParagraphText();
+    flush();
+
+    const wrapperButton = screen.getByRole("button", { name: "sign" });
     expect(wrapperButton).toBeDisabled();
     expect(wrapperButton.parentElement).toHaveAttribute("title", "Не підтримується в advanced-режимі");
 
     fireEvent.click(wrapperButton);
-    expect(screen.getByTestId("editor").textContent).not.toContain("i-r-s");
+    expect(screen.getByTestId("editor").textContent).not.toContain("sign-i");
   });
 
   it("рендерить усі п'ять wrapper-чіпів реєстру, включно з ftr-c", () => {

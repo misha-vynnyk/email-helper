@@ -112,10 +112,26 @@ export interface TableNode {
   gapBefore?: boolean;
 }
 
+/**
+ * A `i-r-s`…`i-r-s-e` / `i-l-s`…`i-l-s-e` marker pair (see markers.ts) resolved by
+ * preprocess.ts's resolveSideImageMarkers into a `<div data-side-image>` wrapper —
+ * everything the author selected when they wrapped it, floated a placeholder image
+ * beside. `tightBefore` mirrors TableNode.gapBefore's convention of carrying a
+ * pending §/blank-line signal from fromDom's top-level tracking onto the node
+ * itself (this node is pushed as ONE StructuralNode, unlike the generic DIV/
+ * BLOCKQUOTE container branch which flattens its children into the parent list).
+ */
+export interface SideImageWrapNode {
+  type: "sideImageWrap";
+  side: "left" | "right";
+  children: StructuralNode[];
+  tightBefore?: boolean;
+}
+
 /** Collector for non-fatal conversion issues (silently-dropped/flattened content). */
 export type WarnFn = (message: string) => void;
 
-export type StructuralNode = TableNode | RowNode | CellNode | Paragraph | ImageNode;
+export type StructuralNode = TableNode | RowNode | CellNode | Paragraph | ImageNode | SideImageWrapNode;
 
 // ── Stage 2: Semantic IR (classified, renderable) ────────────────────────────
 //
@@ -347,6 +363,15 @@ export interface SpacerProps {
   heightPx?: number;
 }
 
+/** An `i-r-s`/`i-l-s` wrap (see SideImageWrapNode) — a floated placeholder image
+ *  beside the wrapped children. `tightBefore`/`tightAfter` mirror ImageProps'
+ *  §-adjacency convention (see classify.ts's cross-kind tightness rules). */
+export interface SideImageProps {
+  side: "left" | "right";
+  tightBefore?: boolean;
+  tightAfter?: boolean;
+}
+
 /** One colored band inside a bandStack — a single cell's content plus its fill. */
 export interface BandStackRow {
   bg: string;
@@ -384,6 +409,7 @@ export type ComponentNode =
   | { kind: "progressBar"; props: ProgressBarProps }
   | { kind: "image"; props: ImageProps }
   | { kind: "bandStack"; props: BandStackProps }
+  | { kind: "sideImage"; props: SideImageProps; children: ComponentNode[] }
   | { kind: "spacer"; props: SpacerProps };
 
 export type ComponentKind = ComponentNode["kind"];
