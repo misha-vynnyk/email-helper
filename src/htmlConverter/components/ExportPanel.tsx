@@ -43,8 +43,8 @@ export function ExportPanel({
 
   return (
     <div className='bg-card rounded-[2rem] shadow-soft hover:shadow-lg flex flex-col flex-1 min-h-[500px] border border-border/50 hover:border-border transition-all duration-300 group'>
-      <div className='flex items-center justify-between px-6 pt-5'>
-        <div className='flex gap-6'>
+      <div className='flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-6 pt-5'>
+        <div className='flex flex-wrap gap-4 sm:gap-6'>
           {(exportType === "both" || exportType === "html") && (
             <button onClick={() => setRightTab("html")} className={`pb-3 text-sm font-bold border-b-2 transition-all ${rightTab === "html" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground/80 hover:border-border"}`}>
               HTML {t("Output", "Результат")}
@@ -61,7 +61,7 @@ export function ExportPanel({
         </div>
 
         {rightTab !== "preview" && (
-          <div className='flex gap-1.5 pb-3'>
+          <div className='flex gap-1.5 pb-3 ml-auto'>
             <button onClick={rightTab === "html" ? handleExportHTML : handleExportMJML} disabled={isAutoExporting} className='p-2 bg-secondary hover:bg-muted text-foreground rounded-full transition-all hover:scale-105 active:scale-95 shadow-sm hover:shadow group/btn' title='Export'>
               <ArrowRightLeft size={15} strokeWidth={2.5} className='group-hover/btn:text-primary transition-colors' />
             </button>
