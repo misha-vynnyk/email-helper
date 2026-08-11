@@ -752,3 +752,50 @@ describe("fromDom — top-level <br> between paragraphs", () => {
     expect(last.gapBefore).toBeUndefined();
   });
 });
+
+// ── i-r-s/i-l-s side-image marker (post-preprocess shape) ────────────────────
+
+describe("fromDom — data-side-image marker div (resolveSideImageMarkers output)", () => {
+  it("a <div data-side-image=\"right\"> becomes a sideImageWrap node with side=right", () => {
+    const result = nodes('<div data-side-image="right"><p>Hello</p></div>');
+    expect(result).toHaveLength(1);
+    expect(result[0].type).toBe("sideImageWrap");
+    expect((result[0] as { side: string }).side).toBe("right");
+  });
+
+  it("a <div data-side-image=\"left\"> becomes a sideImageWrap node with side=left", () => {
+    const result = nodes('<div data-side-image="left"><p>Hello</p></div>');
+    expect((result[0] as { side: string }).side).toBe("left");
+  });
+
+  it("any other data-side-image value falls back to side=right", () => {
+    const result = nodes('<div data-side-image="bogus"><p>Hello</p></div>');
+    expect((result[0] as { side: string }).side).toBe("right");
+  });
+
+  it("keeps the wrapped children nested inside the wrap, not flattened into the parent list", () => {
+    const result = nodes('<div data-side-image="right"><p>One</p><p>Two</p></div><p>Outside</p>');
+    expect(result).toHaveLength(2);
+    const wrap = result[0] as unknown as { children: Paragraph[] };
+    expect(wrap.children).toHaveLength(2);
+    expect(result[1].type).toBe("p");
+  });
+
+  it("a § right before the marker div sets tightBefore on the wrap node", () => {
+    const result = nodes('<p>one</p><br data-one-br="1"><div data-side-image="right"><p>Hello</p></div>');
+    const wrap = result[result.length - 1] as unknown as { tightBefore?: boolean };
+    expect(wrap.tightBefore).toBe(true);
+  });
+
+  it("a blank line (plain <br>) before the marker div does NOT set tightBefore", () => {
+    const result = nodes('<p>one</p><br /><div data-side-image="right"><p>Hello</p></div>');
+    const wrap = result[result.length - 1] as unknown as { tightBefore?: boolean };
+    expect(wrap.tightBefore).toBeUndefined();
+  });
+
+  it("a plain <div> with no data-side-image attribute is NOT treated as a wrap (flattens as before)", () => {
+    const result = nodes("<div><p>Hello</p></div>");
+    expect(result).toHaveLength(1);
+    expect(result[0].type).toBe("p");
+  });
+});

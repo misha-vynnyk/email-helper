@@ -1,4 +1,4 @@
-import { normalizeSymbols, preprocess,resolveOneBrSymbol } from "../preprocess";
+import { normalizeSymbols, preprocess, resolveOneBrSymbol,resolveSideImageMarkers } from "../preprocess";
 
 // ── resolveOneBrSymbol ────────────────────────────────────────────────────────
 
@@ -51,6 +51,56 @@ describe("normalizeSymbols", () => {
   it("does not encode HTML angle brackets", () => {
     const result = normalizeSymbols("<b>bold</b>");
     expect(result).toBe("<b>bold</b>");
+  });
+});
+
+// ── resolveSideImageMarkers ───────────────────────────────────────────────────
+
+describe("resolveSideImageMarkers", () => {
+  it("wraps content between <div>i-r-s</div>...<div>i-r-s-e</div> into a data-side-image=right div", () => {
+    const result = resolveSideImageMarkers("<div>i-r-s</div><p>Hello</p><div>i-r-s-e</div>");
+    expect(result).toBe('<div data-side-image="right"><p>Hello</p></div>');
+  });
+
+  it("wraps content between <div>i-l-s</div>...<div>i-l-s-e</div> into a data-side-image=left div", () => {
+    const result = resolveSideImageMarkers("<div>i-l-s</div><p>Hello</p><div>i-l-s-e</div>");
+    expect(result).toBe('<div data-side-image="left"><p>Hello</p></div>');
+  });
+
+  it("leaves unrelated content around the pair untouched", () => {
+    const result = resolveSideImageMarkers("<p>Before</p><div>i-r-s</div><p>Inside</p><div>i-r-s-e</div><p>After</p>");
+    expect(result).toBe('<p>Before</p><div data-side-image="right"><p>Inside</p></div><p>After</p>');
+  });
+
+  it("does not confuse i-l-s with i-r-s's close marker", () => {
+    // i-r-s's own regex only pairs with i-r-s-e — an i-l-s-e nearby must not match it.
+    const result = resolveSideImageMarkers("<div>i-r-s</div><p>A</p><div>i-l-s-e</div>");
+    expect(result).not.toContain("data-side-image");
+  });
+
+  it("strips an unclosed opening marker and warns", () => {
+    const warn = jest.fn();
+    const result = resolveSideImageMarkers("<p>Before</p><div>i-r-s</div><p>After</p>", warn);
+    expect(result).toBe("<p>Before</p><p>After</p>");
+    expect(warn).toHaveBeenCalledTimes(1);
+  });
+
+  it("strips an unclosed closing marker and warns", () => {
+    const warn = jest.fn();
+    const result = resolveSideImageMarkers("<p>Before</p><div>i-l-s-e</div><p>After</p>", warn);
+    expect(result).toBe("<p>Before</p><p>After</p>");
+    expect(warn).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not warn when no marker is present", () => {
+    const warn = jest.fn();
+    resolveSideImageMarkers("<p>Nothing special</p>", warn);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("is a no-op without warn callback when markers are unclosed (still strips silently)", () => {
+    const result = resolveSideImageMarkers("<div>i-r-s</div><p>After</p>");
+    expect(result).toBe("<p>After</p>");
   });
 });
 

@@ -99,6 +99,53 @@ const UPLOAD_BUFFER_MS = 60000; // upload attempts + retries + tab close
     resetTimeout(fullTimeoutMs);
     console.log(`⏱️  Effective timeout: ${Math.round(fullTimeoutMs / 1000)}s (login window: ${Math.round(loginWaitMs / 1000)}s)`);
 
+    // === Validate category & folder name, build target URL up front ===
+    // Pure local computation (args + clipboard), no browser needed — doing this
+    // before launching Brave means a fresh launch can open straight at the right
+    // tab instead of a blank one, and bad input fails fast without opening anything.
+    let targetURL = null;
+    let serverFilePath = null;
+    if (!isFinalize) {
+      let serverCategory;
+      if (selectedStorage.usesCategory) {
+        if (!categoryArg || !validCategories.includes(categoryArg.toLowerCase())) {
+          throw new Error(`Category required: (${validCategories.join("|")})`);
+        }
+        serverCategory = categoryArg.toLowerCase();
+      } else {
+        serverCategory = categoryArg ? categoryArg.toLowerCase() : null;
+      }
+
+      let clipboardContent = folderNameArg;
+      if (!clipboardContent && process.platform === "darwin") {
+        clipboardContent = safeExec("pbpaste", false);
+      }
+      if (!clipboardContent) {
+        throw new Error("Folder name required (4th argument or macOS clipboard)");
+      }
+
+      const letters = clipboardContent.replace(/[^a-zA-Z]/g, "").toLowerCase();
+      const digits = clipboardContent.replace(/[^0-9]/g, "");
+      if (!letters || !digits || letters.length > 20 || digits.length > 20) {
+        throw new Error(`Invalid folder name: "${clipboardContent}"\n` + `Expected "ABCD123" or "Finance-456". Letters: "${letters || "(none)"}", Digits: "${digits || "(none)"}"`);
+      }
+
+      if (selectedStorage.usesCategory) console.log(`📂 Category: ${serverCategory}`);
+      console.log(`📋 Folder: "${clipboardContent}"`);
+
+      const folderPrefix = selectedStorage.folderPrefix || "lift-";
+      const formattedName = `${letters}/${folderPrefix}${digits}`;
+      console.log(`📁 Path: ${selectedStorage.usesCategory ? `${serverCategory}/` : ""}${formattedName}`);
+
+      ({ targetURL, serverFilePath } = buildStoragePaths({
+        selectedStorage,
+        serverCategory,
+        formattedName,
+        fileName,
+        consoleBaseUrl,
+      }));
+    }
+
     const { userDataDir, debugPort } = resolvedBrowser;
 
     if (!fs.existsSync(userDataDir)) {
@@ -107,7 +154,7 @@ const UPLOAD_BUFFER_MS = 60000; // upload attempts + retries + tab close
     }
 
     let context, page;
-    ({ browser, context, page } = await connectOrLaunch(resolvedBrowser.executablePath, debugPort, userDataDir, consoleBaseUrl));
+    ({ browser, context, page } = await connectOrLaunch(resolvedBrowser.executablePath, debugPort, userDataDir, consoleBaseUrl, targetURL));
 
     // CDP connection can drop without any pending page/context call ever rejecting
     // (e.g. user closes the browser window while we're just sitting in a setTimeout).
@@ -135,46 +182,6 @@ const UPLOAD_BUFFER_MS = 60000; // upload attempts + retries + tab close
       console.log(`📢 Dialog [${dialog.type()}]: ${dialog.message()}`);
       if (dialog.type() === "alert") await dialog.accept().catch(() => {});
       else await dialog.dismiss().catch(() => {});
-    });
-
-    // === Validate category & folder name ===
-    let serverCategory;
-    if (selectedStorage.usesCategory) {
-      if (!categoryArg || !validCategories.includes(categoryArg.toLowerCase())) {
-        throw new Error(`Category required: (${validCategories.join("|")})`);
-      }
-      serverCategory = categoryArg.toLowerCase();
-    } else {
-      serverCategory = categoryArg ? categoryArg.toLowerCase() : null;
-    }
-
-    let clipboardContent = folderNameArg;
-    if (!clipboardContent && process.platform === "darwin") {
-      clipboardContent = safeExec("pbpaste", false);
-    }
-    if (!clipboardContent) {
-      throw new Error("Folder name required (4th argument or macOS clipboard)");
-    }
-
-    const letters = clipboardContent.replace(/[^a-zA-Z]/g, "").toLowerCase();
-    const digits = clipboardContent.replace(/[^0-9]/g, "");
-    if (!letters || !digits || letters.length > 20 || digits.length > 20) {
-      throw new Error(`Invalid folder name: "${clipboardContent}"\n` + `Expected "ABCD123" or "Finance-456". Letters: "${letters || "(none)"}", Digits: "${digits || "(none)"}"`);
-    }
-
-    if (selectedStorage.usesCategory) console.log(`📂 Category: ${serverCategory}`);
-    console.log(`📋 Folder: "${clipboardContent}"`);
-
-    const folderPrefix = selectedStorage.folderPrefix || "lift-";
-    const formattedName = `${letters}/${folderPrefix}${digits}`;
-    console.log(`📁 Path: ${selectedStorage.usesCategory ? `${serverCategory}/` : ""}${formattedName}`);
-
-    const { targetURL, serverFilePath } = buildStoragePaths({
-      selectedStorage,
-      serverCategory,
-      formattedName,
-      fileName,
-      consoleBaseUrl,
     });
 
     // === VPN pre-flight ===

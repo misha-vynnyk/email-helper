@@ -34,7 +34,12 @@ interface ImageProcessorProps {
   onResetReplacement?: (resetFn: () => void) => void;
   hasOutput?: boolean;
   autoProcess?: boolean;
-  storageProvider?: "default" | "alphaone" | "ttt";
+  // "red" has a storageProviders entry in automation/config.json (bucket/
+  // consoleRootPrefix/usesCategory are unconfirmed placeholders inferred by
+  // analogy with "default" — see automation/config.json's "_comment" on that
+  // entry), but no browserProfiles.red entry yet, so real Playwright/Brave
+  // automation uploads for this profile aren't wired up end-to-end.
+  storageProvider?: "default" | "alphaone" | "ttt" | "red";
   imageAnalysisSettings?: ImageAnalysisSettings;
   uploadHistory?: UploadSession[];
   uploadMode?: UploadMode;
