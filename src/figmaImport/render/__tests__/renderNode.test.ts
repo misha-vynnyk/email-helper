@@ -1,3 +1,4 @@
+import { designFileSchema } from "../../schema";
 import type { DesignNode } from "../../types";
 import { renderDocumentContent, renderNode } from "../renderNode";
 
@@ -412,5 +413,39 @@ describe("renderDocumentContent", () => {
 
   it("renders an empty string for an empty node list", () => {
     expect(renderDocumentContent([], "desktop")).toBe("");
+  });
+});
+
+// These fixtures are TS literals annotated as DesignNode — TypeScript can accept a value zod
+// would reject (e.g. a gradient stop's `position` outside [0,1]), so a fixture that renders
+// fine today could silently violate the actual runtime contract. This guards against that
+// drifting unnoticed: every fixture above must also parse cleanly through designFileSchema.
+const ALL_FIXTURES: Array<[string, DesignNode]> = [
+  ["sponsoredNote", sponsoredNote],
+  ["imageFixture", imageFixture],
+  ["spacerFixture", spacerFixture],
+  ["buttonFixture", buttonFixture],
+  ["outlineButtonFixture", outlineButtonFixture],
+  ["iconButtonFixture", iconButtonFixture],
+  ["dividerFixture", dividerFixture],
+  ["dividerLogoFixture", dividerLogoFixture],
+  ["headerImageFixture", headerImageFixture],
+  ["verticalFrameWithGap", verticalFrameWithGap],
+  ["rowFrameWithGap", rowFrameWithGap],
+  ["frameWithBorderNoRadius", frameWithBorderNoRadius],
+  ["frameWithRadiusAndShadow", frameWithRadiusAndShadow],
+  ["thickDividerFixture", thickDividerFixture],
+  ["thickDividerLogoFixture", thickDividerLogoFixture],
+  ["headerImageNoHrefFixture", headerImageNoHrefFixture],
+  ["uppercaseButtonFixture", uppercaseButtonFixture],
+  ["perCornerRadiusButtonFixture", perCornerRadiusButtonFixture],
+  ["imageNoHrefFixture", imageNoHrefFixture],
+  ["styledTextFixture", styledTextFixture],
+];
+
+describe("designFileSchema consistency", () => {
+  it.each(ALL_FIXTURES)("fixture %s parses cleanly through designFileSchema", (_name, fixture) => {
+    const result = designFileSchema.safeParse([fixture]);
+    expect(result.success).toBe(true);
   });
 });
