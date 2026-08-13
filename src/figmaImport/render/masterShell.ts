@@ -8,9 +8,20 @@
  */
 
 const TITLE_TOKEN = "__FIGMA_IMPORT_TITLE__";
+const FONT_LINK_TOKEN = "__FIGMA_IMPORT_FONT_LINK__";
+const FONT_RULES_TOKEN = "__FIGMA_IMPORT_FONT_RULES__";
+
+export interface DocumentFont {
+  family: string;
+  googleQuery: string; // value for one `family=` param in the Google Fonts css2 API, e.g. "Roboto:wght@400;700"
+  fallback?: string; // default "Arial, Helvetica, sans-serif"
+}
 
 export interface DocumentSlots {
   title: string;
+  fonts?: DocumentFont[]; // one entry per family actually used by the rendered nodes — no entry, no
+  // `<link>`/`[style*=]` rule is emitted for it, so an unlisted family silently falls back to
+  // whatever the browser/client substitutes (see LESSONS.md's `[style*="FontName"]` convention).
 }
 
 const BEFORE_CONTENT = `<!DOCTYPE html
@@ -26,9 +37,7 @@ const BEFORE_CONTENT = `<!DOCTYPE html
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=Jost:ital,wght@0,100..900;1,100..900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
-    rel="stylesheet">
+  ${FONT_LINK_TOKEN}
 
   <style type="text/css">
     body {
@@ -64,15 +73,7 @@ const BEFORE_CONTENT = `<!DOCTYPE html
       border-collapse: collapse;
     }
 
-    [style*="Roboto"] {
-      font-family: "Roboto", Arial, Helvetica, sans-serif;
-    }
-
-    @media screen and (-webkit-min-device-pixel-ratio: 0) {
-      [style*="Roboto"] {
-        font-family: "Roboto", Arial, Helvetica, sans-serif;
-      }
-    }
+    ${FONT_RULES_TOKEN}
 
     @media screen and (max-width: 602px) {
       table.main-bg {
@@ -466,7 +467,26 @@ const AFTER_CONTENT = `<!--[------ Content / end ------]-->
 
 </html>`;
 
+function fontLinkHtml(fonts: DocumentFont[]): string {
+  if (fonts.length === 0) return "";
+  const families = fonts.map((f) => `family=${f.googleQuery.replace(/ /g, "+")}`).join("&");
+  return `<link href="https://fonts.googleapis.com/css2?${families}&display=swap" rel="stylesheet">`;
+}
+
+function fontRulesCss(fonts: DocumentFont[]): string {
+  return fonts
+    .map((f) => {
+      const fallback = f.fallback ?? "Arial, Helvetica, sans-serif";
+      const rule = `[style*="${f.family}"] { font-family: "${f.family}", ${fallback}; }`;
+      return `${rule}\n@media screen and (-webkit-min-device-pixel-ratio: 0) { ${rule} }`;
+    })
+    .join("\n\n");
+}
+
 export function assembleDocument(contentHtml: string, slots: DocumentSlots): string {
-  const before = BEFORE_CONTENT.replace(TITLE_TOKEN, slots.title);
+  const fonts = slots.fonts ?? [];
+  const before = BEFORE_CONTENT.replace(TITLE_TOKEN, slots.title)
+    .replace(FONT_LINK_TOKEN, fontLinkHtml(fonts))
+    .replace(FONT_RULES_TOKEN, fontRulesCss(fonts));
   return `${before}${contentHtml}${AFTER_CONTENT}`;
 }

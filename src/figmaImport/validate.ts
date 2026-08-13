@@ -3,7 +3,7 @@ import type { ZodError } from "zod";
 import { designFileSchema } from "./schema";
 import type { BaseNode, DesignNode, Visibility } from "./types";
 
-export type ValidationFile = "desktop" | "mobile";
+export type ValidationFile = "desktop" | "mobile" | "tree";
 
 export interface ValidationError {
   file: ValidationFile;
@@ -88,6 +88,40 @@ function crossCheckIds(
   }
 
   return errors;
+}
+
+export interface SingleTreeValidationResult {
+  valid: boolean;
+  errors: ValidationError[];
+  nodes?: DesignNode[];
+  title?: string;
+}
+
+function isWrappedFormat(parsed: unknown): parsed is { title?: unknown; nodes: unknown } {
+  return typeof parsed === "object" && parsed !== null && !Array.isArray(parsed) && "nodes" in parsed;
+}
+
+// For a single pasted/uploaded tree (no separate mobile.json, no cross-file id check — there's
+// only one file, so there's nothing to cross-check against). Accepts either a bare DesignNode[]
+// (original format) or `{ title?: string, nodes: DesignNode[] }` — the wrapped form lets the tree
+// itself carry the template's name (set from the real Figma file/frame name when the tree is
+// authored) instead of requiring it typed in separately every time, same reasoning as fonts being
+// auto-derived by collectFonts() rather than a manual field.
+export function validateDesignFile(raw: string): SingleTreeValidationResult {
+  const errors: ValidationError[] = [];
+  const parsed = parseJson(raw, "tree", errors);
+  if (parsed === undefined) return { valid: false, errors };
+
+  const wrapped = isWrappedFormat(parsed);
+  const title = wrapped && typeof parsed.title === "string" ? parsed.title : undefined;
+  const nodesInput = wrapped ? parsed.nodes : parsed;
+
+  const result = designFileSchema.safeParse(nodesInput);
+  if (!result.success) {
+    return { valid: false, errors: zodIssuesToErrors(result.error, "tree") };
+  }
+
+  return { valid: true, errors: [], nodes: result.data, title };
 }
 
 export function validateDesignPair(desktopRaw: string, mobileRaw: string): ValidationResult {
