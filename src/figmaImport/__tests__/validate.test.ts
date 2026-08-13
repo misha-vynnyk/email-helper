@@ -1,4 +1,4 @@
-import { validateDesignPair } from "../validate";
+import { validateDesignFile, validateDesignPair } from "../validate";
 
 const validDivider = {
   id: "divider-1",
@@ -164,6 +164,57 @@ describe("validateDesignPair", () => {
         file: "desktop",
         message: expect.stringContaining("Invalid JSON"),
       })
+    );
+  });
+});
+
+describe("validateDesignFile", () => {
+  it("passes for a single valid tree", () => {
+    const result = validateDesignFile(json([validDivider]));
+
+    expect(result.valid).toBe(true);
+    expect(result.errors).toEqual([]);
+    expect(result.nodes).toHaveLength(1);
+  });
+
+  it("fails with a JSON syntax error message when the input isn't valid JSON", () => {
+    const result = validateDesignFile("{not valid json");
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContainEqual(
+      expect.objectContaining({ file: "tree", message: expect.stringContaining("Invalid JSON") })
+    );
+  });
+
+  it("fails with a specific message when a field has the wrong type", () => {
+    const result = validateDesignFile(json([{ ...validDivider, thicknessPx: "1px" }]));
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContainEqual(
+      expect.objectContaining({ file: "tree", path: "0.thicknessPx", message: expect.stringContaining("number") })
+    );
+  });
+
+  it("extracts the title from the wrapped { title, nodes } format", () => {
+    const result = validateDesignFile(JSON.stringify({ title: "KitchenTableInsight.com", nodes: [validDivider] }));
+
+    expect(result.valid).toBe(true);
+    expect(result.title).toBe("KitchenTableInsight.com");
+    expect(result.nodes).toHaveLength(1);
+  });
+
+  it("has no title for the plain-array format (backwards compatible)", () => {
+    const result = validateDesignFile(json([validDivider]));
+    expect(result.valid).toBe(true);
+    expect(result.title).toBeUndefined();
+  });
+
+  it("validates the nested `nodes` array in the wrapped format the same way as the bare array", () => {
+    const result = validateDesignFile(JSON.stringify({ title: "x", nodes: [{ ...validDivider, thicknessPx: "1px" }] }));
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContainEqual(
+      expect.objectContaining({ file: "tree", path: "0.thicknessPx", message: expect.stringContaining("number") })
     );
   });
 });

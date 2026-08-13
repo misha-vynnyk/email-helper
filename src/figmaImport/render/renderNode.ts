@@ -5,6 +5,7 @@ import { renderDivider } from "./renderDivider";
 import { renderDividerLogo } from "./renderDividerLogo";
 import { renderHeaderImage } from "./renderHeaderImage";
 import { renderImage } from "./renderImage";
+import { renderPromoCopy } from "./renderPromoCopy";
 import { renderSpacer } from "./renderSpacer";
 import { renderText } from "./renderText";
 
@@ -112,7 +113,7 @@ export function renderNode(node: DesignNode, viewport: Viewport): string {
     case "headerImage":
       return renderHeaderImage(node);
     case "promoCopy":
-      throw new Error(`renderNode: "${node.type}" is not implemented until Stage 3`);
+      return renderPromoCopy();
   }
 }
 

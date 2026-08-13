@@ -185,9 +185,11 @@ describe("renderNode", () => {
     expect(renderNode(node, "desktop")).not.toBe("");
   });
 
-  it("throws a Stage 3 'not implemented' error for a promoCopy node", () => {
-    const node = { id: "x", type: "promoCopy" } as unknown as DesignNode;
-    expect(() => renderNode(node, "desktop")).toThrow(/not implemented until Stage 3/);
+  it("renders a promoCopy node as the fixed literal stub", () => {
+    const node: DesignNode = { id: "x", type: "promoCopy" };
+    const html = renderNode(node, "desktop");
+    expect(html).toContain("<!--=== PROMO-COPY ===-->");
+    expect(html).toContain("<!--=== PROMO-COPY-end ===-->");
   });
 
   it("renders the button-no-icon fixture", () => {
