@@ -42,16 +42,17 @@ function renderNoIconButton(node: ButtonNode): string {
 function iconImg(icon: ButtonIcon): string {
   return (
     `<img alt="${escapeAttr(icon.altDescription)}" height="${icon.heightPx}" width="${icon.widthPx}" src="${PLACEHOLDER_IMAGE_SRC}"` +
-    ` style="border: 0 none; margin: 0; padding: 0; width: ${icon.widthPx}px; height: ${icon.heightPx}px; object-fit: contain; object-position: center; font-size: 0;" />`
+    ` style="border: 0 none; margin: 0; padding: 0; width: ${icon.widthPx}px; height: ${icon.heightPx}px; object-fit: contain; object-position: center; font-size: 0" />`
   );
 }
 
 // The icon+spacer sit inside the non-MSO conditional wrapper so Outlook gets a text-only
 // fallback (LESSONS.md §5) — confirmed by the real example.
 function iconSpan(icon: ButtonIcon): string {
+  const cellWidthPx = icon.widthPx + icon.gapPx * 2;
   return (
     `<!--[if !mso 9]><!-->` +
-    `<span style="display: table-cell; vertical-align: middle; text-align: left; width: ${icon.widthPx}px; min-width: ${icon.widthPx}px; padding-right: ${icon.gapPx}px; padding-left: ${icon.gapPx}px;">` +
+    `<span style="display: table-cell; vertical-align: middle; text-align: left; width: ${cellWidthPx}px; min-width: ${cellWidthPx}px; padding-right: ${icon.gapPx}px; padding-left: ${icon.gapPx}px;">` +
     iconImg(icon) +
     `</span>` +
     `<!--<![endif]-->`
@@ -69,7 +70,7 @@ function renderIconButton(node: ButtonNode, icon: ButtonIcon): string {
   const aStyle = `color: ${textColor}; font-size: ${node.fontSizePx}px; font-weight: ${node.fontWeight}; line-height: normal; font-family: '${node.fontFamily}', Arial, Helvetica, sans-serif; text-decoration: none; display: block;`;
   const textSpan =
     `<span style="display: table-cell; vertical-align: middle; color: ${textColor}; text-align: center;` +
-    ` font-size: ${node.fontSizePx}px; font-weight: ${node.fontWeight}; line-height: normal; font-family: '${node.fontFamily}', Arial, Helvetica, sans-serif;` +
+    ` font-size: ${node.fontSizePx}px; font-weight: ${node.fontWeight}; line-height: normal; text-decoration: none; font-family: '${node.fontFamily}', Arial, Helvetica, sans-serif;` +
     ` padding-left: ${node.paddingLeftPx}px; padding-right: ${node.paddingRightPx}px; padding-top: ${node.paddingTopPx}px; padding-bottom: ${node.paddingBottomPx}px;${textTransformDeclaration}">` +
     `${escapeHtml(node.label)}</span>`;
   const iconEl = iconSpan(icon);
@@ -79,7 +80,7 @@ function renderIconButton(node: ButtonNode, icon: ButtonIcon): string {
     `<table ${outerButtonAttrs(node)}>` +
     `<tr><td align="center" height="${node.targetHeightPx}" style="margin: 0; padding: 0; color: ${textColor}; font-size: ${node.fontSizePx}px; font-weight: ${node.fontWeight}; line-height: normal; font-family: '${node.fontFamily}', Arial, Helvetica, sans-serif; text-decoration: none;">` +
     `<a href="${escapeAttr(node.href)}" target="_blank" style="${aStyle}">` +
-    `<span style="display: table;">${inner}</span>` +
+    `<span style="display: table">${inner}</span>` +
     `</a></td></tr></table>`
   );
 }
