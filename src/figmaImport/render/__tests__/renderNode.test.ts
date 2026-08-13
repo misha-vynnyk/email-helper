@@ -217,6 +217,29 @@ const frameWithRadiusAndShadow: DesignNode = {
   shadow: { xPx: 0, yPx: 2, blurPx: 4, color: "#00000033" },
 };
 
+const thickDividerFixture: DesignNode = { id: "divider-thick", type: "divider", color: "#676767", thicknessPx: 3 };
+
+const thickDividerLogoFixture: DesignNode = { ...dividerLogoFixture, id: "divider-logo-thick", lineThicknessPx: 2 };
+
+const headerImageNoHrefFixture: DesignNode = { ...headerImageFixture, id: "header-no-href", href: undefined };
+
+const uppercaseButtonFixture: DesignNode = { ...buttonFixture, id: "btn-uppercase", textTransform: "uppercase" };
+
+const perCornerRadiusButtonFixture: DesignNode = {
+  ...buttonFixture,
+  id: "btn-per-corner-radius",
+  cornerRadius: { topLeft: 4, topRight: 4, bottomRight: 0, bottomLeft: 0 },
+};
+
+const imageNoHrefFixture: DesignNode = { ...imageFixture, id: "image-no-href", href: undefined };
+
+const styledTextFixture: DesignNode = {
+  id: "text-styled",
+  type: "text",
+  defaultStyle: { fontSizePx: 16, letterSpacing: 2, italic: true, underline: true },
+  runs: [{ text: "Styled run" }],
+};
+
 describe("renderNode", () => {
   it("renders the SponsoredNote fixture", () => {
     expect(renderNode(sponsoredNote, "desktop")).toMatchSnapshot();
@@ -333,6 +356,45 @@ describe("renderNode", () => {
     const node: DesignNode = { ...spacerFixture, visibility: "mobileOnly" };
     expect(renderNode(node, "mobile")).not.toBe("");
     expect(renderNode(node, "desktop")).toBe("");
+  });
+
+  it("renders an explicit divider thicknessPx instead of the default", () => {
+    const html = renderNode(thickDividerFixture, "desktop");
+    expect(html).toContain("border-bottom: 3px solid #676767;");
+  });
+
+  it("renders an explicit dividerLogo lineThicknessPx instead of the default", () => {
+    const html = renderNode(thickDividerLogoFixture, "desktop");
+    expect(html).toContain("border-bottom: 2px solid #676767;");
+  });
+
+  it("renders a header image without a wrapping <a> when href is absent", () => {
+    const html = renderNode(headerImageNoHrefFixture, "desktop");
+    expect(html).not.toContain("<a ");
+    expect(html).toContain("<img");
+  });
+
+  it("renders a button textTransform", () => {
+    const html = renderNode(uppercaseButtonFixture, "desktop");
+    expect(html).toContain("text-transform: uppercase;");
+  });
+
+  it("renders a button cornerRadius as a per-corner object", () => {
+    const html = renderNode(perCornerRadiusButtonFixture, "desktop");
+    expect(html).toContain("border-radius: 4px 4px 0px 0px;");
+  });
+
+  it("renders an image node without a wrapping <a> when href is absent", () => {
+    const html = renderNode(imageNoHrefFixture, "desktop");
+    expect(html).not.toContain("<a ");
+    expect(html).toContain("<img");
+  });
+
+  it("renders text letterSpacing, italic and underline", () => {
+    const html = renderNode(styledTextFixture, "desktop");
+    expect(html).toContain("letter-spacing: 2px;");
+    expect(html).toContain("font-style: italic;");
+    expect(html).toContain("text-decoration: underline;");
   });
 });
 
