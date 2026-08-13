@@ -48,10 +48,12 @@ function renderColumnContent(childrenHtml: string[], gapPx: number | undefined):
     .join("");
 }
 
-// justify:"spaceBetween" has no flexbox equivalent in table layout; the real technique for the
-// common two-item case (e.g. a label + a right-aligned value) wraps the last cell's content in
-// its own align="right" table so it pushes to the far edge while earlier cells stay left-aligned.
-// Three or more children with spaceBetween has no generic table-only equivalent — treated as "start".
+// justify:"spaceBetween" has no flexbox equivalent in table layout; the real technique wraps
+// the LAST cell's content in its own align="right" table so it pushes to the far edge while
+// every earlier cell stays plain/left-aligned — this applies to any row with 2+ children, not
+// only exactly 2 (e.g. "logo + nav links" on the left, one CTA pushed right). There is no
+// per-middle-child alignment (no way to push a *middle* child to center, say) — that would be
+// a distinct feature, tracked as an open question in figma-import-status.md, not implemented.
 function renderRowContent(childrenHtml: string[], gapPx: number | undefined, justify: FrameNode["justify"]): string {
   const lastIndex = childrenHtml.length - 1;
   const useSpaceBetween = justify === "spaceBetween" && lastIndex > 0;
