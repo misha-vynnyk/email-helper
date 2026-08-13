@@ -43,7 +43,7 @@ interface TreeBuildResult {
   resolvedTitle?: string;
 }
 
-function buildDocuments(desktopNodes: DesignNode[], mobileNodes: DesignNode[], title: string): BuildResult {
+export function buildDocuments(desktopNodes: DesignNode[], mobileNodes: DesignNode[], title: string): BuildResult {
   try {
     const desktopHtml = assembleDocument(renderDocumentContent(desktopNodes, "desktop"), { title });
     const mobileHtml = assembleDocument(renderDocumentContent(mobileNodes, "mobile"), { title });
@@ -53,7 +53,7 @@ function buildDocuments(desktopNodes: DesignNode[], mobileNodes: DesignNode[], t
   }
 }
 
-function slugifyFileName(title: string): string {
+export function slugifyFileName(title: string): string {
   const slug = title
     .trim()
     .toLowerCase()
@@ -62,7 +62,7 @@ function slugifyFileName(title: string): string {
   return slug || "figma-import-preview";
 }
 
-function downloadHtmlFile(html: string, title: string): void {
+export function downloadHtmlFile(html: string, title: string): void {
   const blob = new Blob([html], { type: "text/html" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -76,7 +76,7 @@ function downloadHtmlFile(html: string, title: string): void {
 // real Figma file/frame name when the tree was authored) > whatever the user typed manually >
 // a last-resort default. The tree's own title wins over manual input so re-generating after
 // pasting a different tree doesn't silently keep a stale, previously-typed title.
-function buildFromSingleTree(rawTree: string, manualTitle: string): TreeBuildResult {
+export function buildFromSingleTree(rawTree: string, manualTitle: string): TreeBuildResult {
   const validation = validateDesignFile(rawTree);
   if (!validation.valid || !validation.nodes) {
     return { errors: validation.errors };
