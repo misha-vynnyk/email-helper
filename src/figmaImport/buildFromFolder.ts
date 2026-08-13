@@ -21,9 +21,20 @@ export interface BuildFromFolderResult {
   mobileHtml: string;
 }
 
+function readJsonFile(folderPath: string, fileName: string): string {
+  try {
+    return fs.readFileSync(path.join(folderPath, fileName), "utf-8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      throw new Error(`Missing ${fileName} in ${folderPath}`);
+    }
+    throw error;
+  }
+}
+
 export function buildTemplateFromFolder(folderPath: string, options: BuildFromFolderOptions): BuildFromFolderResult {
-  const desktopRaw = fs.readFileSync(path.join(folderPath, "desktop.json"), "utf-8");
-  const mobileRaw = fs.readFileSync(path.join(folderPath, "mobile.json"), "utf-8");
+  const desktopRaw = readJsonFile(folderPath, "desktop.json");
+  const mobileRaw = readJsonFile(folderPath, "mobile.json");
 
   const result = validateDesignPair(desktopRaw, mobileRaw);
   if (!result.valid || !result.desktopNodes || !result.mobileNodes) {
