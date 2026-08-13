@@ -79,6 +79,25 @@ describe("validateDesignPair", () => {
     ).toBe(true);
   });
 
+  it("fails with a specific message when the discriminant value itself is misspelled (not a field name)", () => {
+    const typoDiscriminant = {
+      id: "divider-3",
+      name: "Divider",
+      type: "diveder", // typo of the enum value "divider", distinct from a typo'd field name
+      color: "#FCBF24",
+    };
+
+    const result = validateDesignPair(json([typoDiscriminant]), json([typoDiscriminant]));
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContainEqual(
+      expect.objectContaining({
+        file: "desktop",
+        path: "0.type",
+      })
+    );
+  });
+
   it("fails when an id exists only in one file without a matching visibility flag", () => {
     const desktopOnlyNode = { ...validDivider, id: "divider-desktop-only" };
 
