@@ -162,6 +162,61 @@ const verticalFrameWithGap: DesignNode = {
   ],
 };
 
+const rowFrameWithGap: DesignNode = {
+  id: "row-gap-1",
+  type: "frame",
+  direction: "row",
+  padding: { top: 0, right: 0, bottom: 0, left: 0 },
+  gap: 10,
+  children: [
+    { id: "row-gap-1-a", type: "spacer", heightPx: 4 },
+    { id: "row-gap-1-b", type: "spacer", heightPx: 4 },
+    { id: "row-gap-1-c", type: "spacer", heightPx: 4 },
+  ],
+};
+
+function rowWithChildCount(id: string, count: number, justify: "spaceBetween"): DesignNode {
+  return {
+    id,
+    type: "frame",
+    direction: "row",
+    padding: { top: 0, right: 0, bottom: 0, left: 0 },
+    justify,
+    children: Array.from({ length: count }, (_, i) => ({
+      id: `${id}-${i}`,
+      type: "spacer" as const,
+      heightPx: 4,
+    })),
+  };
+}
+
+function frameWithWidth(id: string, width: number | "fill" | "hug"): DesignNode {
+  return {
+    id,
+    type: "frame",
+    direction: "column",
+    padding: { top: 0, right: 0, bottom: 0, left: 0 },
+    width,
+    children: [{ id: `${id}-a`, type: "spacer", heightPx: 4 }],
+  };
+}
+
+const frameWithBorderNoRadius: DesignNode = {
+  id: "frame-border-collapse",
+  type: "frame",
+  direction: "column",
+  padding: { top: 0, right: 0, bottom: 0, left: 0 },
+  border: { top: { widthPx: 1, color: "#000000" } },
+  children: [{ id: "frame-border-collapse-a", type: "spacer", heightPx: 4 }],
+};
+
+const frameWithRadiusAndShadow: DesignNode = {
+  ...frameWithBorderNoRadius,
+  id: "frame-border-separate",
+  cornerRadius: 8,
+  shadow: { xPx: 0, yPx: 2, blurPx: 4, color: "#00000033" },
+};
+
 describe("renderNode", () => {
   it("renders the SponsoredNote fixture", () => {
     expect(renderNode(sponsoredNote, "desktop")).toMatchSnapshot();
@@ -220,6 +275,65 @@ describe("renderNode", () => {
   it("renders the header-single-image fixture", () => {
     expect(renderNode(headerImageFixture, "desktop")).toMatchSnapshot();
   });
+
+  it("wraps the last cell in an align=right table for justify:spaceBetween with 2 children", () => {
+    const html = renderNode(rowWithChildCount("row-spread-2", 2, "spaceBetween"), "desktop");
+    expect(html).toContain('<td align="right" style="">');
+    expect(html).toContain('<table role="presentation" border="0" cellpadding="0" cellspacing="0" align="right"');
+  });
+
+  it("pushes only the last cell right for justify:spaceBetween with 3+ children too (no per-child align yet)", () => {
+    // Current behavior, not a "fall back to start": the last child always gets the
+    // align="right" wrapper for any row with 2+ children — there's no per-middle-child
+    // alignment (see the "Full per-child align" open question in figma-import-status.md).
+    const html = renderNode(rowWithChildCount("row-spread-3", 3, "spaceBetween"), "desktop");
+    const rightWrappedCellCount = (html.match(/<td align="right"/g) ?? []).length;
+    expect(rightWrappedCellCount).toBe(1);
+  });
+
+  it("renders padding-right gap between row children, but not after the last one", () => {
+    const html = renderNode(rowFrameWithGap, "desktop");
+    expect(html).toContain('style="padding-right: 10px;"');
+    // 3 children, gap between each of the 2 non-last pairs => exactly 2 gap declarations
+    expect(html.match(/padding-right: 10px;/g)).toHaveLength(2);
+    expect(html).toContain('<td style="">');
+  });
+
+  it("caps width to a number and centers the table", () => {
+    const html = renderNode(frameWithWidth("frame-width-number", 240), "desktop");
+    expect(html).toContain('width="240" align="center"');
+  });
+
+  it("renders width:fill as width=100% with no centering", () => {
+    const html = renderNode(frameWithWidth("frame-width-fill", "fill"), "desktop");
+    expect(html).toContain('width="100%" style=');
+    expect(html).not.toContain('align="center"');
+  });
+
+  it("renders width:hug as width=auto with no centering", () => {
+    const html = renderNode(frameWithWidth("frame-width-hug", "hug"), "desktop");
+    expect(html).toContain('width="auto" style=');
+    expect(html).not.toContain('align="center"');
+  });
+
+  it("uses border-collapse:collapse when the frame has a border but no cornerRadius", () => {
+    const html = renderNode(frameWithBorderNoRadius, "desktop");
+    expect(html).toContain("border-collapse: collapse;");
+    expect(html).toContain("border-top: 1px solid #000000;");
+  });
+
+  it("switches to border-collapse:separate and includes shadow/radius CSS when cornerRadius is set", () => {
+    const html = renderNode(frameWithRadiusAndShadow, "desktop");
+    expect(html).toContain("border-collapse: separate;");
+    expect(html).toContain("border-radius: 8px;");
+    expect(html).toContain("box-shadow: 0px 2px 4px #00000033;");
+  });
+
+  it("renders a mobileOnly node when the viewport is mobile, and hides it on desktop", () => {
+    const node: DesignNode = { ...spacerFixture, visibility: "mobileOnly" };
+    expect(renderNode(node, "mobile")).not.toBe("");
+    expect(renderNode(node, "desktop")).toBe("");
+  });
 });
 
 describe("renderDocumentContent", () => {
@@ -232,5 +346,9 @@ describe("renderDocumentContent", () => {
     const hidden: DesignNode = { ...spacerFixture, visibility: "mobileOnly" };
     const html = renderDocumentContent([hidden], "desktop");
     expect(html).toBe("");
+  });
+
+  it("renders an empty string for an empty node list", () => {
+    expect(renderDocumentContent([], "desktop")).toBe("");
   });
 });
