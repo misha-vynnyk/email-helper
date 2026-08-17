@@ -1,14 +1,16 @@
 import { designFileSchema } from "../../schema";
-import type { DesignNode } from "../../types";
+import type { ButtonNode, CardListNode, DesignNode } from "../../types";
+import { renderButton } from "../renderButton";
+import { renderCardList } from "../renderCardList";
 import { renderDocumentContent, renderNode } from "../renderNode";
 
 // "SponsoredNote" fixture — frame+frame+text, no button/divider/image. Values taken
 // literally from the "Sponsored Content" example in FIGMA_TEMPLATE_IMPORT_PLAN.md
 // (outer frame's `padding` added — the plan's example omits it, but the schema
-// requires `padding` on every FrameNode).
+// requires `padding` on every FrameNode; text nodes' `padding` added for the same reason,
+// 2026-08-13 rewrite — see "Text/Image become self-wrapping" in the plan).
 const sponsoredNote: DesignNode = {
   id: "sponsored-note-1",
-  name: "SponsoredNote",
   type: "frame",
   direction: "column",
   padding: { top: 0, right: 0, bottom: 0, left: 0 },
@@ -26,6 +28,7 @@ const sponsoredNote: DesignNode = {
           type: "text",
           defaultStyle: { fontSizePx: 18, fontFamily: "Montserrat", fontWeight: 700 },
           runs: [{ text: "Sponsored Content" }],
+          padding: { top: 0, bottom: 0 },
         },
       ],
     },
@@ -43,16 +46,20 @@ const sponsoredNote: DesignNode = {
             { text: "I have a fungal infection...", href: "urlhere", color: "#0066FF", fontWeight: 700 },
             { text: "- ad by Company -", color: "#0066FF", fontSizePx: 12 },
           ],
+          padding: { top: 0, bottom: 0 },
         },
       ],
     },
   ],
 };
 
+// Matches the "content-image row" example verbatim (widthPx/padding literal from it).
 const imageFixture: DesignNode = {
   id: "hero-image",
   type: "image",
   altDescription: "Video preview of the newsletter header",
+  widthPx: 260,
+  padding: { top: 14, bottom: 14 },
   href: "urlhere",
 };
 
@@ -62,9 +69,9 @@ const spacerFixture: DesignNode = {
   heightPx: 24,
 };
 
-// Values taken literally from the user's own filled-in "button-no-icon" block in
-// figma-to-html/content-blocks-template.html.
-const buttonFixture: DesignNode = {
+// Values taken literally from the user's own real footer-button markup (2026-08-13 rewrite —
+// this is now the canonical no-icon button, replacing the earlier button-no-icon shape).
+const buttonFixture: ButtonNode = {
   id: "btn-learn-more",
   type: "button",
   label: "Learn more",
@@ -84,7 +91,7 @@ const buttonFixture: DesignNode = {
   paddingRightPx: 6,
 };
 
-const outlineButtonFixture: DesignNode = {
+const outlineButtonFixture: ButtonNode = {
   ...buttonFixture,
   id: "btn-outline",
   background: undefined,
@@ -92,7 +99,9 @@ const outlineButtonFixture: DesignNode = {
 };
 
 // Values taken literally from the user's own filled-in "button-with-icon-left/right"
-// blocks in figma-to-html/content-blocks-template.html.
+// blocks in figma-to-html/content-blocks-template.html — this path is UNCHANGED by the
+// 2026-08-13 footer-button rewrite (see ButtonIcon in types.ts: no longer an ImageNode, so
+// no id/type/padding/align/widthMode fields belong here).
 const iconButtonFixture: DesignNode = {
   id: "btn-unsubscribe",
   type: "button",
@@ -112,8 +121,6 @@ const iconButtonFixture: DesignNode = {
   paddingLeftPx: 8,
   paddingRightPx: 8,
   icon: {
-    id: "btn-unsubscribe-icon",
-    type: "image",
     altDescription: "---",
     side: "left",
     gapPx: 5,
@@ -224,9 +231,9 @@ const thickDividerLogoFixture: DesignNode = { ...dividerLogoFixture, id: "divide
 
 const headerImageNoHrefFixture: DesignNode = { ...headerImageFixture, id: "header-no-href", href: undefined };
 
-const uppercaseButtonFixture: DesignNode = { ...buttonFixture, id: "btn-uppercase", textTransform: "uppercase" };
+const uppercaseButtonFixture: ButtonNode = { ...buttonFixture, id: "btn-uppercase", textTransform: "uppercase" };
 
-const perCornerRadiusButtonFixture: DesignNode = {
+const perCornerRadiusButtonFixture: ButtonNode = {
   ...buttonFixture,
   id: "btn-per-corner-radius",
   cornerRadius: { topLeft: 4, topRight: 4, bottomRight: 0, bottomLeft: 0 },
@@ -234,11 +241,209 @@ const perCornerRadiusButtonFixture: DesignNode = {
 
 const imageNoHrefFixture: DesignNode = { ...imageFixture, id: "image-no-href", href: undefined };
 
+const fixedIconImageFixture: DesignNode = {
+  id: "icon-image",
+  type: "image",
+  altDescription: "A small icon",
+  widthPx: 24,
+  widthMode: "fixed",
+  align: "left",
+  padding: { top: 0, bottom: 0 },
+};
+
 const styledTextFixture: DesignNode = {
   id: "text-styled",
   type: "text",
   defaultStyle: { fontSizePx: 16, letterSpacing: 2, italic: true, underline: true },
   runs: [{ text: "Styled run" }],
+  padding: { top: 0, bottom: 0 },
+};
+
+// 2026-08-13 rewrite fixtures — Container/Row/ButtonRow + the discrimination logic between
+// self-wrapping (frame/text/image/button/buttonRow/row) and bare-fragment (everything else)
+// children. See "Review fixes applied" in FIGMA_TEMPLATE_IMPORT_PLAN.md.
+
+const rowWithSelfWrappingChildFixture: DesignNode = {
+  id: "row-self-wrap-1",
+  type: "frame",
+  direction: "row",
+  padding: { top: 0, right: 0, bottom: 0, left: 0 },
+  children: [
+    {
+      id: "row-self-wrap-1-text",
+      type: "text",
+      defaultStyle: { fontSizePx: 14 },
+      runs: [{ text: "Nav item" }],
+      padding: { top: 0, bottom: 0 },
+    },
+  ],
+};
+
+const frameWithDividerChildFixture: DesignNode = {
+  id: "frame-with-divider-child",
+  type: "frame",
+  direction: "column",
+  padding: { top: 0, right: 0, bottom: 0, left: 0 },
+  children: [dividerFixture],
+};
+
+const frameWithButtonChildFixture: DesignNode = {
+  id: "frame-with-button-child",
+  type: "frame",
+  direction: "column",
+  padding: { top: 0, right: 0, bottom: 0, left: 0 },
+  children: [buttonFixture],
+};
+
+// Mixed self-wrapping (text, not last) + bare-fragment (divider, last) siblings under a
+// non-zero gap — corrected 2026-08-13 against real content (KitchenTableInsight.com): gap must
+// land on EVERY non-last child regardless of self-wrapping-ness, wrapping a self-wrapping
+// child's own <tr> in an extra gap-carrying <td> when it isn't last (see renderColumnContent's
+// "CORRECTION" comment in renderNode.ts) — a self-wrapping child that IS last still gets none,
+// same as a bare-fragment last child.
+const mixedGapFixture: DesignNode = {
+  id: "mixed-gap-1",
+  type: "frame",
+  direction: "column",
+  padding: { top: 0, right: 0, bottom: 0, left: 0 },
+  gap: 20,
+  children: [
+    {
+      id: "mixed-gap-1-text",
+      type: "text",
+      defaultStyle: { fontSizePx: 14 },
+      runs: [{ text: "Before the divider" }],
+      padding: { top: 0, bottom: 0 },
+    },
+    dividerFixture,
+  ],
+};
+
+// The real-world common case this correction targets: a column frame whose children are OTHER
+// frames (both self-wrapping) — gap must space them apart even though neither is a
+// bare-fragment type.
+const twoNestedFramesWithGapFixture: DesignNode = {
+  id: "nested-frames-gap-1",
+  type: "frame",
+  direction: "column",
+  padding: { top: 0, right: 0, bottom: 0, left: 0 },
+  gap: 24,
+  children: [
+    {
+      id: "nested-frames-gap-1-a",
+      type: "frame",
+      direction: "column",
+      padding: { top: 0, right: 0, bottom: 0, left: 0 },
+      children: [{ id: "nested-frames-gap-1-a-spacer", type: "spacer", heightPx: 4 }],
+    },
+    {
+      id: "nested-frames-gap-1-b",
+      type: "frame",
+      direction: "column",
+      padding: { top: 0, right: 0, bottom: 0, left: 0 },
+      children: [{ id: "nested-frames-gap-1-b-spacer", type: "spacer", heightPx: 4 }],
+    },
+  ],
+};
+
+const rowNodeFixture: DesignNode = {
+  id: "editor-row-1",
+  type: "row",
+  columns: [
+    {
+      widthPercent: 50,
+      children: [
+        {
+          id: "editor-row-1-left-text",
+          type: "text",
+          defaultStyle: { fontSizePx: 14 },
+          runs: [{ text: "Left column" }],
+          padding: { top: 0, bottom: 0 },
+        },
+      ],
+    },
+    {
+      widthPercent: 50,
+      children: [
+        {
+          id: "editor-row-1-right-text",
+          type: "text",
+          defaultStyle: { fontSizePx: 14 },
+          runs: [{ text: "Right column" }],
+          padding: { top: 0, bottom: 0 },
+        },
+      ],
+    },
+  ],
+};
+
+const buttonRowNodeFixture: DesignNode = {
+  id: "footer-buttons-1",
+  type: "buttonRow",
+  buttons: [buttonFixture, { ...buttonFixture, id: "btn-terms", label: "Terms & Conditions" }],
+};
+
+// `node.name` → `<!-- Name --> ... <!-- Name end -->` fixtures (2026-08-14) — the convention
+// `templateManager.extractBlocks()` already parses, now actually wired into `renderNode()`.
+const namedFrameFixture: DesignNode = {
+  id: "named-frame-1",
+  name: "TestBlock",
+  type: "frame",
+  direction: "column",
+  padding: { top: 0, right: 0, bottom: 0, left: 0 },
+  children: [{ id: "named-frame-1-a", type: "spacer", heightPx: 4 }],
+};
+
+const frameWithNamedChildFixture: DesignNode = {
+  id: "frame-with-named-child",
+  type: "frame",
+  direction: "column",
+  padding: { top: 0, right: 0, bottom: 0, left: 0 },
+  children: [
+    {
+      id: "frame-with-named-child-inner",
+      name: "InnerItem",
+      type: "frame",
+      direction: "column",
+      padding: { top: 0, right: 0, bottom: 0, left: 0 },
+      children: [{ id: "frame-with-named-child-inner-a", type: "spacer", heightPx: 4 }],
+    },
+  ],
+};
+
+const namedPromoCopyFixture: DesignNode = { id: "promo-named", name: "PromoBlock", type: "promoCopy" };
+
+const namedImageFixture: DesignNode = { ...imageFixture, id: "named-image", name: "Header" };
+
+const namedDividerFixture: DesignNode = { ...dividerFixture, id: "named-divider", name: "Divider" };
+
+// Dispatch-integration fixture for the new "cardList" type (see renderCardList.test.ts for the
+// dedicated coverage of the fixed-structure card mechanism itself).
+const cardListFixture: CardListNode = {
+  id: "sponsored-cards-dispatch",
+  type: "cardList",
+  variant: "sponsoredLink",
+  gap: 16,
+  cards: [
+    {
+      id: "dispatch-card-1",
+      padding: { top: 0, right: 8, bottom: 0, left: 0 },
+      title: {
+        id: "dispatch-card-1-title",
+        type: "text",
+        defaultStyle: { fontFamily: "Montserrat", fontWeight: 700, fontSizePx: 16, color: "#1D77D7", underline: true, href: "urlhere" },
+        runs: [{ text: "• Lorem ipsum dolor sit amet" }],
+        padding: { top: 0, bottom: 0 },
+      },
+      secondary: {
+        id: "dispatch-card-1-partner",
+        type: "text",
+        defaultStyle: { fontFamily: "Montserrat", fontWeight: 300, fontSizePx: 16, color: "#ADADAD" },
+        runs: [{ text: "(partner's name)" }],
+        padding: { top: 0, bottom: 0 },
+      },
+    },
+  ],
 };
 
 describe("renderNode", () => {
@@ -248,6 +453,13 @@ describe("renderNode", () => {
 
   it("renders an image node, wrapped in a link when href is set", () => {
     expect(renderNode(imageFixture, "desktop")).toMatchSnapshot();
+  });
+
+  it("renders a fixed-width (non-stretching) image for the icon widthMode", () => {
+    const html = renderNode(fixedIconImageFixture, "desktop");
+    expect(html).toContain("width: 24px; max-width: 24px;");
+    expect(html).not.toContain("width: 100%;");
+    expect(html).toContain('align="left"');
   });
 
   it("renders a spacer node", () => {
@@ -300,6 +512,23 @@ describe("renderNode", () => {
     expect(renderNode(headerImageFixture, "desktop")).toMatchSnapshot();
   });
 
+  it("renders the editor 2-column row fixture", () => {
+    expect(renderNode(rowNodeFixture, "desktop")).toMatchSnapshot();
+  });
+
+  it("renders the footer button-row fixture", () => {
+    expect(renderNode(buttonRowNodeFixture, "desktop")).toMatchSnapshot();
+  });
+
+  it("dispatches a cardList node to renderCardList, matching its output exactly", () => {
+    expect(renderNode(cardListFixture, "desktop")).toBe(renderCardList(cardListFixture));
+  });
+
+  it("does not double-wrap a top-level cardList node in an extra <tr><td>", () => {
+    const html = renderDocumentContent([cardListFixture], "desktop");
+    expect(html).toBe(renderNode(cardListFixture, "desktop"));
+  });
+
   it("wraps the last cell in an align=right table for justify:spaceBetween with 2 children", () => {
     const html = renderNode(rowWithChildCount("row-spread-2", 2, "spaceBetween"), "desktop");
     expect(html).toContain('<td align="right" style="">');
@@ -323,21 +552,53 @@ describe("renderNode", () => {
     expect(html).toContain('<td style="">');
   });
 
-  it("caps width to a number and centers the table", () => {
+  it("caps width to a number, on both the wrapping <td> and the inner <table>", () => {
     const html = renderNode(frameWithWidth("frame-width-number", 240), "desktop");
-    expect(html).toContain('width="240" align="center"');
+    // 2026-08-17: the width cap (and any fill/border) now lives on the <td> itself, not just
+    // the inner table — see visualBoxStyle's comment in renderNode.ts for why.
+    expect(html).toContain('<td align="center" width="240" style="');
+    expect(html.match(/width="240"/g)).toHaveLength(2);
+    expect(html.match(/max-width: 240px;/g)).toHaveLength(2);
   });
 
-  it("renders width:fill as width=100% with no centering", () => {
+  it("writes a frame's own padding in full longhand, one non-zero side at a time — never the 4-value shorthand", () => {
+    // sn1-title inside sponsoredNote has padding {top:12, right:20, bottom:12, left:20} — every
+    // side non-zero, so all four longhand declarations appear; there is no bare `padding:`
+    // shorthand anywhere in the output (2026-08-14, user feedback: some email clients have
+    // documented bugs parsing/applying the 4-value shorthand per side reliably).
+    const html = renderNode(sponsoredNote, "desktop");
+    expect(html).toContain("padding-top: 12px; padding-right: 20px; padding-bottom: 12px; padding-left: 20px;");
+    // a differentiated 4-value px shorthand (e.g. "padding: 12px 20px 12px 20px") never appears
+    // — only the harmless single-value "padding: 0;" resets used elsewhere for visual tables.
+    expect(html).not.toMatch(/padding:\s*\d+px\s+\d+px\s+\d+px\s+\d+px/);
+  });
+
+  it("omits a zero-value side from a frame's own padding instead of writing padding-Xpx: 0px", () => {
+    const node: DesignNode = {
+      id: "frame-partial-padding",
+      type: "frame",
+      direction: "column",
+      padding: { top: 10, right: 0, bottom: 0, left: 0 },
+      children: [{ id: "frame-partial-padding-a", type: "spacer", heightPx: 4 }],
+    };
+    const html = renderNode(node, "desktop");
+    expect(html).toContain('<td align="center" width="100%" style="padding-top: 10px; margin: 0; width: 100%;">');
+  });
+
+  // align="center" on a frame's own <td> is unconditional (2026-08-17) — confirmed against the
+  // user's own real container markup, where both a numeric-width outer container and a fluid
+  // 100%-width inner container carry it; it no longer varies with `width`.
+  it("renders width:fill as width=100%, still align=\"center\" on its own <td>", () => {
     const html = renderNode(frameWithWidth("frame-width-fill", "fill"), "desktop");
     expect(html).toContain('width="100%" style=');
-    expect(html).not.toContain('align="center"');
+    expect(html).toContain('align="center"');
   });
 
-  it("renders width:hug as width=auto with no centering", () => {
+  it("renders width:hug as width=auto with no forced width CSS, still align=\"center\" on its own <td>", () => {
     const html = renderNode(frameWithWidth("frame-width-hug", "hug"), "desktop");
     expect(html).toContain('width="auto" style=');
-    expect(html).not.toContain('align="center"');
+    expect(html).toContain('align="center"');
+    expect(html).not.toContain("width: 100%;");
   });
 
   it("uses border-collapse:collapse when the frame has a border but no cornerRadius", () => {
@@ -346,9 +607,14 @@ describe("renderNode", () => {
     expect(html).toContain("border-top: 1px solid #000000;");
   });
 
-  it("switches to border-collapse:separate and includes shadow/radius CSS when cornerRadius is set", () => {
+  it("includes shadow/radius CSS on the frame's own <td> when cornerRadius is set", () => {
+    // 2026-08-17: fill/border/cornerRadius/shadow moved to the frame's own <td> (see
+    // visualBoxStyle) — the inner content <table> has no visual identity of its own anymore, so
+    // it no longer needs the old "border-collapse:separate for radius" special case and is
+    // always plain `collapse`.
     const html = renderNode(frameWithRadiusAndShadow, "desktop");
-    expect(html).toContain("border-collapse: separate;");
+    expect(html).toContain("border-collapse: collapse;");
+    expect(html).not.toContain("border-collapse: separate;");
     expect(html).toContain("border-radius: 8px;");
     expect(html).toContain("box-shadow: 0px 2px 4px #00000033;");
   });
@@ -397,12 +663,122 @@ describe("renderNode", () => {
     expect(html).toContain("font-style: italic;");
     expect(html).toContain("text-decoration: underline;");
   });
+
+  it("omits zero-value padding declarations entirely on text's own <td> (self-wrapping row)", () => {
+    // styledTextFixture's padding is {top:0, bottom:0} — both sides are zero, so neither
+    // padding-top nor padding-bottom appears at all (2026-08-14, user feedback: "only write
+    // paddings that have real values" — an omitted longhand is already 0 by CSS's initial
+    // value, so this changes nothing about the rendered result).
+    const html = renderNode(styledTextFixture, "desktop");
+    expect(html).toContain("<tr><td style=");
+    expect(html).not.toContain("padding-top:");
+    expect(html).not.toContain("padding-bottom:");
+  });
+
+  it("writes only the non-zero padding sides, in full longhand, on text's own <td>", () => {
+    const node: DesignNode = { ...styledTextFixture, id: "text-padded", padding: { top: 8, bottom: 0 } };
+    const html = renderNode(node, "desktop");
+    expect(html).toContain("padding-top: 8px;");
+    expect(html).not.toContain("padding-bottom:");
+  });
+
+  it("wraps a self-wrapping child (text) in its own nested <table> when placed in a row-direction cell", () => {
+    const html = renderNode(rowWithSelfWrappingChildFixture, "desktop");
+    expect(html).toContain(
+      '<td style=""><table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%"><tr><td style="',
+    );
+  });
+
+  it("wraps a bare-fragment child (divider) in <tr><td> when placed in a column frame", () => {
+    const html = renderNode(frameWithDividerChildFixture, "desktop");
+    expect(html).toContain(`<tr><td>${renderNode(dividerFixture, "desktop")}</td></tr>`);
+  });
+
+  it("does not double-wrap a self-wrapping child (button) placed in a column frame", () => {
+    const html = renderNode(frameWithButtonChildFixture, "desktop");
+    expect(html).toContain(renderButton(buttonFixture));
+    expect(html).not.toContain("<td><tr>");
+  });
+
+  it("folds gap directly into a non-last self-wrapping child's own <td>, no extra wrapper table", () => {
+    const html = renderNode(mixedGapFixture, "desktop");
+    // the text's own padding.bottom (0) + gap (20) = 20 (non-zero, so written), padding.top (0)
+    // stays omitted — folded into ITS OWN existing <td> style (no separate padding-top:0
+    // alongside it), no new <table> introduced to carry it. The trailing divider (bare-fragment,
+    // last) contributes none, same rule as any last child. (The divider's own markup separately
+    // uses an unrelated "padding-top: 1px" for its hairline-thickness technique — irrelevant
+    // here, hence checking the text's own exact <td> style rather than a blanket "not contain".)
+    expect(html).toContain('<td style="font-size: 14px; line-height: normal; padding-bottom: 20px;">');
+    expect(html).not.toContain('<td style="padding-bottom: 20px;">');
+  });
+
+  it("applies gap spacing between two self-wrapping frame children (the common real-world case)", () => {
+    const html = renderNode(twoNestedFramesWithGapFixture, "desktop");
+    // the first frame's own padding.bottom (0) + gap (24) = 24 (non-zero, so written); every
+    // other side is zero and stays omitted — folded into its own longhand padding-bottom
+    // declaration, not a standalone extra table/td.
+    expect(html).toContain('<td align="center" width="100%" style="padding-bottom: 24px; margin: 0; width: 100%;">');
+  });
+
+  it("skips the gap-carrying wrapper entirely for a self-wrapping child when there's no gap to carry", () => {
+    // fast path: frameWithButtonChildFixture has no `gap` set at all — the button's own <tr>
+    // must be appended as-is, no extra wrapping <table> introduced.
+    const html = renderNode(frameWithButtonChildFixture, "desktop");
+    expect(html).toContain(renderButton(buttonFixture));
+  });
+});
+
+describe("renderNode — node.name comments", () => {
+  it("wraps a named node's output in <!-- Name --> ... <!-- Name end -->, each on its own line", () => {
+    const html = renderNode(namedFrameFixture, "desktop");
+    // leading/trailing `\n` (2026-08-17) so the comment never glues onto whatever markup a
+    // parent places immediately before/after it — see wrapNameComment in cssUtils.ts.
+    expect(html.startsWith("\n<!-- TestBlock -->\n")).toBe(true);
+    expect(html.endsWith("\n<!-- TestBlock end -->\n")).toBe(true);
+  });
+
+  it("does not add any comment when node.name is unset", () => {
+    const html = renderNode(spacerFixture, "desktop");
+    expect(html).not.toContain("<!--");
+  });
+
+  it("wraps a nested named child independently of its unnamed parent", () => {
+    const html = renderNode(frameWithNamedChildFixture, "desktop");
+    expect(html).toContain("<!-- InnerItem -->");
+    expect(html).toContain("<!-- InnerItem end -->");
+    // the outer frame itself has no `name`, so no comment wraps the whole thing
+    expect(html.startsWith("<!--")).toBe(false);
+  });
+
+  it("does not double-wrap a promoCopy node's own fixed comment even when name is set", () => {
+    const html = renderNode(namedPromoCopyFixture, "desktop");
+    expect(html).toContain("<!--=== PROMO-COPY ===-->");
+    expect(html).not.toContain("<!-- PromoBlock -->");
+  });
 });
 
 describe("renderDocumentContent", () => {
+  it("wraps a named self-wrapping top-level node's <tr> directly in Name/Name-end comments, each on its own line", () => {
+    const html = renderDocumentContent([namedImageFixture], "desktop");
+    expect(html.startsWith("\n<!-- Header -->\n")).toBe(true);
+    expect(html.endsWith("\n<!-- Header end -->\n")).toBe(true);
+  });
+
+  it("places a named bare-fragment top-level node's comment inside the wrapping <td>, on its own line", () => {
+    const html = renderDocumentContent([namedDividerFixture], "desktop");
+    expect(html).toContain('<tr><td style="margin: 0; padding: 0;">\n<!-- Divider -->\n');
+    expect(html).toContain("\n<!-- Divider end -->\n</td></tr>");
+  });
+
   it("wraps each top-level node in its own <tr><td> row", () => {
     const html = renderDocumentContent([spacerFixture, imageFixture], "desktop");
     expect(html).toMatchSnapshot();
+  });
+
+  it("does not add an extra <tr><td> around a self-wrapping top-level node", () => {
+    const html = renderDocumentContent([imageFixture], "desktop");
+    expect(html).not.toContain("<td><tr>");
+    expect(html).toBe(renderNode(imageFixture, "desktop"));
   });
 
   it("drops nodes hidden on the current viewport instead of emitting empty rows", () => {
@@ -423,6 +799,7 @@ describe("renderDocumentContent", () => {
 const ALL_FIXTURES: Array<[string, DesignNode]> = [
   ["sponsoredNote", sponsoredNote],
   ["imageFixture", imageFixture],
+  ["fixedIconImageFixture", fixedIconImageFixture],
   ["spacerFixture", spacerFixture],
   ["buttonFixture", buttonFixture],
   ["outlineButtonFixture", outlineButtonFixture],
@@ -441,6 +818,19 @@ const ALL_FIXTURES: Array<[string, DesignNode]> = [
   ["perCornerRadiusButtonFixture", perCornerRadiusButtonFixture],
   ["imageNoHrefFixture", imageNoHrefFixture],
   ["styledTextFixture", styledTextFixture],
+  ["rowWithSelfWrappingChildFixture", rowWithSelfWrappingChildFixture],
+  ["frameWithDividerChildFixture", frameWithDividerChildFixture],
+  ["frameWithButtonChildFixture", frameWithButtonChildFixture],
+  ["mixedGapFixture", mixedGapFixture],
+  ["twoNestedFramesWithGapFixture", twoNestedFramesWithGapFixture],
+  ["rowNodeFixture", rowNodeFixture],
+  ["buttonRowNodeFixture", buttonRowNodeFixture],
+  ["namedFrameFixture", namedFrameFixture],
+  ["frameWithNamedChildFixture", frameWithNamedChildFixture],
+  ["namedPromoCopyFixture", namedPromoCopyFixture],
+  ["namedImageFixture", namedImageFixture],
+  ["namedDividerFixture", namedDividerFixture],
+  ["cardListFixture", cardListFixture],
 ];
 
 describe("designFileSchema consistency", () => {

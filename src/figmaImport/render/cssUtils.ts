@@ -61,3 +61,29 @@ export function borderToCss(border: FrameBorder): string {
 export function shadowToCss(shadow: FrameShadow): string {
   return `box-shadow: ${shadow.xPx}px ${shadow.yPx}px ${shadow.blurPx}px ${shadow.color};`;
 }
+
+// HTML `bgcolor=` attribute alongside the CSS `background-color` from fillToCss, for legacy
+// email-client redundancy (2026-08-13 rewrite). A gradient has no `bgcolor=` equivalent, so
+// this returns "" for anything other than a solid fill — callers should only add the attribute
+// when this returns a non-empty string.
+export function bgcolorAttr(fill: Fill | undefined): string {
+  if (!fill || fill.kind !== "solid") return "";
+  return ` bgcolor="${fill.color}"`;
+}
+
+// `\n<!-- Name -->\n{html}\n<!-- Name end -->\n` (2026-08-14, leading/trailing `\n` added
+// 2026-08-17) — the convention `templateManager.extractBlocks()` already parses. Shared here
+// (not left inline in renderNode.ts) so renderCardList.ts can apply the same per-card comment
+// without either duplicating the string template or creating a circular import between the two
+// render modules.
+//
+// Leading AND trailing `\n` (2026-08-17, user feedback on a real generated file): without them,
+// a nested named node's comment glues onto whatever markup immediately precedes/follows it in
+// the parent's own template string — e.g. `...width: 100%;"><!-- section -->` on one line, since
+// plain string concatenation has no other source of whitespace between a parent's own markup and
+// an inserted child's html. Callers that need an exact-adjacency assertion (e.g. "comment sits
+// directly inside this specific <td>") now assert across the newline instead of glued substrings.
+export function wrapNameComment(name: string | undefined, html: string): string {
+  if (!name || html === "") return html;
+  return `\n<!-- ${name} -->\n${html}\n<!-- ${name} end -->\n`;
+}

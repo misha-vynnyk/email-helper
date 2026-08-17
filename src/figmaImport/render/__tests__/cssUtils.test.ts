@@ -1,4 +1,4 @@
-import { borderToCss, cornerRadiusToCss, escapeAttr, escapeHtml, fillToCss, shadowToCss } from "../cssUtils";
+import { bgcolorAttr, borderToCss, cornerRadiusToCss, escapeAttr, escapeHtml, fillToCss, shadowToCss } from "../cssUtils";
 import type { Fill, FrameBorder, FrameShadow } from "../../types";
 
 describe("escapeHtml", () => {
@@ -127,5 +127,26 @@ describe("shadowToCss", () => {
   it("renders the standard box-shadow string", () => {
     const shadow: FrameShadow = { xPx: 0, yPx: 4, blurPx: 8, color: "rgba(0,0,0,0.25)" };
     expect(shadowToCss(shadow)).toBe("box-shadow: 0px 4px 8px rgba(0,0,0,0.25);");
+  });
+});
+
+describe("bgcolorAttr", () => {
+  it("renders a bgcolor= attribute for a solid fill", () => {
+    const fill: Fill = { kind: "solid", color: "#112233" };
+    expect(bgcolorAttr(fill)).toBe(' bgcolor="#112233"');
+  });
+
+  it("returns an empty string for a linearGradient (no bgcolor= equivalent)", () => {
+    const fill: Fill = { kind: "linearGradient", angleDeg: 90, stops: [{ color: "#000", position: 0 }, { color: "#fff", position: 1 }] };
+    expect(bgcolorAttr(fill)).toBe("");
+  });
+
+  it("returns an empty string for a radialGradient (no bgcolor= equivalent)", () => {
+    const fill: Fill = { kind: "radialGradient", stops: [{ color: "#000", position: 0 }, { color: "#fff", position: 1 }] };
+    expect(bgcolorAttr(fill)).toBe("");
+  });
+
+  it("returns an empty string when no fill is given", () => {
+    expect(bgcolorAttr(undefined)).toBe("");
   });
 });
