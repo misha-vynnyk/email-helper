@@ -1,6 +1,6 @@
 import type { ButtonNode, DividerLogoNode, DividerNode, HeaderImageNode } from "../../types";
 import { PLACEHOLDER_IMAGE_SRC } from "../placeholder";
-import { renderButton } from "../renderButton";
+import { renderButton, renderButtonCell } from "../renderButton";
 import { renderDivider } from "../renderDivider";
 import { renderDividerLogo } from "../renderDividerLogo";
 import { renderHeaderImage } from "../renderHeaderImage";
@@ -30,21 +30,35 @@ function normalize(html: string): string {
     .trim();
 }
 
-// verified against figma-to-html/content-blocks-template.html on 2026-08-13
+// verified against the user's real footer-button markup on 2026-08-13 — this is now the
+// canonical no-icon button, replacing the earlier button-no-icon shape from
+// content-blocks-template.html. The outer neutral row wrapper (<tr><td style="margin:0;
+// padding:0"><table ...font-size:0;text-align:center...>) that renderButton() adds around this
+// cell is asserted separately below (see "renderButton: no-icon self-wraps in a neutral row").
 
-const GOLDEN_BUTTON_NO_ICON = `
-  <table class="button" border="0" bgcolor="#333333" cellpadding="0" cellspacing="0" width="200"
-    style="margin: 0; padding: 0; border-spacing: 0; border-collapse: separate; max-width: 200px; width: 100%; border-radius: 4px; background-color: #333333;">
-    <tr>
-      <td height="40" align="center"
-        style="margin: 0; padding: 0; color: #ffffff; text-align: center; font-family: 'Roboto', sans-serif; font-size: 14px; font-weight: 700; line-height: 1;">
-        <a href="urlhere"
-          style="color: #ffffff; text-align: center; font-family: 'Roboto', sans-serif; font-size: 14px; font-weight: 700; line-height: 1; text-decoration: none; display: block; padding-top: 12px; padding-bottom: 12px; padding-right: 6px; padding-left: 6px;">
-          Learn more
-        </a>
-      </td>
-    </tr>
-  </table>
+const GOLDEN_BUTTON_NO_ICON_CELL = `
+  <td class="footer-button" width="200"
+    style="margin: 0; padding: 0; display: inline-block; vertical-align: top; font-size: 0; width: 200px;">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%"
+      style="margin: 0; padding: 0; border-spacing: 0; border-collapse: collapse; min-width: 100%;">
+      <tr>
+        <td class="footer-button-pad" style="margin: 0; padding-right: 10px; padding-bottom: 8px; padding-left: 10px;">
+          <table border="0" bgcolor="#333333" cellpadding="0" cellspacing="0" width="100%"
+            style="margin: 0; padding: 0; border-spacing: 0; border-collapse: separate; min-width: 100%; border-radius: 4px; background-color: #333333;">
+            <tr>
+              <td height="40" align="center"
+                style="margin: 0; padding: 0; color: #ffffff; text-align: center; font-family: 'Roboto', sans-serif; font-size: 14px; font-weight: 700; line-height: 1;">
+                <a href="urlhere"
+                  style="color: #ffffff; text-align: center; font-family: 'Roboto', sans-serif; font-size: 14px; font-weight: 700; line-height: 1; text-decoration: none; display: block; padding-top: 12px; padding-bottom: 12px; padding-right: 6px; padding-left: 6px;">
+                  Learn more
+                </a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </td>
 `;
 
 // The <a> style below has one corrected byte vs. the raw template: the source has
@@ -187,8 +201,6 @@ const buttonWithIconFixture: ButtonNode = {
   paddingLeftPx: 8,
   paddingRightPx: 8,
   icon: {
-    id: "btn-unsubscribe-icon",
-    type: "image",
     altDescription: "---",
     side: "left",
     gapPx: 5,
@@ -217,18 +229,28 @@ const headerImageFixture: HeaderImageNode = {
   href: "urlhere",
 };
 
-describe("golden snippets — output matches figma-to-html/content-blocks-template.html verbatim", () => {
-  it("renderButton: button-no-icon", () => {
-    expect(normalize(renderButton(buttonNoIconFixture))).toBe(normalize(GOLDEN_BUTTON_NO_ICON));
+describe("golden snippets — output matches the user's real markup verbatim", () => {
+  it("renderButton: footer-button no-icon cell", () => {
+    expect(normalize(renderButtonCell(buttonNoIconFixture))).toBe(normalize(GOLDEN_BUTTON_NO_ICON_CELL));
   });
 
-  it("renderButton: button-with-icon-left", () => {
-    expect(normalize(renderButton(buttonWithIconFixture))).toBe(normalize(GOLDEN_BUTTON_WITH_ICON_LEFT));
+  it("renderButton: no-icon self-wraps in a neutral row (no padding of its own)", () => {
+    const html = renderButton(buttonNoIconFixture);
+    expect(html).toContain('<tr><td style="margin: 0; padding: 0;">');
+    expect(html).toContain('font-size: 0; text-align: center;');
+    expect(normalize(html)).toContain(normalize(GOLDEN_BUTTON_NO_ICON_CELL));
   });
 
-  it("renderButton: button-with-icon-right", () => {
+  it("renderButton: button-with-icon-left (unchanged internal markup, just self-wrapped)", () => {
+    const html = renderButton(buttonWithIconFixture);
+    expect(html.startsWith('<tr><td style="margin: 0; padding: 0;">')).toBe(true);
+    expect(normalize(html)).toBe(normalize(`<tr><td style="margin: 0; padding: 0;">${GOLDEN_BUTTON_WITH_ICON_LEFT}</td></tr>`));
+  });
+
+  it("renderButton: button-with-icon-right (unchanged internal markup, just self-wrapped)", () => {
     const node: ButtonNode = { ...buttonWithIconFixture, icon: { ...buttonWithIconFixture.icon!, side: "right" } };
-    expect(normalize(renderButton(node))).toBe(normalize(GOLDEN_BUTTON_WITH_ICON_RIGHT));
+    const html = renderButton(node);
+    expect(normalize(html)).toBe(normalize(`<tr><td style="margin: 0; padding: 0;">${GOLDEN_BUTTON_WITH_ICON_RIGHT}</td></tr>`));
   });
 
   it("renderDivider: divider-plain", () => {

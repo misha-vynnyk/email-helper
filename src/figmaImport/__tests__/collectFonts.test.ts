@@ -9,6 +9,7 @@ describe("collectFonts", () => {
         type: "text",
         defaultStyle: { fontFamily: "Roboto", fontWeight: 400 },
         runs: [{ text: "a" }, { text: "b", fontWeight: 700 }],
+        padding: { top: 0, bottom: 0 },
       },
     ];
 
@@ -46,8 +47,20 @@ describe("collectFonts", () => {
         direction: "column",
         padding: { top: 0, right: 0, bottom: 0, left: 0 },
         children: [
-          { id: "t1", type: "text", defaultStyle: { fontFamily: "Montserrat", fontWeight: 600 }, runs: [{ text: "a" }] },
-          { id: "t2", type: "text", defaultStyle: { fontFamily: "Montserrat", fontWeight: 400 }, runs: [{ text: "b" }] },
+          {
+            id: "t1",
+            type: "text",
+            defaultStyle: { fontFamily: "Montserrat", fontWeight: 600 },
+            runs: [{ text: "a" }],
+            padding: { top: 0, bottom: 0 },
+          },
+          {
+            id: "t2",
+            type: "text",
+            defaultStyle: { fontFamily: "Montserrat", fontWeight: 400 },
+            runs: [{ text: "b" }],
+            padding: { top: 0, bottom: 0 },
+          },
         ],
       },
     ];
@@ -57,7 +70,7 @@ describe("collectFonts", () => {
 
   it("defaults to weight 400 when fontWeight is omitted", () => {
     const nodes: DesignNode[] = [
-      { id: "t1", type: "text", defaultStyle: { fontFamily: "Roboto" }, runs: [{ text: "a" }] },
+      { id: "t1", type: "text", defaultStyle: { fontFamily: "Roboto" }, runs: [{ text: "a" }], padding: { top: 0, bottom: 0 } },
     ];
     expect(collectFonts(nodes)).toEqual([{ family: "Roboto", googleQuery: "Roboto:wght@400" }]);
   });

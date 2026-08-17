@@ -107,6 +107,13 @@ const textRunSchema = z
   })
   .strict();
 
+const verticalPaddingSchema = z
+  .object({
+    top: z.number(),
+    bottom: z.number(),
+  })
+  .strict();
+
 const frameNodeShape = {
   ...baseNodeShape,
   type: z.literal("frame"),
@@ -142,6 +149,7 @@ const textNodeSchema = z
     defaultStyle: textStyleSchema,
     runs: z.array(textRunSchema).min(1),
     align: z.enum(["left", "center", "right"]).optional(),
+    padding: verticalPaddingSchema,
   })
   .strict();
 
@@ -149,15 +157,21 @@ const imageNodeShape = {
   ...baseNodeShape,
   type: z.literal("image"),
   altDescription: z.string().min(1, "altDescription is required"),
+  widthPx: z.number(),
+  widthMode: z.enum(["fluid", "fixed"]).optional(),
+  align: z.enum(["left", "center", "right"]).optional(),
+  padding: verticalPaddingSchema,
   aspectRatio: z.number().optional(),
   href: z.string().optional(),
 };
 
 const imageNodeSchema = z.object(imageNodeShape).strict();
 
+// NOT a spread of imageNodeShape — ButtonIcon is a standalone shape (see the comment on
+// ButtonIcon in types.ts), not an ImageNode; it never carries `padding`/`align`/`widthMode`.
 const buttonIconSchema = z
   .object({
-    ...imageNodeShape,
+    altDescription: z.string().min(1, "altDescription is required"),
     side: z.enum(["left", "right"]),
     gapPx: z.number(),
     widthPx: z.number(),
@@ -237,6 +251,53 @@ const promoCopyNodeSchema = z
   })
   .strict();
 
+// `children` is recursive, same z.lazy() convention as frameNodeSchema above.
+const rowColumnSchema = z
+  .object({
+    widthPercent: z.number(),
+    children: z.array(z.lazy(() => designNodeSchema)),
+  })
+  .strict();
+
+const rowNodeSchema = z
+  .object({
+    ...baseNodeShape,
+    type: z.literal("row"),
+    columns: z.array(rowColumnSchema),
+  })
+  .strict();
+
+const buttonRowNodeSchema = z
+  .object({
+    ...baseNodeShape,
+    type: z.literal("buttonRow"),
+    buttons: z.array(buttonNodeSchema),
+  })
+  .strict();
+
+// See the `CardListNode`/`SponsoredLinkCard` doc comment in types.ts: a fixed-structure,
+// literal-values-only card kind (mirrors `advanced/`'s classify→fixed-template mechanism).
+// `title`/`secondary` reuse textNodeSchema as-is — no duplicate style schema to keep in sync.
+const sponsoredLinkCardSchema = z
+  .object({
+    id: z.string().min(1, "id is required"),
+    name: z.string().optional(),
+    padding: framePaddingSchema,
+    title: textNodeSchema,
+    secondary: textNodeSchema,
+  })
+  .strict();
+
+const cardListNodeSchema = z
+  .object({
+    ...baseNodeShape,
+    type: z.literal("cardList"),
+    variant: z.literal("sponsoredLink"),
+    gap: z.number().optional(),
+    cards: z.array(sponsoredLinkCardSchema).min(1),
+  })
+  .strict();
+
 export const designNodeSchema: z.ZodType<DesignNode> = z.discriminatedUnion("type", [
   frameNodeSchema,
   textNodeSchema,
@@ -247,6 +308,9 @@ export const designNodeSchema: z.ZodType<DesignNode> = z.discriminatedUnion("typ
   headerImageNodeSchema,
   spacerNodeSchema,
   promoCopyNodeSchema,
+  rowNodeSchema,
+  buttonRowNodeSchema,
+  cardListNodeSchema,
 ]);
 
 export const designFileSchema = z.array(designNodeSchema);

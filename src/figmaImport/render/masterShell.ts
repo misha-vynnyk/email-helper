@@ -97,6 +97,11 @@ const BEFORE_CONTENT = `<!DOCTYPE html
         min-width: 100% !important;
       }
 
+      .footer-button-pad {
+        padding-right: 0 !important;
+        padding-left: 0 !important;
+      }
+
       .spacer-hide {
         display: none !important;
       }

@@ -4,7 +4,8 @@
 // by construction (max-width: 600px content table inside a width: 100% shell) — the identical
 // string is used for both desktop and mobile documents.
 export function renderPromoCopy(): string {
-  return `<!--=== PROMO-COPY ===-->
+  return `
+  <!--=== PROMO-COPY ===-->
   <table width="100%" border="0" cellpadding="0" cellspacing="0" role="presentation" style="max-width: 100%;">
     <tr>
       <td align="center" valign="top">
@@ -58,5 +59,6 @@ export function renderPromoCopy(): string {
       </td>
     </tr>
   </table>
-  <!--=== PROMO-COPY-end ===-->`;
+  <!--=== PROMO-COPY-end ===-->
+`;
 }

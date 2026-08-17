@@ -1,15 +1,30 @@
 import type { DesignNode, FrameNode } from "../types";
 import { renderButton } from "./renderButton";
-import { borderToCss, cornerRadiusToCss, fillToCss, shadowToCss } from "./cssUtils";
+import { renderButtonRow } from "./renderButtonRow";
+import { renderCardList } from "./renderCardList";
+import { bgcolorAttr, borderToCss, cornerRadiusToCss, fillToCss, shadowToCss, wrapNameComment } from "./cssUtils";
 import { renderDivider } from "./renderDivider";
 import { renderDividerLogo } from "./renderDividerLogo";
 import { renderHeaderImage } from "./renderHeaderImage";
 import { renderImage } from "./renderImage";
 import { renderPromoCopy } from "./renderPromoCopy";
+import { renderRow } from "./renderRow";
 import { renderSpacer } from "./renderSpacer";
 import { renderText } from "./renderText";
 
 export type Viewport = "desktop" | "mobile";
+
+// Types whose own render function already returns a complete `<tr>…</tr>` row (2026-08-13
+// rewrite, see FIGMA_TEMPLATE_IMPORT_PLAN.md) — a parent placing one of these as a child must
+// append its html as-is, never wrap it in another `<tr><td>`. Everything else still returns a
+// bare fragment and needs the parent to supply the enclosing row (see renderColumnContent /
+// renderRowContent / renderDocumentContent below). Exported so renderRow.ts can reuse the same
+// discriminant for its own column-internal child stacking instead of re-deriving this list.
+const SELF_WRAPPING_TYPES = new Set<DesignNode["type"]>(["frame", "text", "image", "button", "buttonRow", "row", "cardList"]);
+
+export function isSelfWrapping(type: DesignNode["type"]): boolean {
+  return SELF_WRAPPING_TYPES.has(type);
+}
 
 function widthAttr(width: FrameNode["width"]): string {
   if (width === undefined || width === "fill") return "100%";
@@ -17,35 +32,122 @@ function widthAttr(width: FrameNode["width"]): string {
   return `${width}`;
 }
 
-// Universal frame rendering (per user convention, FIGMA_TEMPLATE_IMPORT_PLAN.md Stage 3):
-// outer <table> carries fill/border/cornerRadius/shadow with padding:0 — never CSS `padding`
-// directly on a <table> (unreliable across email clients); the node's own `padding` lives on
-// an inner <td> ("Inside-container") wrapping a width:100% content table ("Content"). Gap
-// between children is padding-bottom/padding-right on the trailing side of each non-last
-// child, not a dedicated empty spacer row — an explicit large jump uses a real `spacer` child
-// node (renderSpacer) instead.
-function outerTableStyle(node: FrameNode): string {
+// Width-capping CSS only — a numeric width gets the fluid-but-capped `width:100%; max-width:Npx`
+// pair (matches masterShell.ts's own 600px Inner table), "fill"/undefined stays fluid with no
+// cap, "hug" gets no width declaration at all (bare `width="auto"` attribute does the sizing).
+// Applied to BOTH the frame's own <td> and its inner content `<table>` (2026-08-17) — see
+// visualBoxStyle below for why the <td> needs it too, not just the table.
+function widthCapCss(width: FrameNode["width"]): string {
+  if (typeof width === "number") return `width: 100%; max-width: ${width}px;`;
+  if (width === "hug") return "";
+  return "width: 100%;";
+}
+
+// The frame's own visual identity (fill/border/cornerRadius/shadow) plus its width-capping CSS —
+// applied to the frame's own <td> (2026-08-17 fix), NOT the inner content `<table>` anymore.
+//
+// BUG this fixes (found on a real generated file, KitchenTableInsight.com/desktop.json): fill/
+// border used to live on the inner `<table>`, while `padding` lived on the OUTER `<td>` wrapping
+// that table — two separate boxes, so the padding rendered OUTSIDE the coloured/bordered area
+// instead of inside it (e.g. a card with `fill:#F9F9F9` + `padding:12` showed a transparent
+// 12px gutter around a smaller pink box, rather than 12px of breathing room *inside* a pink box
+// that fills the frame's full bounds — the opposite of what a Figma frame's `padding` means).
+// Fix: fill/border/cornerRadius/shadow now sit on the exact same `<td>` as `padding` — standard
+// CSS box-model semantics guarantee the background/border always underlies the padding area of
+// its own box, so the two can never separate again. The inner `<table>` becomes purely
+// structural (no visual identity of its own), same role `renderColumnContent`'s "plain content
+// table" always had.
+//
+// The <td> also needs its own width-capping (not just the table) — otherwise, with no width on
+// the <td> itself, its background would spread across whatever width its parent cell gives it
+// (typically the full row), while the *content* (inside the still-capped inner table) stays
+// centered at the narrower `node.width` — a colored box wider than the "card" it's supposed to
+// be. Duplicating the same width CSS onto both boxes is a deliberate belt-and-suspenders (the
+// codebase already does this for `bgcolor` attribute + CSS `background-color`), not a stray
+// leftover from the previous single-table version.
+function visualBoxStyle(node: FrameNode): string {
   const hasRadius = node.cornerRadius !== undefined;
-  const declarations = [`border-collapse: ${hasRadius ? "separate" : "collapse"};`, "padding: 0;", "margin: 0;"];
+  const declarations = [widthCapCss(node.width)];
   if (node.fill) declarations.push(fillToCss(node.fill));
   if (node.border) declarations.push(borderToCss(node.border));
   if (hasRadius) declarations.push(cornerRadiusToCss(node.cornerRadius as NonNullable<FrameNode["cornerRadius"]>));
   if (node.shadow) declarations.push(shadowToCss(node.shadow));
-  return declarations.join(" ");
+  return declarations.filter(Boolean).join(" ");
 }
 
-function insetPadding(node: FrameNode): string {
-  return `${node.padding.top}px ${node.padding.right}px ${node.padding.bottom}px ${node.padding.left}px`;
+// Full longhand, never the 4-value `padding:` shorthand — some email clients have documented
+// bugs parsing/applying the multi-value shorthand per side reliably (2026-08-14, user
+// feedback); every OTHER `padding: 0;`/`margin: 0;` in this codebase is a plain reset (a single
+// uniform value, not four different ones) and stays shorthand, since that specific failure
+// mode doesn't apply to it. Zero sides are omitted entirely (same feedback: "only write
+// paddings that have real values") — the CSS initial value for an omitted longhand is already
+// 0, so this changes nothing about the rendered result.
+function insetPadding(node: FrameNode, extraBottomGapPx: number): string {
+  const bottom = node.padding.bottom + extraBottomGapPx;
+  return [
+    node.padding.top ? `padding-top: ${node.padding.top}px;` : "",
+    node.padding.right ? `padding-right: ${node.padding.right}px;` : "",
+    bottom ? `padding-bottom: ${bottom}px;` : "",
+    node.padding.left ? `padding-left: ${node.padding.left}px;` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
 
-function renderColumnContent(childrenHtml: string[], gapPx: number | undefined): string {
-  const lastIndex = childrenHtml.length - 1;
-  return childrenHtml
-    .map((html, index) => {
-      const gapStyle = gapPx && index !== lastIndex ? ` style="padding-bottom: ${gapPx}px;"` : "";
+function isVisibleOn(node: DesignNode, viewport: Viewport): boolean {
+  if (!node.visibility || node.visibility === "both") return true;
+  return node.visibility === (viewport === "desktop" ? "desktopOnly" : "mobileOnly");
+}
+
+function visibleChildren(children: DesignNode[], viewport: Viewport): DesignNode[] {
+  return children.filter((child) => isVisibleOn(child, viewport));
+}
+
+// `gap` is applied as extra bottom spacing on every non-last child, keyed off the child's
+// position in the full list (not just among bare-fragment siblings).
+//
+// CORRECTION (2026-08-13, found against real content — figma-to-html/KitchenTableInsight.com):
+// the first two cuts of this rewrite either (a) made `gap` a no-op for self-wrapping children
+// entirely, or (b) fixed that by wrapping a gapped self-wrapping child in an EXTRA `<table>` —
+// which then produced pathological nesting depth on real content (11 nested `<table>`s / 31
+// total on one modest newsletter — nearly every real frame nests other frames/text, and each
+// gap between them cost a whole extra table). Fix: thread the gap directly into the SAME `<td>`
+// each self-wrapping renderer already emits at its own outermost level, instead of wrapping
+// externally — every self-wrapping type's `renderNode()` call now takes an `extraBottomGapPx`
+// it folds into its own existing bottom padding, so gap costs zero extra markup. Bare-fragment
+// children (divider/spacer/etc.) still get the simple `<td style="padding-bottom:…">` wrap
+// they always did — no change there, and no dedicated empty spacer row either way.
+function renderColumnContent(children: DesignNode[], viewport: Viewport, gapPx: number | undefined): string {
+  const visible = visibleChildren(children, viewport);
+  const lastIndex = visible.length - 1;
+  return visible
+    .map((node, index) => {
+      const gap = Boolean(gapPx) && index !== lastIndex ? (gapPx as number) : 0;
+      if (isSelfWrapping(node.type)) return renderNode(node, viewport, gap);
+      const html = renderNode(node, viewport);
+      const gapStyle = gap ? ` style="padding-bottom: ${gap}px;"` : "";
       return `<tr><td${gapStyle}>${html}</td></tr>`;
     })
     .join("");
+}
+
+// Reusable outside this module: a frame's column-direction content and a RowNode column's
+// internal stacking (renderRow.ts) are the exact same "list of children stacking vertically"
+// operation — this is the single place that logic lives.
+export function renderChildRows(children: DesignNode[], viewport: Viewport, gapPx?: number): string {
+  return renderColumnContent(children, viewport, gapPx);
+}
+
+// A self-wrapping child's html is a bare `<tr>…</tr>` with no enclosing `<table>` — dropping it
+// straight into a sibling `<td>` (row-direction placement) would nest a `<tr>` directly inside a
+// `<td>`, which is invalid markup. Wrap it in its own plain content table first; bare-fragment
+// children go into the `<td>` unwrapped, as before. Unlike renderColumnContent's gap, THIS
+// wrapper is structurally required regardless of gap (row-direction gap is horizontal,
+// `padding-right` on the outer `<td>` below — an unrelated axis, no folding-in possible), so it
+// stays as its own extra table.
+function wrapForRowCell(node: DesignNode, html: string): string {
+  if (!isSelfWrapping(node.type)) return html;
+  return `<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">${html}</table>`;
 }
 
 // justify:"spaceBetween" has no flexbox equivalent in table layout; the real technique wraps
@@ -54,60 +156,68 @@ function renderColumnContent(childrenHtml: string[], gapPx: number | undefined):
 // only exactly 2 (e.g. "logo + nav links" on the left, one CTA pushed right). There is no
 // per-middle-child alignment (no way to push a *middle* child to center, say) — that would be
 // a distinct feature, tracked as an open question in figma-import-status.md, not implemented.
-function renderRowContent(childrenHtml: string[], gapPx: number | undefined, justify: FrameNode["justify"]): string {
-  const lastIndex = childrenHtml.length - 1;
+function renderRowContent(children: DesignNode[], viewport: Viewport, gapPx: number | undefined, justify: FrameNode["justify"]): string {
+  const visible = visibleChildren(children, viewport);
+  const lastIndex = visible.length - 1;
   const useSpaceBetween = justify === "spaceBetween" && lastIndex > 0;
-  const cells = childrenHtml.map((html, index) => {
+  const cells = visible.map((node, index) => {
     const isLast = index === lastIndex;
     const gapStyle = gapPx && !isLast ? `padding-right: ${gapPx}px;` : "";
+    const cellContent = wrapForRowCell(node, renderNode(node, viewport));
     if (useSpaceBetween && isLast) {
       return (
         `<td align="right" style="${gapStyle}">` +
         `<table role="presentation" border="0" cellpadding="0" cellspacing="0" align="right" style="padding: 0; margin: 0;">` +
-        `<tr><td>${html}</td></tr></table></td>`
+        `<tr><td>${cellContent}</td></tr></table></td>`
       );
     }
-    return `<td style="${gapStyle}">${html}</td>`;
+    return `<td style="${gapStyle}">${cellContent}</td>`;
   });
   return `<tr>${cells.join("")}</tr>`;
 }
 
-function renderFrame(node: FrameNode, viewport: Viewport): string {
-  const childrenHtml = node.children.map((child) => renderNode(child, viewport)).filter((html) => html !== "");
+// Self-wrapping (2026-08-13 rewrite): a frame is 2 levels, not 3 — a padded `<td align="center">`
+// wraps ONE content `<table>` whose children render straight into it as `<tr>` rows — no inner
+// plain content table. `align="center"` is unconditional (2026-08-17, confirmed against the
+// user's own real container markup, both a numeric-width outer container and a fluid 100%-width
+// inner container carry it). `extraBottomGapPx` (see renderColumnContent) folds a parent's gap
+// into this frame's own bottom inset instead of costing an extra wrapper table.
+//
+// This frame's own `<td>` carries BOTH its `padding` AND its visual identity (fill/border/
+// cornerRadius/shadow, via visualBoxStyle) — 2026-08-17 fix, see visualBoxStyle's own comment for
+// the bug this closes (padding used to land on a different box than the fill/border, so it
+// rendered outside the coloured area instead of inside it). The inner `<table>` is now purely
+// structural, carrying no visual identity of its own.
+function renderFrame(node: FrameNode, viewport: Viewport, extraBottomGapPx: number): string {
   const width = widthAttr(node.width);
-  const centerAttr = typeof node.width === "number" ? ' align="center"' : "";
   const content =
     node.direction === "column"
-      ? renderColumnContent(childrenHtml, node.gap)
-      : renderRowContent(childrenHtml, node.gap, node.justify);
+      ? renderColumnContent(node.children, viewport, node.gap)
+      : renderRowContent(node.children, viewport, node.gap, node.justify);
+  const tdStyle = `${insetPadding(node, extraBottomGapPx)} margin: 0; ${visualBoxStyle(node)}`.trim();
   return (
-    `<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="${width}"${centerAttr} style="${outerTableStyle(node)}">` +
-    `<tr><td style="padding: ${insetPadding(node)}; margin: 0;">` +
-    `<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="width: 100%; padding: 0; margin: 0;">${content}</table>` +
-    `</td></tr>` +
-    `</table>`
+    `<tr><td align="center" width="${width}"${bgcolorAttr(node.fill)} style="${tdStyle}">` +
+    `<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="${width}" style="border-collapse: collapse; padding: 0; margin: 0; ${widthCapCss(node.width)}">${content}</table>` +
+    `</td></tr>`
   );
 }
 
-function isVisibleOn(node: DesignNode, viewport: Viewport): boolean {
-  if (!node.visibility || node.visibility === "both") return true;
-  return node.visibility === (viewport === "desktop" ? "desktopOnly" : "mobileOnly");
-}
-
-export function renderNode(node: DesignNode, viewport: Viewport): string {
-  if (!isVisibleOn(node, viewport)) return "";
-
+function renderNodeByType(node: DesignNode, viewport: Viewport, extraBottomGapPx: number): string {
   switch (node.type) {
     case "frame":
-      return renderFrame(node, viewport);
+      return renderFrame(node, viewport, extraBottomGapPx);
     case "text":
-      return renderText(node);
+      return renderText(node, extraBottomGapPx);
     case "image":
-      return renderImage(node);
+      return renderImage(node, extraBottomGapPx);
     case "spacer":
       return renderSpacer(node);
     case "button":
-      return renderButton(node);
+      return renderButton(node, extraBottomGapPx);
+    case "buttonRow":
+      return renderButtonRow(node, extraBottomGapPx);
+    case "row":
+      return renderRow(node, viewport, extraBottomGapPx);
     case "divider":
       return renderDivider(node);
     case "dividerLogo":
@@ -116,13 +226,33 @@ export function renderNode(node: DesignNode, viewport: Viewport): string {
       return renderHeaderImage(node);
     case "promoCopy":
       return renderPromoCopy();
+    case "cardList":
+      return renderCardList(node, extraBottomGapPx);
   }
+}
+
+// `extraBottomGapPx` only ever gets passed by renderColumnContent, folding a parent frame's
+// `gap` into a self-wrapping child's own outermost `<td>` (see the CORRECTION comment above) —
+// bare-fragment types never receive it (their gap is applied externally, unchanged).
+//
+// `node.name` → `<!-- Name --> ... <!-- Name end -->` (2026-08-14): the schema has always
+// documented this as the source of the top-level block comments `templateManager.extractBlocks()`
+// parses, but nothing ever actually emitted it, at any depth. Wiring it in here (the single
+// dispatch point every other render function already calls through) covers every node — nested
+// or top-level — for free. `promoCopy` is excluded because `renderPromoCopy()` already emits its
+// own fixed `<!--=== PROMO-COPY ===-->` comment pair; wrapping it again would double-comment a
+// node whose content is never authored per-node anyway.
+export function renderNode(node: DesignNode, viewport: Viewport, extraBottomGapPx = 0): string {
+  if (!isVisibleOn(node, viewport)) return "";
+  const html = renderNodeByType(node, viewport, extraBottomGapPx);
+  if (node.type === "promoCopy") return html;
+  return wrapNameComment(node.name, html);
 }
 
 export function renderDocumentContent(nodes: DesignNode[], viewport: Viewport): string {
   return nodes
-    .map((node) => renderNode(node, viewport))
-    .filter((html) => html !== "")
-    .map((html) => `<tr><td style="margin: 0; padding: 0;">${html}</td></tr>`)
+    .map((node) => ({ node, html: renderNode(node, viewport) }))
+    .filter(({ html }) => html !== "")
+    .map(({ node, html }) => (isSelfWrapping(node.type) ? html : `<tr><td style="margin: 0; padding: 0;">${html}</td></tr>`))
     .join("");
 }
