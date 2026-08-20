@@ -3,7 +3,8 @@ import * as React from "react";
 import { Input } from "../components/ui/input";
 import { collectFonts } from "./collectFonts";
 import FigmaImportDropzone from "./FigmaImportDropzone";
-import { assembleDocument } from "./render/masterShell";
+import { assembleDocument, assembleResponsiveDocument } from "./render/masterShell";
+import { mergeDesignTrees } from "./render/mergeDesignTrees";
 import { renderDocumentContent } from "./render/renderNode";
 import type { DesignNode } from "./types";
 import { useFigmaImportFolder } from "./useFigmaImportFolder";
@@ -36,6 +37,12 @@ interface BuildResult {
   error?: string;
 }
 
+interface ResponsiveBuildResult {
+  html?: string;
+  diagnostics?: string[];
+  error?: string;
+}
+
 interface TreeBuildResult {
   html?: string;
   error?: string;
@@ -51,6 +58,30 @@ export function buildDocuments(desktopNodes: DesignNode[], mobileNodes: DesignNo
   } catch (buildError) {
     return { error: buildError instanceof Error ? buildError.message : String(buildError) };
   }
+}
+
+// Stage 3: one adaptive `.html` from the same validated desktop/mobile pair `buildDocuments`
+// uses — see mergeDesignTrees.ts for the diff/merge algorithm. `diagnostics` lists every diff the
+// merge couldn't express as a utility class (never a silent drop), surfaced in the UI below.
+export function buildResponsiveDocuments(desktopNodes: DesignNode[], mobileNodes: DesignNode[], title: string): ResponsiveBuildResult {
+  try {
+    const { contentHtml, cssRules, diagnostics } = mergeDesignTrees(desktopNodes, mobileNodes);
+    const html = assembleResponsiveDocument(contentHtml, { title, cssRules });
+    return { html, diagnostics };
+  } catch (buildError) {
+    return { error: buildError instanceof Error ? buildError.message : String(buildError) };
+  }
+}
+
+// The pair-flow's only source of a "template name" is whatever the user typed into the folder-path
+// field — using that raw path as-is (as both the document `<title>` and the download filename)
+// produced ugly, unreadable results (the whole path, slugified). Take just the last path segment
+// instead; falls back the same way `folderPath` itself always did when empty.
+export function deriveTemplateTitle(folderPath: string): string {
+  const trimmed = folderPath.trim();
+  if (!trimmed) return "Figma Import Preview";
+  const segments = trimmed.split(/[/\\]+/).filter(Boolean);
+  return segments[segments.length - 1] || "Figma Import Preview";
 }
 
 export function slugifyFileName(title: string): string {
@@ -96,8 +127,10 @@ export function buildFromSingleTree(rawTree: string, manualTitle: string): TreeB
 export default function FigmaImportPanel() {
   const [folderPath, setFolderPath] = React.useState("");
   const [build, setBuild] = React.useState<BuildResult | null>(null);
-  const { loading, error, description, descriptionExists, desktopRaw, mobileRaw, validation, load, setFromFiles } =
+  const [responsiveBuild, setResponsiveBuild] = React.useState<ResponsiveBuildResult | null>(null);
+  const { loading, error, description, descriptionExists, desktopRaw, mobileRaw, validation, load, setFromFiles, reset } =
     useFigmaImportFolder();
+  const templateTitle = deriveTemplateTitle(folderPath);
 
   const [treeJson, setTreeJson] = React.useState("");
   const [treeTitle, setTreeTitle] = React.useState("");
@@ -112,18 +145,32 @@ export default function FigmaImportPanel() {
   const handleLoad = () => {
     if (folderPath.trim()) {
       setBuild(null);
+      setResponsiveBuild(null);
       load(folderPath.trim());
     }
   };
 
   const handleFilesReady = (files: Parameters<typeof setFromFiles>[0]) => {
     setBuild(null);
+    setResponsiveBuild(null);
     setFromFiles(files);
   };
 
   const handleBuild = () => {
     if (!validation?.valid || !validation.desktopNodes || !validation.mobileNodes) return;
-    setBuild(buildDocuments(validation.desktopNodes, validation.mobileNodes, folderPath.trim() || "Figma Import Preview"));
+    setBuild(buildDocuments(validation.desktopNodes, validation.mobileNodes, templateTitle));
+  };
+
+  const handleBuildResponsive = () => {
+    if (!validation?.valid || !validation.desktopNodes || !validation.mobileNodes) return;
+    setResponsiveBuild(buildResponsiveDocuments(validation.desktopNodes, validation.mobileNodes, templateTitle));
+  };
+
+  const handleReset = () => {
+    setFolderPath("");
+    setBuild(null);
+    setResponsiveBuild(null);
+    reset();
   };
 
   const openQuestions = extractOpenQuestions(description);
@@ -254,9 +301,18 @@ export default function FigmaImportPanel() {
         </div>
       )}
 
+      {(validation || build || responsiveBuild) && (
+        <button
+          onClick={handleReset}
+          className='self-start text-xs font-bold text-muted-foreground underline transition-all hover:text-foreground'>
+          Reset — почати заново
+        </button>
+      )}
+
       {validation && validation.valid && (
         <div className='flex flex-col gap-2 rounded-xl border border-primary/20 bg-primary/10 px-4 py-3 text-sm text-primary'>
           <div className='font-bold'>Валідація пройшла успішно</div>
+          <div>Template: {templateTitle}</div>
           <div>Desktop: {countTopLevelNodes(desktopRaw)} топ-левел вузлів</div>
           <div>Mobile: {countTopLevelNodes(mobileRaw)} топ-левел вузлів</div>
           {openQuestions.length > 0 && (
@@ -269,11 +325,19 @@ export default function FigmaImportPanel() {
               </ul>
             </div>
           )}
-          <button
-            onClick={handleBuild}
-            className='mt-1 self-start rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition-all hover:brightness-110'>
-            Build
-          </button>
+          <div className='flex gap-2'>
+            <button
+              onClick={handleBuild}
+              className='mt-1 self-start rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition-all hover:brightness-110'>
+              Build
+            </button>
+            <button
+              onClick={handleBuildResponsive}
+              title='Один адаптивний .html — diff desktop/mobile по id, mapped на utility-class довідник (Етап 3)'
+              className='mt-1 self-start rounded-xl border border-primary px-4 py-2 text-sm font-bold text-primary transition-all hover:bg-primary/10'>
+              Build Responsive
+            </button>
+          </div>
         </div>
       )}
 
@@ -287,13 +351,61 @@ export default function FigmaImportPanel() {
       {build?.desktopHtml && build?.mobileHtml && (
         <div className='grid grid-cols-2 gap-4'>
           <div>
-            <div className='mb-1 text-sm font-bold'>Desktop</div>
+            <div className='mb-1 flex items-center justify-between'>
+              <div className='text-sm font-bold'>Desktop</div>
+              <button
+                onClick={() => downloadHtmlFile(build.desktopHtml!, `${templateTitle} desktop`)}
+                className='rounded-xl border border-border px-3 py-1 text-xs font-bold text-foreground transition-all hover:bg-accent'>
+                Download HTML
+              </button>
+            </div>
             <iframe title='Desktop preview' srcDoc={build.desktopHtml} className='h-[600px] w-full rounded-xl border border-border' />
           </div>
           <div>
-            <div className='mb-1 text-sm font-bold'>Mobile</div>
+            <div className='mb-1 flex items-center justify-between'>
+              <div className='text-sm font-bold'>Mobile</div>
+              <button
+                onClick={() => downloadHtmlFile(build.mobileHtml!, `${templateTitle} mobile`)}
+                className='rounded-xl border border-border px-3 py-1 text-xs font-bold text-foreground transition-all hover:bg-accent'>
+                Download HTML
+              </button>
+            </div>
             <iframe title='Mobile preview' srcDoc={build.mobileHtml} className='h-[600px] w-full rounded-xl border border-border' />
           </div>
+        </div>
+      )}
+
+      {responsiveBuild?.error && (
+        <div className='rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm text-destructive'>
+          <div className='font-bold'>Помилка рендеру (Responsive)</div>
+          <div className='font-mono text-xs'>{responsiveBuild.error}</div>
+        </div>
+      )}
+
+      {responsiveBuild?.html && (
+        <div className='flex flex-col gap-2'>
+          <div className='flex items-center gap-2'>
+            <div className='text-sm font-bold'>Responsive (один файл)</div>
+            <button
+              onClick={() => downloadHtmlFile(responsiveBuild.html!, templateTitle)}
+              className='rounded-xl border border-border px-4 py-2 text-sm font-bold text-foreground transition-all hover:bg-accent'>
+              Download HTML
+            </button>
+          </div>
+          <iframe title='Responsive preview' srcDoc={responsiveBuild.html} className='h-[600px] w-full rounded-xl border border-border' />
+          {responsiveBuild.diagnostics && responsiveBuild.diagnostics.length > 0 && (
+            <div className='rounded-xl border border-border bg-card p-4'>
+              <div className='mb-2 text-sm font-bold'>Diagnostics ({responsiveBuild.diagnostics.length})</div>
+              <p className='mb-2 text-xs text-muted-foreground'>
+                Diffs the merge couldn't express as a utility class — desktop's value silently wins for each, never a silent drop.
+              </p>
+              <ul className='max-h-64 list-disc overflow-auto pl-5 font-mono text-xs'>
+                {responsiveBuild.diagnostics.map((d, i) => (
+                  <li key={i}>{d}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 

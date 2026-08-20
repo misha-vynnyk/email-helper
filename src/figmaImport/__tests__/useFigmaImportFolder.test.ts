@@ -37,6 +37,28 @@ describe("useFigmaImportFolder", () => {
     expect(result.current.desktopRaw).toContain("divider-1");
   });
 
+  it("reset() clears loaded validation/raw state back to the initial state", async () => {
+    mockedReadFolder.mockResolvedValue({
+      description: { exists: false },
+      desktopJson: { exists: true, content: JSON.stringify([validDivider]) },
+      mobileJson: { exists: true, content: JSON.stringify([validDivider]) },
+    });
+
+    const { result } = renderHook(() => useFigmaImportFolder());
+    await act(async () => {
+      await result.current.load("/some/folder");
+    });
+    expect(result.current.validation?.valid).toBe(true);
+
+    act(() => {
+      result.current.reset();
+    });
+
+    expect(result.current.validation).toBeUndefined();
+    expect(result.current.desktopRaw).toBeUndefined();
+    expect(result.current.loading).toBe(false);
+  });
+
   it("sets a specific error message when desktop.json is missing", async () => {
     mockedReadFolder.mockResolvedValue({
       description: { exists: false },

@@ -1,8 +1,8 @@
 import { useCallback, useState } from "react";
 
 import { figmaImportEndpoints } from "../api/endpoints/figmaImport";
-import { validateDesignPair } from "./validate";
 import type { ValidationResult } from "./validate";
+import { validateDesignPair } from "./validate";
 
 interface FigmaImportFolderState {
   loading: boolean;
@@ -73,5 +73,9 @@ export function useFigmaImportFolder() {
     }
   }, []);
 
-  return { ...state, load, setFromFiles };
+  const reset = useCallback(() => {
+    setState(initialState);
+  }, []);
+
+  return { ...state, load, setFromFiles, reset };
 }

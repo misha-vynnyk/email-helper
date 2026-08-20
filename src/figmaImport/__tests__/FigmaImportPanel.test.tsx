@@ -16,6 +16,7 @@ jest.mock("../useFigmaImportFolder", () => ({
     validation: null,
     load: jest.fn(),
     setFromFiles: jest.fn(),
+    reset: jest.fn(),
   }),
 }));
 

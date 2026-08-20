@@ -55,6 +55,30 @@ function collectIds(nodes: DesignNode[]): Map<string, Visibility> {
         ids.set(icon.id, icon.visibility ?? "both");
       }
     }
+    // RowNode's columns[].children and CardListNode's cards[].title/secondary are the same
+    // "nested DesignNode" edges frame.children already walks — missing them here meant any
+    // id used only inside a row/cardList (e.g. a mobile-only RowNode wrapping desktop's plain
+    // frame(row) content, see figma-to-html/CLAUDE.md's "same id, different structure per
+    // file" allowance) falsely failed cross-file id validation as "missing" in the other file.
+    if (node.type === "row") {
+      (node as unknown as { columns: Array<{ children: DesignNode[] }> }).columns.forEach((column) =>
+        column.children.forEach((child) => visit(child as BaseNode & { type: string }))
+      );
+    }
+    if (node.type === "cardList") {
+      (node as unknown as { cards: Array<BaseNode & { title: DesignNode; secondary: DesignNode }> }).cards.forEach(
+        (card) => {
+          ids.set(card.id, card.visibility ?? "both");
+          visit(card.title as BaseNode & { type: string });
+          visit(card.secondary as BaseNode & { type: string });
+        }
+      );
+    }
+    if (node.type === "buttonRow") {
+      (node as unknown as { buttons: DesignNode[] }).buttons.forEach((button) =>
+        visit(button as BaseNode & { type: string })
+      );
+    }
   };
 
   nodes.forEach((node) => visit(node as BaseNode & { type: string }));
