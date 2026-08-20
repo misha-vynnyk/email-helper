@@ -10,6 +10,14 @@
 const TITLE_TOKEN = "__FIGMA_IMPORT_TITLE__";
 const FONT_LINK_TOKEN = "__FIGMA_IMPORT_FONT_LINK__";
 const FONT_RULES_TOKEN = "__FIGMA_IMPORT_FONT_RULES__";
+// Added for the Stage 3 responsive assembler (mergeDesignTrees.ts/assembleResponsiveDocument.ts,
+// see figma-import-status.md) — extracts the three `@media` utility-class tiers below out from
+// being unconditionally inlined, so `assembleResponsiveDocument()` can substitute only the
+// classes a given desktop/mobile diff actually used instead of the whole always-included (but
+// mostly commented-out) reference block. `assembleDocument()` (the existing, already-shipping
+// single-viewport path) substitutes `STATIC_RESPONSIVE_UTILITY_CSS` here unchanged — same output
+// as before this token existed, verified byte-identical against `masterShell.test.ts`'s snapshot.
+const RESPONSIVE_UTILITY_CSS_TOKEN = "__FIGMA_IMPORT_RESPONSIVE_UTILITY_CSS__";
 
 export interface DocumentFont {
   family: string;
@@ -24,58 +32,11 @@ export interface DocumentSlots {
   // whatever the browser/client substitutes (see LESSONS.md's `[style*="FontName"]` convention).
 }
 
-const BEFORE_CONTENT = `<!DOCTYPE html
-  PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml"
-  xmlns:o="urn:schemas-microsoft-com:office:office" lang="en">
-
-<head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="x-apple-disable-message-reformatting" />
-  <title>${TITLE_TOKEN}</title>
-
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  ${FONT_LINK_TOKEN}
-
-  <style type="text/css">
-    body {
-      width: 100% !important;
-      -webkit-text-size-adjust: 100%;
-      -ms-text-size-adjust: 100%;
-      margin: 0;
-      padding: 0;
-      line-height: 100%;
-    }
-
-    * {
-      box-sizing: border-box !important;
-    }
-
-    img {
-      outline: none;
-      text-decoration: none;
-      border: none;
-      -ms-interpolation-mode: bicubic;
-      max-width: 100%;
-      margin: 0;
-      padding: 0;
-    }
-
-    table {
-      border-collapse: collapse;
-      mso-table-lspace: 0pt;
-      mso-table-rspace: 0pt;
-    }
-
-    table td {
-      border-collapse: collapse;
-    }
-
-    ${FONT_RULES_TOKEN}
-
-    @media screen and (max-width: 602px) {
+// Literal copy of the three commented-out `@media` utility-class tiers — substituted back in
+// unchanged by `assembleDocument()` (today's single-viewport path), so its output stays
+// byte-identical to before `RESPONSIVE_UTILITY_CSS_TOKEN` existed. `assembleResponsiveDocument()`
+// substitutes a dynamically-built subset here instead — see mergeDesignTrees.ts.
+const STATIC_RESPONSIVE_UTILITY_CSS = `    @media screen and (max-width: 602px) {
       table.main-bg {
         width: 100% !important;
         max-width: 100% !important;
@@ -377,7 +338,60 @@ const BEFORE_CONTENT = `<!DOCTYPE html
       /* .xs-no-radius       { border-radius: 0 !important; } */
       /* .xs-img-full        { width: 100% !important; height: auto !important; } */
       /* .xs-bg-transparent  { background-color: transparent !important; } */
+    }`;
+
+const BEFORE_CONTENT = `<!DOCTYPE html
+  PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml"
+  xmlns:o="urn:schemas-microsoft-com:office:office" lang="en" dir="ltr">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="x-apple-disable-message-reformatting" />
+  <title>${TITLE_TOKEN}</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  ${FONT_LINK_TOKEN}
+
+  <style type="text/css">
+    body {
+      width: 100% !important;
+      -webkit-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+      margin: 0;
+      padding: 0;
+      line-height: 100%;
     }
+
+    * {
+      box-sizing: border-box !important;
+    }
+
+    img {
+      outline: none;
+      text-decoration: none;
+      border: none;
+      -ms-interpolation-mode: bicubic;
+      max-width: 100%;
+      margin: 0;
+      padding: 0;
+    }
+
+    table {
+      border-collapse: collapse;
+      mso-table-lspace: 0pt;
+      mso-table-rspace: 0pt;
+    }
+
+    table td {
+      border-collapse: collapse;
+    }
+
+    ${FONT_RULES_TOKEN}
+
+    ${RESPONSIVE_UTILITY_CSS_TOKEN}
   </style>
 
   <!--[if (gte mso 9)|(IE)]>
@@ -398,6 +412,8 @@ const BEFORE_CONTENT = `<!DOCTYPE html
 </head>
 
 <body style="margin: 0; padding: 0; background-color: #ffffff;">
+  <div lang="en"
+    dir="ltr">
   <center>
 
     <!--[ Wrapper ]-->
@@ -468,6 +484,7 @@ const AFTER_CONTENT = `<!--[------ Content / end ------]-->
     <!--[ Wrapper / end ]-->
 
   </center>
+</div>
 </body>
 
 </html>`;
@@ -492,6 +509,30 @@ export function assembleDocument(contentHtml: string, slots: DocumentSlots): str
   const fonts = slots.fonts ?? [];
   const before = BEFORE_CONTENT.replace(TITLE_TOKEN, slots.title)
     .replace(FONT_LINK_TOKEN, fontLinkHtml(fonts))
-    .replace(FONT_RULES_TOKEN, fontRulesCss(fonts));
+    .replace(FONT_RULES_TOKEN, fontRulesCss(fonts))
+    .replace(RESPONSIVE_UTILITY_CSS_TOKEN, STATIC_RESPONSIVE_UTILITY_CSS);
+  return `${before}${contentHtml}${AFTER_CONTENT}`;
+}
+
+// Stage 3 responsive assembler entry point (mergeDesignTrees.ts) — same wrapper chrome as
+// `assembleDocument()` above, but substitutes only the `@media (max-width:602px)` classes the
+// merge actually used (plus the couple of always-on ones `STATIC_RESPONSIVE_UTILITY_CSS` already
+// hardcodes unconditionally — `.footer-button`/`.footer-button-pad`/`.spacer-hide`/`.no-radius`,
+// reproduced literally here so a responsive document keeps the exact same baseline behavior as a
+// static one) instead of the whole largely-commented-out reference block.
+export function assembleResponsiveDocument(contentHtml: string, slots: DocumentSlots & { cssRules: Map<string, string> }): string {
+  const fonts = slots.fonts ?? [];
+  const alwaysOn = [
+    ".footer-button { display: block !important; width: 100% !important; max-width: 100% !important; min-width: 100% !important; }",
+    ".footer-button-pad { padding-right: 0 !important; padding-left: 0 !important; }",
+    ".spacer-hide { display: none !important; }",
+    ".no-radius { border-radius: 0 !important; }",
+  ];
+  const usedRules = Array.from(slots.cssRules.values());
+  const utilityCss = usedRules.length === 0 ? "" : `@media screen and (max-width: 602px) {\n      ${alwaysOn.concat(usedRules).join("\n      ")}\n    }`;
+  const before = BEFORE_CONTENT.replace(TITLE_TOKEN, slots.title)
+    .replace(FONT_LINK_TOKEN, fontLinkHtml(fonts))
+    .replace(FONT_RULES_TOKEN, fontRulesCss(fonts))
+    .replace(RESPONSIVE_UTILITY_CSS_TOKEN, utilityCss);
   return `${before}${contentHtml}${AFTER_CONTENT}`;
 }

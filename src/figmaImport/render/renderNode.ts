@@ -1,8 +1,8 @@
 import type { DesignNode, FrameNode } from "../types";
+import { bgcolorAttr, borderToCss, cornerRadiusToCss, fillToCss, shadowToCss, wrapNameComment } from "./cssUtils";
 import { renderButton } from "./renderButton";
 import { renderButtonRow } from "./renderButtonRow";
 import { renderCardList } from "./renderCardList";
-import { bgcolorAttr, borderToCss, cornerRadiusToCss, fillToCss, shadowToCss, wrapNameComment } from "./cssUtils";
 import { renderDivider } from "./renderDivider";
 import { renderDividerLogo } from "./renderDividerLogo";
 import { renderHeaderImage } from "./renderHeaderImage";
@@ -20,13 +20,13 @@ export type Viewport = "desktop" | "mobile";
 // bare fragment and needs the parent to supply the enclosing row (see renderColumnContent /
 // renderRowContent / renderDocumentContent below). Exported so renderRow.ts can reuse the same
 // discriminant for its own column-internal child stacking instead of re-deriving this list.
-const SELF_WRAPPING_TYPES = new Set<DesignNode["type"]>(["frame", "text", "image", "button", "buttonRow", "row", "cardList"]);
+const SELF_WRAPPING_TYPES = new Set<DesignNode["type"]>(["frame", "text", "image", "button", "buttonRow", "row", "cardList", "spacer"]);
 
 export function isSelfWrapping(type: DesignNode["type"]): boolean {
   return SELF_WRAPPING_TYPES.has(type);
 }
 
-function widthAttr(width: FrameNode["width"]): string {
+export function widthAttr(width: FrameNode["width"]): string {
   if (width === undefined || width === "fill") return "100%";
   if (width === "hug") return "auto";
   return `${width}`;
@@ -37,7 +37,7 @@ function widthAttr(width: FrameNode["width"]): string {
 // cap, "hug" gets no width declaration at all (bare `width="auto"` attribute does the sizing).
 // Applied to BOTH the frame's own <td> and its inner content `<table>` (2026-08-17) — see
 // visualBoxStyle below for why the <td> needs it too, not just the table.
-function widthCapCss(width: FrameNode["width"]): string {
+export function widthCapCss(width: FrameNode["width"]): string {
   if (typeof width === "number") return `width: 100%; max-width: ${width}px;`;
   if (width === "hug") return "";
   return "width: 100%;";
@@ -65,7 +65,7 @@ function widthCapCss(width: FrameNode["width"]): string {
 // be. Duplicating the same width CSS onto both boxes is a deliberate belt-and-suspenders (the
 // codebase already does this for `bgcolor` attribute + CSS `background-color`), not a stray
 // leftover from the previous single-table version.
-function visualBoxStyle(node: FrameNode): string {
+export function visualBoxStyle(node: FrameNode): string {
   const hasRadius = node.cornerRadius !== undefined;
   const declarations = [widthCapCss(node.width)];
   if (node.fill) declarations.push(fillToCss(node.fill));
@@ -82,7 +82,7 @@ function visualBoxStyle(node: FrameNode): string {
 // mode doesn't apply to it. Zero sides are omitted entirely (same feedback: "only write
 // paddings that have real values") — the CSS initial value for an omitted longhand is already
 // 0, so this changes nothing about the rendered result.
-function insetPadding(node: FrameNode, extraBottomGapPx: number): string {
+export function insetPadding(node: FrameNode, extraBottomGapPx: number): string {
   const bottom = node.padding.bottom + extraBottomGapPx;
   return [
     node.padding.top ? `padding-top: ${node.padding.top}px;` : "",
@@ -145,9 +145,22 @@ export function renderChildRows(children: DesignNode[], viewport: Viewport, gapP
 // wrapper is structurally required regardless of gap (row-direction gap is horizontal,
 // `padding-right` on the outer `<td>` below — an unrelated axis, no folding-in possible), so it
 // stays as its own extra table.
+//
+// Width of that wrapper table (2026-08-19, root-caused on FamilyCenterOfWellness's `ads-header`):
+// a `width:"hug"` frame child renders its own content centered via `renderFrame`'s unconditional
+// `align="center"` (a confirmed, correct behavior for every other case — see renderFrame's own
+// comment). Wrapping that hug-width frame in a `width="100%"` table gives `align="center"` a full
+// cell's worth of room to center *within*, which visibly drifts the content away from the cell's
+// natural left edge instead of leaving it flush. Since a hug-width frame is meant to shrink to its
+// own content by definition, the fix is to give it a shrink-to-fit (`width="auto"`) wrapper
+// instead — this removes the extra room to drift into without touching renderFrame's centering
+// logic at all. Every other case (fill/numeric-width frames, and every non-frame self-wrapping
+// type) keeps the original `width="100%"` wrapper — byte-identical output.
 function wrapForRowCell(node: DesignNode, html: string): string {
   if (!isSelfWrapping(node.type)) return html;
-  return `<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">${html}</table>`;
+  const shrinkToFit = node.type === "frame" && node.width === "hug";
+  const width = shrinkToFit ? "auto" : "100%";
+  return `<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="${width}">${html}</table>`;
 }
 
 // justify:"spaceBetween" has no flexbox equivalent in table layout; the real technique wraps
@@ -188,30 +201,45 @@ function renderRowContent(children: DesignNode[], viewport: Viewport, gapPx: num
 // the bug this closes (padding used to land on a different box than the fill/border, so it
 // rendered outside the coloured area instead of inside it). The inner `<table>` is now purely
 // structural, carrying no visual identity of its own.
-function renderFrame(node: FrameNode, viewport: Viewport, extraBottomGapPx: number): string {
+// The outer `<td>` carries NO `width=` attribute (2026-08-19, user-confirmed correction against
+// real reference markup) — only `align="center"`, letting it span whatever the parent row
+// actually gives it. Centering + width-capping is entirely the inner `<table>`'s job: it carries
+// both the numeric `width=` attribute AND its own `align="center"` (previously missing — the
+// <td>'s align alone doesn't center a narrower block-level table within a wider cell on its own
+// in every client, the table needs its own align too), plus the `max-width` CSS cap.
+// `responsiveClass` (added for mergeDesignTrees.ts's responsive assembler, see
+// figma-import-status.md's Stage 3 entry) is purely additive: undefined (every existing call
+// site) renders byte-identical output to before. When set, it's attached to this frame's own
+// outer `<td>` alongside its inline style — the same "class + `!important` override" technique
+// the master shell's own `@media` utility tiers already use everywhere else, so a class resolved
+// against `utilityClassRegistry.ts` composes with the existing inline styles rather than fighting
+// them (email-safe: inline styles apply first, the `!important` class rule wins only once its
+// `@media` query is active).
+function renderFrame(node: FrameNode, viewport: Viewport, extraBottomGapPx: number, responsiveClass?: string): string {
   const width = widthAttr(node.width);
   const content =
     node.direction === "column"
       ? renderColumnContent(node.children, viewport, node.gap)
       : renderRowContent(node.children, viewport, node.gap, node.justify);
   const tdStyle = `${insetPadding(node, extraBottomGapPx)} margin: 0; ${visualBoxStyle(node)}`.trim();
+  const classAttr = responsiveClass ? ` class="${responsiveClass}"` : "";
   return (
-    `<tr><td align="center" width="${width}"${bgcolorAttr(node.fill)} style="${tdStyle}">` +
-    `<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="${width}" style="border-collapse: collapse; padding: 0; margin: 0; ${widthCapCss(node.width)}">${content}</table>` +
+    `<tr><td align="center"${classAttr}${bgcolorAttr(node.fill)} style="${tdStyle}">` +
+    `<table role="presentation" border="0" cellpadding="0" cellspacing="0" align="center" width="${width}" style="border-collapse: collapse; padding: 0; margin: 0; ${widthCapCss(node.width)}">${content}</table>` +
     `</td></tr>`
   );
 }
 
-function renderNodeByType(node: DesignNode, viewport: Viewport, extraBottomGapPx: number): string {
+function renderNodeByType(node: DesignNode, viewport: Viewport, extraBottomGapPx: number, responsiveClass?: string): string {
   switch (node.type) {
     case "frame":
-      return renderFrame(node, viewport, extraBottomGapPx);
+      return renderFrame(node, viewport, extraBottomGapPx, responsiveClass);
     case "text":
-      return renderText(node, extraBottomGapPx);
+      return renderText(node, extraBottomGapPx, responsiveClass);
     case "image":
-      return renderImage(node, extraBottomGapPx);
+      return renderImage(node, extraBottomGapPx, responsiveClass);
     case "spacer":
-      return renderSpacer(node);
+      return renderSpacer(node, extraBottomGapPx);
     case "button":
       return renderButton(node, extraBottomGapPx);
     case "buttonRow":
@@ -242,9 +270,9 @@ function renderNodeByType(node: DesignNode, viewport: Viewport, extraBottomGapPx
 // or top-level — for free. `promoCopy` is excluded because `renderPromoCopy()` already emits its
 // own fixed `<!--=== PROMO-COPY ===-->` comment pair; wrapping it again would double-comment a
 // node whose content is never authored per-node anyway.
-export function renderNode(node: DesignNode, viewport: Viewport, extraBottomGapPx = 0): string {
+export function renderNode(node: DesignNode, viewport: Viewport, extraBottomGapPx = 0, responsiveClass?: string): string {
   if (!isVisibleOn(node, viewport)) return "";
-  const html = renderNodeByType(node, viewport, extraBottomGapPx);
+  const html = renderNodeByType(node, viewport, extraBottomGapPx, responsiveClass);
   if (node.type === "promoCopy") return html;
   return wrapNameComment(node.name, html);
 }

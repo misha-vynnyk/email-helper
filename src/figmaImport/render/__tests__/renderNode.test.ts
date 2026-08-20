@@ -555,9 +555,12 @@ describe("renderNode", () => {
   it("caps width to a number, on both the wrapping <td> and the inner <table>", () => {
     const html = renderNode(frameWithWidth("frame-width-number", 240), "desktop");
     // 2026-08-17: the width cap (and any fill/border) now lives on the <td> itself, not just
-    // the inner table — see visualBoxStyle's comment in renderNode.ts for why.
-    expect(html).toContain('<td align="center" width="240" style="');
-    expect(html.match(/width="240"/g)).toHaveLength(2);
+    // the inner table — see visualBoxStyle's comment in renderNode.ts for why. 2026-08-19: the
+    // `width=` HTML attribute itself moved off the <td> entirely (real reference markup never
+    // carries it there) — only the inner <table> carries `width="240"` now; the <td> keeps only
+    // the `max-width` CSS cap, still present on both boxes.
+    expect(html).toContain('<td align="center" style="');
+    expect(html.match(/width="240"/g)).toHaveLength(1);
     expect(html.match(/max-width: 240px;/g)).toHaveLength(2);
   });
 
@@ -582,7 +585,7 @@ describe("renderNode", () => {
       children: [{ id: "frame-partial-padding-a", type: "spacer", heightPx: 4 }],
     };
     const html = renderNode(node, "desktop");
-    expect(html).toContain('<td align="center" width="100%" style="padding-top: 10px; margin: 0; width: 100%;">');
+    expect(html).toContain('<td align="center" style="padding-top: 10px; margin: 0; width: 100%;">');
   });
 
   // align="center" on a frame's own <td> is unconditional (2026-08-17) — confirmed against the
@@ -708,7 +711,7 @@ describe("renderNode", () => {
     // last) contributes none, same rule as any last child. (The divider's own markup separately
     // uses an unrelated "padding-top: 1px" for its hairline-thickness technique — irrelevant
     // here, hence checking the text's own exact <td> style rather than a blanket "not contain".)
-    expect(html).toContain('<td style="font-size: 14px; line-height: normal; padding-bottom: 20px;">');
+    expect(html).toContain('<td style="font-size: 14px; font-style: normal; font-weight: normal; text-align: left; line-height: normal; padding-bottom: 20px;">');
     expect(html).not.toContain('<td style="padding-bottom: 20px;">');
   });
 
@@ -717,7 +720,7 @@ describe("renderNode", () => {
     // the first frame's own padding.bottom (0) + gap (24) = 24 (non-zero, so written); every
     // other side is zero and stays omitted — folded into its own longhand padding-bottom
     // declaration, not a standalone extra table/td.
-    expect(html).toContain('<td align="center" width="100%" style="padding-bottom: 24px; margin: 0; width: 100%;">');
+    expect(html).toContain('<td align="center" style="padding-bottom: 24px; margin: 0; width: 100%;">');
   });
 
   it("skips the gap-carrying wrapper entirely for a self-wrapping child when there's no gap to carry", () => {

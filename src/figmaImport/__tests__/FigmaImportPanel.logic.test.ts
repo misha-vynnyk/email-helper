@@ -17,6 +17,7 @@ jest.mock("../useFigmaImportFolder", () => ({
     validation: null,
     load: jest.fn(),
     setFromFiles: jest.fn(),
+    reset: jest.fn(),
   }),
 }));
 
@@ -25,7 +26,7 @@ jest.mock("../render/renderNode", () => {
   return { ...actual, renderDocumentContent: jest.fn(actual.renderDocumentContent) };
 });
 
-import { buildDocuments, buildFromSingleTree, slugifyFileName } from "../FigmaImportPanel";
+import { buildDocuments, buildFromSingleTree, deriveTemplateTitle, slugifyFileName } from "../FigmaImportPanel";
 import { renderDocumentContent } from "../render/renderNode";
 import type { DesignNode } from "../types";
 
@@ -49,6 +50,25 @@ describe("slugifyFileName", () => {
   it("falls back to a default name for an empty or whitespace-only title", () => {
     expect(slugifyFileName("")).toBe("figma-import-preview");
     expect(slugifyFileName("   ")).toBe("figma-import-preview");
+  });
+});
+
+describe("deriveTemplateTitle", () => {
+  it("takes the last segment of a folder path, not the whole path", () => {
+    expect(deriveTemplateTitle("/Users/me/figma-to-html/FamilyCenterOfWellness.com")).toBe("FamilyCenterOfWellness.com");
+  });
+
+  it("handles a trailing slash", () => {
+    expect(deriveTemplateTitle("/Users/me/figma-to-html/FamilyCenterOfWellness.com/")).toBe("FamilyCenterOfWellness.com");
+  });
+
+  it("handles Windows-style backslash paths", () => {
+    expect(deriveTemplateTitle("C:\\templates\\MyTemplate")).toBe("MyTemplate");
+  });
+
+  it("falls back to a default for an empty or whitespace-only path", () => {
+    expect(deriveTemplateTitle("")).toBe("Figma Import Preview");
+    expect(deriveTemplateTitle("   ")).toBe("Figma Import Preview");
   });
 });
 
