@@ -413,6 +413,53 @@ describe("fromDom — TABLE", () => {
   });
 });
 
+// ── colWidths from <colgroup><col width> ───────────────────────────────────────
+
+describe("fromDom — TableNode.colWidths", () => {
+  it("reads widths from a direct <colgroup>", () => {
+    const result = nodes(`
+      <table>
+        <colgroup><col width="292" /><col width="328" /></colgroup>
+        <tr><td>A</td><td>B</td></tr>
+      </table>
+    `);
+    const table = result[0] as TableNode;
+    expect(table.colWidths).toEqual([292, 328]);
+  });
+
+  it("is undefined when the table has no <colgroup>", () => {
+    const result = nodes(`<table><tr><td>A</td></tr></table>`);
+    const table = result[0] as TableNode;
+    expect(table.colWidths).toBeUndefined();
+  });
+
+  // Regression: jsdom's `:scope > colgroup > col` selector does not restrict `col` to the
+  // OUTER table's own direct-child colgroup — it also matches a nested table's colgroup,
+  // silently merging the inner table's width into the outer's colWidths (verified directly
+  // against jsdom's selector engine while investigating the button fullWidth feature; this
+  // predates that feature and corrupts colWidths for ANY outer table wrapping a nested
+  // table that has its own colgroup — a common shape: a bordered/colored box containing a
+  // nested button table, both declaring their own width).
+  it("an outer table's colWidths is NOT polluted by a nested table's own <colgroup>", () => {
+    const result = nodes(`
+      <table>
+        <colgroup><col width="624" /></colgroup>
+        <tr><td>
+          <table>
+            <colgroup><col width="367" /></colgroup>
+            <tr><td>nested</td></tr>
+          </table>
+        </td></tr>
+      </table>
+    `);
+    const outer = result.find((n) => n.type === "table") as TableNode;
+    expect(outer.colWidths).toEqual([624]);
+    const cellChildren = outer.rows[0].cells[0].children;
+    const inner = cellChildren.find((n) => n.type === "table") as TableNode;
+    expect(inner.colWidths).toEqual([367]);
+  });
+});
+
 // ── Whitespace text in link-colored span ──────────────────────────────────────
 
 describe("fromDom — link-color span whitespace stripping", () => {

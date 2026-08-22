@@ -238,9 +238,19 @@ export interface AlertBandProps {
 export interface ButtonBandProps {
   runs: Run[];
   href: string;
-  bg: string;
+  /** Absent for a border-only/"ghost" button (GDocs' h5-in-bordered-but-unfilled-cell
+   *  idiom) — no fill is rendered at all, letting the ambient/parent bg show through;
+   *  see `border` below for the outline that carries the button's visual identity instead. */
+  bg?: string;
   radius?: number;             // 0 = no rounding (GDocs table-cell buttons)
+  /** Cell border from the source document — e.g. a white outline on a dark CTA (bg set), or
+   *  the entire visual identity of a fill-less outline/"ghost" button (bg absent). */
   border?: BorderSpec;
+  /** True when the source declared this button's own column width at/above
+   *  `tok.layout.buttonFullWidthThresholdPct` of its immediate container's width — renders
+   *  `width:100%`. Absent/false (no width signal, or below threshold) renders at natural/auto
+   *  width instead, matching the Simple converter's default. */
+  fullWidth?: boolean;
 }
 
 export interface CalloutLeftProps {

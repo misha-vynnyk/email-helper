@@ -45,22 +45,25 @@ function pushMerged(result: ComponentNode[], comp: ComponentNode, tok: Tokens, w
     // Boundary decision, in priority order:
     //  1. § on either end (tightNext on the previous paragraph / tightBefore on this
     //     one) → line break; the explicit marker always wins.
-    //  2. Structural/convention signals (unless an author-typed blank line — gapBefore —
-    //     sits on the boundary): centered (GDocs banner/eyebrow convention), marker pair
-    //     (BOTH lines start with a bullet/checkmark glyph — a hand-typed checklist; the
-    //     pair requirement keeps a lone dash-led sentence prose) → line break. (Real
+    //  2. Marker pair (unless an author-typed blank line — gapBefore — sits on the
+    //     boundary): BOTH lines start with a bullet/checkmark glyph — a hand-typed
+    //     checklist; the pair requirement keeps a lone dash-led sentence prose. (Real
     //     <ul>/<li> lists don't reach this merge at all — they route to their own "list"
     //     ComponentNode in classifyFlow, merged separately below.)
     //  3. isGapBoundary (ir/spacing.ts): blank line → gap; margin sum below the
-    //     threshold token → line break; margins undeclared → gap. This pairwise rule
-    //     replaced both the reverted chain-relative margin heuristic (one large-margin
-    //     opener collapsed a whole section — pairwise sums have no chain memory) and
-    //     the interim zero-margin-pair rule (0+0 is just a sum below the threshold).
+    //     threshold token → line break; margins undeclared → gap. Applies the SAME rule
+    //     to centered text as to left/right-aligned text — matches how table-cell content
+    //     (flattenCellForAlertBand) already merges, and lets a centered "banner/eyebrow"
+    //     group (small/zero margins) still read as tight without hardcoding alignment as
+    //     its own signal, which previously made even a deliberate large-margin gap between
+    //     two centered paragraphs collapse to a single <br>. This pairwise rule replaced
+    //     both the reverted chain-relative margin heuristic (one large-margin opener
+    //     collapsed a whole section — pairwise sums have no chain memory) and the interim
+    //     zero-margin-pair rule (0+0 is just a sum below the threshold).
     const isMarkerPair = startsWithListMarker(newLines[0]) &&
       startsWithListMarker(lastLines[breakIdx - 1]);
     const isTight = last.props.tightNext === true || comp.props.tightBefore === true ||
-      (comp.props.gapBefore !== true &&
-        (alignOf(comp.props) === "center" || isMarkerPair)) ||
+      (comp.props.gapBefore !== true && isMarkerPair) ||
       !isGapBoundary(last.props, comp.props, tok);
     const compBreaks = comp.props.paraBreaks;
 
@@ -243,13 +246,13 @@ function pushMerged(result: ComponentNode[], comp: ComponentNode, tok: Tokens, w
   result.push(comp);
 }
 
-export function classify(nodes: StructuralNode[], tok: Tokens = defaultTokens, warn?: WarnFn): ComponentNode[] {
+export function classify(nodes: StructuralNode[], tok: Tokens = defaultTokens, warn?: WarnFn, ambientWidthPx?: number): ComponentNode[] {
   const result: ComponentNode[] = [];
-  const classifyChildren = (n: StructuralNode[]) => classify(n, tok, warn);
+  const classifyChildren = (n: StructuralNode[], ambientWidthPx?: number) => classify(n, tok, warn, ambientWidthPx);
 
   for (const node of nodes) {
     if (node.type === "table") {
-      const component = classifyTable(node as TableNode, tok, warn, classifyChildren);
+      const component = classifyTable(node as TableNode, tok, warn, classifyChildren, ambientWidthPx);
       if (component) {
         pushMerged(result, component, tok, warn);
       } else {
@@ -269,8 +272,10 @@ export function classify(nodes: StructuralNode[], tok: Tokens = defaultTokens, w
         // emitting each cell's component individually — bg still preserved via
         // classifySingleCell; transparent/borderless cells unwrap to their children.
         const tableRows = (node as TableNode).rows;
+        const tableColWidths = (node as TableNode).colWidths;
+        const tableOwnWidthPx = tableColWidths?.length === 1 ? tableColWidths[0] : undefined;
         const cellComps = tableRows.map(r =>
-          r.cells.length === 1 ? classifySingleCell(r.cells[0], tok, warn, classifyChildren) : null);
+          r.cells.length === 1 ? classifySingleCell(r.cells[0], tok, warn, classifyChildren, tableOwnWidthPx, ambientWidthPx) : null);
         const isPlainBand = (c: ComponentNode | null): c is Extract<ComponentNode, { kind: "alertBand" }> =>
           c?.kind === "alertBand" && !c.props.buttons?.length && !c.props.bands?.length && !c.props.images?.length && !c.props.tables?.length;
         if (tableRows.length >= 2 && cellComps.every(isPlainBand)) {
@@ -293,7 +298,7 @@ export function classify(nodes: StructuralNode[], tok: Tokens = defaultTokens, w
               pushMerged(result, cellComp, tok, warn);
             } else {
               for (const cell of row.cells) {
-                for (const comp of classify(cell.children, tok, warn)) {
+                for (const comp of classify(cell.children, tok, warn, tableOwnWidthPx ?? ambientWidthPx)) {
                   pushMerged(result, comp, tok, warn);
                 }
               }

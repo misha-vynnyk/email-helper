@@ -12,7 +12,7 @@ import { WARN } from "../warnings";
 import { detectTextSplit, textSplitToRecordRow } from "./flowBlock";
 
 /** Recurses back into classify.ts — threaded in to avoid a circular import. */
-export type ClassifyChildrenFn = (nodes: StructuralNode[]) => ComponentNode[];
+export type ClassifyChildrenFn = (nodes: StructuralNode[], ambientWidthPx?: number) => ComponentNode[];
 
 function firstBorderColor(border: BorderSpec | undefined): string | undefined {
   return border?.top?.color ?? border?.right?.color ?? border?.bottom?.color ?? border?.left?.color;
@@ -31,6 +31,14 @@ function hasMeaningfulBorder(border: BorderSpec | undefined, tok: Tokens): boole
     (s): s is BorderSide => Boolean(s)
   );
   return sides.length > 0 && sides.some(s => !isNearWhiteOrRoot(s.color, tok));
+}
+
+/** ratio = button's own declared column width / immediate container's declared width, × 100.
+ *  No width signal on either side (no `<colgroup>` to compare) always defaults to false —
+ *  full width is only ever chosen on positive evidence, never as a fallback. */
+function isFullWidthButton(ownWidthPx: number | undefined, ambientWidthPx: number | undefined, tok: Tokens): boolean {
+  if (!ownWidthPx || !ambientWidthPx) return false;
+  return (ownWidthPx / ambientWidthPx) * 100 >= tok.layout.buttonFullWidthThresholdPct;
 }
 
 // ── Cell content helpers ──────────────────────────────────────────────────────
@@ -146,6 +154,15 @@ function flattenCellForAlertBand(
   tok: Tokens,
   warn: WarnFn | undefined,
   classifyChildren: ClassifyChildrenFn | undefined,
+  /** The bg of the box THIS flatten call is building (the caller's own cell.bg) — used only
+   *  to detect a nested table whose own bg is redundant against it (see the "alertBand"
+   *  branch below). Undefined when the enclosing box has no bg of its own (e.g. calloutLeft),
+   *  which simply disables that merge (conservative default, not a functional requirement). */
+  ambientBg?: string,
+  /** The width of the box THIS flatten call is building (its own resolved column width) —
+   *  forwarded as the ambient for a nested table found inside `cell`, so a nested button's
+   *  own-width/ambient-width ratio compares against its true immediate container. */
+  ambientWidthPx?: number,
 ): {
   lines: Run[][];
   paraBreaks: Set<number>;
@@ -193,14 +210,42 @@ function flattenCellForAlertBand(
       prevP = child;
     } else if (child.type === "table") {
       listState.active = false; // a nested table interrupts a list run — next <li> restarts
-      const nestedComponent = classifyTable(child, tok, warn, classifyChildren);
+      const nestedComponent = classifyTable(child, tok, warn, classifyChildren, ambientWidthPx);
       if (nestedComponent?.kind === "buttonBand") {
         buttons.push({ atLine: lines.length, props: nestedComponent.props });
         prevP = null;
         continue;
       }
       if (nestedComponent?.kind === "alertBand") {
-        bands.push({ atLine: lines.length, props: nestedComponent.props });
+        const nb = nestedComponent.props;
+        // A nested table whose own bg is visually indistinguishable from the ambient bg
+        // it already sits inside, and carries no border of its own, isn't a distinct
+        // colored box — it's GDocs' own <div><table> layout-wrapper habit (a sub-table
+        // that exists purely for its own padding, not for a second surface). Treating it
+        // as an opaque `bands` entry (the general case just below) would both (a) render
+        // a redundant nested <table bgcolor> that repaints a color already there, and (b)
+        // lose the wrapper's OWN nested buttons/images/tables' true position relative to
+        // its own text — the double-nesting render path only re-emits them AFTER the
+        // band's flattened text, not interleaved. Merging its already-flattened content
+        // directly into this level fixes both: everything ends up in ONE flat set that
+        // goes through this level's normal atLine interleaving, same as if the wrapper
+        // table had never existed.
+        if (ambientBg !== undefined && !nb.border && isBgRedundant(nb.bg, ambientBg, tok)) {
+          const offset = lines.length;
+          appendBlock(nb.lines, nb.paraBreaks, isGapBoundary(prevP ?? {}, {}, tok));
+          for (const b of nb.buttons ?? []) buttons.push({ atLine: offset + b.atLine, props: b.props });
+          for (const b of nb.bands ?? []) bands.push({ atLine: offset + b.atLine, props: b.props });
+          for (const im of nb.images ?? []) images.push({ atLine: offset + im.atLine, props: im.props });
+          for (const t of nb.tables ?? []) tables.push({ atLine: offset + t.atLine, node: t.node });
+          // Same "first explicit align wins" rule as a direct paragraph child (below) —
+          // the wrapper's own align (from ITS OWN paragraphs) must survive the merge too,
+          // not silently reset to this level's default just because it arrived via a
+          // nested table instead of a direct <p>.
+          if (align === undefined && nb.align) align = nb.align;
+          prevP = null;
+          continue;
+        }
+        bands.push({ atLine: lines.length, props: nb });
         prevP = null;
         continue;
       }
@@ -342,6 +387,11 @@ export function classifySingleCell(
   tok: Tokens,
   warn?: WarnFn,
   classifyChildren?: ClassifyChildrenFn,
+  /** This cell's own resolved column width (from the enclosing table's own `<colgroup>`),
+   *  for computing ITS OWN button full-width ratio. */
+  ownWidthPx?: number,
+  /** The immediate container's declared width — the other half of that ratio. */
+  ambientWidthPx?: number,
 ): ComponentNode | null {
   const bg = cell.bg;
   // A GDocs 1×1 layout table often keeps a faint default gridline with no intent behind
@@ -361,7 +411,18 @@ export function classifySingleCell(
   if (hasButtonMarker(cell) && bg && bg !== tok.color.rootBackground) {
     return {
       kind: "buttonBand",
-      props: { runs: flattenRuns(cell, tok, warn), href: tok.placeholderHref, bg, radius: 0 },
+      props: { runs: flattenRuns(cell, tok, warn), href: tok.placeholderHref, bg, radius: 0, fullWidth: isFullWidthButton(ownWidthPx, ambientWidthPx, tok) },
+    };
+  }
+
+  // h5 marker inside a border-only, unfilled cell → an outline/"ghost" button using the
+  // cell's own border with no fill. An explicit h5 marker is authoritative over the
+  // border-shape heuristics below (bottom-rule/left-accent) — same precedence flowBlock.ts
+  // already gives a standalone h5 over its own isLeftAccentOnly check.
+  if (hasButtonMarker(cell) && (!bg || bg === tok.color.rootBackground) && border) {
+    return {
+      kind: "buttonBand",
+      props: { runs: flattenRuns(cell, tok, warn), href: tok.placeholderHref, bg: undefined, border, radius: 0, fullWidth: isFullWidthButton(ownWidthPx, ambientWidthPx, tok) },
     };
   }
 
@@ -370,7 +431,7 @@ export function classifySingleCell(
     // close its color is to white — use the raw border here, not the near-white-filtered one.
     // Nested tables that resolve to a real button (a CTA nested inside the banner) survive
     // as actual buttons — see flattenCellForAlertBand — everything else still flattens.
-    const { lines, paraBreaks, buttons, bands, images, tables, align } = flattenCellForAlertBand(cell, tok, warn, classifyChildren);
+    const { lines, paraBreaks, buttons, bands, images, tables, align } = flattenCellForAlertBand(cell, tok, warn, classifyChildren, bg, ownWidthPx ?? ambientWidthPx);
     // Only promote to buttonBand (wraps the ENTIRE cell in one <a>) when the cell is a
     // single logical line with no nested button/band/image/table of its own — a real
     // one-line CTA. A multi-line dark box (e.g. a banner headline + a "fake link" line
@@ -380,7 +441,7 @@ export function classifySingleCell(
     const href = lines.length <= 1 && buttons.length === 0 && bands.length === 0 && images.length === 0 && tables.length === 0
       ? findHref(cell, tok) : null;
     if (href) {
-      return { kind: "buttonBand", props: { runs: joinLinesWithSpace(lines), href, bg, border: cell.border } };
+      return { kind: "buttonBand", props: { runs: joinLinesWithSpace(lines), href, bg, border: cell.border, fullWidth: isFullWidthButton(ownWidthPx, ambientWidthPx, tok) } };
     }
     return {
       kind: "alertBand",
@@ -416,7 +477,7 @@ export function classifySingleCell(
   // being flattened to plain text (see flattenLinesWithBreaks' nestedTableFlattened path).
   const isLeftAccentOnly = Boolean(border?.left) && !border?.top && !border?.right && !border?.bottom;
   if (isLeftAccentOnly) {
-    const { lines, paraBreaks, buttons, bands, images, tables } = flattenCellForAlertBand(cell, tok, warn, classifyChildren);
+    const { lines, paraBreaks, buttons, bands, images, tables } = flattenCellForAlertBand(cell, tok, warn, classifyChildren, bg, ownWidthPx ?? ambientWidthPx);
     return {
       kind: "calloutLeft",
       props: {
@@ -433,7 +494,7 @@ export function classifySingleCell(
   // calloutBox. Recurse into children (via classify.ts) so nested content — e.g. a
   // button table inside a bordered CTA box — survives instead of being flattened to text.
   if (border) {
-    const children = classifyChildren?.(cell.children) ?? [cellToChild(cell, tok, warn)];
+    const children = classifyChildren?.(cell.children, ownWidthPx ?? ambientWidthPx) ?? [cellToChild(cell, tok, warn)];
     return { kind: "calloutBox", props: { border, bg }, children };
   }
 
@@ -442,7 +503,7 @@ export function classifySingleCell(
   // branch above (not the plainer flattenLinesWithBreaks) so a nested button/band/image
   // inside a light-colored box survives too, instead of only dark boxes getting that support.
   {
-    const { lines, paraBreaks, buttons, bands, images, tables, align } = flattenCellForAlertBand(cell, tok, warn, classifyChildren);
+    const { lines, paraBreaks, buttons, bands, images, tables, align } = flattenCellForAlertBand(cell, tok, warn, classifyChildren, bg, ownWidthPx ?? ambientWidthPx);
     return {
       kind: "alertBand",
       props: {
@@ -482,6 +543,9 @@ export function classifyTable(
   tok: Tokens = defaultTokens,
   warn?: WarnFn,
   classifyChildren?: ClassifyChildrenFn,
+  /** The immediate container's declared width, inherited from whatever classified this table
+   *  (a document top-level default, an enclosing calloutBox's own width, ...). */
+  ambientWidthPx?: number,
 ): ComponentNode | null {
   const { rows } = node;
   if (!rows.length) return null;
@@ -492,7 +556,8 @@ export function classifyTable(
 
   // Single-row, single-cell (check physical cell count, not colspan-expanded ncols)
   if (rows.length === 1 && rows[0].cells.length === 1) {
-    return classifySingleCell(rows[0].cells[0], tok, warn, classifyChildren);
+    const ownWidthPx = node.colWidths?.length === 1 ? node.colWidths[0] : undefined;
+    return classifySingleCell(rows[0].cells[0], tok, warn, classifyChildren, ownWidthPx, ambientWidthPx);
   }
 
   // Single-row, multi-cell
@@ -542,7 +607,8 @@ export function classifyTable(
             ...contentCell,
             border: { ...contentCell.border, [accentSide]: { color: emptyCell.bg } },
           };
-          const comp = classifySingleCell(syntheticCell, tok, warn, classifyChildren);
+          const contentOwnWidthPx = node.colWidths[1 - emptyIdx];
+          const comp = classifySingleCell(syntheticCell, tok, warn, classifyChildren, contentOwnWidthPx, totalWidth);
           if (comp) return comp;
         }
       }
@@ -553,7 +619,11 @@ export function classifyTable(
     // treating the whole row as a stats grid.
     const meaningfulCells = cells.filter(c => hasMeaningfulContent(c, tok));
     if (meaningfulCells.length === 1) {
-      const comp = classifySingleCell(meaningfulCells[0], tok, warn, classifyChildren);
+      const idx = cells.indexOf(meaningfulCells[0]);
+      const rowOwnWidthPx = node.colWidths?.length === cells.length ? node.colWidths[idx] : undefined;
+      const rowAmbientWidthPx = node.colWidths?.length === cells.length
+        ? node.colWidths.reduce((s, w) => s + w, 0) : undefined;
+      const comp = classifySingleCell(meaningfulCells[0], tok, warn, classifyChildren, rowOwnWidthPx, rowAmbientWidthPx);
       if (comp) return comp;
       // null → transparent cell, fall through to statsGrid
     }

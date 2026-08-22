@@ -658,6 +658,235 @@ describe("convertAdvanced — GDocs banner with nested h5 button", () => {
   });
 });
 
+// ── GDocs border-only ("ghost"/outline) h5 button — no fill at all ────────────
+// A real GDocs export: a 1×1 table whose cell has a full border but NO
+// background-color, containing an h5 marker. Before this fix, an h5-marked cell
+// required a bg to be recognized as a button, so this fell to the generic
+// calloutBox branch instead — fine on its own, but any nested-inside-a-card
+// variant would then get silently flattened to plain text (see the two describe
+// blocks below).
+describe("convertAdvanced — GDocs border-only (ghost) h5 button, standalone", () => {
+  const ghostButton = `<div dir="ltr" style="margin-left:0pt;" align="center">
+    <table style="border:none;border-collapse:collapse;">
+      <colgroup><col width="245" /></colgroup>
+      <tbody>
+        <tr style="height:0pt">
+          <td style="border-left:solid #bf9000 1pt;border-right:solid #bf9000 1pt;border-bottom:solid #bf9000 1pt;border-top:solid #bf9000 1pt;vertical-align:top;padding:5pt 5pt 5pt 5pt;">
+            <h5 dir="ltr" style="line-height:1.2;text-align:center;margin-top:12pt;margin-bottom:4pt;">
+              <span style="font-size:11pt;color:#666666;font-weight:400;">INVEST AT &#36;9.87 &#8594;</span>
+            </h5>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>`;
+
+  let html: string;
+  let warnings: string[];
+  beforeAll(() => {
+    const result = convertAdvancedDetailed(ghostButton);
+    html = result.html;
+    warnings = result.warnings;
+  });
+
+  it("produces no conversion warnings", () => {
+    expect(warnings).toEqual([]);
+  });
+
+  it("renders as a real button (placeholder href + label), not flattened text", () => {
+    expect(html).toContain(`href="${tokens.placeholderHref}"`);
+    expect(html).toContain("INVEST AT");
+  });
+
+  it("keeps the source's gold border color, with no fill of its own", () => {
+    expect(html).toContain("border:1px solid #bf9000;");
+    // No fill was invented for the button — it never picks up its own border color (or
+    // any other color) as a background. The document scaffold's own root <table>
+    // legitimately carries a bgcolor (white), so the assertion targets the border color
+    // specifically rather than banning "bgcolor=" anywhere in the whole document.
+    expect(html).not.toContain("bgcolor=\"#bf9000\"");
+    expect(html).not.toContain("background-color:#bf9000");
+  });
+});
+
+// ── The same ghost button, nested one level inside a colored card ────────────
+describe("convertAdvanced — ghost button nested inside a colored card", () => {
+  const cardWithGhostButton = `<b style="font-weight:normal;" id="docs-internal-guid-01b76534">
+    <div dir="ltr" style="margin-left:0pt;" align="left">
+      <table style="border:none;border-collapse:collapse;">
+        <colgroup><col width="624" /></colgroup>
+        <tbody>
+          <tr style="height:122.25pt">
+            <td style="vertical-align:top;background-color:#1b4332;padding:12pt 14pt 12pt 14pt;">
+              <p dir="ltr" style="text-align:center;margin-top:0pt;margin-bottom:4pt;">
+                <span style="font-family:Lexend,sans-serif;color:#ffffff;font-weight:700;">Limited Allocation at &#36;0.79</span>
+              </p>
+              <div dir="ltr" style="margin-left:7.5pt;" align="center">
+                <table style="border:none;border-collapse:collapse;">
+                  <colgroup><col width="245" /></colgroup>
+                  <tbody>
+                    <tr style="height:0pt">
+                      <td style="border-left:solid #bf9000 1pt;border-right:solid #bf9000 1pt;border-bottom:solid #bf9000 1pt;border-top:solid #bf9000 1pt;vertical-align:top;padding:5pt 5pt 5pt 5pt;">
+                        <h5 dir="ltr" style="text-align:center;margin-top:12pt;margin-bottom:4pt;">
+                          <span style="font-family:Arial,sans-serif;color:#666666;font-weight:400;">Lock In Your &#36;0.79 Allocation &#8594;</span>
+                        </h5>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p dir="ltr" style="text-align:center;margin-top:7pt;margin-bottom:0pt;">
+                <span style="font-family:Lexend,sans-serif;color:#52b788;font-weight:400;">SEC-qualified Reg A+</span>
+              </p>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </b>`;
+
+  let html: string;
+  let warnings: string[];
+  beforeAll(() => {
+    const result = convertAdvancedDetailed(cardWithGhostButton);
+    html = result.html;
+    warnings = result.warnings;
+  });
+
+  it("produces no conversion warnings (no nestedTableFlattened for the ghost button)", () => {
+    expect(warnings).toEqual([]);
+  });
+
+  it("keeps the card's dark-green background and the button's own gold border", () => {
+    expect(html).toContain('bgcolor="#1b4332"');
+    expect(html).toContain("#bf9000");
+  });
+
+  it("survives as a real button row (placeholder href + label), not flattened prose", () => {
+    expect(html).toContain(`href="${tokens.placeholderHref}"`);
+    expect(html).toContain("Lock In Your");
+  });
+
+  it("renders text before and after the button, in order, around one button row", () => {
+    const beforeIdx = html.indexOf("Limited Allocation");
+    const buttonIdx = html.indexOf("Lock In Your");
+    const afterIdx = html.indexOf("SEC-qualified");
+    expect(beforeIdx).toBeGreaterThan(-1);
+    expect(buttonIdx).toBeGreaterThan(beforeIdx);
+    expect(afterIdx).toBeGreaterThan(buttonIdx);
+  });
+
+  it("the button's own cell has no bgcolor (ambient card color shows through)", () => {
+    expect(html).not.toMatch(/bgcolor="#bf9000"/);
+  });
+});
+
+// ── The exact reported double-nesting case: dark card → same-bg content wrapper →
+// border-only ghost button, two levels of table nesting deep. This is the real bug
+// report this fix addresses — a card whose content sits inside a same-color "wrapper"
+// sub-table (GDocs' own <div><table> nesting habit), which itself contains the ghost
+// button among plain paragraphs.
+describe("convertAdvanced — ghost button nested two levels deep (same-bg content wrapper)", () => {
+  const doubleNestedGhostButton = `<b style="font-weight:normal;" id="docs-internal-guid-eec6ed17">
+    <div dir="ltr" style="margin-left:0pt;" align="center">
+      <table style="border:none;border-collapse:collapse;">
+        <colgroup><col width="600" /></colgroup>
+        <tbody>
+          <tr style="height:168pt">
+            <td style="border-top:solid #c9a227 2.25pt;vertical-align:top;background-color:#0a2463;padding:38pt 15pt 23pt 15pt;">
+              <div dir="ltr" style="margin-left:0pt;" align="left">
+                <table style="border:none;border-collapse:collapse;">
+                  <colgroup><col width="559" /></colgroup>
+                  <tbody>
+                    <tr style="height:142.75pt">
+                      <td style="vertical-align:top;background-color:#0a2463;padding:5pt 5pt 5pt 5pt;">
+                        <p dir="ltr" style="line-height:1.2;text-align:center;margin-top:0pt;margin-bottom:0pt;">
+                          <span style="font-size:11pt;font-weight:700;color:#ffffff;">FRONTIERAS</span>
+                        </p>
+                        <p dir="ltr" style="line-height:1.38;text-align:center;margin-top:6pt;margin-bottom:0pt;">
+                          <span style="font-size:11pt;font-weight:400;color:#c9a227;">North America</span>
+                        </p><br />
+                        <div dir="ltr" style="margin-left:0pt;" align="center">
+                          <table style="border:none;border-collapse:collapse;">
+                            <colgroup><col width="245" /></colgroup>
+                            <tbody>
+                              <tr style="height:0pt">
+                                <td style="border-left:solid #bf9000 1pt;border-right:solid #bf9000 1pt;border-bottom:solid #bf9000 1pt;border-top:solid #bf9000 1pt;vertical-align:top;padding:5pt 5pt 5pt 5pt;">
+                                  <h5 dir="ltr" style="line-height:1.2;text-align:center;margin-top:12pt;margin-bottom:4pt;">
+                                    <span style="font-size:11pt;color:#666666;font-weight:400;">INVEST AT &#36;9.87 &#8594;</span>
+                                  </h5>
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div><br />
+                        <p dir="ltr" style="line-height:1.38;text-align:center;margin-top:9pt;margin-bottom:0pt;">
+                          <span style="font-size:11pt;font-weight:400;color:#8fa3b8;">BEFORE AUGUST 27</span>
+                        </p>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div><br />
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div><br />
+  </b>`;
+
+  let html: string;
+  let warnings: string[];
+  beforeAll(() => {
+    const result = convertAdvancedDetailed(doubleNestedGhostButton);
+    html = result.html;
+    warnings = result.warnings;
+  });
+
+  it("produces no conversion warnings (no nestedTableFlattened anywhere in the chain)", () => {
+    expect(warnings).toEqual([]);
+  });
+
+  it("keeps the outer card's dark background and the button's gold border", () => {
+    expect(html).toContain('bgcolor="#0a2463"');
+    expect(html).toContain("#bf9000");
+  });
+
+  it("the button survives as a real button (placeholder href), not glued into surrounding prose", () => {
+    expect(html).toContain(`href="${tokens.placeholderHref}"`);
+    expect(html).toContain("INVEST AT");
+  });
+
+  it("keeps all three text lines and the button in TRUE source order (button between North America and BEFORE AUGUST)", () => {
+    // The same-bg wrapper table is merged transparently into the outer band (see
+    // flattenCellForAlertBand's redundant-wrapper merge) instead of being nested as an
+    // opaque `bands` entry — so the button lands at its real atLine among the outer
+    // band's own lines/segments, not shoved after all the text as a blanket rule.
+    const frontierasIdx = html.indexOf("FRONTIERAS");
+    const northAmericaIdx = html.indexOf("North America");
+    const buttonIdx = html.indexOf("INVEST AT");
+    const beforeAugustIdx = html.indexOf("BEFORE AUGUST");
+    expect(frontierasIdx).toBeGreaterThan(-1);
+    expect(northAmericaIdx).toBeGreaterThan(frontierasIdx);
+    expect(buttonIdx).toBeGreaterThan(northAmericaIdx);
+    expect(beforeAugustIdx).toBeGreaterThan(buttonIdx);
+  });
+
+  it("does not nest a redundant second colored <table> for the same-bg wrapper", () => {
+    // Only ONE bgcolor="#0a2463" table should exist for this card — the wrapper table's
+    // own bg was merged away, not repainted as a second nested box.
+    const matches = html.match(/bgcolor="#0a2463"/g) ?? [];
+    expect(matches).toHaveLength(1);
+  });
+
+  it("keeps the wrapper's own centered text-align (not reset to the outer band's default)", () => {
+    // Every paragraph in the wrapper was explicitly text-align:center in the source —
+    // the merge must carry that through, not silently drop back to left.
+    expect(html).toContain("text-align:center;color:#ffffff");
+    expect(html).not.toContain("text-align:left;color:#ffffff");
+  });
+});
+
 // ── <p> with its own border-left (quote/callout convention, not a wrapping <td>) ──
 // GDocs sometimes puts border-left directly on a <p> (a "pull quote" line) instead of
 // wrapping it in a colored table cell. A border needs a table to give it real padding —

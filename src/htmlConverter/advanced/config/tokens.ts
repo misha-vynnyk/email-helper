@@ -68,6 +68,14 @@ export interface Tokens {
      * point where fixed-width cards get too narrow to read on mobile without wrapping.
      */
     gridInlineBlockThreshold: number;
+    /**
+     * Minimum ratio (as a 0–100 percent), button's own declared column width over its
+     * immediate container's declared width, at or above which a button keeps `width:100%`
+     * instead of rendering at its natural/auto width. No width signal on either side of the
+     * ratio (no `<colgroup>` anywhere to compare) always defaults to narrow/auto — this
+     * threshold only ever promotes to full width on positive evidence, never as a fallback.
+     */
+    buttonFullWidthThresholdPct: number;
     quotePadX: number;
     calloutAccentPx: number;
     calloutBoxBorderPx: number;
@@ -198,6 +206,7 @@ export const tokens: Tokens = {
     spacerPx: 16,   // height of the spacer <td> between sections
     gridMinWidth: 100,
     gridInlineBlockThreshold: 3,   // >3 columns wraps (inline-block); 3 or fewer stays fixed side-by-side
+    buttonFullWidthThresholdPct: 80,
     quotePadX: 20,   // h4 quote paragraph left/right indent (matches Simple converter)
     calloutAccentPx: 10,   // calloutLeft left-border width
     calloutBoxBorderPx: 1,   // calloutBox frame border width (all declared sides)

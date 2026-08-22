@@ -74,8 +74,6 @@ describe("classifyTable — single-cell", () => {
     expect((result?.props as Record<string, unknown>)["border"]).toBeUndefined();
   });
 
-  // Fix #1: h5-marked cell with a border but no bg must not become a bg-less buttonBand
-  // (buttonBand with bg===undefined crashes render's isDarkBg(undefined) downstream).
   // Fix #3: dark bg + explicit border → still buttonBand/alertBand, border carried in props
   it("dark bg with border and href → buttonBand carries the border in props", () => {
     const cell = makeCell({
@@ -97,14 +95,32 @@ describe("classifyTable — single-cell", () => {
     expect((result?.props as Record<string, unknown>)["border"]).toEqual({ top: { color: "#ffffff" } });
   });
 
-  it("h5 marker + border but no bg is NOT classified as buttonBand", () => {
+  // GDocs' bordered-but-unfilled "ghost"/outline button idiom — an h5 marker is
+  // authoritative over having no fill; the button renders with no bgcolor at all,
+  // keeping the source's border as its entire visual identity (see render/toEmailHtml.ts
+  // and config/templates.ts's buttonTableHtml for the bg-optional rendering side).
+  it("h5 marker + border but no bg classifies as a border-only (ghost) buttonBand", () => {
     const cell = makeCell({
       border: { top: { color: "#000000" } },
       children: [{ type: "p", size: "small", headingLevel: 5, lines: [[makeRun("Button")]] }],
     });
     const table = makeTable([[cell]]);
     const result = classifyTable(table);
-    expect(result?.kind).not.toBe("buttonBand");
+    expect(result?.kind).toBe("buttonBand");
+    expect((result?.props as Record<string, unknown>)["bg"]).toBeUndefined();
+    expect((result?.props as Record<string, unknown>)["border"]).toEqual({ top: { color: "#000000" } });
+  });
+
+  it("h5 marker with neither bg nor border stays unclassified at this level (falls through)", () => {
+    const cell = makeCell({
+      children: [{ type: "p", size: "small", headingLevel: 5, lines: [[makeRun("Button")]] }],
+    });
+    const table = makeTable([[cell]]);
+    const result = classifyTable(table);
+    // No bg and no border → transparent cell, unwrapped by classify.ts (line 354's early
+    // return), same as any other bg-less/border-less cell — the h5 marker alone, with
+    // no visual treatment at all, has nothing distinguishing it at classifySingleCell's level.
+    expect(result).toBeNull();
   });
 
   it("h5 marker + bg still classifies as buttonBand (no regression)", () => {
@@ -373,6 +389,24 @@ describe("classifyTable — multi-cell", () => {
     const rows = (result?.props as Record<string, unknown>)["rows"] as Array<{ cells: Array<Record<string, unknown>> }>;
     expect(rows[0].cells[0]["borderColor"]).toBe("#ff0000");
     expect(rows[1].cells[0]["borderColor"]).toBe("#0000ff");
+  });
+
+  // GDocs button pattern ([empty-spacer][content][empty-spacer]) applied to the new
+  // border-only "ghost" button case — the multi-cell "1 meaningful cell" shortcut
+  // (classifyTable) must delegate to the same classifySingleCell branch as the 1×1 case.
+  it("[spacer][border-only h5][spacer] row classifies the middle cell as a ghost buttonBand", () => {
+    const emptyCell: CellNode = { type: "cell", children: [] };
+    const buttonCell = makeCell({
+      border: { top: { color: "#bf9000" }, right: { color: "#bf9000" }, bottom: { color: "#bf9000" }, left: { color: "#bf9000" } },
+      children: [{ type: "p", size: "small", headingLevel: 5, lines: [[makeRun("INVEST AT $9.87 →")]] }],
+    });
+    const table = makeTable([[emptyCell, buttonCell, emptyCell]]);
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("buttonBand");
+    expect((result?.props as Record<string, unknown>)["bg"]).toBeUndefined();
+    expect((result?.props as Record<string, unknown>)["border"]).toEqual({
+      top: { color: "#bf9000" }, right: { color: "#bf9000" }, bottom: { color: "#bf9000" }, left: { color: "#bf9000" },
+    });
   });
 
   // Bug fix: a cell with a label <p> + sublabel <p> (e.g. "THE SOFTWARE" / "Immersed App")
@@ -682,6 +716,32 @@ describe("classifyTable — calloutLeft honors § (tightNext/tightBefore)", () =
     expect(buttons).toHaveLength(1);
     expect(buttons[0].props["bg"]).toBe("#38a169");
   });
+
+  // Same regression, border-only ("ghost") button variant — no bg on the nested button
+  // cell at all, just a border. Must survive as a real button too, not fall to calloutBox
+  // and then get flattened by flattenCellForAlertBand's default case.
+  it("preserves a nested border-only (ghost) h5-button table as a real button", () => {
+    const buttonCell = makeCell({
+      border: { top: { color: "#bf9000" }, right: { color: "#bf9000" }, bottom: { color: "#bf9000" }, left: { color: "#bf9000" } },
+      children: [{ type: "p", size: "small", headingLevel: 5, lines: [[makeRun("INVEST AT $9.87 →")]] }],
+    });
+    const buttonTable: TableNode = makeTable([[buttonCell]]);
+    const cell = makeCell({
+      border: { left: { color: "#38a169" } },
+      children: [makePara("Intro text"), buttonTable],
+    });
+    const warn = jest.fn();
+    const result = classifyTable(makeTable([[cell]]), undefined, warn);
+    expect(result?.kind).toBe("calloutLeft");
+    const props = result?.props as Record<string, unknown>;
+    const buttons = props["buttons"] as { atLine: number; props: Record<string, unknown> }[];
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0].props["bg"]).toBeUndefined();
+    expect(buttons[0].props["border"]).toEqual({
+      top: { color: "#bf9000" }, right: { color: "#bf9000" }, bottom: { color: "#bf9000" }, left: { color: "#bf9000" },
+    });
+    expect(warn).not.toHaveBeenCalled();
+  });
 });
 
 // ── Cell alignment from the inner <p> (F3/F9 — GDocs puts text-align on the paragraph) ─
@@ -817,6 +877,98 @@ describe("classifyTable — dark bordered box keeps a nested colored band", () =
     const outer = makeCell({ bg: "#000000", border: fullBorder, children: [nestedCta] });
     const result = classifyTable(makeTable([[outer]]));
     expect(result?.kind).toBe("alertBand");
+  });
+
+  // Real GDocs repro: a dark card whose content sits in a same-bg "wrapper" sub-table
+  // (GDocs' own <div><table> nesting habit), which itself contains a border-only
+  // ("ghost") h5 button among plain paragraphs. Two levels of table nesting deep.
+  // The wrapper's bg is redundant against its ambient parent (same color, no border of
+  // its own) — flattenCellForAlertBand's redundant-wrapper merge folds the wrapper's
+  // already-flattened lines/buttons directly into the OUTER cell's own arrays instead
+  // of nesting it as an opaque `bands` entry. This fixes two real bugs a user reported
+  // from this exact shape: (1) the button losing its true position relative to the
+  // wrapper's OWN text (previously always pushed AFTER all of the wrapper's text,
+  // regardless of its real atLine) and (2) a redundant nested <table bgcolor> repainting
+  // a color the outer table already has.
+  it("survives two levels of nesting: outer card → same-bg content wrapper → border-only button, merged flat with correct order", () => {
+    const buttonCell = makeCell({
+      border: { top: { color: "#bf9000" }, right: { color: "#bf9000" }, bottom: { color: "#bf9000" }, left: { color: "#bf9000" } },
+      children: [{ type: "p", size: "small", headingLevel: 5, lines: [[makeRun("INVEST AT $9.87 →")]] }],
+    });
+    const buttonTable: TableNode = makeTable([[buttonCell]]);
+    const wrapperCell = makeCell({
+      bg: "#0a1620",
+      children: [makePara("FRONTIERAS"), buttonTable, makePara("BEFORE AUGUST 27")],
+    });
+    const wrapperTable: TableNode = makeTable([[wrapperCell]]);
+    const outer = makeCell({
+      bg: "#0a1620",
+      border: { top: { color: "#c9a227" } },
+      children: [makePara("REG A+ QUALIFIED"), wrapperTable],
+    });
+    const warn = jest.fn();
+    const result = classifyTable(makeTable([[outer]]), undefined, warn);
+    expect(result?.kind).toBe("alertBand");
+    const props = result?.props as Record<string, unknown>;
+    // No separate `bands` entry — the wrapper was merged transparently, not nested.
+    expect(props["bands"]).toBeUndefined();
+    // All 3 text lines end up directly on the outer band, in source order.
+    const lines = props["lines"] as unknown[];
+    expect(lines).toHaveLength(3);
+    // The button is a direct `buttons` entry on the OUTER band, positioned between
+    // "FRONTIERAS" (index 1) and "BEFORE AUGUST 27" (index 2) — its true source
+    // position, not shoved after all the text.
+    const buttons = props["buttons"] as { atLine: number; props: Record<string, unknown> }[];
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0].atLine).toBe(2);
+    expect(buttons[0].props["bg"]).toBeUndefined();
+    expect(buttons[0].props["border"]).toEqual({
+      top: { color: "#bf9000" }, right: { color: "#bf9000" }, bottom: { color: "#bf9000" }, left: { color: "#bf9000" },
+    });
+    // Neither the wrapper nor the button was silently flattened to text anywhere in the chain.
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  // Real regression caught against the user's exact repro: the wrapper's own `align`
+  // (from ITS OWN paragraphs' explicit text-align) was silently dropped by the merge
+  // above, resetting to the outer band's default ("left") even though every paragraph
+  // in the source was centered.
+  it("merge preserves the wrapper's own align (not silently reset to the outer band's default)", () => {
+    const centeredPara: Paragraph = { type: "p", size: "body", align: "center", lines: [[makeRun("FRONTIERAS")]] };
+    const wrapperTable: TableNode = makeTable([[makeCell({ bg: "#0a1620", children: [centeredPara] })]]);
+    const outer = makeCell({ bg: "#0a1620", children: [wrapperTable] });
+    const result = classifyTable(makeTable([[outer]]));
+    expect((result?.props as Record<string, unknown>)["align"]).toBe("center");
+  });
+
+  // The merge above must NOT fire when the nested table's bg genuinely differs from its
+  // ambient parent — that's a real, visually distinct colored sub-box and must stay a
+  // nested `bands` entry (unchanged, pre-existing behavior).
+  it("does NOT merge a nested band whose bg genuinely differs from the ambient bg", () => {
+    const nestedCta = makeTable([[makeCell({ bg: "#0a2463", children: [makePara("INVEST AT $0.50 →")] })]]);
+    const outer = makeCell({ bg: "#000000", children: [makePara("SERIES A"), nestedCta] });
+    const result = classifyTable(makeTable([[outer]]));
+    const props = result?.props as Record<string, unknown>;
+    const bands = props["bands"] as Array<{ props: Record<string, unknown> }>;
+    expect(bands).toHaveLength(1);
+    expect(bands[0].props["bg"]).toBe("#0a2463");
+  });
+
+  // Nor when the nested table DOES carry its own border, even with a matching bg — a
+  // border is a real visual divider (or the button-outline case handled separately),
+  // not a redundant layout wrapper.
+  it("does NOT merge a same-bg nested band that carries its own border", () => {
+    const nestedCta = makeTable([[makeCell({
+      bg: "#0a1620",
+      border: { top: { color: "#ffffff" } },
+      children: [makePara("bordered same-bg box")],
+    })]]);
+    const outer = makeCell({ bg: "#0a1620", children: [makePara("intro"), nestedCta] });
+    const result = classifyTable(makeTable([[outer]]));
+    const props = result?.props as Record<string, unknown>;
+    const bands = props["bands"] as Array<{ props: Record<string, unknown> }>;
+    expect(bands).toHaveLength(1);
+    expect(bands[0].props["bg"]).toBe("#0a1620");
   });
 });
 
@@ -1100,5 +1252,126 @@ describe("classifyTable — nbsp-padded pseudo-column paragraph inside a cell pr
     expect(result?.kind).toBe("alertBand");
     const tables = (result?.props as Record<string, unknown>)["tables"];
     expect(tables).toBeUndefined();
+  });
+});
+
+// ── Button fullWidth: ratio = own declared column width / immediate container's width ──
+
+describe("classifyTable — button fullWidth ratio", () => {
+  function h5Button(bg?: string, border?: CellNode["border"]): CellNode {
+    return makeCell({
+      bg,
+      border,
+      children: [{ type: "p", size: "small", headingLevel: 5, lines: [[makeRun("Button")]] }],
+    });
+  }
+
+  it("1×1 h5+bg button: ratio below threshold (367/624 ≈ 58.8%) stays narrow", () => {
+    const table = makeTable([[h5Button("#111111")]]);
+    table.colWidths = [367];
+    const result = classifyTable(table, undefined, undefined, undefined, 624);
+    expect(result?.kind).toBe("buttonBand");
+    expect((result?.props as Record<string, unknown>)["fullWidth"]).toBe(false);
+  });
+
+  it("1×1 h5+bg button: ratio at/above threshold (539/624 ≈ 86.4%) is full-width", () => {
+    const table = makeTable([[h5Button("#111111")]]);
+    table.colWidths = [539];
+    const result = classifyTable(table, undefined, undefined, undefined, 624);
+    expect(result?.kind).toBe("buttonBand");
+    expect((result?.props as Record<string, unknown>)["fullWidth"]).toBe(true);
+  });
+
+  it("1×1 h5+bg button: no colgroup anywhere (no own width, no ambient) defaults to narrow", () => {
+    const table = makeTable([[h5Button("#111111")]]);
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("buttonBand");
+    expect((result?.props as Record<string, unknown>)["fullWidth"]).toBe(false);
+  });
+
+  it("1×1 h5+border ghost button: same ratio math applies (539/624 ≈ 86.4% is full-width)", () => {
+    const table = makeTable([[h5Button(undefined, { top: { color: "#000000" } })]]);
+    table.colWidths = [539];
+    const result = classifyTable(table, undefined, undefined, undefined, 624);
+    expect(result?.kind).toBe("buttonBand");
+    expect((result?.props as Record<string, unknown>)["fullWidth"]).toBe(true);
+  });
+
+  // The findHref-promoted single-line dark-cell-with-real-<a> button — a 3rd, easy-to-miss
+  // buttonBand-producing branch (same lexical scope as the two h5 branches above).
+  it("dark-cell findHref-promoted button: narrow ratio stays narrow", () => {
+    const cell = makeCell({ bg: "#000000", children: [makePara("Click me", "https://example.com")] });
+    const table = makeTable([[cell]]);
+    table.colWidths = [367];
+    const result = classifyTable(table, undefined, undefined, undefined, 624);
+    expect(result?.kind).toBe("buttonBand");
+    expect((result?.props as Record<string, unknown>)["fullWidth"]).toBe(false);
+  });
+
+  it("dark-cell findHref-promoted button: full-width ratio renders full-width", () => {
+    const cell = makeCell({ bg: "#000000", children: [makePara("Click me", "https://example.com")] });
+    const table = makeTable([[cell]]);
+    table.colWidths = [539];
+    const result = classifyTable(table, undefined, undefined, undefined, 624);
+    expect(result?.kind).toBe("buttonBand");
+    expect((result?.props as Record<string, unknown>)["fullWidth"]).toBe(true);
+  });
+
+  // [spacer][button][spacer]: self-contained — ratio is against the ROW's own total width,
+  // never the inbound ambientWidthPx (proven by passing an unrelated one below).
+  it("multi-cell spacer pattern: full-width ratio uses the row's own total width, ignoring the inbound ambient", () => {
+    const table = makeTable([[{ type: "cell", children: [] }, h5Button("#111111"), { type: "cell", children: [] }]]);
+    table.colWidths = [50, 539, 50]; // total 639, button share ≈ 84.3% (full-width)
+    // A deliberately wrong inbound ambient (2000) would flip this to narrow (539/2000 ≈
+    // 27%) if it were used instead of the row's own total — proves it's actually ignored.
+    const result = classifyTable(table, undefined, undefined, undefined, 2000);
+    expect(result?.kind).toBe("buttonBand");
+    expect((result?.props as Record<string, unknown>)["fullWidth"]).toBe(true);
+  });
+
+  it("multi-cell spacer pattern: narrow ratio stays narrow", () => {
+    const table = makeTable([[{ type: "cell", children: [] }, h5Button("#111111"), { type: "cell", children: [] }]]);
+    table.colWidths = [130, 367, 130]; // total 627, button share ≈ 58.5%
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("buttonBand");
+    expect((result?.props as Record<string, unknown>)["fullWidth"]).toBe(false);
+  });
+
+  // Regression guard: the accent-bar branch (§"accent bar via empty colored column" above)
+  // used to call classifySingleCell with no width info at all, silently losing the ratio
+  // for any button nested in the content cell. Locks in the fix threading `totalWidth`/the
+  // content cell's own width through that call.
+  describe("accent-bar branch (content cell doubles as an h5+bg button)", () => {
+    function makeAccentBarButtonTable(colWidths: [number, number]): TableNode {
+      const emptyCell: CellNode = { type: "cell", bg: "#047857", children: [{ type: "p", size: "body", lines: [] }] };
+      const table = makeTable([[emptyCell, h5Button("#111111")]]);
+      table.colWidths = colWidths;
+      return table;
+    }
+
+    it("high ratio (539/555 ≈ 97.1%) is full-width under the default threshold", () => {
+      const result = classifyTable(makeAccentBarButtonTable([16, 539]));
+      expect(result?.kind).toBe("buttonBand");
+      expect((result?.props as Record<string, unknown>)["fullWidth"]).toBe(true);
+    });
+
+    it("the same ratio flips to narrow once the threshold is raised above it — proving the ratio is actually computed, not hard-coded true", () => {
+      const tok = mergeTokens(tokens, { layout: { buttonFullWidthThresholdPct: 99 } });
+      const result = classifyTable(makeAccentBarButtonTable([16, 539]), tok);
+      expect(result?.kind).toBe("buttonBand");
+      expect((result?.props as Record<string, unknown>)["fullWidth"]).toBe(false);
+    });
+  });
+
+  it("token override: the same 60% ratio is narrow under the default 80% threshold but full-width under a 50% override", () => {
+    const table = makeTable([[h5Button("#111111")]]);
+    table.colWidths = [300];
+
+    const narrow = classifyTable(table, undefined, undefined, undefined, 500);
+    expect((narrow?.props as Record<string, unknown>)["fullWidth"]).toBe(false);
+
+    const lowThreshold = mergeTokens(tokens, { layout: { buttonFullWidthThresholdPct: 50 } });
+    const full = classifyTable(table, lowThreshold, undefined, undefined, 500);
+    expect((full?.props as Record<string, unknown>)["fullWidth"]).toBe(true);
   });
 });

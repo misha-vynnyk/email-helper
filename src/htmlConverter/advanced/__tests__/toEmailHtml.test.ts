@@ -956,6 +956,24 @@ describe("renderNode — buttonBand", () => {
   // removed — ButtonBandProps now requires `runs` and has no `label`/`subtitleHtml`
   // fields, so both behaviors are guaranteed by the type system at the classify→render
   // boundary. Subtitle rendering is still covered at the template level in templates.test.
+
+  it("omits width=\"100%\" when fullWidth is absent (source declared a narrower column)", () => {
+    const node: ComponentNode = {
+      kind: "buttonBand",
+      props: { runs: [{ text: "Go" }], href: "http://x.com", bg: "#28b628" },
+    };
+    const result = renderNode(node, tmpl, tokens);
+    expect(result).not.toContain('width="100%"');
+  });
+
+  it("renders width=\"100%\" when fullWidth is true", () => {
+    const node: ComponentNode = {
+      kind: "buttonBand",
+      props: { runs: [{ text: "Go" }], href: "http://x.com", bg: "#28b628", fullWidth: true },
+    };
+    const result = renderNode(node, tmpl, tokens);
+    expect(result).toContain('width="100%"');
+  });
 });
 
 // ── renderNode — unknown kind returns empty string ────────────────────────────

@@ -188,7 +188,10 @@ function buildAlertBandSegments(
     if (html) segments.push({ kind: "text", html });
   };
   const pushButton = (btn: ButtonBandProps) => {
-    const btnTextColor = isDarkBg(btn.bg, tok) ? tok.color.white : tok.color.black;
+    // A fill-less/"ghost" button (btn.bg undefined) has no color of its own to contrast
+    // against — fall back to this band's own ambient text color, already the correct
+    // contrast choice for whatever card the button is nested inside.
+    const btnTextColor = btn.bg ? (isDarkBg(btn.bg, tok) ? tok.color.white : tok.color.black) : textColor;
     // href is always stripped: a nested <a> inside this button's own <a> would be invalid.
     // Color is stripped only on runs that carried an href: a real <a> inside the cell
     // carries the browser's default link-blue, an artifact of it being a link, not a
@@ -200,7 +203,7 @@ function buildAlertBandSegments(
     // runs with no color of their own.
     const buttonRuns = btn.runs.map(r => ({ ...r, color: r.href ? undefined : r.color, href: undefined }));
     const label = renderRuns(buttonRuns, tok, btnTextColor);
-    segments.push({ kind: "button", label, href: btn.href ?? tok.placeholderHref, bg: btn.bg, radius: btn.radius, border: btn.border });
+    segments.push({ kind: "button", label, href: btn.href ?? tok.placeholderHref, bg: btn.bg, radius: btn.radius, border: btn.border, fullWidth: btn.fullWidth });
   };
   const nested = [
     ...(p.buttons ?? []).map(b => ({ atLine: b.atLine, kind: "button" as const, btn: b.props })),
@@ -349,7 +352,9 @@ export function renderNode(
 
     case "buttonBand": {
       const p = node.props;
-      const textColor = isDarkBg(p.bg, tok) ? tok.color.white : tok.color.black;
+      // A standalone fill-less/"ghost" button (p.bg undefined) sits directly on the
+      // document's own root/white background — black is the correct default contrast.
+      const textColor = p.bg ? (isDarkBg(p.bg, tok) ? tok.color.white : tok.color.black) : tok.color.black;
       // Strip per-run color and href unconditionally here — unlike pushButton
       // (buildAlertBandSegments), which keeps a plain span's color since that button was
       // found inside a hand-styled banner cell where color choices are deliberate, a
@@ -365,6 +370,7 @@ export function renderNode(
         bg: p.bg,
         radius: p.radius,
         border: p.border,
+        fullWidth: p.fullWidth,
       };
       return tmpl.buttonBand(opts);
     }
