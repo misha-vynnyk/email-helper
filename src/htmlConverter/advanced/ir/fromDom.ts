@@ -335,7 +335,13 @@ function parseBorderSpec(style: Record<string, string>, tok: Tokens): BorderSpec
 // ── Table ────────────────────────────────────────────────────────────────────
 
 function parseTable(el: Element, bg: string, tok: Tokens, warn?: WarnFn): TableNode | null {
-  const cols = Array.from(el.querySelectorAll(":scope > colgroup > col"));
+  // Not `el.querySelectorAll(":scope > colgroup > col")` — jsdom's selector engine doesn't
+  // restrict the `:scope >` combinator correctly here when `el` contains a NESTED <table>
+  // that has its own <colgroup>: it matches that inner colgroup's <col>s too, silently
+  // merging a nested button table's own width into its outer container's `colWidths`.
+  // Walking direct children by hand avoids the selector engine entirely.
+  const colgroupEl = Array.from(el.children).find(c => c.tagName === "COLGROUP");
+  const cols = colgroupEl ? Array.from(colgroupEl.children).filter(c => c.tagName === "COL") : [];
   const colWidths = cols.length > 0
     ? cols.map(c => parseInt(c.getAttribute("width") ?? "0")).filter(n => n > 0)
     : undefined;

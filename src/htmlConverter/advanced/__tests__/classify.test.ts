@@ -103,16 +103,35 @@ describe("classify — paragraph merging", () => {
     expect((result[1].props as Record<string, unknown>)["tightBefore"]).toBe(true);
   });
 
-  // Bug fix: GDocs encodes a centered banner/eyebrow group (headline + subline) as two
-  // separate centered <p>s — these should merge with a single <br>, not a paragraph gap.
-  it("merges centered adjacent paragraphs with NO paraBreak (single <br>)", () => {
+  // GDocs encodes a centered banner/eyebrow group (headline + subline) as two separate
+  // centered <p>s with near-zero margins — these merge with a single <br>, not a paragraph
+  // gap, but via the SAME margin-sum rule that governs left-aligned text (isGapBoundary),
+  // not a hardcoded "center always merges tight" exception. Alignment alone is no longer
+  // a tightness signal — see the next test for a centered pair that SHOULD get a gap.
+  it("merges centered adjacent paragraphs with small margins with NO paraBreak (single <br>)", () => {
     const nodes: StructuralNode[] = [
-      makePara("REG A+ · CLOSING SOON", "body", "center"),
-      makePara("Entry price: $0.79/share", "body", "center"),
+      makePara("REG A+ · CLOSING SOON", "body", "center", { marginTopPt: 0, marginBottomPt: 0 }),
+      makePara("Entry price: $0.79/share", "body", "center", { marginTopPt: 0, marginBottomPt: 0 }),
     ];
     const result = classify(nodes);
     expect(result).toHaveLength(1);
     expect((result[0].props as Record<string, unknown>)["paraBreaks"]).toBeUndefined();
+  });
+
+  // A centered pair with a deliberate large margin between them (an author-intended section
+  // break, e.g. a stack of small-print lines followed by a highlighted CTA line) must read
+  // as a gap just like left-aligned text would — centering a paragraph is not itself a
+  // signal that the author wanted it glued to its neighbor.
+  it("still gives a centered pair a paraBreak when the margin sum is large (deliberate gap)", () => {
+    const T = tokens.layout.gapMarginThresholdPt;
+    const nodes: StructuralNode[] = [
+      makePara("The third round sold out at $7.38.", "body", "center", { marginTopPt: 0, marginBottomPt: 0 }),
+      makePara("This one at $9.87. Deadline August 27.", "body", "center", { marginTopPt: T + 5, marginBottomPt: 0 }),
+    ];
+    const result = classify(nodes);
+    expect(result).toHaveLength(1);
+    const breaks = (result[0].props as Record<string, unknown>)["paraBreaks"] as Set<number>;
+    expect(breaks.has(1)).toBe(true);
   });
 
   // Left/right-aligned adjacent paragraphs are genuine prose (short-paragraph marketing
@@ -889,5 +908,67 @@ describe("classify — nbsp-padded pseudo-column paragraph → recordRow", () =>
   it("does not fire on a heading/list paragraph", () => {
     expect(classify([splitPara({ size: "headline" })])[0].kind).toBe("paragraph");
     expect(classify([splitPara({ listItem: true })])[0].kind).toBe("list");
+  });
+});
+
+// ── Button fullWidth ratio survives calloutBox recursion (tickr-promo shape) ───
+
+describe("classify — button fullWidth ratio through calloutBox nesting", () => {
+  type LooseNode = { kind: string; props: Record<string, unknown>; children?: LooseNode[] };
+
+  function makeButtonTable(bg: string, ownWidthPx: number): TableNode {
+    const cell = makeCell([{ type: "p", size: "small", headingLevel: 5, lines: [[{ text: "Invest" }]] } as Paragraph], bg);
+    const table = makeTable([[cell]]);
+    table.colWidths = [ownWidthPx];
+    return table;
+  }
+
+  function makeBorderedOuterCell(children: StructuralNode[]): CellNode {
+    return {
+      type: "cell",
+      children,
+      border: { top: { color: "#111111" }, right: { color: "#111111" }, bottom: { color: "#111111" }, left: { color: "#111111" } },
+    };
+  }
+
+  it("a button nested directly inside a border-only calloutBox ratios against the box's own declared width, not the top-level default (real tickr-promo shape, 367/624 ≈ 58.8% stays narrow)", () => {
+    const outerCell = makeBorderedOuterCell([makePara("intro"), makeButtonTable("#111111", 367)]);
+    const outerTable = makeTable([[outerCell]]);
+    outerTable.colWidths = [624];
+    const result = classify([outerTable], tokens, undefined, 560) as unknown as LooseNode[];
+    expect(result).toHaveLength(1);
+    expect(result[0].kind).toBe("calloutBox");
+    const button = result[0].children?.find(c => c.kind === "buttonBand");
+    expect(button).toBeDefined();
+    expect(button?.props["fullWidth"]).toBe(false);
+  });
+
+  it("same shape at a full-width ratio (539/624 ≈ 86.4%) keeps width:100%", () => {
+    const outerCell = makeBorderedOuterCell([makePara("intro"), makeButtonTable("#111111", 539)]);
+    const outerTable = makeTable([[outerCell]]);
+    outerTable.colWidths = [624];
+    const result = classify([outerTable], tokens, undefined, 560) as unknown as LooseNode[];
+    const button = result[0].children?.find(c => c.kind === "buttonBand");
+    expect(button?.props["fullWidth"]).toBe(true);
+  });
+
+  // Regression guard for the "ambient width lost through a widthless wrapper" fix: the
+  // INNER box has no `<colgroup>` of its own (a plain layout wrapper, common in
+  // hand-authored tables) — without forwarding `ownWidthPx ?? ambientWidthPx` to its
+  // children, the button's ambient would silently become `undefined` here and it would
+  // always classify as narrow, regardless of its real ratio against the OUTER box.
+  it("a button nested two calloutBox levels deep, where the INNER wrapper has no colgroup, still ratios against the OUTER box's own width (539/624 ≈ 86.4% stays full-width)", () => {
+    const innerCell = makeBorderedOuterCell([makeButtonTable("#111111", 539)]);
+    const innerTable = makeTable([[innerCell]]); // deliberately no colWidths
+    const outerCell = makeBorderedOuterCell([innerTable]);
+    const outerTable = makeTable([[outerCell]]);
+    outerTable.colWidths = [624];
+    const result = classify([outerTable], tokens, undefined, 560) as unknown as LooseNode[];
+    expect(result[0].kind).toBe("calloutBox");
+    const innerCallout = result[0].children?.[0];
+    expect(innerCallout?.kind).toBe("calloutBox");
+    const button = innerCallout?.children?.find(c => c.kind === "buttonBand");
+    expect(button).toBeDefined();
+    expect(button?.props["fullWidth"]).toBe(true);
   });
 });

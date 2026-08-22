@@ -83,7 +83,7 @@ exports[`convertAdvanced — button-dark fixture snapshot — default profile 1`
               </tr>
               <tr>
                 <td align=\\"center\\" style=\\"padding-top:14px;padding-bottom:14px;\\">
-                  <table cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;max-width:100%;\\">
+                  <table cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\">
                     <tr>
                       <td class=\\"btn-edit-p\\" height=\\"51\\" align=\\"center\\" bgcolor=\\"#28b628\\"
                         style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:bold;line-height:1.5;text-align:center;color:#ffffff; padding:3px 5px;background-color:#28b628;border-radius:10px;\\">
@@ -576,7 +576,7 @@ exports[`convertAdvanced — tickr-promo fixture snapshot — full document 1`] 
                           </tr>
                           <tr>
                             <td align=\\"center\\" style=\\"padding-top:14px;padding-bottom:14px;\\">
-                              <table cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\" width=\\"100%\\" style=\\"width:100%;max-width:100%;\\">
+                              <table cellpadding=\\"0\\" cellspacing=\\"0\\" role=\\"presentation\\">
                                 <tr>
                                   <td class=\\"btn-edit-p\\" height=\\"51\\" align=\\"center\\" bgcolor=\\"#000000\\"
                                     style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:bold;line-height:1.5;text-align:center;color:#ffffff; padding:3px 5px;background-color:#000000;\\">

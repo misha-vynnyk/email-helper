@@ -1,4 +1,4 @@
-import { baseStyle, blockRow,borderSpecToStyle,buildTemplates } from "../config/templates";
+import { baseStyle, blockRow,borderSpecToStyle,buildSegmentRows,buildTemplates } from "../config/templates";
 import { mergeTokens,tokens } from "../config/tokens";
 import { profile as alphaoneProfile } from "../profiles/alphaone";
 import { profile as tttProfile } from "../profiles/ttt";
@@ -179,6 +179,90 @@ describe("buildTemplates — border on buttonBand/alertBand", () => {
       border: { left: { color: "#000000" } },
     });
     expect(html).not.toContain("border-left:");
+  });
+});
+
+// ── border-only ("ghost") buttonBand — no fill at all ─────────────────────────
+
+describe("buildTemplates — buttonBand with no bg (border-only ghost button)", () => {
+  it("renders no bgcolor attribute or background-color declaration when bg is absent", () => {
+    const html = tmpl.buttonBand({
+      innerHtml: "click",
+      href: "https://example.com",
+      bg: undefined,
+      border: { top: { color: "#bf9000" }, right: { color: "#bf9000" }, bottom: { color: "#bf9000" }, left: { color: "#bf9000" } },
+    });
+    expect(html).not.toContain("bgcolor=");
+    expect(html).not.toContain("background-color:");
+  });
+
+  it("still draws the border when bg is absent", () => {
+    const html = tmpl.buttonBand({
+      innerHtml: "click",
+      href: "https://example.com",
+      bg: undefined,
+      border: { top: { color: "#bf9000" } },
+    });
+    expect(html).toContain("border-top:");
+    expect(html).toContain("#bf9000");
+  });
+
+  it("standalone (no fallbackTextColor) fill-less button defaults to black text", () => {
+    const html = tmpl.buttonBand({ innerHtml: "click", href: "https://example.com", bg: undefined });
+    expect(html).toContain(`color:${tokens.color.black}`);
+    expect(html).not.toContain(`color:${tokens.color.white}`);
+  });
+
+  // The nested/pushButton path: buildSegmentRows already knows the ambient card's
+  // contrast color (its own `textColor` param) — a fill-less button nested in a dark
+  // card must borrow that ambient color instead of defaulting to black, or it would be
+  // invisible against the card's own dark background.
+  it("a fill-less button segment picks up the ambient card's text color (white on a dark card)", () => {
+    const html = buildSegmentRows(
+      [{ kind: "button", label: "INVEST AT $9.87 →", href: "https://example.com", bg: undefined, border: { top: { color: "#bf9000" } } }],
+      "center",
+      tokens.color.white,
+      tokens,
+    );
+    expect(html).toContain(`color:${tokens.color.white}`);
+    expect(html).not.toContain("bgcolor=");
+  });
+});
+
+// ── buttonBand fullWidth (source-declared narrow vs full-width buttons) ───────
+
+describe("buildTemplates — buttonBand fullWidth", () => {
+  it("omits width and style attributes on the button table when fullWidth is absent (default: auto/narrow)", () => {
+    const html = tmpl.buttonBand({ innerHtml: "click", href: "https://example.com", bg: "#28b628" });
+    expect(html).not.toContain('width="100%"');
+    expect(html).not.toContain("max-width");
+    expect(html).toContain('<table cellpadding="0" cellspacing="0" role="presentation">');
+  });
+
+  it("omits width and style attributes when fullWidth is explicitly false", () => {
+    const html = tmpl.buttonBand({ innerHtml: "click", href: "https://example.com", bg: "#28b628", fullWidth: false });
+    expect(html).not.toContain('width="100%"');
+    expect(html).not.toContain("max-width");
+  });
+
+  it("renders width=\"100%\" and width:100% in style when fullWidth is true", () => {
+    const html = tmpl.buttonBand({ innerHtml: "click", href: "https://example.com", bg: "#28b628", fullWidth: true });
+    expect(html).toContain('width="100%"');
+    expect(html).toContain("style=\"width:100%;max-width:100%;\"");
+  });
+
+  it("a button segment's fullWidth threads through buildSegmentRows the same way", () => {
+    const narrow = buildSegmentRows(
+      [{ kind: "button", label: "Go", href: "https://example.com", bg: "#28b628" }],
+      "center", tokens.color.black, tokens,
+    );
+    expect(narrow).not.toContain('width="100%"');
+
+    const full = buildSegmentRows(
+      [{ kind: "button", label: "Go", href: "https://example.com", bg: "#28b628", fullWidth: true }],
+      "center", tokens.color.black, tokens,
+    );
+    expect(full).toContain('width="100%"');
   });
 });
 

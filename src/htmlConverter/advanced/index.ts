@@ -47,7 +47,11 @@ export function convertAdvancedDetailed(
   // reset it here, the single entry point into one document's fromDom-recursion tree.
   resetListGroupCounter();
   const structural  = fromDom(bodyEl, tok.color.rootBackground, tok, warn);
-  const components  = classify(structural, tok, warn);
+  // The only place with no ambient context to inherit — the document's own usable content
+  // width (full container minus its side padding) is the immediate container for anything
+  // classified at the top level.
+  const topLevelWidthPx = tok.layout.containerMaxWidth - 2 * tok.layout.sidePadding;
+  const components  = classify(structural, tok, warn, topLevelWidthPx);
   const rows        = renderAll(components, tmpl, tok);
 
   let result = tmpl.document(rows);

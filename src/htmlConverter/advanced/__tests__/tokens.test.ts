@@ -30,6 +30,16 @@ describe("mergeTokens", () => {
     expect(merged.layout.containerMaxWidth).toBe(tokens.layout.containerMaxWidth);
   });
 
+  it("defaults buttonFullWidthThresholdPct to 80", () => {
+    expect(tokens.layout.buttonFullWidthThresholdPct).toBe(80);
+  });
+
+  it("overrides buttonFullWidthThresholdPct, preserving other layout fields", () => {
+    const merged = mergeTokens(tokens, { layout: { buttonFullWidthThresholdPct: 50 } });
+    expect(merged.layout.buttonFullWidthThresholdPct).toBe(50);
+    expect(merged.layout.sidePadding).toBe(tokens.layout.sidePadding);
+  });
+
   it("overrides button fields", () => {
     const merged = mergeTokens(tokens, { button: { radius: 0 } });
     expect(merged.button.radius).toBe(0);

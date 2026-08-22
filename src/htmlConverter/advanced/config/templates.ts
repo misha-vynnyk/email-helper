@@ -68,7 +68,7 @@ export interface BandStackOpts {
 
 export type AlertBandSegment =
   | { kind: "text"; html: string }
-  | { kind: "button"; label: string; href: string; bg: string; radius?: number; border?: BorderSpec }
+  | { kind: "button"; label: string; href: string; bg?: string; radius?: number; border?: BorderSpec; fullWidth?: boolean }
   /** Nested colored band (its own bg/border) rendered as a separate row inside the outer band. */
   | { kind: "band"; html: string; bg: string; border?: BorderSpec; align?: "left" | "center" | "right" }
   /** An image that was a direct child of the source cell — see AlertBandProps.images. Its
@@ -76,13 +76,17 @@ export type AlertBandSegment =
   | { kind: "image" };
 
 export interface ButtonBandOpts {
-  bg: string;
+  /** Absent for a border-only/"ghost" button — no fill is rendered, ambient bg shows through. */
+  bg?: string;
   href: string;
   innerHtml: string;
   subtitleHtml?: string;
   radius?: number;  // overrides tok.button.radius; 0 = no rounding (GDocs table-cell buttons)
-  /** Cell border from the source document (e.g. a white outline on a dark CTA) */
+  /** Cell border from the source document (e.g. a white outline on a dark CTA, or the entire
+   *  visual identity of a fill-less outline button when bg is absent) */
   border?: BorderSpec;
+  /** Renders `width:100%` when true; natural/auto width (centered pill) when absent/false. */
+  fullWidth?: boolean;
 }
 
 export interface CalloutOpts {
@@ -353,21 +357,31 @@ export function borderSpecToStyle(border: BorderSpec | undefined, tok: Tokens = 
 }
 
 /** Always puts tok.classes.btnWrap on the colored inner <td> — the element the
- *  destination platform's editor targets to identify/style the button. */
-export function buttonTableHtml(label: string, href: string, bg: string, tok: Tokens = defaultTokens, radiusOverride?: number, border?: BorderSpec): string {
+ *  destination platform's editor targets to identify/style the button.
+ *  `bg` absent → a border-only/"ghost" button: no `bgcolor`/`background-color` declared at
+ *  all (not an explicit "transparent" — omitting lets the ambient parent table's own bgcolor
+ *  show through, and avoids Outlook/mso's inconsistent handling of literal transparent values
+ *  on bulletproof-button markup), `fallbackTextColor` picks the contrast color since there's
+ *  no bg to compute `isDarkBg` from (the caller supplies the ambient card's text color when
+ *  nested, or leaves it to default to black for a standalone button on the page background). */
+export function buttonTableHtml(label: string, href: string, bg: string | undefined, tok: Tokens = defaultTokens, radiusOverride?: number, border?: BorderSpec, fallbackTextColor?: string, fullWidth = false): string {
   const { height, padding, innerPadding, target } = tok.button;
   const r = radiusOverride !== undefined ? radiusOverride : tok.button.radius;
   const radiusStyle = r > 0 ? `border-radius:${r}px;` : "";
   const borderStyle = borderSpecToStyle(dropBgMatchingSides(border, bg), tok);
-  const textColor = isDarkBg(bg, tok) ? tok.color.white : tok.color.black;
+  const textColor = bg ? (isDarkBg(bg, tok) ? tok.color.white : tok.color.black) : (fallbackTextColor ?? tok.color.black);
   const style = baseStyle({ align: "center", fontWeight: "bold", color: textColor }, tok);
   const safeHref = escapeHtml(href);
-  return `<table cellpadding="0" cellspacing="0" role="presentation" width="100%" style="width:100%;max-width:100%;">
+  const bgAttr = bg ? ` bgcolor="${bg}"` : "";
+  const bgStyle = bg ? `background-color:${bg};` : "";
+  const widthAttr = fullWidth ? ` width="100%"` : "";
+  const styleAttr = fullWidth ? ` style="width:100%;max-width:100%;"` : "";
+  return `<table cellpadding="0" cellspacing="0" role="presentation"${widthAttr}${styleAttr}>
   <tr>
-    <td class="${tok.classes.btnWrap}" height="${height}" align="center" bgcolor="${bg}"
-      style="${style} padding:${padding};background-color:${bg};${radiusStyle}${borderStyle}">
+    <td class="${tok.classes.btnWrap}" height="${height}" align="center"${bgAttr}
+      style="${style} padding:${padding};${bgStyle}${radiusStyle}${borderStyle}">
       <a href="${safeHref}" target="${target}"
-        style="text-decoration:${tok.button.textDecoration};padding:${innerPadding};display:block;${style}background-color:${bg};${radiusStyle}">
+        style="text-decoration:${tok.button.textDecoration};padding:${innerPadding};display:block;${style}${bgStyle}${radiusStyle}">
 ${indentHtml(label, 8)}
       </a>
     </td>
@@ -429,7 +443,7 @@ export function buildSegmentRows(
   const p = tok.layout.blockPadY;
   return segments.map(seg => {
     if (seg.kind === "button") {
-      const btnTable = buttonTableHtml(seg.label, seg.href, seg.bg, tok, seg.radius, seg.border);
+      const btnTable = buttonTableHtml(seg.label, seg.href, seg.bg, tok, seg.radius, seg.border, textColor, seg.fullWidth ?? false);
       return `<tr>
   <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
 ${indentHtml(btnTable, 4)}
@@ -721,12 +735,12 @@ ${wrapClose}`;
     },
 
     buttonBand(opts: ButtonBandOpts): string {
-      const { innerHtml, href, bg, subtitleHtml, radius, border } = opts;
+      const { innerHtml, href, bg, subtitleHtml, radius, border, fullWidth } = opts;
       const p = pad();
       const subtitle = subtitleHtml ? `\n<tr>\n  <td align="center" style="padding-top:${tok.layout.buttonSubtitlePadTop}px;">${subtitleHtml}</td>\n</tr>` : "";
       return `<tr>
   <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
-${indentHtml(buttonTableHtml(innerHtml, href, bg, tok, radius, border), 4)}
+${indentHtml(buttonTableHtml(innerHtml, href, bg, tok, radius, border, undefined, fullWidth ?? false), 4)}
   </td>
 </tr>${subtitle}`;
     },
