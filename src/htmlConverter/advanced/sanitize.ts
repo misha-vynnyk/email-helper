@@ -9,7 +9,9 @@ import * as dompurifyModule from "dompurify";
 
 // Vite loads the ESM build (instance on `default`); Jest loads the CJS build where
 // the module object itself is the instance and `default` is undefined.
-const DOMPurify = ((dompurifyModule as { default?: unknown }).default ??
+// Exported so other modules (e.g. templateBuilder's rich-text sanitizer) can reuse
+// this instance instead of re-implementing the ESM/CJS interop shim.
+export const DOMPurify = ((dompurifyModule as { default?: unknown }).default ??
   dompurifyModule) as { sanitize(html: string, config: object): string };
 
 // Fragment-level tags — everything convertAdvanced emits.

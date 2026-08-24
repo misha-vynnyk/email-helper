@@ -24,6 +24,9 @@ export const STORAGE_KEYS = {
 
   // Theme
   THEME_MODE: "themeMode",
+
+  // Template Builder
+  TEMPLATE_BUILDER_DOWNLOAD_FOLDER: "templateBuilderDownloadFolder",
 } as const;
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];
