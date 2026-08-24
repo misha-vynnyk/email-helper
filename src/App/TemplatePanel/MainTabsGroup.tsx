@@ -1,13 +1,13 @@
-import { FolderOpen, Image as ImageIcon, LayoutGrid, Mail, Table } from "lucide-react";
+import { FolderOpen, Image as ImageIcon, LayoutGrid, LayoutTemplate, Mail, Table } from "lucide-react";
 import React from "react";
 
 import { LocalOnlyDot } from "../../components/LocalOnlyBadge";
 import { Tabs, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { isApiAvailable } from "../../config/api";
-import { BLOCK_LIBRARY_ENABLED } from "../../config/featureFlags";
+import { BLOCK_LIBRARY_ENABLED, TEMPLATE_BUILDER_ENABLED } from "../../config/featureFlags";
 import { setSelectedMainTab, useSelectedMainTab } from "../../contexts/AppState";
 
-const TAB_VALUES = ["email", "blocks", "templates", "images", "converter"] as const;
+const TAB_VALUES = ["email", "blocks", "templates", "images", "converter", "builder"] as const;
 type TabValue = (typeof TAB_VALUES)[number];
 
 export default function MainTabsGroup() {
@@ -42,6 +42,11 @@ export default function MainTabsGroup() {
         <TabsTrigger value='converter' title='HTML to Table Converter'>
           <Table className='w-4 h-4' />
         </TabsTrigger>
+        {TEMPLATE_BUILDER_ENABLED && (
+          <TabsTrigger value='builder' title='Builder'>
+            <LayoutTemplate className='w-4 h-4' />
+          </TabsTrigger>
+        )}
       </TabsList>
     </Tabs>
   );
