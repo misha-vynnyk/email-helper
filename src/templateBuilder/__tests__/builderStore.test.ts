@@ -1,4 +1,5 @@
 import {
+  addColumn,
   addLeaf,
   addRow,
   addSection,
@@ -7,15 +8,17 @@ import {
   getCanvas,
   moveLeaf,
   removeCanvasBlock,
+  removeColumn,
   removeLeaf,
   reorderCanvasBlocks,
   resetBuilderState,
   sectionContainerId,
   updateLeaf,
+  updateRowStyle,
   updateSectionStyle,
 } from "../state/builderStore";
 import { getSelectedId, selectBlock } from "../state/selectionStore";
-import type { RowBlock, SectionBlock } from "../types";
+import { MAX_ROW_COLUMNS, type RowBlock, type SectionBlock } from "../types";
 
 describe("builderStore", () => {
   beforeEach(() => {
@@ -109,6 +112,105 @@ describe("builderStore", () => {
 
     const section = getCanvas()[0] as SectionBlock;
     expect(section.widthPx).toBe(400);
+  });
+
+  it("gives a new row the same top-level padding/width defaults as a section", () => {
+    addSection();
+    addRow(2);
+
+    const section = getCanvas()[0] as SectionBlock;
+    const row = getCanvas()[1] as RowBlock;
+    expect(row.widthPx).toBe(section.widthPx);
+    expect(row.padding).toEqual(section.padding);
+  });
+
+  it("updates a row's own style fields", () => {
+    const rowId = addRow(2);
+    addRow(2);
+
+    updateRowStyle(rowId, { widthPx: 400 });
+
+    const [firstRow, secondRow] = getCanvas() as RowBlock[];
+    expect(firstRow.widthPx).toBe(400);
+    expect(secondRow.widthPx).not.toBe(400);
+  });
+
+  it("adds a column to a row and redistributes widthPercent evenly", () => {
+    const rowId = addRow(2);
+
+    addColumn(rowId);
+
+    const row = getCanvas()[0] as RowBlock;
+    expect(row.columns).toHaveLength(3);
+    expect(row.columns.map((c) => c.widthPercent).reduce((a, b) => a + b)).toBe(100);
+    expect(row.columns[0].widthPercent).toBe(33);
+    expect(row.columns[2].widthPercent).toBe(34);
+  });
+
+  it("preserves existing columns' children and the row's own style when adding a column", () => {
+    const rowId = addRow(2);
+    const columnId = (getCanvas()[0] as RowBlock).columns[0].id;
+    const textId = addLeaf(columnContainerId(rowId, columnId), "text");
+
+    addColumn(rowId);
+
+    const row = getCanvas()[0] as RowBlock;
+    expect(row.columns[0].children.map((c) => c.id)).toEqual([textId]);
+    expect(row.widthPx).toBe(552);
+  });
+
+  it("does not add a column past MAX_ROW_COLUMNS", () => {
+    const rowId = addRow(2);
+    for (let i = 0; i < 5; i++) addColumn(rowId);
+
+    const row = getCanvas()[0] as RowBlock;
+    expect(row.columns).toHaveLength(MAX_ROW_COLUMNS);
+  });
+
+  it("removes a column from a row and redistributes widthPercent evenly", () => {
+    const rowId = addRow(3);
+    const columnId = (getCanvas()[0] as RowBlock).columns[0].id;
+
+    removeColumn(rowId, columnId);
+
+    const row = getCanvas()[0] as RowBlock;
+    expect(row.columns).toHaveLength(2);
+    expect(row.columns.every((c) => c.widthPercent === 50)).toBe(true);
+  });
+
+  it("preserves remaining columns' children and the row's own style when removing a column", () => {
+    const rowId = addRow(3);
+    const columns = (getCanvas()[0] as RowBlock).columns;
+    const textId = addLeaf(columnContainerId(rowId, columns[1].id), "text");
+
+    removeColumn(rowId, columns[0].id);
+
+    const row = getCanvas()[0] as RowBlock;
+    expect(row.columns.map((c) => c.id)).toEqual([columns[1].id, columns[2].id]);
+    expect(row.columns[0].children.map((c) => c.id)).toEqual([textId]);
+    expect(row.widthPx).toBe(552);
+  });
+
+  it("does not remove a column once the row is down to MIN_ROW_COLUMNS", () => {
+    const rowId = addRow(2);
+    const columns = (getCanvas()[0] as RowBlock).columns;
+
+    removeColumn(rowId, columns[0].id);
+    removeColumn(rowId, columns[1].id);
+
+    const row = getCanvas()[0] as RowBlock;
+    expect(row.columns).toHaveLength(1);
+  });
+
+  it("clears the selection when a leaf inside a removed column was selected", () => {
+    const rowId = addRow(2);
+    const columnId = (getCanvas()[0] as RowBlock).columns[0].id;
+    const textId = addLeaf(columnContainerId(rowId, columnId), "text");
+    selectBlock(textId);
+
+    removeColumn(rowId, columnId);
+
+    expect(getSelectedId()).toBeNull();
   });
 
   it("clears the selection when the selected section is removed", () => {

@@ -1,7 +1,7 @@
 import { create } from "zustand";
 
 import type { BuilderLeafBlock, CanvasBlock, ImageBlock, RowBlock, SectionBlock, ShellConfig, TextBlock } from "../types";
-import { createDefaultImageBlock, createDefaultRowBlock, createDefaultSectionBlock, createDefaultShellConfig, createDefaultTextBlock } from "../types";
+import { createDefaultImageBlock, createDefaultRowBlock, createDefaultSectionBlock, createDefaultShellConfig, createDefaultTextBlock, evenWidthPercents, MAX_ROW_COLUMNS, MIN_ROW_COLUMNS } from "../types";
 import { getSelectedId, selectBlock } from "./selectionStore";
 
 interface BuilderState {
@@ -97,6 +97,37 @@ export function addRow(columnCount: 2 | 3): string {
   return row.id;
 }
 
+/** Appends a column to an existing row and re-splits every column's widthPercent evenly. No-op past MAX_ROW_COLUMNS. */
+export function addColumn(rowId: string) {
+  builderStore.setState((s) => ({
+    canvas: s.canvas.map((b) => {
+      if (b.type !== "row" || b.id !== rowId || b.columns.length >= MAX_ROW_COLUMNS) return b;
+      const columns = [...b.columns, { id: crypto.randomUUID(), widthPercent: 0, children: [] }];
+      const widths = evenWidthPercents(columns.length);
+      return { ...b, columns: columns.map((col, i) => ({ ...col, widthPercent: widths[i] })) };
+    }),
+  }));
+}
+
+/** Removes one column from a row and re-splits the remaining columns' widthPercent evenly. No-op at MIN_ROW_COLUMNS. */
+export function removeColumn(rowId: string, columnId: string) {
+  const row = builderStore.getState().canvas.find((b) => b.id === rowId && b.type === "row") as RowBlock | undefined;
+  if (!row || row.columns.length <= MIN_ROW_COLUMNS) return;
+  const removedColumn = row.columns.find((c) => c.id === columnId);
+
+  builderStore.setState((s) => ({
+    canvas: s.canvas.map((b) => {
+      if (b.type !== "row" || b.id !== rowId) return b;
+      const columns = b.columns.filter((c) => c.id !== columnId);
+      const widths = evenWidthPercents(columns.length);
+      return { ...b, columns: columns.map((col, i) => ({ ...col, widthPercent: widths[i] })) };
+    }),
+  }));
+
+  const selectedId = getSelectedId();
+  if (selectedId && removedColumn && removedColumn.children.some((c) => c.id === selectedId)) selectBlock(null);
+}
+
 /** All ids "under" a top-level canvas block (itself plus any nested leaves) — used to invalidate
  * a dangling selection when the block (or a leaf inside it) is removed. */
 function collectBlockAndLeafIds(block: CanvasBlock): string[] {
@@ -124,6 +155,12 @@ export function reorderCanvasBlocks(fromIndex: number, toIndex: number) {
 export function updateSectionStyle(sectionId: string, patch: Partial<Omit<SectionBlock, "id" | "type" | "children">>) {
   builderStore.setState((s) => ({
     canvas: s.canvas.map((b) => (b.type === "section" && b.id === sectionId ? { ...b, ...patch } : b)),
+  }));
+}
+
+export function updateRowStyle(rowId: string, patch: Partial<Pick<RowBlock, "padding" | "widthPx">>) {
+  builderStore.setState((s) => ({
+    canvas: s.canvas.map((b) => (b.type === "row" && b.id === rowId ? { ...b, ...patch } : b)),
   }));
 }
 
