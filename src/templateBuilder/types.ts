@@ -77,8 +77,13 @@ export interface RowColumn {
 export interface RowBlock {
   id: string;
   type: "row";
+  padding: ContainerPadding;
+  widthPx: number;
   columns: RowColumn[];
 }
+
+export const MIN_ROW_COLUMNS = 1;
+export const MAX_ROW_COLUMNS = 4;
 
 export type CanvasBlock = SectionBlock | RowBlock;
 
@@ -107,18 +112,27 @@ export function createDefaultSectionBlock(id: string): SectionBlock {
   };
 }
 
-function evenWidthPercents(count: number): number[] {
+export function evenWidthPercents(count: number): number[] {
   const base = Math.round(100 / count);
   const percents = Array.from({ length: count }, () => base);
   percents[percents.length - 1] = 100 - base * (count - 1);
   return percents;
 }
 
+/**
+ * Row is currently always a top-level canvas block (`canvas: CanvasBlock[]` is flat, nested
+ * containers don't exist yet), so it always gets the same real placeholder padding/width as
+ * `createDefaultSectionBlock`. If nested rows/sections are ever introduced, a nested instance
+ * should default to `padding: 0` and full-width instead — its ancestor container already
+ * constrains the layout, so a second real padding/width would double up on it.
+ */
 export function createDefaultRowBlock(id: string, columnIds: string[], columnCount: 2 | 3): RowBlock {
   const widths = evenWidthPercents(columnCount);
   return {
     id,
     type: "row",
+    padding: { top: 32, right: 20, bottom: 24, left: 20 },
+    widthPx: 552,
     columns: columnIds.map((columnId, i) => ({ id: columnId, widthPercent: widths[i], children: [] })),
   };
 }
