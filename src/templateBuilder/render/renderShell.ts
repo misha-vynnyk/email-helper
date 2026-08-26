@@ -1,3 +1,4 @@
+import { fontFamilyStack, GOOGLE_FONT_CATALOG } from "../googleFontCatalog";
 import type { ShellConfig } from "../types";
 import { escapeHtml } from "./escape";
 import { sanitizeFontFamily } from "./security";
@@ -13,27 +14,61 @@ const UTILITY_MEDIA_BLOCKS = `
       }
 `;
 
-function fontMatchRule(fontMatchSelector: string | undefined, fontFamily: string): string {
-  if (!fontMatchSelector) return "";
-  const safeFontFamily = escapeHtml(sanitizeFontFamily(fontFamily));
+interface FontMatchEntry {
+  selector: string;
+  family: string;
+}
+
+const GOOGLE_FONT_CATEGORY_BY_NAME = new Map(GOOGLE_FONT_CATALOG.map((f) => [f.name, f.category]));
+
+/**
+ * One match entry for the shell's own fontMatchSelector/fontFamily (kept as a free-text escape
+ * hatch — doesn't have to be a catalog font), plus one for every OTHER selected Google Font, so
+ * content pasted with any of them in an inline style (e.g. `style="font-family: Lato"`) resolves
+ * to that font's real family+fallback instead of only ever matching the single default.
+ */
+function buildFontMatchEntries(config: ShellConfig): FontMatchEntry[] {
+  const entries: FontMatchEntry[] = [];
+  const seen = new Set<string>();
+
+  if (config.fontMatchSelector) {
+    entries.push({ selector: config.fontMatchSelector, family: config.fontFamily });
+    seen.add(config.fontMatchSelector);
+  }
+  for (const name of config.googleFonts) {
+    if (seen.has(name)) continue;
+    const category = GOOGLE_FONT_CATEGORY_BY_NAME.get(name);
+    if (!category) continue;
+    entries.push({ selector: name, family: fontFamilyStack(name, category) });
+    seen.add(name);
+  }
+  return entries;
+}
+
+function fontMatchRules(entries: FontMatchEntry[]): string {
+  if (entries.length === 0) return "";
+  const rule = (e: FontMatchEntry, indent: string) => {
+    const safeSelector = escapeHtml(e.selector);
+    const safeFamily = escapeHtml(sanitizeFontFamily(e.family));
+    return `${indent}[style*="${safeSelector}"] {
+${indent}  font-family: ${safeFamily};
+${indent}}`;
+  };
   return `
-      [style*="${escapeHtml(fontMatchSelector)}"] {
-        font-family: ${safeFontFamily};
-      }
+${entries.map((e) => rule(e, "      ")).join("\n")}
 
       @media screen and (-webkit-min-device-pixel-ratio: 0) {
-        [style*="${escapeHtml(fontMatchSelector)}"] {
-          font-family: ${safeFontFamily};
-        }
+${entries.map((e) => rule(e, "        ")).join("\n")}
       }
 `;
 }
 
+/** No rel="preconnect" — most email clients never load external stylesheets/fonts at all, so the
+ * connection-warmup optimization has nothing real to speed up in the exported HTML; the one place
+ * it would matter (this app's own Preview iframe) doesn't need it either at this scale. */
 function googleFontsLinks(googleFontsHref: string | undefined): string {
   if (!googleFontsHref) return "";
   return `
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="${escapeHtml(googleFontsHref)}" rel="stylesheet">
 `;
 }
@@ -92,7 +127,7 @@ ${googleFontsLinks(config.googleFontsHref)}
       table td {
         border-collapse: collapse;
       }
-${fontMatchRule(config.fontMatchSelector, config.fontFamily)}${UTILITY_MEDIA_BLOCKS}
+${fontMatchRules(buildFontMatchEntries(config))}${UTILITY_MEDIA_BLOCKS}
     </style>
 
     <!--[if (gte mso 9)|(IE)]>

@@ -2,6 +2,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { updateShellConfig, useShellConfig } from "../state/builderStore";
+import { GoogleFontPicker } from "./GoogleFontPicker";
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -37,13 +38,18 @@ export function ShellSettingsForm() {
           placeholder='e.g. Roboto'
         />
       </Field>
-      <Field label='Google Fonts link (optional)'>
-        <Input
-          value={shell.googleFontsHref ?? ""}
-          onChange={(e) => updateShellConfig({ googleFontsHref: e.target.value || undefined })}
-          placeholder='https://fonts.googleapis.com/css2?...'
-        />
-      </Field>
+      <div className='col-span-2'>
+        <GoogleFontPicker shell={shell} />
+      </div>
+      <div className='col-span-2'>
+        <Field label='Google Fonts link (auto-filled by the picker above, or paste your own)'>
+          <Input
+            value={shell.googleFontsHref ?? ""}
+            onChange={(e) => updateShellConfig({ googleFontsHref: e.target.value || undefined })}
+            placeholder='https://fonts.googleapis.com/css2?...'
+          />
+        </Field>
+      </div>
       <Field label='Outer background'>
         <Input type='color' value={shell.outerBackground} onChange={(e) => updateShellConfig({ outerBackground: e.target.value })} />
       </Field>
