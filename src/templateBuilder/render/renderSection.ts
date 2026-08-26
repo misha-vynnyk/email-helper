@@ -1,6 +1,7 @@
 import type { BuilderNode, SectionBlock, ShellConfig } from "../types";
 import { escapeHtml } from "./escape";
 import { renderNodeList } from "./renderNode";
+import { responsiveClassAttr } from "./responsiveClassAttr";
 
 /**
  * Буквальне відтворення наданого користувачем Section-контейнера (TEMPLATE_BUILDER_STAGE1_QUESTIONS.md, блок 2).
@@ -30,12 +31,16 @@ export function renderSection(block: SectionBlock, nodes: Record<string, Builder
   const ownWidthPx = block.widthPx ?? availableWidthPx;
   const widthAttr = block.widthPx !== undefined ? ` width="${block.widthPx}"` : "";
   const maxWidthStyle = block.widthPx !== undefined ? ` max-width:${block.widthPx}px;` : "";
-  const childrenHtml = renderNodeList(nodes, block.childIds, shell, ownWidthPx - block.padding.left - block.padding.right, block.gapPx);
+  // Clamped to 0: padding wider than the section's own width would otherwise drive this negative
+  // and propagate into a nested Row's column min-width as invalid CSS (browsers silently zero
+  // it, collapsing the intended layout instead of erroring).
+  const childrenAvailableWidthPx = Math.max(0, ownWidthPx - block.padding.left - block.padding.right);
+  const childrenHtml = renderNodeList(nodes, block.childIds, shell, childrenAvailableWidthPx, block.gapPx);
 
   return `<!--[------ Section start ------]-->
 <tr>
   <td align="center" style="${paddingStyle}">
-    <table align="center" border="0" cellspacing="0" cellpadding="0"${widthAttr}${bgcolorAttr} style="width: 100%;${maxWidthStyle} padding: 0; margin: 0;${extraStyle}" role="presentation">
+    <table align="center" border="0" cellspacing="0" cellpadding="0"${widthAttr}${responsiveClassAttr(undefined, block.responsiveClassNames)}${bgcolorAttr} style="width: 100%;${maxWidthStyle} padding: 0; margin: 0;${extraStyle}" role="presentation">
 ${childrenHtml}
     </table>
   </td>

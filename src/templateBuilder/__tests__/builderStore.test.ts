@@ -1,6 +1,6 @@
-import { addColumn, addContainer, addLeaf, findBlockOrLeaf, getNode, getRootIds, moveNode, removeColumn, removeNode, resetBuilderState, updateLeaf, updateRowStyle, updateSectionStyle } from "../state/builderStore";
+import { addColumn, addContainer, addLeaf, addReadyMade, findBlockOrLeaf, getNode, getRootIds, moveNode, removeColumn, removeNode, resetBuilderState, updateNodeFields, updateResponsiveClassNames, updateRowStyle, updateSectionStyle } from "../state/builderStore";
 import { getSelectedId, selectBlock } from "../state/selectionStore";
-import { createDefaultButtonBlock, createDefaultDividerBlock, createDefaultSpacerBlock, MAX_ROW_COLUMNS, type ButtonBlock, type DividerBlock, type RowBlock, type RowColumnBlock, type SectionBlock, type SpacerBlock } from "../types";
+import { createDefaultButtonBlock, createDefaultDividerBlock, createDefaultSpacerBlock, MAX_ROW_COLUMNS, type ButtonBlock, type DividerBlock, type ReadyMadeBlock, type RowBlock, type RowColumnBlock, type SectionBlock, type SpacerBlock } from "../types";
 
 describe("builderStore", () => {
   beforeEach(() => {
@@ -46,7 +46,7 @@ describe("builderStore", () => {
     const sectionId = addContainer(null, "section");
     const textId = addLeaf(sectionId, "text");
 
-    updateLeaf(textId, { color: "#ff0000" });
+    updateNodeFields(textId, { color: "#ff0000" });
 
     const lookup = findBlockOrLeaf(textId);
     expect(lookup?.kind).toBe("leaf");
@@ -238,9 +238,9 @@ describe("builderStore", () => {
     const dividerId = addLeaf(sectionId, "divider");
     const spacerId = addLeaf(sectionId, "spacer");
 
-    updateLeaf(buttonId, { label: "Buy now", bgColor: undefined });
-    updateLeaf(dividerId, { thicknessPx: 4 });
-    updateLeaf(spacerId, { heightPx: 48 });
+    updateNodeFields(buttonId, { label: "Buy now", bgColor: undefined });
+    updateNodeFields(dividerId, { thicknessPx: 4 });
+    updateNodeFields(spacerId, { heightPx: 48 });
 
     const button = getNode(buttonId) as ButtonBlock;
     const divider = getNode(dividerId) as DividerBlock;
@@ -297,5 +297,86 @@ describe("builderStore", () => {
     resetBuilderState();
 
     expect(getSelectedId()).toBeNull();
+  });
+
+  it("spawns a ready-made block seeded with its definition's own slot defaults", () => {
+    const sectionId = addContainer(null, "section");
+
+    const headerId = addReadyMade(sectionId, "header-adaptive");
+
+    const header = getNode(headerId) as ReadyMadeBlock;
+    expect(header.type).toBe("ready-made");
+    expect(header.definitionId).toBe("header-adaptive");
+    expect(header.values).toEqual({ desktopSrc: expect.any(String), mobileSrc: expect.any(String), href: "urlhere" });
+    expect((getNode(sectionId) as SectionBlock).childIds).toEqual([headerId]);
+  });
+
+  it("updates a ready-made block's slot values via updateNodeFields, findable back through findBlockOrLeaf", () => {
+    const sectionId = addContainer(null, "section");
+    const headerId = addReadyMade(sectionId, "header-simple");
+
+    updateNodeFields(headerId, { values: { src: "https://cdn.example.com/logo.png", href: "https://example.com" } });
+
+    const lookup = findBlockOrLeaf(headerId);
+    expect(lookup?.kind).toBe("ready-made");
+    expect((lookup as { block: ReadyMadeBlock }).block.values.href).toBe("https://example.com");
+  });
+
+  it("is a no-op for an unknown ready-made definitionId", () => {
+    const sectionId = addContainer(null, "section");
+
+    const id = addReadyMade(sectionId, "does-not-exist");
+
+    expect(id).toBe("");
+    expect((getNode(sectionId) as SectionBlock).childIds).toEqual([]);
+  });
+
+  it("updateResponsiveClassNames persists on a Section/Row — the exact case updateNodeFields silently rejects (containers)", () => {
+    const sectionId = addContainer(null, "section");
+    const rowId = addContainer(null, "row", 2);
+
+    updateResponsiveClassNames(sectionId, ["sm-hidden"]);
+    updateResponsiveClassNames(rowId, ["xs-text-center"]);
+
+    expect((getNode(sectionId) as SectionBlock).responsiveClassNames).toEqual(["sm-hidden"]);
+    expect((getNode(rowId) as RowBlock).responsiveClassNames).toEqual(["xs-text-center"]);
+  });
+
+  it("updateResponsiveClassNames also works on leaves and ready-made blocks", () => {
+    const sectionId = addContainer(null, "section");
+    const textId = addLeaf(sectionId, "text");
+    const headerId = addReadyMade(sectionId, "header-simple");
+
+    updateResponsiveClassNames(textId, ["pt-8"]);
+    updateResponsiveClassNames(headerId, ["xs-hidden"]);
+
+    expect(getNode(textId)?.responsiveClassNames).toEqual(["pt-8"]);
+    expect(getNode(headerId)?.responsiveClassNames).toEqual(["xs-hidden"]);
+  });
+
+  it("updateResponsiveClassNames is a no-op for a nonexistent id", () => {
+    expect(() => updateResponsiveClassNames("does-not-exist", ["sm-hidden"])).not.toThrow();
+  });
+
+  it("addLeaf(null, ...) spawns a leaf directly at the canvas root, no wrapping Section required", () => {
+    const textId = addLeaf(null, "text");
+
+    expect(getRootIds()).toEqual([textId]);
+    expect(getNode(textId)?.parentId).toBeNull();
+  });
+
+  it("addReadyMade(null, ...) spawns a ready-made block directly at the canvas root", () => {
+    const headerId = addReadyMade(null, "header-simple");
+
+    expect(getRootIds()).toEqual([headerId]);
+    expect(getNode(headerId)?.parentId).toBeNull();
+  });
+
+  it("a root-level leaf sits alongside Sections/Rows in rootIds, in drop order", () => {
+    const sectionId = addContainer(null, "section");
+    const textId = addLeaf(null, "text");
+    const rowId = addContainer(null, "row", 2);
+
+    expect(getRootIds()).toEqual([sectionId, textId, rowId]);
   });
 });

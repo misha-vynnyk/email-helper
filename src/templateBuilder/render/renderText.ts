@@ -1,5 +1,6 @@
 import type { TextBlock } from "../types";
 import { escapeHtml } from "./escape";
+import { responsiveClassAttr } from "./responsiveClassAttr";
 import { isSafeHref, sanitizeFontFamily } from "./security";
 
 /**
@@ -17,7 +18,7 @@ export function renderText(block: TextBlock, defaultFontFamily: string, paddingB
     : block.contentHtml;
 
   return `<tr>
-  <td style="${cellStyle}">
+  <td${responsiveClassAttr(undefined, block.responsiveClassNames)} style="${cellStyle}">
     ${inner}
   </td>
 </tr>`;

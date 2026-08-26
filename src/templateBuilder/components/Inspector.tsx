@@ -1,16 +1,20 @@
-import { useMemo } from "react";
-
-import { findBlockOrLeaf, useNodesMap } from "../state/builderStore";
+import { useBuilderNode } from "../state/builderStore";
 import { useSelectedId } from "../state/selectionStore";
-import type { BuilderLeafBlock } from "../types";
+import { isContainerNode, type BuilderLeafBlock, type BuilderNode } from "../types";
 import { ButtonBlockEditor } from "./ButtonBlockEditor";
 import { DividerBlockEditor } from "./DividerBlockEditor";
 import { ImageBlockEditor } from "./ImageBlockEditor";
+import { ReadyMadeBlockEditor } from "./ReadyMadeBlockEditor";
+import { ResponsiveClassPicker } from "./ResponsiveClassPicker";
 import { RowInspectorForm } from "./RowInspectorForm";
 import { SectionInspectorForm } from "./SectionInspectorForm";
 import { ShellSettingsForm } from "./ShellSettingsForm";
 import { SpacerBlockEditor } from "./SpacerBlockEditor";
 import { TextBlockEditor } from "./TextBlockEditor";
+
+function isLeafBlock(node: BuilderNode): node is BuilderLeafBlock {
+  return !isContainerNode(node) && node.type !== "ready-made";
+}
 
 function renderLeafEditor(leaf: BuilderLeafBlock) {
   switch (leaf.type) {
@@ -27,10 +31,11 @@ function renderLeafEditor(leaf: BuilderLeafBlock) {
   }
 }
 
+/** Subscribes only to the SELECTED node (not the whole nodes map) — editing any other block on
+ * the canvas doesn't re-render this panel, only a change to the currently selected one does. */
 export function Inspector() {
-  const nodes = useNodesMap();
   const selectedId = useSelectedId();
-  const lookup = useMemo(() => (selectedId ? findBlockOrLeaf(selectedId) : undefined), [nodes, selectedId]);
+  const node = useBuilderNode(selectedId ?? "");
 
   return (
     <div className='space-y-4'>
@@ -41,16 +46,19 @@ export function Inspector() {
 
       <section className='space-y-2'>
         <h3 className='text-xs font-bold text-muted-foreground uppercase'>Selected block</h3>
-        {!lookup && <p className='text-xs text-muted-foreground'>Click a block on the canvas to edit it.</p>}
-        {lookup?.kind === "section" && <SectionInspectorForm section={lookup.block} />}
-        {lookup?.kind === "row" && (
+        {!node && <p className='text-xs text-muted-foreground'>Click a block on the canvas to edit it.</p>}
+        {node?.type === "section" && <SectionInspectorForm section={node} />}
+        {node?.type === "row" && (
           <div className='space-y-2'>
-            <p className='text-xs text-muted-foreground'>Row with {lookup.block.childIds.length} columns — drag a block into a column.</p>
-            <RowInspectorForm row={lookup.block} />
+            <p className='text-xs text-muted-foreground'>Row with {node.childIds.length} columns — drag a block into a column.</p>
+            <RowInspectorForm row={node} />
           </div>
         )}
-        {lookup?.kind === "leaf" && renderLeafEditor(lookup.block)}
+        {node && isLeafBlock(node) && renderLeafEditor(node)}
+        {node?.type === "ready-made" && <ReadyMadeBlockEditor block={node} />}
       </section>
+
+      {node && <ResponsiveClassPicker nodeId={node.id} />}
     </div>
   );
 }

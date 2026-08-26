@@ -1,5 +1,6 @@
 import type { ImageBlock } from "../types";
 import { escapeHtml } from "./escape";
+import { responsiveClassAttr } from "./responsiveClassAttr";
 import { isSafeHref } from "./security";
 
 /**
@@ -13,7 +14,7 @@ export function renderImage(block: ImageBlock, paddingBottomPx: number): string 
   const inner = href ? `<a href="${escapeHtml(href)}" target="_blank">\n      ${img}\n    </a>` : img;
 
   return `<tr>
-  <td class="img-bg-block" align="center" style="padding-bottom: ${paddingBottomPx}px;">
+  <td${responsiveClassAttr("img-bg-block", block.responsiveClassNames)} align="center" style="padding-bottom: ${paddingBottomPx}px;">
     ${inner}
   </td>
 </tr>`;

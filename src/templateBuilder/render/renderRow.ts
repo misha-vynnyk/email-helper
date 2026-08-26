@@ -1,5 +1,6 @@
 import { MIN_ROW_COLUMNS, type BuilderNode, type RowBlock, type RowColumnBlock, type ShellConfig } from "../types";
 import { renderNodeList } from "./renderNode";
+import { responsiveClassAttr } from "./responsiveClassAttr";
 
 const COLUMN_CHILD_GAP_PX = 8;
 
@@ -45,7 +46,7 @@ ${childrenHtml}
   return `<!--[------ Row start ------]-->
 <tr>
   <td align="center" style="${paddingStyle}">
-    <table align="center" border="0" cellspacing="0" cellpadding="0"${widthAttr} style="width: 100%;${maxWidthStyle} padding: 0; margin: 0;" role="presentation">
+    <table align="center" border="0" cellspacing="0" cellpadding="0"${widthAttr}${responsiveClassAttr(undefined, row.responsiveClassNames)} style="width: 100%;${maxWidthStyle} padding: 0; margin: 0;" role="presentation">
 ${innerHtml}
     </table>
   </td>

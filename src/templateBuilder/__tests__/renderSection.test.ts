@@ -1,5 +1,5 @@
 import { renderSection } from "../render/renderSection";
-import { createDefaultSectionBlock, createDefaultShellConfig, createDefaultTextBlock } from "../types";
+import { createDefaultRowBlock, createDefaultRowColumnBlock, createDefaultSectionBlock, createDefaultShellConfig, createDefaultTextBlock } from "../types";
 import { nodeMap } from "../testSupport/nodeMap";
 
 const shell = createDefaultShellConfig();
@@ -61,5 +61,19 @@ describe("renderSection", () => {
     expect(html).not.toContain("max-width:");
     expect(html).not.toMatch(/\swidth="\d+"/);
     expect(html).toContain("width: 100%;");
+  });
+
+  it("clamps children's available width to 0 instead of going negative when padding exceeds the section's own width", () => {
+    // 552px section, 400+400px left/right padding -> would compute -248px without clamping,
+    // which would propagate into a nested Row's column min-width as invalid CSS.
+    const section = { ...createDefaultSectionBlock("c8", null), widthPx: 552, padding: { top: 0, right: 400, bottom: 0, left: 400 }, childIds: ["r1"] };
+    const row = { ...createDefaultRowBlock("r1", "c8"), childIds: ["col-a", "col-b"] };
+    const colA = createDefaultRowColumnBlock("col-a", "r1", 50);
+    const colB = createDefaultRowColumnBlock("col-b", "r1", 50);
+
+    const html = renderSection(section, nodeMap([row, colA, colB]), shell, shell.contentWidthPx);
+
+    expect(html).not.toMatch(/min-width:\s*-\d/);
+    expect(html).toContain("min-width: 0px");
   });
 });

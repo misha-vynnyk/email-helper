@@ -40,6 +40,10 @@ export type TextAlign = "left" | "center" | "right";
 export interface BaseNode {
   id: string;
   parentId: string | null;
+  /** Subset of responsiveUtilityCatalog.ts's UTILITY_CLASS_CATALOG className values, applied to
+   * this node's own primary rendered element. Only classes actually referenced anywhere in the
+   * tree get emitted in the exported document's <style> — see render/collectResponsiveUsage.ts. */
+  responsiveClassNames?: string[];
 }
 
 export interface TextBlock extends BaseNode {
@@ -93,6 +97,21 @@ export interface SpacerBlock extends BaseNode {
 
 export type BuilderLeafBlock = TextBlock | ImageBlock | ButtonBlock | DividerBlock | SpacerBlock;
 
+/**
+ * A fixed, battle-tested HTML snippet (see readyMadeCatalog.ts) that only exposes a handful of
+ * named slots for editing — the opposite of a fully-modeled leaf like Text/Image/Button, which
+ * has many typed, independently-editable fields. Not part of `BuilderLeafBlock` (which is
+ * specifically the fully-modeled types); behaves like a leaf in the tree (no `childIds`,
+ * `isContainerNode` returns false for it) but is its own kind everywhere else.
+ */
+export interface ReadyMadeBlock extends BaseNode {
+  type: "ready-made";
+  /** Which readyMadeCatalog.ts ReadyMadeDefinition this instance renders. */
+  definitionId: string;
+  /** slot key -> current value, seeded from the definition's slots on insert. */
+  values: Record<string, string>;
+}
+
 /** Одна секція — контейнер-вузол, може лежати в корені або бути вкладеним у будь-який інший контейнер. */
 export interface SectionBlock extends BaseNode {
   type: "section";
@@ -128,15 +147,21 @@ export const MIN_ROW_COLUMNS = 1;
 export const MAX_ROW_COLUMNS = 4;
 
 export type ContainerNode = SectionBlock | RowBlock | RowColumnBlock;
-export type BuilderNode = BuilderLeafBlock | ContainerNode;
-
-/** Топ-рівневі вузли канви — документ і далі не може мати листя прямо в корені. */
-export type CanvasBlock = SectionBlock | RowBlock;
+/** Every node kind with no `childIds` — patchable as flat fields via `updateNodeFields`. */
+export type NonContainerNode = BuilderLeafBlock | ReadyMadeBlock;
+export type BuilderNode = NonContainerNode | ContainerNode;
 
 export function isContainerNode(node: BuilderNode): node is ContainerNode {
   return node.type === "section" || node.type === "row" || node.type === "row-column";
 }
 
+// Deliberately NOT imported from htmlConverter/advanced/config/tokens.ts's
+// `tokens.placeholderImageSrc` even though it looks like the same value at a glance: that token
+// resolves to `config.storageUrl` (bare "https://storage.5th-elementagency.com/", no path), while
+// this one includes the "files/" path segment matching the default storage provider's real
+// bucket layout (automation/config.json's `publicBaseUrl` + `publicPathPrefix`). Verified these
+// are two intentionally different values, not an accidental duplication — importing the other
+// token would silently change every new templateBuilder image's default src.
 export const PLACEHOLDER_IMAGE_SRC = "https://storage.5th-elementagency.com/files/";
 
 export function createDefaultShellConfig(): ShellConfig {
@@ -200,7 +225,7 @@ export function createDefaultRowColumnBlock(id: string, parentId: string, widthP
   };
 }
 
-export function createDefaultTextBlock(id: string, parentId: string): TextBlock {
+export function createDefaultTextBlock(id: string, parentId: string | null): TextBlock {
   return {
     id,
     parentId,
@@ -213,7 +238,7 @@ export function createDefaultTextBlock(id: string, parentId: string): TextBlock 
   };
 }
 
-export function createDefaultImageBlock(id: string, parentId: string): ImageBlock {
+export function createDefaultImageBlock(id: string, parentId: string | null): ImageBlock {
   return {
     id,
     parentId,
@@ -224,7 +249,7 @@ export function createDefaultImageBlock(id: string, parentId: string): ImageBloc
   };
 }
 
-export function createDefaultButtonBlock(id: string, parentId: string): ButtonBlock {
+export function createDefaultButtonBlock(id: string, parentId: string | null): ButtonBlock {
   return {
     id,
     parentId,
@@ -241,7 +266,7 @@ export function createDefaultButtonBlock(id: string, parentId: string): ButtonBl
   };
 }
 
-export function createDefaultDividerBlock(id: string, parentId: string): DividerBlock {
+export function createDefaultDividerBlock(id: string, parentId: string | null): DividerBlock {
   return {
     id,
     parentId,
@@ -252,7 +277,7 @@ export function createDefaultDividerBlock(id: string, parentId: string): Divider
   };
 }
 
-export function createDefaultSpacerBlock(id: string, parentId: string): SpacerBlock {
+export function createDefaultSpacerBlock(id: string, parentId: string | null): SpacerBlock {
   return {
     id,
     parentId,

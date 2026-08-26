@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 
-import { getElectronAPI } from "@/hooks/useElectronAPI";
+import { downloadOrSaveFile } from "@/utils/downloadOrSaveFile";
 
 import { convertAdvancedDetailed } from "../../advanced/index";
 import { profile as alphaoneProfile } from "../../advanced/profiles/alphaone";
@@ -242,31 +242,15 @@ export function useHtmlExport({
       const approvalText = approveNeeded ? "(Approve needed)" : "";
       const fullName = `${name}_${extension}${approvalText}.html`;
 
-      const electronAPI = getElectronAPI();
-      if (electronAPI?.saveToPath) {
-        let folder = downloadFolder;
-        if (!folder) {
-          const picked = await electronAPI.openFolderDialog();
-          if (!picked) return;
-          folder = picked;
-          setDownloadFolder?.(folder);
-        }
-        const result = await electronAPI.saveToPath(content, folder, fullName);
-        if (result.saved) addLog(`📥 Збережено: ${fullName}`);
-        else if (result.canceled) addLog(`⏹️ Збереження скасовано: ${fullName} вже існує`);
-        else addLog(`❌ Помилка збереження: ${result.error ?? "невідома помилка"}`);
-        return;
-      }
+      const outcome = await downloadOrSaveFile(content, fullName, {
+        getFolder: () => downloadFolder,
+        onFolderResolved: (folder) => setDownloadFolder?.(folder),
+      });
 
-      const blob = new Blob([content], { type: "text/html" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = fullName;
-      a.click();
-      URL.revokeObjectURL(url);
-
-      addLog(`📥 Завантажено: ${fullName}`);
+      if (outcome.kind === "saved") addLog(`📥 Збережено: ${fullName}`);
+      else if (outcome.kind === "file-exists") addLog(`⏹️ Збереження скасовано: ${fullName} вже існує`);
+      else if (outcome.kind === "save-error") addLog(`❌ Помилка збереження: ${outcome.error ?? "невідома помилка"}`);
+      else if (outcome.kind === "browser-download") addLog(`📥 Завантажено: ${fullName}`);
     },
     [addLog, downloadFolder, setDownloadFolder]
   );

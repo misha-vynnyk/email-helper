@@ -1,9 +1,15 @@
 export type PaletteType = "section" | "row2" | "row3" | "text" | "image" | "button" | "divider" | "spacer";
 
-/** `"node"` covers moving ANY existing node — leaf, or a whole Section/Row(/Row-column)
+/**
+ * `"node"` covers moving ANY existing node — leaf, or a whole Section/Row(/Row-column)
  * subtree — since the normalized tree addresses every container the same way, regardless of
- * depth or type; `parentId: null` means "lives at the canvas root". */
-export type DragData = { kind: "palette"; paletteType: PaletteType } | { kind: "node"; parentId: string | null };
+ * depth or type; `parentId: null` means "lives at the canvas root".
+ *
+ * `"ready-made"` is a separate palette-drag variant from `"palette"` (not folded into
+ * `PaletteType`) because ready-made blocks are pure data (readyMadeCatalog.ts) — a new one is
+ * just a new catalog entry, never a new literal to add to a closed union here.
+ */
+export type DragData = { kind: "palette"; paletteType: PaletteType } | { kind: "ready-made"; definitionId: string } | { kind: "node"; parentId: string | null };
 
 /** What a drop target resolves to. `"container"` is a container's own background (its
  * NodeDropZone/CanvasRootDropZone) — insert at the end. `"node"` is hovering a specific sibling

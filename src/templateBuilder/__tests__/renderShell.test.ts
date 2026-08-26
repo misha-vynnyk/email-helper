@@ -57,4 +57,40 @@ describe("renderShell", () => {
     expect(html).not.toContain("<script>");
     expect(html).not.toContain("</style><script");
   });
+
+  it("always emits the base-tier structural rules, even with no responsive classes used", () => {
+    const html = renderShell(createDefaultShellConfig(), "");
+
+    expect(html).toContain("@media screen and (max-width: 602px)");
+    expect(html).toContain("table.main-bg");
+    expect(html).toContain(".main-image-bg");
+  });
+
+  it("omits a breakpoint's @media block entirely when none of its utility classes are used", () => {
+    const html = renderShell(createDefaultShellConfig(), "", new Set(["pt-8"])); // base-tier only
+
+    expect(html).not.toContain("@media screen and (max-width: 464px)");
+    expect(html).not.toContain("@media screen and (max-width: 380px)");
+  });
+
+  it("emits only the used utility classes, not the whole catalog", () => {
+    const html = renderShell(createDefaultShellConfig(), "", new Set(["sm-hidden", "xs-text-center"]));
+
+    expect(html).toContain("@media screen and (max-width: 464px)");
+    expect(html).toContain(".sm-hidden { display: none !important; }");
+    expect(html).toContain("@media screen and (max-width: 380px)");
+    expect(html).toContain(".xs-text-center { text-align: center !important; }");
+    // an unused class in the same tier must not leak in
+    expect(html).not.toContain(".sm-block");
+    expect(html).not.toContain(".xs-hidden");
+  });
+
+  it("no longer ships the previously-dead footer-button/spacer-hide/no-radius rules unless explicitly used", () => {
+    const withoutUsage = renderShell(createDefaultShellConfig(), "");
+    expect(withoutUsage).not.toContain("footer-button");
+    expect(withoutUsage).not.toContain("spacer-hide");
+
+    const withUsage = renderShell(createDefaultShellConfig(), "", new Set(["spacer-hide"]));
+    expect(withUsage).toContain(".spacer-hide { display: none !important; }");
+  });
 });

@@ -4,6 +4,7 @@ import { Label } from "@/components/ui/label";
 
 import { updateSectionStyle } from "../state/builderStore";
 import type { ContainerShadow, SectionBlock } from "../types";
+import { parseOptionalWidthPx } from "./parseOptionalWidthPx";
 
 const DEFAULT_SHADOW: ContainerShadow = { xPx: 0, yPx: 2, blurPx: 4, color: "rgba(0,0,0,0.1)" };
 
@@ -49,7 +50,7 @@ export function SectionInspectorForm({ section }: SectionInspectorFormProps) {
     <div className='space-y-3'>
       <div className='grid grid-cols-2 gap-3'>
         <Field label='Width (px, empty = fill container)'>
-          <Input type='number' value={section.widthPx ?? ""} placeholder='auto' onChange={(e) => update({ widthPx: e.target.value === "" ? undefined : Number(e.target.value) || undefined })} />
+          <Input type='number' value={section.widthPx ?? ""} placeholder='auto' onChange={(e) => update({ widthPx: parseOptionalWidthPx(e.target.value) })} />
         </Field>
         <Field label='Gap between children (px)'>
           <Input type='number' value={section.gapPx} onChange={(e) => update({ gapPx: Number(e.target.value) || 0 })} />

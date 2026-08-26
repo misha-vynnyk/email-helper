@@ -1,5 +1,6 @@
 import type { ButtonBlock } from "../types";
 import { escapeHtml } from "./escape";
+import { responsiveClassAttr } from "./responsiveClassAttr";
 import { isSafeHref, sanitizeFontFamily } from "./security";
 
 const BUTTON_HEIGHT_PX = 40;
@@ -27,7 +28,7 @@ export function renderButton(block: ButtonBlock, defaultFontFamily: string, padd
   const textStyle = `color:${escapeHtml(block.textColor)};text-align:${block.align};font-family:${fontFamily};font-size:${block.fontSizePx}px;font-weight:${block.fontWeight};line-height:1;`;
 
   return `<tr>
-  <td align="${block.align}" class="button-pad" style="margin: 0; padding: 0; padding-bottom: ${paddingBottomPx}px;">
+  <td align="${block.align}"${responsiveClassAttr("button-pad", block.responsiveClassNames)} style="margin: 0; padding: 0; padding-bottom: ${paddingBottomPx}px;">
     <table class="button-width" border="0" cellpadding="0" cellspacing="0"${widthAttr} role="presentation" style="${tableStyle}">
       <tr>
         <td height="${BUTTON_HEIGHT_PX}" align="center" style="margin: 0; padding: 0; ${textStyle}">
