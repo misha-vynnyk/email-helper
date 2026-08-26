@@ -18,7 +18,7 @@ export function renderLeafList(children: BuilderLeafBlock[], defaultFontFamily: 
         case "image":
           return renderImage(child, paddingBottomPx);
         case "button":
-          return renderButton(child, paddingBottomPx);
+          return renderButton(child, defaultFontFamily, paddingBottomPx);
         case "divider":
           return renderDivider(child, paddingBottomPx);
         case "spacer":

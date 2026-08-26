@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { updateLeaf } from "../state/builderStore";
-import type { ButtonBlock, TextAlign } from "../types";
+import type { ButtonBlock, ButtonWidth, TextAlign } from "../types";
 
 interface ButtonBlockEditorProps {
   block: ButtonBlock;
@@ -75,9 +75,28 @@ export function ButtonBlockEditor({ block }: ButtonBlockEditorProps) {
         </select>
       </div>
 
-      <div className='flex items-center gap-2'>
-        <Checkbox checked={block.fullWidth} onCheckedChange={(v) => updateLeaf(block.id, { fullWidth: Boolean(v) })} />
-        <Label className='text-xs'>Full width</Label>
+      <div className='grid grid-cols-2 gap-2'>
+        <div className='space-y-1'>
+          <Label className='text-xs text-muted-foreground'>Width</Label>
+          <select
+            className={selectClass}
+            value={typeof block.width === "number" ? "fixed" : block.width}
+            onChange={(e) => {
+              const mode = e.target.value;
+              const width: ButtonWidth = mode === "fixed" ? (typeof block.width === "number" ? block.width : 210) : (mode as ButtonWidth);
+              updateLeaf(block.id, { width });
+            }}>
+            <option value='auto'>Auto (fit content)</option>
+            <option value='fixed'>Fixed (px)</option>
+            <option value='full'>Full width</option>
+          </select>
+        </div>
+        {typeof block.width === "number" && (
+          <div className='space-y-1'>
+            <Label className='text-xs text-muted-foreground'>Width (px)</Label>
+            <Input type='number' value={block.width} onChange={(e) => updateLeaf(block.id, { width: Number(e.target.value) || 0 })} />
+          </div>
+        )}
       </div>
     </div>
   );
