@@ -2,6 +2,8 @@ export interface ShellConfig {
   title: string;
   fontFamily: string;
   fontMatchSelector?: string;
+  /** Names picked from the bundled GOOGLE_FONT_CATALOG; drives googleFontsHref via buildGoogleFontsHref. */
+  googleFonts: string[];
   googleFontsHref?: string;
   outerBackground: string;
   contentBackground: string;
@@ -127,6 +129,7 @@ export function createDefaultShellConfig(): ShellConfig {
     title: "Title",
     fontFamily: "'Roboto', Arial, Helvetica, sans-serif",
     fontMatchSelector: "Roboto",
+    googleFonts: [],
     googleFontsHref: undefined,
     outerBackground: "#e8eef4",
     contentBackground: "#ffffff",

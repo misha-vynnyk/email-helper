@@ -35,6 +35,19 @@ describe("renderShell", () => {
     expect(html).toContain('[style*="Poppins"]');
   });
 
+  it("generates a match rule for every additionally selected Google Font, not just the default", () => {
+    const config = createDefaultShellConfig();
+    config.fontMatchSelector = "Roboto";
+    config.fontFamily = "'Roboto', Arial, Helvetica, sans-serif";
+    config.googleFonts = ["Roboto", "Lato"];
+    const html = renderShell(config, "");
+
+    expect(html).toContain('[style*="Roboto"] {\n        font-family: \'Roboto\', Arial, Helvetica, sans-serif;');
+    expect(html).toContain('[style*="Lato"] {\n        font-family: \'Lato\', Arial, Helvetica, sans-serif;');
+    // Roboto is both the default AND in googleFonts — must not be emitted twice.
+    expect(html.match(/\[style\*="Roboto"\]/g)?.length).toBe(2); // once in the base rules, once inside @media
+  });
+
   it("strips characters that could break out of the <style> block from fontFamily", () => {
     const config = createDefaultShellConfig();
     config.fontMatchSelector = "Roboto";
