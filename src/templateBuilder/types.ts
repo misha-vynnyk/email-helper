@@ -50,11 +50,15 @@ export interface ImageBlock {
   href?: string;
 }
 
+/** "auto" shrinks to label content, "full" fills the container (width:100%), a number is a fixed px width. */
+export type ButtonWidth = "auto" | "full" | number;
+
 export interface ButtonBlock {
   id: string;
   type: "button";
   label: string;
   href: string;
+  fontFamily?: string;
   bgColor?: string;
   textColor: string;
   border?: ContainerBorder;
@@ -62,7 +66,7 @@ export interface ButtonBlock {
   align: TextAlign;
   fontSizePx: number;
   fontWeight: number;
-  fullWidth: boolean;
+  width: ButtonWidth;
 }
 
 export interface DividerBlock {
@@ -194,13 +198,13 @@ export function createDefaultButtonBlock(id: string): ButtonBlock {
     type: "button",
     label: "Button",
     href: "urlhere",
-    bgColor: "#2563eb",
+    bgColor: "#333333",
     textColor: "#ffffff",
-    borderRadiusPx: 8,
+    borderRadiusPx: 4,
     align: "center",
-    fontSizePx: 16,
+    fontSizePx: 14,
     fontWeight: 700,
-    fullWidth: false,
+    width: "full",
   };
 }
 
