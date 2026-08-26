@@ -1,24 +1,6 @@
-import {
-  addColumn,
-  addLeaf,
-  addRow,
-  addSection,
-  columnContainerId,
-  findBlockOrLeaf,
-  getCanvas,
-  moveLeaf,
-  removeCanvasBlock,
-  removeColumn,
-  removeLeaf,
-  reorderCanvasBlocks,
-  resetBuilderState,
-  sectionContainerId,
-  updateLeaf,
-  updateRowStyle,
-  updateSectionStyle,
-} from "../state/builderStore";
+import { addColumn, addContainer, addLeaf, findBlockOrLeaf, getNode, getRootIds, moveNode, removeColumn, removeNode, resetBuilderState, updateLeaf, updateRowStyle, updateSectionStyle } from "../state/builderStore";
 import { getSelectedId, selectBlock } from "../state/selectionStore";
-import { createDefaultButtonBlock, createDefaultDividerBlock, createDefaultSpacerBlock, MAX_ROW_COLUMNS, type ButtonBlock, type DividerBlock, type RowBlock, type SectionBlock, type SpacerBlock } from "../types";
+import { createDefaultButtonBlock, createDefaultDividerBlock, createDefaultSpacerBlock, MAX_ROW_COLUMNS, type ButtonBlock, type DividerBlock, type RowBlock, type RowColumnBlock, type SectionBlock, type SpacerBlock } from "../types";
 
 describe("builderStore", () => {
   beforeEach(() => {
@@ -26,221 +8,243 @@ describe("builderStore", () => {
   });
 
   it("adds sections and rows to the canvas in order", () => {
-    const sectionId = addSection();
-    const rowId = addRow(2);
+    const sectionId = addContainer(null, "section");
+    const rowId = addContainer(null, "row", 2);
 
-    const canvas = getCanvas();
-    expect(canvas.map((b) => b.id)).toEqual([sectionId, rowId]);
-    expect(canvas[0].type).toBe("section");
-    expect(canvas[1].type).toBe("row");
-    expect((canvas[1] as RowBlock).columns).toHaveLength(2);
+    expect(getRootIds()).toEqual([sectionId, rowId]);
+    expect(getNode(sectionId)?.type).toBe("section");
+    expect(getNode(rowId)?.type).toBe("row");
+    expect((getNode(rowId) as RowBlock).childIds).toHaveLength(2);
   });
 
   it("adds a leaf into a section and into a specific row column", () => {
-    const sectionId = addSection();
-    const rowId = addRow(2);
-    const columnId = (getCanvas()[1] as RowBlock).columns[0].id;
+    const sectionId = addContainer(null, "section");
+    const rowId = addContainer(null, "row", 2);
+    const columnId = (getNode(rowId) as RowBlock).childIds[0];
 
-    const textId = addLeaf(sectionContainerId(sectionId), "text");
-    const imageId = addLeaf(columnContainerId(rowId, columnId), "image");
+    const textId = addLeaf(sectionId, "text");
+    const imageId = addLeaf(columnId, "image");
 
-    const canvas = getCanvas();
-    const section = canvas[0] as SectionBlock;
-    const row = canvas[1] as RowBlock;
-    expect(section.children.map((c) => c.id)).toEqual([textId]);
-    expect(row.columns[0].children.map((c) => c.id)).toEqual([imageId]);
-    expect(row.columns[1].children).toEqual([]);
+    expect((getNode(sectionId) as SectionBlock).childIds).toEqual([textId]);
+    expect((getNode(columnId) as RowBlock).childIds).toEqual([imageId]);
+  });
+
+  it("spawns a nested container inside an existing section", () => {
+    const sectionId = addContainer(null, "section");
+
+    const rowId = addContainer(sectionId, "row", 2);
+
+    expect((getNode(sectionId) as SectionBlock).childIds).toEqual([rowId]);
+    const row = getNode(rowId) as RowBlock;
+    expect(row.parentId).toBe(sectionId);
+    // nested defaults: no real padding/width cap, ancestor already constrains layout
+    expect(row.widthPx).toBeUndefined();
+    expect(row.padding).toEqual({ top: 0, right: 0, bottom: 0, left: 0 });
   });
 
   it("updates a leaf's own fields regardless of which container it lives in", () => {
-    const sectionId = addSection();
-    const textId = addLeaf(sectionContainerId(sectionId), "text");
+    const sectionId = addContainer(null, "section");
+    const textId = addLeaf(sectionId, "text");
 
     updateLeaf(textId, { color: "#ff0000" });
 
-    const lookup = findBlockOrLeaf(getCanvas(), textId);
+    const lookup = findBlockOrLeaf(textId);
     expect(lookup?.kind).toBe("leaf");
     expect((lookup as { block: { color: string } }).block.color).toBe("#ff0000");
   });
 
   it("removes a leaf from wherever it lives", () => {
-    const sectionId = addSection();
-    const textId = addLeaf(sectionContainerId(sectionId), "text");
+    const sectionId = addContainer(null, "section");
+    const textId = addLeaf(sectionId, "text");
 
-    removeLeaf(textId);
+    removeNode(textId);
 
-    expect(findBlockOrLeaf(getCanvas(), textId)).toBeUndefined();
+    expect(findBlockOrLeaf(textId)).toBeUndefined();
   });
 
   it("moves a leaf from a section into a row column", () => {
-    const sectionId = addSection();
-    const rowId = addRow(2);
-    const columnId = (getCanvas()[1] as RowBlock).columns[0].id;
-    const textId = addLeaf(sectionContainerId(sectionId), "text");
+    const sectionId = addContainer(null, "section");
+    const rowId = addContainer(null, "row", 2);
+    const columnId = (getNode(rowId) as RowBlock).childIds[0];
+    const textId = addLeaf(sectionId, "text");
 
-    moveLeaf(textId, columnContainerId(rowId, columnId), 0);
+    moveNode(textId, columnId, 0);
 
-    const canvas = getCanvas();
-    const section = canvas[0] as SectionBlock;
-    const row = canvas[1] as RowBlock;
-    expect(section.children).toEqual([]);
-    expect(row.columns[0].children.map((c) => c.id)).toEqual([textId]);
+    expect((getNode(sectionId) as SectionBlock).childIds).toEqual([]);
+    expect((getNode(columnId) as RowBlock).childIds).toEqual([textId]);
+  });
+
+  it("moves an existing top-level section, with its children, into another section", () => {
+    const outerId = addContainer(null, "section");
+    const innerId = addContainer(null, "section");
+    const textId = addLeaf(innerId, "text");
+
+    moveNode(innerId, outerId, 0);
+
+    expect(getRootIds()).toEqual([outerId]);
+    expect((getNode(outerId) as SectionBlock).childIds).toEqual([innerId]);
+    expect((getNode(innerId) as SectionBlock).childIds).toEqual([textId]); // subtree moved intact
+    expect(getNode(innerId)?.parentId).toBe(outerId);
+  });
+
+  it("promotes a nested block back to the canvas root", () => {
+    const outerId = addContainer(null, "section");
+    const innerId = addContainer(outerId, "section");
+
+    moveNode(innerId, null, 1);
+
+    expect(getRootIds()).toEqual([outerId, innerId]);
+    expect(getNode(innerId)?.parentId).toBeNull();
+    expect((getNode(outerId) as SectionBlock).childIds).toEqual([]);
+  });
+
+  it("rejects moving a container into its own descendant", () => {
+    const outerId = addContainer(null, "section");
+    const innerId = addContainer(outerId, "section");
+
+    moveNode(outerId, innerId, 0);
+
+    expect(getRootIds()).toEqual([outerId]); // unchanged
+    expect((getNode(outerId) as SectionBlock).childIds).toEqual([innerId]);
   });
 
   it("removes a top-level canvas block by id", () => {
-    const sectionId = addSection();
-    const rowId = addRow(2);
+    const sectionId = addContainer(null, "section");
+    const rowId = addContainer(null, "row", 2);
 
-    removeCanvasBlock(sectionId);
+    removeNode(sectionId);
 
-    expect(getCanvas().map((b) => b.id)).toEqual([rowId]);
+    expect(getRootIds()).toEqual([rowId]);
   });
 
-  it("reorders top-level canvas blocks", () => {
-    const sectionId = addSection();
-    const rowId = addRow(2);
+  it("reorders top-level canvas blocks via moveNode", () => {
+    const sectionId = addContainer(null, "section");
+    const rowId = addContainer(null, "row", 2);
 
-    reorderCanvasBlocks(0, 1);
+    moveNode(sectionId, null, 1);
 
-    expect(getCanvas().map((b) => b.id)).toEqual([rowId, sectionId]);
+    expect(getRootIds()).toEqual([rowId, sectionId]);
   });
 
   it("updates a section's own style fields", () => {
-    const sectionId = addSection();
+    const sectionId = addContainer(null, "section");
 
     updateSectionStyle(sectionId, { widthPx: 400 });
 
-    const section = getCanvas()[0] as SectionBlock;
-    expect(section.widthPx).toBe(400);
+    expect((getNode(sectionId) as SectionBlock).widthPx).toBe(400);
   });
 
-  it("gives a new row the same top-level padding/width defaults as a section", () => {
-    addSection();
-    addRow(2);
+  it("gives a new top-level row the same padding/width defaults as a top-level section", () => {
+    const sectionId = addContainer(null, "section");
+    const rowId = addContainer(null, "row", 2);
 
-    const section = getCanvas()[0] as SectionBlock;
-    const row = getCanvas()[1] as RowBlock;
+    const section = getNode(sectionId) as SectionBlock;
+    const row = getNode(rowId) as RowBlock;
     expect(row.widthPx).toBe(section.widthPx);
     expect(row.padding).toEqual(section.padding);
   });
 
   it("updates a row's own style fields", () => {
-    const rowId = addRow(2);
-    addRow(2);
+    const rowId = addContainer(null, "row", 2);
+    const otherRowId = addContainer(null, "row", 2);
 
     updateRowStyle(rowId, { widthPx: 400 });
 
-    const [firstRow, secondRow] = getCanvas() as RowBlock[];
-    expect(firstRow.widthPx).toBe(400);
-    expect(secondRow.widthPx).not.toBe(400);
+    expect((getNode(rowId) as RowBlock).widthPx).toBe(400);
+    expect((getNode(otherRowId) as RowBlock).widthPx).not.toBe(400);
   });
 
   it("adds a column to a row and redistributes widthPercent evenly", () => {
-    const rowId = addRow(2);
+    const rowId = addContainer(null, "row", 2);
 
     addColumn(rowId);
 
-    const row = getCanvas()[0] as RowBlock;
-    expect(row.columns).toHaveLength(3);
-    expect(row.columns.map((c) => c.widthPercent).reduce((a, b) => a + b)).toBe(100);
-    expect(row.columns[0].widthPercent).toBe(33);
-    expect(row.columns[2].widthPercent).toBe(34);
+    const row = getNode(rowId) as RowBlock;
+    expect(row.childIds).toHaveLength(3);
+    const widths = row.childIds.map((id) => (getNode(id) as RowColumnBlock).widthPercent);
+    expect(widths.reduce((a, b) => a + b)).toBe(100);
+    expect(widths[0]).toBe(33);
+    expect(widths[2]).toBe(34);
   });
 
   it("preserves existing columns' children and the row's own style when adding a column", () => {
-    const rowId = addRow(2);
-    const columnId = (getCanvas()[0] as RowBlock).columns[0].id;
-    const textId = addLeaf(columnContainerId(rowId, columnId), "text");
+    const rowId = addContainer(null, "row", 2);
+    const columnId = (getNode(rowId) as RowBlock).childIds[0];
+    const textId = addLeaf(columnId, "text");
 
     addColumn(rowId);
 
-    const row = getCanvas()[0] as RowBlock;
-    expect(row.columns[0].children.map((c) => c.id)).toEqual([textId]);
-    expect(row.widthPx).toBe(552);
+    expect((getNode(columnId) as RowBlock).childIds).toEqual([textId]);
+    expect((getNode(rowId) as RowBlock).widthPx).toBe(552);
   });
 
   it("does not add a column past MAX_ROW_COLUMNS", () => {
-    const rowId = addRow(2);
+    const rowId = addContainer(null, "row", 2);
     for (let i = 0; i < 5; i++) addColumn(rowId);
 
-    const row = getCanvas()[0] as RowBlock;
-    expect(row.columns).toHaveLength(MAX_ROW_COLUMNS);
+    expect((getNode(rowId) as RowBlock).childIds).toHaveLength(MAX_ROW_COLUMNS);
   });
 
-  it("removes a column from a row and redistributes widthPercent evenly", () => {
-    const rowId = addRow(3);
-    const columnId = (getCanvas()[0] as RowBlock).columns[0].id;
+  it("removeNode on a column detaches it (and its subtree) from the row, without redistributing widths", () => {
+    const rowId = addContainer(null, "row", 3);
+    const columnId = (getNode(rowId) as RowBlock).childIds[0];
 
-    removeColumn(rowId, columnId);
+    removeNode(columnId);
 
-    const row = getCanvas()[0] as RowBlock;
-    expect(row.columns).toHaveLength(2);
-    expect(row.columns.every((c) => c.widthPercent === 50)).toBe(true);
+    expect((getNode(rowId) as RowBlock).childIds).toHaveLength(2);
   });
 
-  it("preserves remaining columns' children and the row's own style when removing a column", () => {
-    const rowId = addRow(3);
-    const columns = (getCanvas()[0] as RowBlock).columns;
-    const textId = addLeaf(columnContainerId(rowId, columns[1].id), "text");
+  it("removeColumn redistributes widthPercent evenly and preserves remaining children", () => {
+    const rowId = addContainer(null, "row", 3);
+    const columnIds = (getNode(rowId) as RowBlock).childIds;
+    const textId = addLeaf(columnIds[1], "text");
 
-    removeColumn(rowId, columns[0].id);
+    removeColumn(rowId, columnIds[0]);
 
-    const row = getCanvas()[0] as RowBlock;
-    expect(row.columns.map((c) => c.id)).toEqual([columns[1].id, columns[2].id]);
-    expect(row.columns[0].children.map((c) => c.id)).toEqual([textId]);
+    const row = getNode(rowId) as RowBlock;
+    expect(row.childIds).toEqual([columnIds[1], columnIds[2]]);
+    expect((getNode(columnIds[1]) as RowBlock).childIds).toEqual([textId]);
     expect(row.widthPx).toBe(552);
   });
 
-  it("does not remove a column once the row is down to MIN_ROW_COLUMNS", () => {
-    const rowId = addRow(2);
-    const columns = (getCanvas()[0] as RowBlock).columns;
-
-    removeColumn(rowId, columns[0].id);
-    removeColumn(rowId, columns[1].id);
-
-    const row = getCanvas()[0] as RowBlock;
-    expect(row.columns).toHaveLength(1);
-  });
-
   it("clears the selection when a leaf inside a removed column was selected", () => {
-    const rowId = addRow(2);
-    const columnId = (getCanvas()[0] as RowBlock).columns[0].id;
-    const textId = addLeaf(columnContainerId(rowId, columnId), "text");
+    const rowId = addContainer(null, "row", 2);
+    const columnId = (getNode(rowId) as RowBlock).childIds[0];
+    const textId = addLeaf(columnId, "text");
     selectBlock(textId);
 
-    removeColumn(rowId, columnId);
+    removeNode(columnId);
 
     expect(getSelectedId()).toBeNull();
   });
 
   it("adds a button, divider, and spacer leaf matching their default factories", () => {
-    const sectionId = addSection();
-    const containerId = sectionContainerId(sectionId);
+    const sectionId = addContainer(null, "section");
 
-    const buttonId = addLeaf(containerId, "button");
-    const dividerId = addLeaf(containerId, "divider");
-    const spacerId = addLeaf(containerId, "spacer");
+    const buttonId = addLeaf(sectionId, "button");
+    const dividerId = addLeaf(sectionId, "divider");
+    const spacerId = addLeaf(sectionId, "spacer");
 
-    const section = getCanvas()[0] as SectionBlock;
-    const [button, divider, spacer] = section.children;
-    expect(button).toEqual(createDefaultButtonBlock(buttonId));
-    expect(divider).toEqual(createDefaultDividerBlock(dividerId));
-    expect(spacer).toEqual(createDefaultSpacerBlock(spacerId));
+    const section = getNode(sectionId) as SectionBlock;
+    const [button, divider, spacer] = section.childIds.map((id) => getNode(id));
+    expect(button).toEqual(createDefaultButtonBlock(buttonId, sectionId));
+    expect(divider).toEqual(createDefaultDividerBlock(dividerId, sectionId));
+    expect(spacer).toEqual(createDefaultSpacerBlock(spacerId, sectionId));
   });
 
   it("updates button, divider, and spacer leaves' own fields", () => {
-    const sectionId = addSection();
-    const containerId = sectionContainerId(sectionId);
-    const buttonId = addLeaf(containerId, "button");
-    const dividerId = addLeaf(containerId, "divider");
-    const spacerId = addLeaf(containerId, "spacer");
+    const sectionId = addContainer(null, "section");
+    const buttonId = addLeaf(sectionId, "button");
+    const dividerId = addLeaf(sectionId, "divider");
+    const spacerId = addLeaf(sectionId, "spacer");
 
     updateLeaf(buttonId, { label: "Buy now", bgColor: undefined });
     updateLeaf(dividerId, { thicknessPx: 4 });
     updateLeaf(spacerId, { heightPx: 48 });
 
-    const section = getCanvas()[0] as SectionBlock;
-    const [button, divider, spacer] = section.children as [ButtonBlock, DividerBlock, SpacerBlock];
+    const button = getNode(buttonId) as ButtonBlock;
+    const divider = getNode(dividerId) as DividerBlock;
+    const spacer = getNode(spacerId) as SpacerBlock;
     expect(button.label).toBe("Buy now");
     expect(button.bgColor).toBeUndefined();
     expect(divider.thicknessPx).toBe(4);
@@ -248,46 +252,46 @@ describe("builderStore", () => {
   });
 
   it("clears the selection when the selected section is removed", () => {
-    const sectionId = addSection();
+    const sectionId = addContainer(null, "section");
     selectBlock(sectionId);
 
-    removeCanvasBlock(sectionId);
+    removeNode(sectionId);
 
     expect(getSelectedId()).toBeNull();
   });
 
   it("clears the selection when a leaf nested inside a removed section was selected", () => {
-    const sectionId = addSection();
-    const textId = addLeaf(sectionContainerId(sectionId), "text");
+    const sectionId = addContainer(null, "section");
+    const textId = addLeaf(sectionId, "text");
     selectBlock(textId);
 
-    removeCanvasBlock(sectionId);
+    removeNode(sectionId);
 
     expect(getSelectedId()).toBeNull();
   });
 
   it("clears the selection when the selected leaf is removed directly", () => {
-    const sectionId = addSection();
-    const textId = addLeaf(sectionContainerId(sectionId), "text");
+    const sectionId = addContainer(null, "section");
+    const textId = addLeaf(sectionId, "text");
     selectBlock(textId);
 
-    removeLeaf(textId);
+    removeNode(textId);
 
     expect(getSelectedId()).toBeNull();
   });
 
   it("does not clear an unrelated selection when a different block is removed", () => {
-    const keptSectionId = addSection();
-    const removedSectionId = addSection();
+    const keptSectionId = addContainer(null, "section");
+    const removedSectionId = addContainer(null, "section");
     selectBlock(keptSectionId);
 
-    removeCanvasBlock(removedSectionId);
+    removeNode(removedSectionId);
 
     expect(getSelectedId()).toBe(keptSectionId);
   });
 
   it("clears the selection on resetBuilderState", () => {
-    const sectionId = addSection();
+    const sectionId = addContainer(null, "section");
     selectBlock(sectionId);
 
     resetBuilderState();

@@ -3,7 +3,7 @@ import { createDefaultImageBlock, PLACEHOLDER_IMAGE_SRC } from "../types";
 
 describe("renderImage", () => {
   it("renders without a link wrapper when href is not set", () => {
-    const block = createDefaultImageBlock("i1");
+    const block = createDefaultImageBlock("i1", "parent");
     const html = renderImage(block, 14);
 
     expect(html).not.toContain("<a ");
@@ -13,7 +13,7 @@ describe("renderImage", () => {
   });
 
   it("wraps the image in a target=_blank link when href is set", () => {
-    const block = createDefaultImageBlock("i2");
+    const block = createDefaultImageBlock("i2", "parent");
     block.href = "https://example.com";
     block.widthPx = 300;
     const html = renderImage(block, 0);
@@ -24,7 +24,7 @@ describe("renderImage", () => {
   });
 
   it("escapes alt text", () => {
-    const block = createDefaultImageBlock("i3");
+    const block = createDefaultImageBlock("i3", "parent");
     block.alt = 'a "quoted" alt';
     const html = renderImage(block, 0);
 
@@ -32,7 +32,7 @@ describe("renderImage", () => {
   });
 
   it("drops a javascript: href instead of rendering it", () => {
-    const block = createDefaultImageBlock("i4");
+    const block = createDefaultImageBlock("i4", "parent");
     block.href = "javascript:alert(1)";
     const html = renderImage(block, 0);
 

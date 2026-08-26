@@ -3,37 +3,29 @@ import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrate
 import { useRef, useState } from "react";
 
 import type { DragData, DropData } from "../dnd/dragTypes";
-import { addLeaf, addRow, addSection, columnContainerId, getCanvas, getContainerChildren, moveLeaf, reorderCanvasBlocks, sectionContainerId, useCanvas } from "../state/builderStore";
+import { addContainer, addLeaf, getChildIds, moveNode, useRootIds } from "../state/builderStore";
 import { selectBlock } from "../state/selectionStore";
-import type { CanvasBlock } from "../types";
 import { BuilderPalette } from "./BuilderPalette";
-import { CanvasRowBox } from "./CanvasRowBox";
-import { CanvasSectionBox } from "./CanvasSectionBox";
+import { CanvasNode } from "./CanvasNode";
 
-/**
- * Resolves a drop target to a container id. Section/Row boxes are themselves sortable
- * (kind "canvas-block", for top-level reordering), so dropping a palette/leaf item anywhere on
- * a section's or row's body — not just precisely inside its nested LeafDropZone — must still
- * land somewhere sensible instead of silently no-opping: falls back to the section's own
- * children, or the row's first column.
- */
-function resolveContainerId(overId: string | number | undefined, overData: DropData | undefined, canvas: CanvasBlock[]): string | undefined {
-  if (!overData || overId === undefined) return undefined;
-  if (overData.kind === "container" || overData.kind === "leaf") return overData.containerId;
-  if (overData.kind === "canvas-block") {
-    const block = canvas.find((b) => b.id === overId);
-    if (!block) return undefined;
-    return block.type === "section" ? sectionContainerId(block.id) : columnContainerId(block.id, block.columns[0].id);
-  }
+/** Resolves a drag-over target to the container it addresses. `over.data.current` is either the
+ * hovered container's own droppable payload (`DropData`, kind "container" — its background) or,
+ * when hovering a specific sibling node, that node's own `DragData` (every sortable item's
+ * `useSortable` registers the same object for both drag and drop) — both shapes carry
+ * `parentId` directly, no id-string parsing needed either way. `undefined` = unresolvable
+ * (dropped somewhere with no recognizable payload). */
+function resolveParentId(overData: DropData | DragData | undefined): string | null | undefined {
+  if (!overData) return undefined;
+  if (overData.kind === "container" || overData.kind === "node") return overData.parentId;
   return undefined;
 }
 
 /**
- * closestCenter один не розрізняє вкладені droppable-и (напр. LeafDropZone всередині
+ * closestCenter один не розрізняє вкладені droppable-и (напр. NodeDropZone всередині
  * CanvasSectionBox, яка сама теж droppable через useSortable) — за центром часто вигравав
  * ЗОВНІШНІЙ контейнер. pointerWithin коректно надає пріоритет найглибшому/найменшому
- * droppable, у якому реально перебуває курсор; closestCenter лишається фолбеком, коли
- * курсор не потрапляє в жоден droppable (напр. точно на межі).
+ * droppable, у якому реально перебуває курсор — depth-agnostic, перевірено й на вкладених
+ * рівнях; closestCenter лишається фолбеком, коли курсор не потрапляє в жоден droppable.
  */
 const collisionDetection: CollisionDetection = (args) => {
   const pointerCollisions = pointerWithin(args);
@@ -45,19 +37,22 @@ const collisionDetection: CollisionDetection = (args) => {
  * що рендерить <BuilderPalette /> (яка сама містить useDraggable) — інакше dnd-kit
  * (щонайменше @dnd-kit/core 6.3.1) не вимірює/не знаходить цей droppable під час drag
  * (collision detection стабільно повертає over:undefined). Емпірично підтверджено
- * ізольованою репродукцією; усі інші drop-зони (LeafDropZone/CanvasSectionBox/CanvasRowBox)
- * вже й так були в окремих компонентах, тому працювали коректно.
+ * ізольованою репродукцією; усі інші drop-зони в модулі вже й так були в окремих
+ * компонентах, тому працювали коректно.
  */
-function CanvasRootDropZone({ canvas }: { canvas: CanvasBlock[] }) {
-  const { setNodeRef } = useDroppable({ id: "canvas-root", data: { kind: "canvas-root" } as DropData });
+function CanvasRootDropZone({ rootIds }: { rootIds: string[] }) {
+  const dropData: DropData = { kind: "container", parentId: null };
+  const { setNodeRef } = useDroppable({ id: "canvas-root", data: dropData });
 
   return (
     <div ref={setNodeRef} onClick={() => selectBlock(null)} className='space-y-3 min-h-[400px] rounded-lg border border-dashed border-border/40 p-3 overflow-y-auto'>
-      {canvas.length === 0 ? (
+      {rootIds.length === 0 ? (
         <p className='text-sm text-muted-foreground text-center py-12'>Drag a Section or Row here to get started.</p>
       ) : (
-        <SortableContext items={canvas.map((b) => b.id)} strategy={verticalListSortingStrategy}>
-          {canvas.map((block) => (block.type === "section" ? <CanvasSectionBox key={block.id} section={block} /> : <CanvasRowBox key={block.id} row={block} />))}
+        <SortableContext items={rootIds} strategy={verticalListSortingStrategy}>
+          {rootIds.map((id) => (
+            <CanvasNode key={id} id={id} />
+          ))}
         </SortableContext>
       )}
     </div>
@@ -65,7 +60,7 @@ function CanvasRootDropZone({ canvas }: { canvas: CanvasBlock[] }) {
 }
 
 export function BuilderCanvas() {
-  const canvas = useCanvas();
+  const rootIds = useRootIds();
   const [activeLabel, setActiveLabel] = useState<string | null>(null);
   // A palette drag spawns a brand-new block elsewhere in the canvas — the palette chip itself
   // never moves. dnd-kit's default drop animation flies the overlay back to the *origin*
@@ -90,54 +85,35 @@ export function BuilderCanvas() {
     const { active, over } = event;
     if (!over) return;
     const activeData = active.data.current as DragData | undefined;
-    const overData = over.data.current as DropData | undefined;
+    const overData = over.data.current as DropData | DragData | undefined;
     if (!activeData) return;
 
     if (activeData.kind === "palette") {
-      if (activeData.paletteType === "section") {
-        const id = addSection();
+      if (activeData.paletteType === "section" || activeData.paletteType === "row2" || activeData.paletteType === "row3") {
+        const parentId = resolveParentId(overData) ?? null;
+        const id = activeData.paletteType === "section" ? addContainer(parentId, "section") : addContainer(parentId, "row", activeData.paletteType === "row2" ? 2 : 3);
         selectBlock(id);
         return;
       }
-      if (activeData.paletteType === "row2" || activeData.paletteType === "row3") {
-        const id = addRow(activeData.paletteType === "row2" ? 2 : 3);
-        selectBlock(id);
-        return;
-      }
-      // text or image — needs to land on a valid section/column container
-      const containerId = resolveContainerId(over.id, overData, getCanvas());
-      if (containerId) {
-        const id = addLeaf(containerId, activeData.paletteType);
+      // text/image/button/divider/spacer — needs a valid section/column target, no root fallback
+      // (leaves can't float directly at the document root)
+      const parentId = resolveParentId(overData);
+      if (parentId) {
+        const id = addLeaf(parentId, activeData.paletteType);
         selectBlock(id);
       }
       return;
     }
 
-    if (activeData.kind === "canvas-block") {
-      const canvasNow = getCanvas();
-      const oldIndex = canvasNow.findIndex((b) => b.id === active.id);
-      const newIndex = canvasNow.findIndex((b) => b.id === over.id);
-      if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) reorderCanvasBlocks(oldIndex, newIndex);
-      return;
-    }
-
-    if (activeData.kind === "leaf") {
-      const canvasNow = getCanvas();
-      const targetContainerId = resolveContainerId(over.id, overData, canvasNow);
-      if (!targetContainerId) return;
-      const fromContainerId = activeData.containerId;
-      const siblings = getContainerChildren(canvasNow, targetContainerId);
-      const newIndex = overData?.kind === "leaf" ? siblings.findIndex((c) => c.id === over.id) : siblings.length;
+    if (activeData.kind === "node") {
+      const targetParentId = resolveParentId(overData);
+      if (targetParentId === undefined) return;
+      const siblings = getChildIds(targetParentId);
+      const newIndex = overData?.kind === "node" ? siblings.indexOf(String(over.id)) : siblings.length;
       if (newIndex === -1) return;
-
-      if (fromContainerId === targetContainerId) {
-        const oldIndex = siblings.findIndex((c) => c.id === active.id);
-        if (oldIndex !== -1 && oldIndex !== newIndex) moveLeaf(String(active.id), targetContainerId, newIndex);
-      } else {
-        // Cross-container: `siblings` doesn't include `active` (it still lives in
-        // fromContainerId), so the hovered index needs no removal-offset adjustment.
-        moveLeaf(String(active.id), targetContainerId, newIndex);
-      }
+      // moveNode itself rejects (no-ops) a drop that would place a container inside its own
+      // descendant or itself — no separate cycle-check needed here.
+      moveNode(String(active.id), targetParentId, newIndex);
     }
   };
 
@@ -149,7 +125,7 @@ export function BuilderCanvas() {
           <BuilderPalette />
         </div>
 
-        <CanvasRootDropZone canvas={canvas} />
+        <CanvasRootDropZone rootIds={rootIds} />
       </div>
 
       <DragOverlay dropAnimation={dropAnimationRef.current}>{activeLabel ? <div className='rounded-md border border-primary bg-card px-3 py-1.5 text-xs font-semibold shadow-lg'>{activeLabel}</div> : null}</DragOverlay>

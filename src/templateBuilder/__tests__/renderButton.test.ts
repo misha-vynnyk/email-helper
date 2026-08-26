@@ -5,7 +5,7 @@ const FONT = "'Roboto', Arial, Helvetica, sans-serif";
 
 describe("renderButton", () => {
   it("renders a filled button by default, with fill/radius on the outer table", () => {
-    const block = createDefaultButtonBlock("b1");
+    const block = createDefaultButtonBlock("b1", "parent");
     const html = renderButton(block, FONT, 14);
 
     expect(html).not.toContain("bgcolor=");
@@ -16,7 +16,7 @@ describe("renderButton", () => {
   });
 
   it("renders a ghost button with no background at all when bgColor is unset", () => {
-    const block = createDefaultButtonBlock("b2");
+    const block = createDefaultButtonBlock("b2", "parent");
     block.bgColor = undefined;
     const html = renderButton(block, FONT, 0);
 
@@ -25,7 +25,7 @@ describe("renderButton", () => {
   });
 
   it("renders an outline-only button using the border as its entire visual identity", () => {
-    const block = createDefaultButtonBlock("b3");
+    const block = createDefaultButtonBlock("b3", "parent");
     block.bgColor = undefined;
     block.border = { widthPx: 2, color: "#111111" };
     const html = renderButton(block, FONT, 0);
@@ -35,7 +35,7 @@ describe("renderButton", () => {
   });
 
   it("falls back to the placeholder href when given an unsafe href", () => {
-    const block = createDefaultButtonBlock("b4");
+    const block = createDefaultButtonBlock("b4", "parent");
     block.href = "javascript:alert(1)";
     const html = renderButton(block, FONT, 0);
 
@@ -44,7 +44,7 @@ describe("renderButton", () => {
   });
 
   it("keeps a safe href as-is, with no target=_blank", () => {
-    const block = createDefaultButtonBlock("b5");
+    const block = createDefaultButtonBlock("b5", "parent");
     block.href = "https://example.com";
     const html = renderButton(block, FONT, 0);
 
@@ -53,7 +53,7 @@ describe("renderButton", () => {
   });
 
   it("renders auto width with no width attribute or style at all", () => {
-    const block = createDefaultButtonBlock("b6");
+    const block = createDefaultButtonBlock("b6", "parent");
     block.width = "auto";
     const html = renderButton(block, FONT, 0);
 
@@ -62,7 +62,7 @@ describe("renderButton", () => {
   });
 
   it("renders full width as width=100% on the table", () => {
-    const block = createDefaultButtonBlock("b7");
+    const block = createDefaultButtonBlock("b7", "parent");
     block.width = "full";
     const html = renderButton(block, FONT, 0);
 
@@ -71,7 +71,7 @@ describe("renderButton", () => {
   });
 
   it("renders a fixed px width as an explicit width attribute and max-width", () => {
-    const block = createDefaultButtonBlock("b8");
+    const block = createDefaultButtonBlock("b8", "parent");
     block.width = 210;
     const html = renderButton(block, FONT, 0);
 
@@ -80,7 +80,7 @@ describe("renderButton", () => {
   });
 
   it("escapes the label", () => {
-    const block = createDefaultButtonBlock("b9");
+    const block = createDefaultButtonBlock("b9", "parent");
     block.label = 'Click "here"';
     const html = renderButton(block, FONT, 0);
 
@@ -88,14 +88,14 @@ describe("renderButton", () => {
   });
 
   it("uses the shell's default font family when the block has no override", () => {
-    const block = createDefaultButtonBlock("b10");
+    const block = createDefaultButtonBlock("b10", "parent");
     const html = renderButton(block, FONT, 0);
 
     expect(html).toContain(`font-family:${FONT}`);
   });
 
   it("uses the block's own fontFamily override instead of the shell default when set", () => {
-    const block = createDefaultButtonBlock("b11");
+    const block = createDefaultButtonBlock("b11", "parent");
     block.fontFamily = "'Poppins', Arial, sans-serif";
     const html = renderButton(block, FONT, 0);
 
@@ -103,7 +103,7 @@ describe("renderButton", () => {
   });
 
   it("guarantees a fixed height and duplicates text styling on both the td and the a", () => {
-    const block = createDefaultButtonBlock("b12");
+    const block = createDefaultButtonBlock("b12", "parent");
     const html = renderButton(block, FONT, 0);
 
     expect(html).toContain('height="40"');

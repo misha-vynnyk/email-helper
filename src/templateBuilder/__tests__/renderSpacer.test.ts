@@ -3,7 +3,7 @@ import { createDefaultSpacerBlock } from "../types";
 
 describe("renderSpacer", () => {
   it("reflects heightPx in both the height attribute and the inline style", () => {
-    const block = createDefaultSpacerBlock("s1");
+    const block = createDefaultSpacerBlock("s1", "parent");
     const html = renderSpacer(block);
 
     expect(html).toContain(`height="${block.heightPx}"`);
@@ -11,7 +11,7 @@ describe("renderSpacer", () => {
   });
 
   it("reflects a custom height", () => {
-    const block = createDefaultSpacerBlock("s2");
+    const block = createDefaultSpacerBlock("s2", "parent");
     block.heightPx = 60;
     const html = renderSpacer(block);
 

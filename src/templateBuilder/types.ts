@@ -31,8 +31,18 @@ export interface ContainerShadow {
 
 export type TextAlign = "left" | "center" | "right";
 
-export interface TextBlock {
+/**
+ * Кожен вузол дерева канви (лист чи контейнер) — плаский запис у нормалізованій мапі
+ * `BuilderState.nodes`, що знає свого батька за id. Дерево існує лише логічно, через
+ * `parentId`/`childIds`-покажчики — жодних вкладених об'єктів. `parentId: null` означає
+ * "вузол лежить прямо в корені" (`BuilderState.rootIds`).
+ */
+export interface BaseNode {
   id: string;
+  parentId: string | null;
+}
+
+export interface TextBlock extends BaseNode {
   type: "text";
   contentHtml: string;
   fontFamily?: string;
@@ -43,8 +53,7 @@ export interface TextBlock {
   href?: string;
 }
 
-export interface ImageBlock {
-  id: string;
+export interface ImageBlock extends BaseNode {
   type: "image";
   src: string;
   alt: string;
@@ -55,8 +64,7 @@ export interface ImageBlock {
 /** "auto" shrinks to label content, "full" fills the container (width:100%), a number is a fixed px width. */
 export type ButtonWidth = "auto" | "full" | number;
 
-export interface ButtonBlock {
-  id: string;
+export interface ButtonBlock extends BaseNode {
   type: "button";
   label: string;
   href: string;
@@ -71,56 +79,63 @@ export interface ButtonBlock {
   width: ButtonWidth;
 }
 
-export interface DividerBlock {
-  id: string;
+export interface DividerBlock extends BaseNode {
   type: "divider";
   color: string;
   thicknessPx: number;
   widthPercent: number;
 }
 
-export interface SpacerBlock {
-  id: string;
+export interface SpacerBlock extends BaseNode {
   type: "spacer";
   heightPx: number;
 }
 
 export type BuilderLeafBlock = TextBlock | ImageBlock | ButtonBlock | DividerBlock | SpacerBlock;
 
-/** Одна секція (раніше — єдиний ContainerBlock) — тепер один-із-багатьох блоків на canvas. */
-export interface SectionBlock {
-  id: string;
+/** Одна секція — контейнер-вузол, може лежати в корені або бути вкладеним у будь-який інший контейнер. */
+export interface SectionBlock extends BaseNode {
   type: "section";
   padding: ContainerPadding;
-  widthPx: number;
+  /** undefined = вкладений інстанс: не рендерить max-width-кеп, тягнеться на 100% наявного місця в предку. */
+  widthPx?: number;
   gapPx: number;
   fill?: string;
   border?: ContainerBorder;
   cornerRadius?: number;
   shadow?: ContainerShadow;
-  children: BuilderLeafBlock[];
+  childIds: string[];
 }
 
-/** Одна колонка ряду — власний плаский список дітей, ширина у відсотках. */
-export interface RowColumn {
-  id: string;
+/** Одна колонка ряду — повноцінний вузол дерева (не вбудований масив), щоб мати ту саму
+ * уніфіковану адресацію "контейнер за id", що й Section/Row. Завжди вкладена (parentId — це Row). */
+export interface RowColumnBlock extends BaseNode {
+  type: "row-column";
   widthPercent: number;
-  children: BuilderLeafBlock[];
+  childIds: string[];
 }
 
 /** Явний ряд на N колонок (Variant 1 — користувач сам додає з палітри, не авто-визначення). */
-export interface RowBlock {
-  id: string;
+export interface RowBlock extends BaseNode {
   type: "row";
   padding: ContainerPadding;
-  widthPx: number;
-  columns: RowColumn[];
+  widthPx?: number;
+  /** id-и RowColumnBlock-вузлів, у порядку показу. */
+  childIds: string[];
 }
 
 export const MIN_ROW_COLUMNS = 1;
 export const MAX_ROW_COLUMNS = 4;
 
+export type ContainerNode = SectionBlock | RowBlock | RowColumnBlock;
+export type BuilderNode = BuilderLeafBlock | ContainerNode;
+
+/** Топ-рівневі вузли канви — документ і далі не може мати листя прямо в корені. */
 export type CanvasBlock = SectionBlock | RowBlock;
+
+export function isContainerNode(node: BuilderNode): node is ContainerNode {
+  return node.type === "section" || node.type === "row" || node.type === "row-column";
+}
 
 export const PLACEHOLDER_IMAGE_SRC = "https://storage.5th-elementagency.com/files/";
 
@@ -137,14 +152,22 @@ export function createDefaultShellConfig(): ShellConfig {
   };
 }
 
-export function createDefaultSectionBlock(id: string): SectionBlock {
+/**
+ * `parentId === null` (топ-рівневий спавн з палітри на canvas-root) отримує реальні
+ * placeholder-паддінг/ширину; будь-який інший `parentId` (вкладений спавн) дефолтить на
+ * `padding: 0`/`widthPx: undefined` — предок уже обмежує layout, другий реальний
+ * padding/width лише задвоївся б.
+ */
+export function createDefaultSectionBlock(id: string, parentId: string | null): SectionBlock {
+  const nested = parentId !== null;
   return {
     id,
+    parentId,
     type: "section",
-    padding: { top: 32, right: 20, bottom: 24, left: 20 },
-    widthPx: 552,
+    padding: nested ? { top: 0, right: 0, bottom: 0, left: 0 } : { top: 32, right: 20, bottom: 24, left: 20 },
+    widthPx: nested ? undefined : 552,
     gapPx: 14,
-    children: [],
+    childIds: [],
   };
 }
 
@@ -155,27 +178,32 @@ export function evenWidthPercents(count: number): number[] {
   return percents;
 }
 
-/**
- * Row is currently always a top-level canvas block (`canvas: CanvasBlock[]` is flat, nested
- * containers don't exist yet), so it always gets the same real placeholder padding/width as
- * `createDefaultSectionBlock`. If nested rows/sections are ever introduced, a nested instance
- * should default to `padding: 0` and full-width instead — its ancestor container already
- * constrains the layout, so a second real padding/width would double up on it.
- */
-export function createDefaultRowBlock(id: string, columnIds: string[], columnCount: 2 | 3): RowBlock {
-  const widths = evenWidthPercents(columnCount);
+export function createDefaultRowBlock(id: string, parentId: string | null): RowBlock {
+  const nested = parentId !== null;
   return {
     id,
+    parentId,
     type: "row",
-    padding: { top: 32, right: 20, bottom: 24, left: 20 },
-    widthPx: 552,
-    columns: columnIds.map((columnId, i) => ({ id: columnId, widthPercent: widths[i], children: [] })),
+    padding: nested ? { top: 0, right: 0, bottom: 0, left: 0 } : { top: 32, right: 20, bottom: 24, left: 20 },
+    widthPx: nested ? undefined : 552,
+    childIds: [],
   };
 }
 
-export function createDefaultTextBlock(id: string): TextBlock {
+export function createDefaultRowColumnBlock(id: string, parentId: string, widthPercent: number): RowColumnBlock {
   return {
     id,
+    parentId,
+    type: "row-column",
+    widthPercent,
+    childIds: [],
+  };
+}
+
+export function createDefaultTextBlock(id: string, parentId: string): TextBlock {
+  return {
+    id,
+    parentId,
     type: "text",
     contentHtml: "New text block",
     fontSizePx: 18,
@@ -185,9 +213,10 @@ export function createDefaultTextBlock(id: string): TextBlock {
   };
 }
 
-export function createDefaultImageBlock(id: string): ImageBlock {
+export function createDefaultImageBlock(id: string, parentId: string): ImageBlock {
   return {
     id,
+    parentId,
     type: "image",
     src: PLACEHOLDER_IMAGE_SRC,
     alt: "Image",
@@ -195,9 +224,10 @@ export function createDefaultImageBlock(id: string): ImageBlock {
   };
 }
 
-export function createDefaultButtonBlock(id: string): ButtonBlock {
+export function createDefaultButtonBlock(id: string, parentId: string): ButtonBlock {
   return {
     id,
+    parentId,
     type: "button",
     label: "Button",
     href: "urlhere",
@@ -211,9 +241,10 @@ export function createDefaultButtonBlock(id: string): ButtonBlock {
   };
 }
 
-export function createDefaultDividerBlock(id: string): DividerBlock {
+export function createDefaultDividerBlock(id: string, parentId: string): DividerBlock {
   return {
     id,
+    parentId,
     type: "divider",
     color: "#e2e2e2",
     thicknessPx: 1,
@@ -221,9 +252,10 @@ export function createDefaultDividerBlock(id: string): DividerBlock {
   };
 }
 
-export function createDefaultSpacerBlock(id: string): SpacerBlock {
+export function createDefaultSpacerBlock(id: string, parentId: string): SpacerBlock {
   return {
     id,
+    parentId,
     type: "spacer",
     heightPx: 24,
   };

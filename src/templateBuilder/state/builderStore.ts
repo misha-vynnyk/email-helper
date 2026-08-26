@@ -1,244 +1,228 @@
 import { create } from "zustand";
 
-import type { BuilderLeafBlock, CanvasBlock, RowBlock, SectionBlock, ShellConfig } from "../types";
+import { type CanvasTree, childIdsOf, collectDescendantIds, insertNode, isDescendantOrSelf, moveNodeInTree, removeNodeFromTree } from "./canvasTree";
+import { getSelectedId, selectBlock } from "./selectionStore";
+
+import type { BuilderLeafBlock, BuilderNode, RowBlock, RowColumnBlock, SectionBlock, ShellConfig } from "../types";
 import {
   createDefaultButtonBlock,
   createDefaultDividerBlock,
   createDefaultImageBlock,
   createDefaultRowBlock,
+  createDefaultRowColumnBlock,
   createDefaultSectionBlock,
   createDefaultShellConfig,
   createDefaultSpacerBlock,
   createDefaultTextBlock,
   evenWidthPercents,
+  isContainerNode,
   MAX_ROW_COLUMNS,
   MIN_ROW_COLUMNS,
 } from "../types";
-import { getSelectedId, selectBlock } from "./selectionStore";
 
 interface BuilderState {
   shell: ShellConfig;
-  canvas: CanvasBlock[];
+  rootIds: string[];
+  nodes: Record<string, BuilderNode>;
 }
 
 const builderStore = create<BuilderState>(() => ({
   shell: createDefaultShellConfig(),
-  canvas: [],
+  rootIds: [],
+  nodes: {},
 }));
 
-export const SECTION_CONTAINER_PREFIX = "section:";
-export const COLUMN_CONTAINER_PREFIX = "column:";
-
-export function sectionContainerId(sectionId: string): string {
-  return `${SECTION_CONTAINER_PREFIX}${sectionId}`;
+function getTree(): CanvasTree {
+  const s = builderStore.getState();
+  return { nodes: s.nodes, rootIds: s.rootIds };
 }
 
-export function columnContainerId(rowId: string, columnId: string): string {
-  return `${COLUMN_CONTAINER_PREFIX}${rowId}:${columnId}`;
-}
-
-/**
- * The one place that knows "a container is either a section's own children, or one column's
- * children" — every other function reaches a container through this pair (or through
- * getContainerChildren for read-only access) instead of re-branching section-vs-row itself.
- * Blocks that don't match containerId keep their original reference, so unrelated
- * sections/rows/columns don't get a new object identity (and don't force a re-render of
- * React.memo'd canvas components) when only one container actually changed.
- */
-function withContainerChildren(canvas: CanvasBlock[], containerId: string, updateChildren: (children: BuilderLeafBlock[]) => BuilderLeafBlock[]): CanvasBlock[] {
-  if (containerId.startsWith(SECTION_CONTAINER_PREFIX)) {
-    const sectionId = containerId.slice(SECTION_CONTAINER_PREFIX.length);
-    return canvas.map((block) => (block.type === "section" && block.id === sectionId ? { ...block, children: updateChildren(block.children) } : block));
-  }
-  const [rowId, columnId] = containerId.slice(COLUMN_CONTAINER_PREFIX.length).split(":");
-  return canvas.map((block) => {
-    if (block.type !== "row" || block.id !== rowId) return block;
-    return { ...block, columns: block.columns.map((col) => (col.id === columnId ? { ...col, children: updateChildren(col.children) } : col)) };
-  });
-}
-
-function insertLeafIntoContainer(canvas: CanvasBlock[], containerId: string, leaf: BuilderLeafBlock, index: number): CanvasBlock[] {
-  return withContainerChildren(canvas, containerId, (children) => {
-    const next = [...children];
-    next.splice(index, 0, leaf);
-    return next;
-  });
+/** Applies a pure `CanvasTree` transform to the store — every mutating action below is a thin
+ * wrapper over one of these transforms, kept in `canvasTree.ts` so they stay independently
+ * testable without a Zustand store in the loop. */
+function mutateTree(fn: (tree: CanvasTree) => CanvasTree) {
+  builderStore.setState((s) => fn({ nodes: s.nodes, rootIds: s.rootIds }));
 }
 
 export function useShellConfig() {
   return builderStore((s) => s.shell);
 }
 
-export function useCanvas() {
-  return builderStore((s) => s.canvas);
-}
-
-export function getCanvas() {
-  return builderStore.getState().canvas;
-}
-
 export function getShellConfig() {
   return builderStore.getState().shell;
-}
-
-/** Читає поточних дітей контейнера (секції чи колонки ряду) за його containerId — для розрахунку індексу drop. */
-export function getContainerChildren(canvas: CanvasBlock[], containerId: string): BuilderLeafBlock[] {
-  if (containerId.startsWith(SECTION_CONTAINER_PREFIX)) {
-    const sectionId = containerId.slice(SECTION_CONTAINER_PREFIX.length);
-    return (canvas.find((b) => b.type === "section" && b.id === sectionId) as SectionBlock | undefined)?.children ?? [];
-  }
-  const [rowId, columnId] = containerId.slice(COLUMN_CONTAINER_PREFIX.length).split(":");
-  const row = canvas.find((b) => b.type === "row" && b.id === rowId) as RowBlock | undefined;
-  return row?.columns.find((c) => c.id === columnId)?.children ?? [];
 }
 
 export function updateShellConfig(patch: Partial<ShellConfig>) {
   builderStore.setState((s) => ({ shell: { ...s.shell, ...patch } }));
 }
 
-export function addSection(): string {
-  const section = createDefaultSectionBlock(crypto.randomUUID());
-  builderStore.setState((s) => ({ canvas: [...s.canvas, section] }));
-  return section.id;
+export function useRootIds() {
+  return builderStore((s) => s.rootIds);
 }
 
-export function addRow(columnCount: 2 | 3): string {
-  const columnIds = Array.from({ length: columnCount }, () => crypto.randomUUID());
-  const row = createDefaultRowBlock(crypto.randomUUID(), columnIds, columnCount);
-  builderStore.setState((s) => ({ canvas: [...s.canvas, row] }));
-  return row.id;
+export function getRootIds() {
+  return builderStore.getState().rootIds;
+}
+
+/** O(1) lookup by id — every canvas component subscribes to its own node this way instead of
+ * receiving the whole object as a prop, so a change to one node only re-renders that node's
+ * component (same pattern as `useIsSelected` in `selectionStore.ts`). */
+export function useBuilderNode(id: string) {
+  return builderStore((s) => s.nodes[id]);
+}
+
+export function getNode(id: string): BuilderNode | undefined {
+  return builderStore.getState().nodes[id];
+}
+
+/** Whole map, for the render pipeline (`buildDocumentHtml`) which needs to resolve arbitrary
+ * descendant ids while walking the tree — not for canvas components (use `useBuilderNode`). */
+export function useNodesMap() {
+  return builderStore((s) => s.nodes);
+}
+
+export function getNodesMap(): Record<string, BuilderNode> {
+  return builderStore.getState().nodes;
+}
+
+/** Ordered child ids of a container, or `rootIds` when `parentId` is `null` — used by drag/drop
+ * to compute the drop index within a target container. */
+export function getChildIds(parentId: string | null): string[] {
+  return childIdsOf(getTree(), parentId);
+}
+
+export function addLeaf(parentId: string, type: BuilderLeafBlock["type"]): string {
+  const id = crypto.randomUUID();
+  const factory = {
+    text: createDefaultTextBlock,
+    image: createDefaultImageBlock,
+    button: createDefaultButtonBlock,
+    divider: createDefaultDividerBlock,
+    spacer: createDefaultSpacerBlock,
+  }[type];
+  const leaf = factory(id, parentId);
+  mutateTree((tree) => insertNode(tree, leaf, parentId, Number.MAX_SAFE_INTEGER));
+  return id;
+}
+
+/** Spawns a new Section or Row into `parentId` (`null` = canvas root). For a Row, also spawns
+ * `columnCount` `row-column` children, each getting an even `widthPercent` split. */
+export function addContainer(parentId: string | null, type: "section" | "row", columnCount: 2 | 3 = 2): string {
+  const id = crypto.randomUUID();
+
+  if (type === "section") {
+    const section = createDefaultSectionBlock(id, parentId);
+    mutateTree((tree) => insertNode(tree, section, parentId, Number.MAX_SAFE_INTEGER));
+    return id;
+  }
+
+  const row = createDefaultRowBlock(id, parentId);
+  const widths = evenWidthPercents(columnCount);
+  mutateTree((tree) => {
+    let next = insertNode(tree, row, parentId, Number.MAX_SAFE_INTEGER);
+    for (let i = 0; i < columnCount; i++) {
+      const column = createDefaultRowColumnBlock(crypto.randomUUID(), id, widths[i]);
+      next = insertNode(next, column, id, i);
+    }
+    return next;
+  });
+  return id;
+}
+
+function redistributeColumnWidths(tree: CanvasTree, rowId: string): CanvasTree {
+  const columnIds = childIdsOf(tree, rowId);
+  const widths = evenWidthPercents(columnIds.length);
+  const nodes = { ...tree.nodes };
+  columnIds.forEach((columnId, i) => {
+    const column = nodes[columnId] as RowColumnBlock;
+    nodes[columnId] = { ...column, widthPercent: widths[i] };
+  });
+  return { ...tree, nodes };
 }
 
 /** Appends a column to an existing row and re-splits every column's widthPercent evenly. No-op past MAX_ROW_COLUMNS. */
 export function addColumn(rowId: string) {
-  builderStore.setState((s) => ({
-    canvas: s.canvas.map((b) => {
-      if (b.type !== "row" || b.id !== rowId || b.columns.length >= MAX_ROW_COLUMNS) return b;
-      const columns = [...b.columns, { id: crypto.randomUUID(), widthPercent: 0, children: [] }];
-      const widths = evenWidthPercents(columns.length);
-      return { ...b, columns: columns.map((col, i) => ({ ...col, widthPercent: widths[i] })) };
-    }),
-  }));
-}
+  const row = getNode(rowId);
+  if (!row || row.type !== "row" || row.childIds.length >= MAX_ROW_COLUMNS) return;
 
-/** Removes one column from a row and re-splits the remaining columns' widthPercent evenly. No-op at MIN_ROW_COLUMNS. */
-export function removeColumn(rowId: string, columnId: string) {
-  const row = builderStore.getState().canvas.find((b) => b.id === rowId && b.type === "row") as RowBlock | undefined;
-  if (!row || row.columns.length <= MIN_ROW_COLUMNS) return;
-  const removedColumn = row.columns.find((c) => c.id === columnId);
-
-  builderStore.setState((s) => ({
-    canvas: s.canvas.map((b) => {
-      if (b.type !== "row" || b.id !== rowId) return b;
-      const columns = b.columns.filter((c) => c.id !== columnId);
-      const widths = evenWidthPercents(columns.length);
-      return { ...b, columns: columns.map((col, i) => ({ ...col, widthPercent: widths[i] })) };
-    }),
-  }));
-
-  const selectedId = getSelectedId();
-  if (selectedId && removedColumn && removedColumn.children.some((c) => c.id === selectedId)) selectBlock(null);
-}
-
-/** All ids "under" a top-level canvas block (itself plus any nested leaves) — used to invalidate
- * a dangling selection when the block (or a leaf inside it) is removed. */
-function collectBlockAndLeafIds(block: CanvasBlock): string[] {
-  if (block.type === "section") return [block.id, ...block.children.map((c) => c.id)];
-  return [block.id, ...block.columns.flatMap((col) => col.children.map((c) => c.id))];
-}
-
-export function removeCanvasBlock(id: string) {
-  const removedBlock = builderStore.getState().canvas.find((b) => b.id === id);
-  builderStore.setState((s) => ({ canvas: s.canvas.filter((b) => b.id !== id) }));
-
-  const selectedId = getSelectedId();
-  if (selectedId && removedBlock && collectBlockAndLeafIds(removedBlock).includes(selectedId)) selectBlock(null);
-}
-
-export function reorderCanvasBlocks(fromIndex: number, toIndex: number) {
-  builderStore.setState((s) => {
-    const canvas = [...s.canvas];
-    const [moved] = canvas.splice(fromIndex, 1);
-    canvas.splice(toIndex, 0, moved);
-    return { canvas };
+  mutateTree((tree) => {
+    const column = createDefaultRowColumnBlock(crypto.randomUUID(), rowId, 0);
+    const withColumn = insertNode(tree, column, rowId, row.childIds.length);
+    return redistributeColumnWidths(withColumn, rowId);
   });
 }
 
-export function updateSectionStyle(sectionId: string, patch: Partial<Omit<SectionBlock, "id" | "type" | "children">>) {
-  builderStore.setState((s) => ({
-    canvas: s.canvas.map((b) => (b.type === "section" && b.id === sectionId ? { ...b, ...patch } : b)),
-  }));
+/** Removes one column (and its whole subtree) from a row and re-splits the remaining columns'
+ * widthPercent evenly. No-op at MIN_ROW_COLUMNS. */
+export function removeColumn(rowId: string, columnId: string) {
+  const row = getNode(rowId);
+  if (!row || row.type !== "row" || row.childIds.length <= MIN_ROW_COLUMNS) return;
+
+  const removedIds = [columnId, ...collectDescendantIds(builderStore.getState().nodes, columnId)];
+  mutateTree((tree) => redistributeColumnWidths(removeNodeFromTree(tree, columnId), rowId));
+
+  const selectedId = getSelectedId();
+  if (selectedId && removedIds.includes(selectedId)) selectBlock(null);
 }
 
-export function updateRowStyle(rowId: string, patch: Partial<Pick<RowBlock, "padding" | "widthPx">>) {
-  builderStore.setState((s) => ({
-    canvas: s.canvas.map((b) => (b.type === "row" && b.id === rowId ? { ...b, ...patch } : b)),
-  }));
+export function removeNode(id: string) {
+  const removedIds = [id, ...collectDescendantIds(builderStore.getState().nodes, id)];
+  mutateTree((tree) => removeNodeFromTree(tree, id));
+
+  const selectedId = getSelectedId();
+  if (selectedId && removedIds.includes(selectedId)) selectBlock(null);
 }
 
-const LEAF_FACTORY: Record<BuilderLeafBlock["type"], (id: string) => BuilderLeafBlock> = {
-  text: createDefaultTextBlock,
-  image: createDefaultImageBlock,
-  button: createDefaultButtonBlock,
-  divider: createDefaultDividerBlock,
-  spacer: createDefaultSpacerBlock,
-};
+/** Moves any node (leaf, or a whole Section/Row subtree) into another container — or back to
+ * the canvas root when `toParentId` is `null` — or reorders it within its current container.
+ * No-op if the move would drop a container into its own descendant (or itself). */
+export function moveNode(id: string, toParentId: string | null, toIndex: number) {
+  mutateTree((tree) => moveNodeInTree(tree, id, toParentId, toIndex));
+}
 
-export function addLeaf(containerId: string, type: BuilderLeafBlock["type"]): string {
-  const leaf = LEAF_FACTORY[type](crypto.randomUUID());
-  builderStore.setState((s) => ({ canvas: insertLeafIntoContainer(s.canvas, containerId, leaf, Number.MAX_SAFE_INTEGER) }));
-  return leaf.id;
+/** Whether `containerId` is (or lies inside) the subtree rooted at `nodeId` — used by drag/drop
+ * to reject an invalid drop target before calling `moveNode`. */
+export function wouldCreateCycle(nodeId: string, containerId: string | null): boolean {
+  if (containerId === null) return false;
+  return isDescendantOrSelf(builderStore.getState().nodes, nodeId, containerId);
 }
 
 export function updateLeaf(leafId: string, patch: Partial<BuilderLeafBlock>) {
   builderStore.setState((s) => {
-    const lookup = findBlockOrLeaf(s.canvas, leafId);
-    if (lookup?.kind !== "leaf") return {};
-    // Only the one container holding this leaf gets a new reference — every other
-    // section/row keeps its identity, so unrelated canvas boxes skip re-rendering on each keystroke.
-    return { canvas: withContainerChildren(s.canvas, lookup.containerId, (children) => children.map((c) => (c.id === leafId ? ({ ...c, ...patch } as BuilderLeafBlock) : c))) };
+    const leaf = s.nodes[leafId];
+    if (!leaf || isContainerNode(leaf)) return {};
+    return { nodes: { ...s.nodes, [leafId]: { ...leaf, ...patch } as BuilderLeafBlock } };
   });
 }
 
-export function removeLeaf(leafId: string) {
+export function updateSectionStyle(sectionId: string, patch: Partial<Omit<SectionBlock, "id" | "parentId" | "type" | "childIds">>) {
   builderStore.setState((s) => {
-    const lookup = findBlockOrLeaf(s.canvas, leafId);
-    if (lookup?.kind !== "leaf") return {};
-    return { canvas: withContainerChildren(s.canvas, lookup.containerId, (children) => children.filter((c) => c.id !== leafId)) };
+    const section = s.nodes[sectionId];
+    if (!section || section.type !== "section") return {};
+    return { nodes: { ...s.nodes, [sectionId]: { ...section, ...patch } } };
   });
-
-  if (getSelectedId() === leafId) selectBlock(null);
 }
 
-/** Переміщує лист (text/image) в інший контейнер (секцію чи колонку ряду), або переставляє в тому самому. */
-export function moveLeaf(leafId: string, toContainerId: string, toIndex: number) {
+export function updateRowStyle(rowId: string, patch: Partial<Pick<RowBlock, "padding" | "widthPx">>) {
   builderStore.setState((s) => {
-    const lookup = findBlockOrLeaf(s.canvas, leafId);
-    if (lookup?.kind !== "leaf") return {};
-    const withoutLeaf = withContainerChildren(s.canvas, lookup.containerId, (children) => children.filter((c) => c.id !== leafId));
-    return { canvas: insertLeafIntoContainer(withoutLeaf, toContainerId, lookup.block, toIndex) };
+    const row = s.nodes[rowId];
+    if (!row || row.type !== "row") return {};
+    return { nodes: { ...s.nodes, [rowId]: { ...row, ...patch } } };
   });
 }
 
-export type BlockLookup = { kind: "section"; block: SectionBlock } | { kind: "row"; block: RowBlock } | { kind: "leaf"; block: BuilderLeafBlock; containerId: string };
+export type BlockLookup = { kind: "section"; block: SectionBlock } | { kind: "row"; block: RowBlock } | { kind: "leaf"; block: BuilderLeafBlock };
 
-export function findBlockOrLeaf(canvas: CanvasBlock[], id: string): BlockLookup | undefined {
-  for (const block of canvas) {
-    if (block.id === id) return block.type === "section" ? { kind: "section", block } : { kind: "row", block };
-    if (block.type === "section") {
-      const leaf = block.children.find((c) => c.id === id);
-      if (leaf) return { kind: "leaf", block: leaf, containerId: sectionContainerId(block.id) };
-    } else {
-      for (const col of block.columns) {
-        const leaf = col.children.find((c) => c.id === id);
-        if (leaf) return { kind: "leaf", block: leaf, containerId: columnContainerId(block.id, col.id) };
-      }
-    }
-  }
-  return undefined;
+export function findBlockOrLeaf(id: string): BlockLookup | undefined {
+  const node = getNode(id);
+  if (!node) return undefined;
+  if (node.type === "section") return { kind: "section", block: node };
+  if (node.type === "row") return { kind: "row", block: node };
+  if (node.type === "row-column") return undefined;
+  return { kind: "leaf", block: node };
 }
 
 export function resetBuilderState() {
-  builderStore.setState({ shell: createDefaultShellConfig(), canvas: [] });
+  builderStore.setState({ shell: createDefaultShellConfig(), rootIds: [], nodes: {} });
   selectBlock(null);
 }
