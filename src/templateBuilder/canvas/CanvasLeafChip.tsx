@@ -1,6 +1,6 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Image as ImageIcon, Trash2, Type } from "lucide-react";
+import { GripVertical, Image as ImageIcon, type LucideIcon, Minus, MousePointerClick, MoveVertical, Trash2, Type } from "lucide-react";
 import { memo } from "react";
 
 import type { DragData } from "../dnd/dragTypes";
@@ -9,10 +9,29 @@ import { selectBlock, useIsSelected } from "../state/selectionStore";
 import type { BuilderLeafBlock } from "../types";
 
 function leafPreviewText(leaf: BuilderLeafBlock): string {
-  if (leaf.type === "image") return leaf.alt || "Image";
-  const stripped = leaf.contentHtml.replace(/<[^>]+>/g, "").trim();
-  return stripped || "Text block";
+  switch (leaf.type) {
+    case "image":
+      return leaf.alt || "Image";
+    case "button":
+      return leaf.label || "Button";
+    case "divider":
+      return "Divider";
+    case "spacer":
+      return `Spacer (${leaf.heightPx}px)`;
+    case "text": {
+      const stripped = leaf.contentHtml.replace(/<[^>]+>/g, "").trim();
+      return stripped || "Text block";
+    }
+  }
 }
+
+const LEAF_ICON: Record<BuilderLeafBlock["type"], LucideIcon> = {
+  text: Type,
+  image: ImageIcon,
+  button: MousePointerClick,
+  divider: Minus,
+  spacer: MoveVertical,
+};
 
 interface CanvasLeafChipProps {
   leaf: BuilderLeafBlock;
@@ -25,7 +44,7 @@ export const CanvasLeafChip = memo(function CanvasLeafChip({ leaf, containerId }
   const isSelected = useIsSelected(leaf.id);
 
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
-  const Icon = leaf.type === "image" ? ImageIcon : Type;
+  const Icon = LEAF_ICON[leaf.type];
 
   return (
     <div

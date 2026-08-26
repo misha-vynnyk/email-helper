@@ -1,5 +1,5 @@
 import { useDraggable } from "@dnd-kit/core";
-import { Columns2, Columns3, Image as ImageIcon, type LucideIcon, RectangleHorizontal, Type } from "lucide-react";
+import { Columns2, Columns3, Image as ImageIcon, type LucideIcon, Minus, MousePointerClick, MoveVertical, RectangleHorizontal, Type } from "lucide-react";
 
 import type { DragData, PaletteType } from "../dnd/dragTypes";
 
@@ -9,6 +9,9 @@ const PALETTE_ITEMS: Array<{ paletteType: PaletteType; label: string; icon: Luci
   { paletteType: "row3", label: "3-Col Row", icon: Columns3 },
   { paletteType: "text", label: "Text", icon: Type },
   { paletteType: "image", label: "Image", icon: ImageIcon },
+  { paletteType: "button", label: "Button", icon: MousePointerClick },
+  { paletteType: "divider", label: "Divider", icon: Minus },
+  { paletteType: "spacer", label: "Spacer", icon: MoveVertical },
 ];
 
 function PaletteChip({ paletteType, label, Icon }: { paletteType: PaletteType; label: string; Icon: LucideIcon }) {

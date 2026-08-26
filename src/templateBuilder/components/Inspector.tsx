@@ -2,11 +2,30 @@ import { useMemo } from "react";
 
 import { findBlockOrLeaf, useCanvas } from "../state/builderStore";
 import { useSelectedId } from "../state/selectionStore";
+import type { BuilderLeafBlock } from "../types";
+import { ButtonBlockEditor } from "./ButtonBlockEditor";
+import { DividerBlockEditor } from "./DividerBlockEditor";
 import { ImageBlockEditor } from "./ImageBlockEditor";
 import { RowInspectorForm } from "./RowInspectorForm";
 import { SectionInspectorForm } from "./SectionInspectorForm";
 import { ShellSettingsForm } from "./ShellSettingsForm";
+import { SpacerBlockEditor } from "./SpacerBlockEditor";
 import { TextBlockEditor } from "./TextBlockEditor";
+
+function renderLeafEditor(leaf: BuilderLeafBlock) {
+  switch (leaf.type) {
+    case "text":
+      return <TextBlockEditor block={leaf} />;
+    case "image":
+      return <ImageBlockEditor block={leaf} />;
+    case "button":
+      return <ButtonBlockEditor block={leaf} />;
+    case "divider":
+      return <DividerBlockEditor block={leaf} />;
+    case "spacer":
+      return <SpacerBlockEditor block={leaf} />;
+  }
+}
 
 export function Inspector() {
   const canvas = useCanvas();
@@ -30,7 +49,7 @@ export function Inspector() {
             <RowInspectorForm row={lookup.block} />
           </div>
         )}
-        {lookup?.kind === "leaf" && (lookup.block.type === "text" ? <TextBlockEditor block={lookup.block} /> : <ImageBlockEditor block={lookup.block} />)}
+        {lookup?.kind === "leaf" && renderLeafEditor(lookup.block)}
       </section>
     </div>
   );
