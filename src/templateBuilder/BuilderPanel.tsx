@@ -6,7 +6,7 @@ import { BuilderPreviewPane } from "./components/BuilderPreviewPane";
 import { Inspector } from "./components/Inspector";
 import { downloadHtmlFile } from "./downloadHtmlFile";
 import { buildDocumentHtml } from "./render/buildDocumentHtml";
-import { getCanvas, getShellConfig } from "./state/builderStore";
+import { getNodesMap, getRootIds, getShellConfig } from "./state/builderStore";
 
 type ViewMode = "canvas" | "preview";
 
@@ -17,8 +17,9 @@ export default function BuilderPanel() {
   // re-render on every canvas/shell edit, only at click time when the user actually exports.
   const handleDownload = async () => {
     const shell = getShellConfig();
-    const canvas = getCanvas();
-    const html = buildDocumentHtml(shell, canvas);
+    const nodes = getNodesMap();
+    const rootIds = getRootIds();
+    const html = buildDocumentHtml(shell, nodes, rootIds);
     await downloadHtmlFile(html, `${shell.title || "template"}.html`);
   };
 

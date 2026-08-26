@@ -4,7 +4,7 @@ import { GripVertical, Image as ImageIcon, type LucideIcon, Minus, MousePointerC
 import { memo } from "react";
 
 import type { DragData } from "../dnd/dragTypes";
-import { removeLeaf } from "../state/builderStore";
+import { removeNode, useBuilderNode } from "../state/builderStore";
 import { selectBlock, useIsSelected } from "../state/selectionStore";
 import type { BuilderLeafBlock } from "../types";
 
@@ -34,14 +34,16 @@ const LEAF_ICON: Record<BuilderLeafBlock["type"], LucideIcon> = {
 };
 
 interface CanvasLeafChipProps {
-  leaf: BuilderLeafBlock;
-  containerId: string;
+  id: string;
 }
 
-export const CanvasLeafChip = memo(function CanvasLeafChip({ leaf, containerId }: CanvasLeafChipProps) {
-  const dragData: DragData = { kind: "leaf", containerId };
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: leaf.id, data: dragData });
-  const isSelected = useIsSelected(leaf.id);
+export const CanvasLeafChip = memo(function CanvasLeafChip({ id }: CanvasLeafChipProps) {
+  const leaf = useBuilderNode(id) as BuilderLeafBlock | undefined;
+  const dragData: DragData = { kind: "node", parentId: leaf?.parentId ?? null };
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, data: dragData });
+  const isSelected = useIsSelected(id);
+
+  if (!leaf) return null;
 
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
   const Icon = LEAF_ICON[leaf.type];
@@ -52,7 +54,7 @@ export const CanvasLeafChip = memo(function CanvasLeafChip({ leaf, containerId }
       style={style}
       onClick={(e) => {
         e.stopPropagation();
-        selectBlock(leaf.id);
+        selectBlock(id);
       }}
       className={`flex items-center gap-2 rounded-md border px-2 py-1.5 text-xs cursor-pointer transition-colors ${isSelected ? "border-primary bg-primary/5" : "border-border/60 bg-background hover:bg-muted/40"}`}>
       <button type='button' {...attributes} {...listeners} className='cursor-grab text-muted-foreground hover:text-foreground' aria-label='Drag to move'>
@@ -64,7 +66,7 @@ export const CanvasLeafChip = memo(function CanvasLeafChip({ leaf, containerId }
         type='button'
         onClick={(e) => {
           e.stopPropagation();
-          removeLeaf(leaf.id);
+          removeNode(id);
         }}
         className='text-muted-foreground hover:text-destructive'
         aria-label='Remove'>

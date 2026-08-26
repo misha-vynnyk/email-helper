@@ -1,12 +1,17 @@
-import type { SectionBlock } from "../types";
+import type { BuilderNode, SectionBlock, ShellConfig } from "../types";
 import { escapeHtml } from "./escape";
+import { renderNodeList } from "./renderNode";
 
 /**
  * Буквальне відтворення наданого користувачем Section-контейнера (TEMPLATE_BUILDER_STAGE1_QUESTIONS.md, блок 2).
  * Надана розмітка була порожньою щодо fill/border/cornerRadius/shadow — тут вони додаються
  * умовно (лише коли задані), а не завжди, щоб не відходити від мінімалізму наданого зразка.
+ *
+ * `availableWidthPx` — реальна ширина, успадкована від предка (root: shell.contentWidthPx; в
+ * колонці Row: та колонки). Коли `block.widthPx` не задано (вкладений інстанс), секція рендерить
+ * без max-width-кепу й тягнеться на всю цю успадковану ширину замість фіксованих 552px.
  */
-export function renderSection(block: SectionBlock, childrenHtml: string): string {
+export function renderSection(block: SectionBlock, nodes: Record<string, BuilderNode>, shell: ShellConfig, availableWidthPx: number): string {
   const paddingStyle = `padding-right: ${block.padding.right}px; padding-left: ${block.padding.left}px; padding-top: ${block.padding.top}px; padding-bottom: ${block.padding.bottom}px;`;
 
   const extraStyleParts: string[] = [];
@@ -17,10 +22,15 @@ export function renderSection(block: SectionBlock, childrenHtml: string): string
   const extraStyle = extraStyleParts.length > 0 ? ` ${extraStyleParts.join("; ")};` : "";
   const bgcolorAttr = block.fill ? ` bgcolor="${escapeHtml(block.fill)}"` : "";
 
+  const ownWidthPx = block.widthPx ?? availableWidthPx;
+  const widthAttr = block.widthPx !== undefined ? ` width="${block.widthPx}"` : "";
+  const maxWidthStyle = block.widthPx !== undefined ? ` max-width:${block.widthPx}px;` : "";
+  const childrenHtml = renderNodeList(nodes, block.childIds, shell, ownWidthPx - block.padding.left - block.padding.right, block.gapPx);
+
   return `<!--[------ Section start ------]-->
 <tr>
   <td align="center" style="${paddingStyle}">
-    <table align="center" border="0" cellspacing="0" cellpadding="0" width="${block.widthPx}"${bgcolorAttr} style="width: 100%; max-width:${block.widthPx}px; padding: 0; margin: 0;${extraStyle}" role="presentation">
+    <table align="center" border="0" cellspacing="0" cellpadding="0"${widthAttr}${bgcolorAttr} style="width: 100%;${maxWidthStyle} padding: 0; margin: 0;${extraStyle}" role="presentation">
 ${childrenHtml}
     </table>
   </td>

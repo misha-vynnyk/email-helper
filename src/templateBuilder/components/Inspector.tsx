@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { findBlockOrLeaf, useCanvas } from "../state/builderStore";
+import { findBlockOrLeaf, useNodesMap } from "../state/builderStore";
 import { useSelectedId } from "../state/selectionStore";
 import type { BuilderLeafBlock } from "../types";
 import { ButtonBlockEditor } from "./ButtonBlockEditor";
@@ -28,9 +28,9 @@ function renderLeafEditor(leaf: BuilderLeafBlock) {
 }
 
 export function Inspector() {
-  const canvas = useCanvas();
+  const nodes = useNodesMap();
   const selectedId = useSelectedId();
-  const lookup = useMemo(() => (selectedId ? findBlockOrLeaf(canvas, selectedId) : undefined), [canvas, selectedId]);
+  const lookup = useMemo(() => (selectedId ? findBlockOrLeaf(selectedId) : undefined), [nodes, selectedId]);
 
   return (
     <div className='space-y-4'>
@@ -45,7 +45,7 @@ export function Inspector() {
         {lookup?.kind === "section" && <SectionInspectorForm section={lookup.block} />}
         {lookup?.kind === "row" && (
           <div className='space-y-2'>
-            <p className='text-xs text-muted-foreground'>Row with {lookup.block.columns.length} columns — drag text/image into a column.</p>
+            <p className='text-xs text-muted-foreground'>Row with {lookup.block.childIds.length} columns — drag a block into a column.</p>
             <RowInspectorForm row={lookup.block} />
           </div>
         )}

@@ -3,7 +3,7 @@ import { createDefaultDividerBlock } from "../types";
 
 describe("renderDivider", () => {
   it("renders the color and thickness as a border-top, not a literal <hr>", () => {
-    const block = createDefaultDividerBlock("d1");
+    const block = createDefaultDividerBlock("d1", "parent");
     const html = renderDivider(block, 14);
 
     expect(html).not.toContain("<hr");
@@ -12,7 +12,7 @@ describe("renderDivider", () => {
   });
 
   it("reflects a custom thickness/color/width", () => {
-    const block = createDefaultDividerBlock("d2");
+    const block = createDefaultDividerBlock("d2", "parent");
     block.thicknessPx = 3;
     block.color = "#ff0000";
     block.widthPercent = 50;

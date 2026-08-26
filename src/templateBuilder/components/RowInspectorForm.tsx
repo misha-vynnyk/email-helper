@@ -22,8 +22,8 @@ export function RowInspectorForm({ row }: RowInspectorFormProps) {
 
   return (
     <div className='grid grid-cols-2 gap-3'>
-      <Field label='Width (px)'>
-        <Input type='number' value={row.widthPx} onChange={(e) => update({ widthPx: Number(e.target.value) || 0 })} />
+      <Field label='Width (px, empty = fill container)'>
+        <Input type='number' value={row.widthPx ?? ""} placeholder='auto' onChange={(e) => update({ widthPx: e.target.value === "" ? undefined : Number(e.target.value) || undefined })} />
       </Field>
       <div />
       <Field label='Padding top'>

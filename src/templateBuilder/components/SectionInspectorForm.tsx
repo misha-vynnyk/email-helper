@@ -43,13 +43,13 @@ function OptionalSection({
 }
 
 export function SectionInspectorForm({ section }: SectionInspectorFormProps) {
-  const update = (patch: Partial<Omit<SectionBlock, "id" | "type" | "children">>) => updateSectionStyle(section.id, patch);
+  const update = (patch: Partial<Omit<SectionBlock, "id" | "parentId" | "type" | "childIds">>) => updateSectionStyle(section.id, patch);
 
   return (
     <div className='space-y-3'>
       <div className='grid grid-cols-2 gap-3'>
-        <Field label='Width (px)'>
-          <Input type='number' value={section.widthPx} onChange={(e) => update({ widthPx: Number(e.target.value) || 0 })} />
+        <Field label='Width (px, empty = fill container)'>
+          <Input type='number' value={section.widthPx ?? ""} placeholder='auto' onChange={(e) => update({ widthPx: e.target.value === "" ? undefined : Number(e.target.value) || undefined })} />
         </Field>
         <Field label='Gap between children (px)'>
           <Input type='number' value={section.gapPx} onChange={(e) => update({ gapPx: Number(e.target.value) || 0 })} />

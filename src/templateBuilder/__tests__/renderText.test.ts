@@ -3,7 +3,7 @@ import { createDefaultTextBlock } from "../types";
 
 describe("renderText", () => {
   it("renders without a link wrapper when href is not set", () => {
-    const block = createDefaultTextBlock("t1");
+    const block = createDefaultTextBlock("t1", "parent");
     block.contentHtml = "Hello <b>world</b>";
     const html = renderText(block, "'Roboto', Arial, Helvetica, sans-serif", 14);
 
@@ -14,7 +14,7 @@ describe("renderText", () => {
   });
 
   it("wraps content in a link when href is set, using the fixed link style", () => {
-    const block = createDefaultTextBlock("t2");
+    const block = createDefaultTextBlock("t2", "parent");
     block.href = "https://example.com";
     const html = renderText(block, "'Roboto', Arial, Helvetica, sans-serif", 0);
 
@@ -24,7 +24,7 @@ describe("renderText", () => {
   });
 
   it("uses the block's own fontFamily override instead of the shell default when set", () => {
-    const block = createDefaultTextBlock("t3");
+    const block = createDefaultTextBlock("t3", "parent");
     block.fontFamily = "'Poppins', Arial, sans-serif";
     const html = renderText(block, "'Roboto', Arial, Helvetica, sans-serif", 14);
 
@@ -32,7 +32,7 @@ describe("renderText", () => {
   });
 
   it("cannot break out of the style attribute via fontFamily", () => {
-    const block = createDefaultTextBlock("t4");
+    const block = createDefaultTextBlock("t4", "parent");
     block.fontFamily = 'Arial" onmouseover="alert(1)';
     const html = renderText(block, "'Roboto', Arial, Helvetica, sans-serif", 0);
 
@@ -43,7 +43,7 @@ describe("renderText", () => {
   });
 
   it("drops a javascript: href instead of rendering it", () => {
-    const block = createDefaultTextBlock("t5");
+    const block = createDefaultTextBlock("t5", "parent");
     block.href = "javascript:alert(document.cookie)";
     const html = renderText(block, "'Roboto', Arial, Helvetica, sans-serif", 0);
 
@@ -52,7 +52,7 @@ describe("renderText", () => {
   });
 
   it("keeps a placeholder href like the default 'urlhere' text", () => {
-    const block = createDefaultTextBlock("t6");
+    const block = createDefaultTextBlock("t6", "parent");
     block.href = "urlhere";
     const html = renderText(block, "'Roboto', Arial, Helvetica, sans-serif", 0);
 
