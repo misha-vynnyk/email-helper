@@ -18,7 +18,7 @@ import {
   updateSectionStyle,
 } from "../state/builderStore";
 import { getSelectedId, selectBlock } from "../state/selectionStore";
-import { MAX_ROW_COLUMNS, type RowBlock, type SectionBlock } from "../types";
+import { createDefaultButtonBlock, createDefaultDividerBlock, createDefaultSpacerBlock, MAX_ROW_COLUMNS, type ButtonBlock, type DividerBlock, type RowBlock, type SectionBlock, type SpacerBlock } from "../types";
 
 describe("builderStore", () => {
   beforeEach(() => {
@@ -211,6 +211,40 @@ describe("builderStore", () => {
     removeColumn(rowId, columnId);
 
     expect(getSelectedId()).toBeNull();
+  });
+
+  it("adds a button, divider, and spacer leaf matching their default factories", () => {
+    const sectionId = addSection();
+    const containerId = sectionContainerId(sectionId);
+
+    const buttonId = addLeaf(containerId, "button");
+    const dividerId = addLeaf(containerId, "divider");
+    const spacerId = addLeaf(containerId, "spacer");
+
+    const section = getCanvas()[0] as SectionBlock;
+    const [button, divider, spacer] = section.children;
+    expect(button).toEqual(createDefaultButtonBlock(buttonId));
+    expect(divider).toEqual(createDefaultDividerBlock(dividerId));
+    expect(spacer).toEqual(createDefaultSpacerBlock(spacerId));
+  });
+
+  it("updates button, divider, and spacer leaves' own fields", () => {
+    const sectionId = addSection();
+    const containerId = sectionContainerId(sectionId);
+    const buttonId = addLeaf(containerId, "button");
+    const dividerId = addLeaf(containerId, "divider");
+    const spacerId = addLeaf(containerId, "spacer");
+
+    updateLeaf(buttonId, { label: "Buy now", bgColor: undefined });
+    updateLeaf(dividerId, { thicknessPx: 4 });
+    updateLeaf(spacerId, { heightPx: 48 });
+
+    const section = getCanvas()[0] as SectionBlock;
+    const [button, divider, spacer] = section.children as [ButtonBlock, DividerBlock, SpacerBlock];
+    expect(button.label).toBe("Buy now");
+    expect(button.bgColor).toBeUndefined();
+    expect(divider.thicknessPx).toBe(4);
+    expect(spacer.heightPx).toBe(48);
   });
 
   it("clears the selection when the selected section is removed", () => {

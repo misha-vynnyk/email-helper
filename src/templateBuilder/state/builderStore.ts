@@ -1,7 +1,19 @@
 import { create } from "zustand";
 
-import type { BuilderLeafBlock, CanvasBlock, ImageBlock, RowBlock, SectionBlock, ShellConfig, TextBlock } from "../types";
-import { createDefaultImageBlock, createDefaultRowBlock, createDefaultSectionBlock, createDefaultShellConfig, createDefaultTextBlock, evenWidthPercents, MAX_ROW_COLUMNS, MIN_ROW_COLUMNS } from "../types";
+import type { BuilderLeafBlock, CanvasBlock, RowBlock, SectionBlock, ShellConfig } from "../types";
+import {
+  createDefaultButtonBlock,
+  createDefaultDividerBlock,
+  createDefaultImageBlock,
+  createDefaultRowBlock,
+  createDefaultSectionBlock,
+  createDefaultShellConfig,
+  createDefaultSpacerBlock,
+  createDefaultTextBlock,
+  evenWidthPercents,
+  MAX_ROW_COLUMNS,
+  MIN_ROW_COLUMNS,
+} from "../types";
 import { getSelectedId, selectBlock } from "./selectionStore";
 
 interface BuilderState {
@@ -164,13 +176,21 @@ export function updateRowStyle(rowId: string, patch: Partial<Pick<RowBlock, "pad
   }));
 }
 
-export function addLeaf(containerId: string, type: "text" | "image"): string {
-  const leaf = type === "text" ? createDefaultTextBlock(crypto.randomUUID()) : createDefaultImageBlock(crypto.randomUUID());
+const LEAF_FACTORY: Record<BuilderLeafBlock["type"], (id: string) => BuilderLeafBlock> = {
+  text: createDefaultTextBlock,
+  image: createDefaultImageBlock,
+  button: createDefaultButtonBlock,
+  divider: createDefaultDividerBlock,
+  spacer: createDefaultSpacerBlock,
+};
+
+export function addLeaf(containerId: string, type: BuilderLeafBlock["type"]): string {
+  const leaf = LEAF_FACTORY[type](crypto.randomUUID());
   builderStore.setState((s) => ({ canvas: insertLeafIntoContainer(s.canvas, containerId, leaf, Number.MAX_SAFE_INTEGER) }));
   return leaf.id;
 }
 
-export function updateLeaf(leafId: string, patch: Partial<TextBlock> | Partial<ImageBlock>) {
+export function updateLeaf(leafId: string, patch: Partial<BuilderLeafBlock>) {
   builderStore.setState((s) => {
     const lookup = findBlockOrLeaf(s.canvas, leafId);
     if (lookup?.kind !== "leaf") return {};

@@ -50,7 +50,36 @@ export interface ImageBlock {
   href?: string;
 }
 
-export type BuilderLeafBlock = TextBlock | ImageBlock;
+export interface ButtonBlock {
+  id: string;
+  type: "button";
+  label: string;
+  href: string;
+  bgColor?: string;
+  textColor: string;
+  border?: ContainerBorder;
+  borderRadiusPx: number;
+  align: TextAlign;
+  fontSizePx: number;
+  fontWeight: number;
+  fullWidth: boolean;
+}
+
+export interface DividerBlock {
+  id: string;
+  type: "divider";
+  color: string;
+  thicknessPx: number;
+  widthPercent: number;
+}
+
+export interface SpacerBlock {
+  id: string;
+  type: "spacer";
+  heightPx: number;
+}
+
+export type BuilderLeafBlock = TextBlock | ImageBlock | ButtonBlock | DividerBlock | SpacerBlock;
 
 /** Одна секція (раніше — єдиний ContainerBlock) — тепер один-із-багатьох блоків на canvas. */
 export interface SectionBlock {
@@ -156,5 +185,39 @@ export function createDefaultImageBlock(id: string): ImageBlock {
     src: PLACEHOLDER_IMAGE_SRC,
     alt: "Image",
     widthPx: 552,
+  };
+}
+
+export function createDefaultButtonBlock(id: string): ButtonBlock {
+  return {
+    id,
+    type: "button",
+    label: "Button",
+    href: "urlhere",
+    bgColor: "#2563eb",
+    textColor: "#ffffff",
+    borderRadiusPx: 8,
+    align: "center",
+    fontSizePx: 16,
+    fontWeight: 700,
+    fullWidth: false,
+  };
+}
+
+export function createDefaultDividerBlock(id: string): DividerBlock {
+  return {
+    id,
+    type: "divider",
+    color: "#e2e2e2",
+    thicknessPx: 1,
+    widthPercent: 100,
+  };
+}
+
+export function createDefaultSpacerBlock(id: string): SpacerBlock {
+  return {
+    id,
+    type: "spacer",
+    heightPx: 24,
   };
 }

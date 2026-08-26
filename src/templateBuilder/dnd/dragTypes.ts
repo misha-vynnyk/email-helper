@@ -1,4 +1,4 @@
-export type PaletteType = "section" | "row2" | "row3" | "text" | "image";
+export type PaletteType = "section" | "row2" | "row3" | "text" | "image" | "button" | "divider" | "spacer";
 
 export type DragData = { kind: "palette"; paletteType: PaletteType } | { kind: "canvas-block" } | { kind: "leaf"; containerId: string };
 
