@@ -1,5 +1,6 @@
 import { useBuilderNode } from "../state/builderStore";
 import { CanvasLeafChip } from "./CanvasLeafChip";
+import { CanvasReadyMadeChip } from "./CanvasReadyMadeChip";
 import { CanvasRowBox } from "./CanvasRowBox";
 import { CanvasSectionBox } from "./CanvasSectionBox";
 
@@ -17,5 +18,6 @@ export function CanvasNode({ id }: CanvasNodeProps) {
   if (node.type === "section") return <CanvasSectionBox id={id} />;
   if (node.type === "row") return <CanvasRowBox id={id} />;
   if (node.type === "row-column") return null; // columns only ever render via CanvasRowBox, never appear in a generic child list
+  if (node.type === "ready-made") return <CanvasReadyMadeChip id={id} />;
   return <CanvasLeafChip id={id} />;
 }

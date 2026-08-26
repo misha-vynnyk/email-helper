@@ -1,18 +1,53 @@
 import { fontFamilyStack, GOOGLE_FONT_CATALOG } from "../googleFontCatalog";
+import { READY_MADE_BY_ID } from "../readyMadeCatalog";
+import { RESPONSIVE_BREAKPOINT_PX, RESPONSIVE_TIER_ORDER, UTILITY_CLASS_CATALOG } from "../responsiveUtilityCatalog";
 import type { ShellConfig } from "../types";
 import { escapeHtml } from "./escape";
 import { sanitizeFontFamily } from "./security";
 
-const UTILITY_MEDIA_BLOCKS = `
-      @media screen and (max-width: 602px) {
-        table.main-bg    { width: 100% !important; max-width: 100% !important; min-width: 100% !important; }
+/** Always shipped regardless of tree-shaking — intrinsic to the shell's own literal Wrapper/
+ * Outer/BG-Pattern markup below (`table.main-bg` / `.main-image-bg`), not opt-in utility classes
+ * a user picks per block. */
+const STRUCTURAL_MEDIA_RULES = `        table.main-bg    { width: 100% !important; max-width: 100% !important; min-width: 100% !important; }
         img              { background-color: transparent !important; }
-        .main-image-bg   { background-color: transparent !important; }
-        .footer-button   { display: block !important; width: 100% !important; max-width: 100% !important; min-width: 100% !important; }
-        .spacer-hide     { display: none !important; }
-        .no-radius          { border-radius: 0 !important; }
+        .main-image-bg   { background-color: transparent !important; }`;
+
+/**
+ * Tree-shaken: a breakpoint's `@media` block is only emitted when at least one of its utility
+ * classes — or a used ready-made block's own `extraShellCss` rule scoped to that tier — is
+ * actually referenced by something on the canvas (the `base` tier is the one exception — it
+ * always carries `STRUCTURAL_MEDIA_RULES`). Source order (base -> sm -> xs, per
+ * `RESPONSIVE_TIER_ORDER`) is preserved so a narrower tier still wins the cascade when a viewport
+ * matches more than one `@media` block at once — see responsiveUtilityCatalog.ts.
+ *
+ * Ready-made rules are folded into THIS builder (not emitted as a separate, unscoped block) —
+ * each one names its own tier precisely so it only ever applies at that breakpoint, never at
+ * every width regardless of screen size.
+ */
+function buildUtilityMediaBlocks(usedClassNames: ReadonlySet<string>, usedReadyMadeIds: ReadonlySet<string>): string {
+  const readyMadeRules = [...usedReadyMadeIds].flatMap((id) => READY_MADE_BY_ID.get(id)?.extraShellCss ?? []);
+
+  return RESPONSIVE_TIER_ORDER.map((tier) => {
+    const usedEntries = UTILITY_CLASS_CATALOG.filter((entry) => entry.tier === tier && usedClassNames.has(entry.className));
+    const tierReadyMadeRules = readyMadeRules.filter((rule) => rule.tier === tier);
+    const isBaseTier = tier === "base";
+    if (usedEntries.length === 0 && tierReadyMadeRules.length === 0 && !isBaseTier) return "";
+
+    const rules = [
+      isBaseTier ? STRUCTURAL_MEDIA_RULES : undefined,
+      ...usedEntries.map((entry) => `        .${entry.className} { ${entry.declaration} }`),
+      ...tierReadyMadeRules.map((rule) => `        ${rule.selector} { ${rule.declaration} }`),
+    ]
+      .filter((rule): rule is string => Boolean(rule))
+      .join("\n");
+
+    return `
+      @media screen and (max-width: ${RESPONSIVE_BREAKPOINT_PX[tier]}px) {
+${rules}
       }
 `;
+  }).join("");
+}
 
 interface FontMatchEntry {
   selector: string;
@@ -48,8 +83,14 @@ function buildFontMatchEntries(config: ShellConfig): FontMatchEntry[] {
 function fontMatchRules(entries: FontMatchEntry[]): string {
   if (entries.length === 0) return "";
   const rule = (e: FontMatchEntry, indent: string) => {
-    const safeSelector = escapeHtml(e.selector);
-    const safeFamily = escapeHtml(sanitizeFontFamily(e.family));
+    // Both land inside <style> as raw CSS text (a CSS attribute selector's quoted value, and a
+    // declaration value) — not an HTML attribute — so escapeHtml is the wrong sanitizer here: it
+    // turns a legitimate `"` in a quoted font stack (e.g. `"Comic Sans MS", cursive`, which
+    // sanitizeFontFamily deliberately allows through) into the literal text `&quot;`, corrupting
+    // the CSS. sanitizeFontFamily already strips everything that could break out of the
+    // declaration/rule (`<`, `>`, `{`, `}`, `;`, backslash, ...) while keeping real quotes intact.
+    const safeSelector = sanitizeFontFamily(e.selector);
+    const safeFamily = sanitizeFontFamily(e.family);
     return `${indent}[style*="${safeSelector}"] {
 ${indent}  font-family: ${safeFamily};
 ${indent}}`;
@@ -78,7 +119,12 @@ function googleFontsLinks(googleFontsHref: string | undefined): string {
  * body/Wrapper лишаються завжди білими (незмінна "хром"-частина шаблону, як у наданому прикладі) —
  * лише Outer (outerBackground) і Inner 600px-контент (contentBackground) редаговані.
  */
-export function renderShell(config: ShellConfig, contentHtml: string): string {
+export function renderShell(
+  config: ShellConfig,
+  contentHtml: string,
+  usedResponsiveClassNames: ReadonlySet<string> = new Set(),
+  usedReadyMadeIds: ReadonlySet<string> = new Set(),
+): string {
   const widthPx = config.contentWidthPx;
   return `<!DOCTYPE html
   PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -127,7 +173,7 @@ ${googleFontsLinks(config.googleFontsHref)}
       table td {
         border-collapse: collapse;
       }
-${fontMatchRules(buildFontMatchEntries(config))}${UTILITY_MEDIA_BLOCKS}
+${fontMatchRules(buildFontMatchEntries(config))}${buildUtilityMediaBlocks(usedResponsiveClassNames, usedReadyMadeIds)}
     </style>
 
     <!--[if (gte mso 9)|(IE)]>

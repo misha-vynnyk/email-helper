@@ -3,7 +3,8 @@ import { create } from "zustand";
 import { type CanvasTree, childIdsOf, collectDescendantIds, insertNode, isDescendantOrSelf, moveNodeInTree, removeNodeFromTree } from "./canvasTree";
 import { getSelectedId, selectBlock } from "./selectionStore";
 
-import type { BuilderLeafBlock, BuilderNode, RowBlock, RowColumnBlock, SectionBlock, ShellConfig } from "../types";
+import { READY_MADE_BY_ID } from "../readyMadeCatalog";
+import type { BuilderLeafBlock, BuilderNode, NonContainerNode, ReadyMadeBlock, RowBlock, RowColumnBlock, SectionBlock, ShellConfig } from "../types";
 import {
   createDefaultButtonBlock,
   createDefaultDividerBlock,
@@ -91,7 +92,11 @@ export function getChildIds(parentId: string | null): string[] {
   return childIdsOf(getTree(), parentId);
 }
 
-export function addLeaf(parentId: string, type: BuilderLeafBlock["type"]): string {
+/** `parentId: null` spawns the leaf directly at the canvas root — a Section/Row is no longer
+ * required to hold it. The render pipeline already produced a bare `<tr>` fragment for every
+ * leaf, which is exactly what the shell's own content table expects as a direct child, so this
+ * needed no render-side change — only lifting the drag/drop-level restriction (BuilderCanvas.tsx). */
+export function addLeaf(parentId: string | null, type: BuilderLeafBlock["type"]): string {
   const id = crypto.randomUUID();
   const factory = {
     text: createDefaultTextBlock,
@@ -102,6 +107,25 @@ export function addLeaf(parentId: string, type: BuilderLeafBlock["type"]): strin
   }[type];
   const leaf = factory(id, parentId);
   mutateTree((tree) => insertNode(tree, leaf, parentId, Number.MAX_SAFE_INTEGER));
+  return id;
+}
+
+/** Spawns a ready-made block (readyMadeCatalog.ts) into `parentId` (`null` = canvas root),
+ * seeding its `values` from the definition's own slot defaults. Unknown `definitionId` is a
+ * no-op (returns "" — shouldn't happen, the palette only ever offers catalog entries). */
+export function addReadyMade(parentId: string | null, definitionId: string): string {
+  const definition = READY_MADE_BY_ID.get(definitionId);
+  if (!definition) return "";
+
+  const id = crypto.randomUUID();
+  const block: ReadyMadeBlock = {
+    id,
+    parentId,
+    type: "ready-made",
+    definitionId,
+    values: Object.fromEntries(definition.slots.map((slot) => [slot.key, slot.defaultValue])),
+  };
+  mutateTree((tree) => insertNode(tree, block, parentId, Number.MAX_SAFE_INTEGER));
   return id;
 }
 
@@ -187,11 +211,29 @@ export function wouldCreateCycle(nodeId: string, containerId: string | null): bo
   return isDescendantOrSelf(builderStore.getState().nodes, nodeId, containerId);
 }
 
-export function updateLeaf(leafId: string, patch: Partial<BuilderLeafBlock>) {
+/** Patches a non-container node's own flat fields — any leaf today, a Phase-B ready-made block
+ * tomorrow, and (via the shared `responsiveClassNames` on BaseNode) usable for either regardless
+ * of type. Renamed from `updateLeaf`: the guard was already "any non-container node", the old
+ * name just hadn't caught up yet. */
+export function updateNodeFields(id: string, patch: Partial<NonContainerNode>) {
   builderStore.setState((s) => {
-    const leaf = s.nodes[leafId];
-    if (!leaf || isContainerNode(leaf)) return {};
-    return { nodes: { ...s.nodes, [leafId]: { ...leaf, ...patch } as BuilderLeafBlock } };
+    const node = s.nodes[id];
+    if (!node || isContainerNode(node)) return {};
+    return { nodes: { ...s.nodes, [id]: { ...node, ...patch } as NonContainerNode } };
+  });
+}
+
+/** Sets a node's own `responsiveClassNames` — works for ANY node kind, including containers,
+ * unlike `updateNodeFields` (which deliberately rejects containers so it can't be used to patch
+ * container-specific typed fields onto them). `responsiveClassNames` lives on `BaseNode`, so
+ * every kind — leaf, Section/Row/Row-column, ready-made — carries it; ResponsiveClassPicker is
+ * shown for any selected node and needs this to actually persist for all of them, not just
+ * non-containers. */
+export function updateResponsiveClassNames(id: string, classNames: string[]) {
+  builderStore.setState((s) => {
+    const node = s.nodes[id];
+    if (!node) return {};
+    return { nodes: { ...s.nodes, [id]: { ...node, responsiveClassNames: classNames } } };
   });
 }
 
@@ -211,7 +253,11 @@ export function updateRowStyle(rowId: string, patch: Partial<Pick<RowBlock, "pad
   });
 }
 
-export type BlockLookup = { kind: "section"; block: SectionBlock } | { kind: "row"; block: RowBlock } | { kind: "leaf"; block: BuilderLeafBlock };
+export type BlockLookup =
+  | { kind: "section"; block: SectionBlock }
+  | { kind: "row"; block: RowBlock }
+  | { kind: "leaf"; block: BuilderLeafBlock }
+  | { kind: "ready-made"; block: ReadyMadeBlock };
 
 export function findBlockOrLeaf(id: string): BlockLookup | undefined {
   const node = getNode(id);
@@ -219,6 +265,7 @@ export function findBlockOrLeaf(id: string): BlockLookup | undefined {
   if (node.type === "section") return { kind: "section", block: node };
   if (node.type === "row") return { kind: "row", block: node };
   if (node.type === "row-column") return undefined;
+  if (node.type === "ready-made") return { kind: "ready-made", block: node };
   return { kind: "leaf", block: node };
 }
 

@@ -3,7 +3,8 @@ import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrate
 import { useRef, useState } from "react";
 
 import type { DragData, DropData } from "../dnd/dragTypes";
-import { addContainer, addLeaf, getChildIds, moveNode, useRootIds } from "../state/builderStore";
+import { READY_MADE_BY_ID } from "../readyMadeCatalog";
+import { addContainer, addLeaf, addReadyMade, getChildIds, moveNode, useRootIds } from "../state/builderStore";
 import { selectBlock } from "../state/selectionStore";
 import { BuilderPalette } from "./BuilderPalette";
 import { CanvasNode } from "./CanvasNode";
@@ -47,7 +48,7 @@ function CanvasRootDropZone({ rootIds }: { rootIds: string[] }) {
   return (
     <div ref={setNodeRef} onClick={() => selectBlock(null)} className='space-y-3 min-h-[400px] rounded-lg border border-dashed border-border/40 p-3 overflow-y-auto'>
       {rootIds.length === 0 ? (
-        <p className='text-sm text-muted-foreground text-center py-12'>Drag a Section or Row here to get started.</p>
+        <p className='text-sm text-muted-foreground text-center py-12'>Drag any block here to get started.</p>
       ) : (
         <SortableContext items={rootIds} strategy={verticalListSortingStrategy}>
           {rootIds.map((id) => (
@@ -75,8 +76,9 @@ export function BuilderCanvas() {
 
   const handleDragStart = (event: DragStartEvent) => {
     const data = event.active.data.current as DragData | undefined;
-    dropAnimationRef.current = data?.kind === "palette" ? null : undefined;
+    dropAnimationRef.current = data?.kind === "palette" || data?.kind === "ready-made" ? null : undefined;
     if (data?.kind === "palette") setActiveLabel(data.paletteType);
+    else if (data?.kind === "ready-made") setActiveLabel(READY_MADE_BY_ID.get(data.definitionId)?.name ?? data.definitionId);
     else setActiveLabel(String(event.active.id));
   };
 
@@ -95,13 +97,20 @@ export function BuilderCanvas() {
         selectBlock(id);
         return;
       }
-      // text/image/button/divider/spacer — needs a valid section/column target, no root fallback
-      // (leaves can't float directly at the document root)
-      const parentId = resolveParentId(overData);
-      if (parentId) {
-        const id = addLeaf(parentId, activeData.paletteType);
-        selectBlock(id);
-      }
+      // text/image/button/divider/spacer — same root fallback as Section/Row above: dropping
+      // directly on the empty canvas (or its background, not a specific Section/column) spawns
+      // it at the top level instead of requiring a wrapping Section first.
+      const parentId = resolveParentId(overData) ?? null;
+      const id = addLeaf(parentId, activeData.paletteType);
+      selectBlock(id);
+      return;
+    }
+
+    if (activeData.kind === "ready-made") {
+      // Same root fallback as leaves — a ready-made block behaves like a leaf in the tree.
+      const parentId = resolveParentId(overData) ?? null;
+      const id = addReadyMade(parentId, activeData.definitionId);
+      selectBlock(id);
       return;
     }
 

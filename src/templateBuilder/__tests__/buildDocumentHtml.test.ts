@@ -1,5 +1,5 @@
 import { buildDocumentHtml } from "../render/buildDocumentHtml";
-import { createDefaultImageBlock, createDefaultRowBlock, createDefaultRowColumnBlock, createDefaultSectionBlock, createDefaultShellConfig, createDefaultTextBlock } from "../types";
+import { createDefaultImageBlock, createDefaultRowBlock, createDefaultRowColumnBlock, createDefaultSectionBlock, createDefaultShellConfig, createDefaultTextBlock, type ReadyMadeBlock } from "../types";
 import { nodeMap } from "../testSupport/nodeMap";
 
 describe("buildDocumentHtml", () => {
@@ -63,5 +63,52 @@ describe("buildDocumentHtml", () => {
     expect(html).toContain("min-width: 256px");
     expect(html).toContain("<!--[------ Section start ------]-->");
     expect(html).toContain("<!--[------ Row start ------]-->");
+  });
+
+  it("ships both a used ready-made block's general utility-class dependency and its own block-specific CSS, tree-shaken together", () => {
+    const shell = createDefaultShellConfig();
+    const header: ReadyMadeBlock = { id: "h1", parentId: "c1", type: "ready-made", definitionId: "header-adaptive", values: {} };
+    const section = { ...createDefaultSectionBlock("c1", null), childIds: ["h1"] };
+
+    const html = buildDocumentHtml(shell, nodeMap([section, header]), ["c1"]);
+
+    // header-adaptive's usesUtilityClasses: ["sm-hidden"] -> general catalog rule ships
+    const mediaStartIndex = html.indexOf("@media screen and (max-width: 464px)");
+    expect(mediaStartIndex).toBeGreaterThan(-1);
+
+    // header-adaptive's own extraShellCss (.sm-tab-cell) must not appear anywhere BEFORE the
+    // 464px @media block opens — that's the exact bug this test guards against: it used to ship
+    // as a bare, unscoped rule that applied at every screen width, not just below 464px.
+    expect(html.slice(0, mediaStartIndex)).not.toContain(".sm-tab-cell {");
+
+    const styleEndIndex = html.indexOf("</style>");
+    const styleContent = html.slice(0, styleEndIndex);
+    expect(styleContent).toContain(".sm-hidden { display: none !important; }");
+    expect(styleContent).toContain(".sm-tab-cell { display: block !important; }");
+    // and it appears AFTER the 464px @media opens, i.e. genuinely inside that block
+    expect(styleContent.indexOf(".sm-tab-cell {")).toBeGreaterThan(mediaStartIndex);
+
+    // and the block itself rendered its two-cell/MSO-conditional markup
+    expect(html).toContain("<!--[if !mso 9]><!-->");
+
+    // a template with no ready-made block at all ships neither
+    const withoutHeader = buildDocumentHtml(shell, nodeMap([createDefaultSectionBlock("c2", null)]), ["c2"]);
+    expect(withoutHeader).not.toContain("sm-tab-cell");
+    expect(withoutHeader).not.toContain("@media screen and (max-width: 464px)");
+  });
+
+  it("renders a leaf sitting directly at the canvas root (no wrapping Section) alongside a Section, in order", () => {
+    const shell = createDefaultShellConfig();
+    const rootText = { ...createDefaultTextBlock("t1", null), contentHtml: "root-level text" };
+    const sectionText = { ...createDefaultTextBlock("t2", "c1"), contentHtml: "text inside a section" };
+    const section = { ...createDefaultSectionBlock("c1", null), childIds: ["t2"] };
+
+    const html = buildDocumentHtml(shell, nodeMap([rootText, section, sectionText]), ["t1", "c1"]);
+
+    expect(html).toContain("root-level text");
+    expect(html).toContain("text inside a section");
+    expect(html.indexOf("root-level text")).toBeLessThan(html.indexOf("text inside a section"));
+    // the root-level leaf is a bare <tr> fragment, not wrapped in its own Section markers
+    expect(html.indexOf("<!--[------ Section start ------]-->")).toBeGreaterThan(html.indexOf("root-level text"));
   });
 });

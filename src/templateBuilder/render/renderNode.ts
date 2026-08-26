@@ -2,6 +2,7 @@ import type { BuilderNode, ShellConfig } from "../types";
 import { renderButton } from "./renderButton";
 import { renderDivider } from "./renderDivider";
 import { renderImage } from "./renderImage";
+import { renderReadyMade } from "./renderReadyMade";
 import { renderRow } from "./renderRow";
 import { renderSection } from "./renderSection";
 import { renderSpacer } from "./renderSpacer";
@@ -28,6 +29,8 @@ export function renderNode(nodes: Record<string, BuilderNode>, id: string, shell
       return renderDivider(node, paddingBottomPx);
     case "spacer":
       return renderSpacer(node);
+    case "ready-made":
+      return renderReadyMade(node);
     case "section":
       return renderSection(node, nodes, shell, availableWidthPx);
     case "row":
