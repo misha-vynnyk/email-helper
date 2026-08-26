@@ -34,6 +34,16 @@ describe("renderSection", () => {
     expect(html).toContain("box-shadow: 0px 2px 4px rgba(0,0,0,0.1)");
   });
 
+  it("overrides the shell's global border-collapse:collapse inline whenever a border or corner radius is set, since collapse silently kills border-radius", () => {
+    const withBorderOnly = { ...createDefaultSectionBlock("c5", null), border: { widthPx: 1, color: "#000000" } };
+    const withRadiusOnly = { ...createDefaultSectionBlock("c6", null), cornerRadius: 8 };
+    const withNeither = createDefaultSectionBlock("c7", null);
+
+    expect(renderSection(withBorderOnly, {}, shell, shell.contentWidthPx)).toContain("border-collapse: separate");
+    expect(renderSection(withRadiusOnly, {}, shell, shell.contentWidthPx)).toContain("border-collapse: separate");
+    expect(renderSection(withNeither, {}, shell, shell.contentWidthPx)).not.toContain("border-collapse");
+  });
+
   it("renders its children by resolving childIds through the node map", () => {
     const text = { ...createDefaultTextBlock("t1", "c3"), contentHtml: "nested content" };
     const block = { ...createDefaultSectionBlock("c3", null), childIds: ["t1"] };

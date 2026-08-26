@@ -19,6 +19,11 @@ export function renderSection(block: SectionBlock, nodes: Record<string, Builder
   if (block.border) extraStyleParts.push(`border: ${block.border.widthPx}px solid ${escapeHtml(block.border.color)}`);
   if (block.cornerRadius) extraStyleParts.push(`border-radius: ${block.cornerRadius}px`);
   if (block.shadow) extraStyleParts.push(`box-shadow: ${block.shadow.xPx}px ${block.shadow.yPx}px ${block.shadow.blurPx}px ${escapeHtml(block.shadow.color)}`);
+  // The shell's global `table { border-collapse: collapse; }` (renderShell.ts) otherwise wins
+  // and silently kills border-radius on this table — border-radius doesn't render on a
+  // collapsed table regardless of border-width, so this has to override it inline whenever a
+  // border or corner radius is actually in play.
+  if (block.border || block.cornerRadius) extraStyleParts.push("border-collapse: separate", "border-spacing: 0");
   const extraStyle = extraStyleParts.length > 0 ? ` ${extraStyleParts.join("; ")};` : "";
   const bgcolorAttr = block.fill ? ` bgcolor="${escapeHtml(block.fill)}"` : "";
 
