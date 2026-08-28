@@ -3,21 +3,28 @@
  * pristine original (`file.edit?.originalFile ?? file.file`), never against a
  * previously-cropped result, so the stored crop rect and "reset to original" stay
  * meaningful across repeated edits.
+ *
+ * Crop and background removal used to live on separate tabs, each swapping out the
+ * entire canvas. They're now one persistent stage (EditorStage) with a single tool
+ * switcher (EditorToolbar: Crop / Wand / Eraser) — switching tools no longer hides
+ * the other edit's result, so a crop can be framed against an already-cut-out
+ * subject and vice versa.
  */
 
 import { Crop, RotateCcw, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import { BackgroundEditState, CropRect, ImageEditState, ImageFile } from "../types";
+import { BackgroundEditState, BackgroundOperation, BackgroundReplaceMode, CropRect, ImageEditState, ImageFile } from "../types";
 import { detectImageFormat } from "../utils/imageFormatDetector";
 import { applyCropToImage } from "./applyEditToImage";
+import BackgroundOptions from "./BackgroundOptions";
 import { applyBackgroundRemoval } from "./bgRemoval/applyBackgroundRemoval";
-import BackgroundPanel from "./BackgroundPanel";
 import BeforeAfterPreview from "./BeforeAfterPreview";
 import { defaultCropRect, isFullRect } from "./cropMath";
-import CropCanvas from "./CropCanvas";
+import EditorStage, { EditorTool } from "./EditorStage";
+import EditorToolbar from "./EditorToolbar";
 
-type EditTool = "crop" | "background";
+const DEFAULT_BRUSH_RADIUS = 0.03;
 
 interface ImageEditorModalProps {
   file: ImageFile;
@@ -40,14 +47,21 @@ export default function ImageEditorModal({ file, onApply, onClose }: ImageEditor
 
   const [rect, setRect] = useState<CropRect>(file.edit?.crop ?? defaultCropRect());
   const [background, setBackground] = useState<BackgroundEditState | undefined>(file.edit?.background);
-  const [activeTool, setActiveTool] = useState<EditTool>("crop");
+  const [activeTool, setActiveTool] = useState<EditorTool>("crop");
+  const [eraserMode, setEraserMode] = useState<"erase" | "restore">("erase");
+  const [brushRadius, setBrushRadius] = useState(DEFAULT_BRUSH_RADIUS);
   const [isProcessing, setIsProcessing] = useState(false);
   const [statusText, setStatusText] = useState<string | null>(null);
   const [review, setReview] = useState<{ file: File; url: string } | null>(null);
 
-  // GIF background removal is Phase 4 — the tool switcher is hidden for GIFs
-  // entirely rather than rendered-but-disabled, since there's nothing to wire it to yet.
+  // GIF background removal is Phase 4 — the Wand/Eraser tools are hidden entirely
+  // for GIFs rather than rendered-but-disabled, since there's nothing to wire them to yet.
   const isGif = detectImageFormat(baseFile.name, baseFile.type) === "gif";
+
+  const bgImageUrlRef = useRef(background?.replaceImageUrl);
+  useEffect(() => () => {
+    if (bgImageUrlRef.current) URL.revokeObjectURL(bgImageUrlRef.current);
+  }, []);
 
   // Only needs to fire on the component's real unmount — reading via ref (rather than
   // depending on `review`) sidesteps the same StrictMode cleanup-timing issue.
@@ -55,9 +69,36 @@ export default function ImageEditorModal({ file, onApply, onClose }: ImageEditor
   reviewRef.current = review;
   useEffect(() => () => { if (reviewRef.current) URL.revokeObjectURL(reviewRef.current.url); }, []);
 
+  const operations = background?.operations ?? [];
+  const hasBackgroundEdit = !isGif && operations.length > 0;
+
+  const updateBackground = (patch: Partial<BackgroundEditState>) =>
+    setBackground((prev) => ({ operations: [], replaceMode: "transparent", ...prev, ...patch }));
+
+  const handleCommitOperation = (operation: BackgroundOperation) => updateBackground({ operations: [...operations, operation] });
+  const handleUndoLastOperation = () => updateBackground({ operations: operations.slice(0, -1) });
+  const handleReplaceModeChange = (mode: BackgroundReplaceMode) => updateBackground({ replaceMode: mode });
+  const handleReplaceColorChange = (hex: string) => updateBackground({ replaceColor: hex });
+  const handleReplaceImageFile = (imageFile: File | undefined) => {
+    if (!imageFile) return;
+    if (bgImageUrlRef.current) URL.revokeObjectURL(bgImageUrlRef.current);
+    const url = URL.createObjectURL(imageFile);
+    bgImageUrlRef.current = url;
+    updateBackground({ replaceImageUrl: url });
+  };
+
+  const handleReset = () => {
+    if (activeTool === "crop") {
+      setRect(defaultCropRect());
+    } else {
+      if (bgImageUrlRef.current) URL.revokeObjectURL(bgImageUrlRef.current);
+      bgImageUrlRef.current = undefined;
+      setBackground(undefined);
+    }
+  };
+
   const handleApply = async () => {
     const hasCrop = !isFullRect(rect);
-    const hasBackgroundEdit = !isGif && Boolean(background?.removed && background.operations.length > 0);
 
     if (!hasCrop && !hasBackgroundEdit) {
       onApply(baseFile, undefined);
@@ -123,26 +164,35 @@ export default function ImageEditorModal({ file, onApply, onClose }: ImageEditor
             <BeforeAfterPreview beforeSrc={baseImageUrl} afterSrc={review.url} />
           ) : (
             <>
-              {!isGif && (
-                <div className='flex gap-1.5 w-full max-w-sm'>
-                  {(["crop", "background"] as const).map((tool) => (
-                    <button
-                      key={tool}
-                      onClick={() => setActiveTool(tool)}
-                      className={`flex-1 py-1.5 rounded-lg text-xs font-semibold capitalize transition-colors ${
-                        activeTool === tool ? "bg-primary text-primary-foreground" : "bg-slate-50 dark:bg-slate-800 text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      {tool}
-                    </button>
-                  ))}
-                </div>
-              )}
+              <EditorToolbar tool={activeTool} onChange={setActiveTool} showBackgroundTools={!isGif} />
 
-              {activeTool === "background" && !isGif ? (
-                <BackgroundPanel imageUrl={baseImageUrl} value={background} onChange={setBackground} />
-              ) : (
-                <CropCanvas imageUrl={baseImageUrl} rect={rect} onChange={setRect} />
+              <EditorStage
+                imageUrl={baseImageUrl}
+                tool={activeTool}
+                rect={rect}
+                onRectChange={setRect}
+                operations={operations}
+                eraserMode={eraserMode}
+                brushRadius={brushRadius}
+                onCommit={handleCommitOperation}
+                onUndoLast={handleUndoLastOperation}
+              />
+
+              {!isGif && (
+                <BackgroundOptions
+                  tool={activeTool}
+                  hasOperations={operations.length > 0}
+                  eraserMode={eraserMode}
+                  onEraserModeChange={setEraserMode}
+                  brushRadius={brushRadius}
+                  onBrushRadiusChange={setBrushRadius}
+                  replaceMode={background?.replaceMode ?? "transparent"}
+                  onReplaceModeChange={handleReplaceModeChange}
+                  replaceColor={background?.replaceColor}
+                  onReplaceColorChange={handleReplaceColorChange}
+                  replaceImageUrl={background?.replaceImageUrl}
+                  onReplaceImageFile={handleReplaceImageFile}
+                />
               )}
             </>
           )}
@@ -160,10 +210,7 @@ export default function ImageEditorModal({ file, onApply, onClose }: ImageEditor
             </>
           ) : (
             <>
-              <button
-                onClick={() => (activeTool === "background" ? setBackground(undefined) : setRect(defaultCropRect()))}
-                className='flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground px-3 py-2 transition-colors'
-              >
+              <button onClick={handleReset} className='flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground px-3 py-2 transition-colors'>
                 <RotateCcw size={14} />
                 Reset
               </button>
