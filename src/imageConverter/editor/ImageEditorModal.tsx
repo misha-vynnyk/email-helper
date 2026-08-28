@@ -8,12 +8,16 @@
 import { Crop, RotateCcw, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import { CropRect, ImageEditState, ImageFile } from "../types";
+import { BackgroundEditState, CropRect, ImageEditState, ImageFile } from "../types";
 import { detectImageFormat } from "../utils/imageFormatDetector";
 import { applyCropToImage } from "./applyEditToImage";
+import { applyBackgroundRemoval } from "./bgRemoval/applyBackgroundRemoval";
+import BackgroundPanel from "./BackgroundPanel";
 import BeforeAfterPreview from "./BeforeAfterPreview";
 import { defaultCropRect, isFullRect } from "./cropMath";
 import CropCanvas from "./CropCanvas";
+
+type EditTool = "crop" | "background";
 
 interface ImageEditorModalProps {
   file: ImageFile;
@@ -35,8 +39,15 @@ export default function ImageEditorModal({ file, onApply, onClose }: ImageEditor
   }, [baseFile]);
 
   const [rect, setRect] = useState<CropRect>(file.edit?.crop ?? defaultCropRect());
+  const [background, setBackground] = useState<BackgroundEditState | undefined>(file.edit?.background);
+  const [activeTool, setActiveTool] = useState<EditTool>("crop");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [statusText, setStatusText] = useState<string | null>(null);
   const [review, setReview] = useState<{ file: File; url: string } | null>(null);
+
+  // GIF background removal is Phase 4 — the tool switcher is hidden for GIFs
+  // entirely rather than rendered-but-disabled, since there's nothing to wire it to yet.
+  const isGif = detectImageFormat(baseFile.name, baseFile.type) === "gif";
 
   // Only needs to fire on the component's real unmount — reading via ref (rather than
   // depending on `review`) sidesteps the same StrictMode cleanup-timing issue.
@@ -45,7 +56,10 @@ export default function ImageEditorModal({ file, onApply, onClose }: ImageEditor
   useEffect(() => () => { if (reviewRef.current) URL.revokeObjectURL(reviewRef.current.url); }, []);
 
   const handleApply = async () => {
-    if (isFullRect(rect)) {
+    const hasCrop = !isFullRect(rect);
+    const hasBackgroundEdit = !isGif && Boolean(background?.removed && background.operations.length > 0);
+
+    if (!hasCrop && !hasBackgroundEdit) {
       onApply(baseFile, undefined);
       onClose();
       return;
@@ -53,13 +67,26 @@ export default function ImageEditorModal({ file, onApply, onClose }: ImageEditor
 
     setIsProcessing(true);
     try {
-      const isGif = detectImageFormat(baseFile.name, baseFile.type) === "gif";
-      const newFile = isGif
-        ? await (await import("./gif/applyCropToGif")).applyCropToGif(baseFile, rect)
-        : await applyCropToImage(baseFile, rect);
-      setReview({ file: newFile, url: URL.createObjectURL(newFile) });
+      // Background removal runs first and never changes dimensions, so the crop
+      // rect's (0–1 normalized) coordinate space is unaffected by doing it first.
+      let working = baseFile;
+
+      if (hasBackgroundEdit) {
+        setStatusText("Removing background…");
+        working = await applyBackgroundRemoval(working, background!);
+      }
+
+      if (hasCrop) {
+        setStatusText("Applying crop…");
+        working = isGif
+          ? await (await import("./gif/applyCropToGif")).applyCropToGif(working, rect)
+          : await applyCropToImage(working, rect);
+      }
+
+      setReview({ file: working, url: URL.createObjectURL(working) });
     } finally {
       setIsProcessing(false);
+      setStatusText(null);
     }
   };
 
@@ -70,7 +97,7 @@ export default function ImageEditorModal({ file, onApply, onClose }: ImageEditor
 
   const handleConfirm = () => {
     if (!review) return;
-    onApply(review.file, { crop: rect, isEdited: true, originalFile: baseFile });
+    onApply(review.file, { crop: rect, background, isEdited: true, originalFile: baseFile });
     onClose();
   };
 
@@ -95,7 +122,29 @@ export default function ImageEditorModal({ file, onApply, onClose }: ImageEditor
           ) : review ? (
             <BeforeAfterPreview beforeSrc={baseImageUrl} afterSrc={review.url} />
           ) : (
-            <CropCanvas imageUrl={baseImageUrl} rect={rect} onChange={setRect} />
+            <>
+              {!isGif && (
+                <div className='flex gap-1.5 w-full max-w-sm'>
+                  {(["crop", "background"] as const).map((tool) => (
+                    <button
+                      key={tool}
+                      onClick={() => setActiveTool(tool)}
+                      className={`flex-1 py-1.5 rounded-lg text-xs font-semibold capitalize transition-colors ${
+                        activeTool === tool ? "bg-primary text-primary-foreground" : "bg-slate-50 dark:bg-slate-800 text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {tool}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {activeTool === "background" && !isGif ? (
+                <BackgroundPanel imageUrl={baseImageUrl} value={background} onChange={setBackground} />
+              ) : (
+                <CropCanvas imageUrl={baseImageUrl} rect={rect} onChange={setRect} />
+              )}
+            </>
           )}
         </div>
 
@@ -111,7 +160,10 @@ export default function ImageEditorModal({ file, onApply, onClose }: ImageEditor
             </>
           ) : (
             <>
-              <button onClick={() => setRect(defaultCropRect())} className='flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground px-3 py-2 transition-colors'>
+              <button
+                onClick={() => (activeTool === "background" ? setBackground(undefined) : setRect(defaultCropRect()))}
+                className='flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground px-3 py-2 transition-colors'
+              >
                 <RotateCcw size={14} />
                 Reset
               </button>
@@ -121,7 +173,7 @@ export default function ImageEditorModal({ file, onApply, onClose }: ImageEditor
                 className='flex items-center gap-2 bg-primary hover:bg-primary/90 disabled:opacity-60 text-primary-foreground font-semibold text-sm px-5 py-2 rounded-xl transition-all active:scale-95'
               >
                 <Crop size={14} />
-                {isProcessing ? "Applying…" : "Apply crop"}
+                {isProcessing ? statusText ?? "Applying…" : "Apply"}
               </button>
             </>
           )}

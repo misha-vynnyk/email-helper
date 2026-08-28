@@ -41,8 +41,37 @@ export interface CropRect {
 
 export type BackgroundReplaceMode = "transparent" | "color" | "image";
 
+/** Normalized (0–1) click point — the seed pixel an Instant-Alpha-style flood fill
+ * grows from, same resolution-independence convention as CropRect. */
+export interface InstantAlphaSeed {
+  x: number;
+  y: number;
+}
+
+/** A committed magic-wand flood-fill selection — macOS-Instant-Alpha-style
+ * click-and-drag background removal, not ML segmentation. */
+export interface InstantAlphaPick {
+  type: "pick";
+  seed: InstantAlphaSeed;
+  tolerance: number; // 0-100
+}
+
+/** A committed manual brush stroke — touches up spots the wand missed
+ * (mode "erase") or wrongly removed (mode "restore"). */
+export interface BrushStroke {
+  type: "stroke";
+  points: InstantAlphaSeed[]; // normalized 0-1 path
+  radius: number; // normalized, relative to image width — resolution-independent like CropRect
+  mode: "erase" | "restore";
+}
+
+export type BackgroundOperation = InstantAlphaPick | BrushStroke;
+
 export interface BackgroundEditState {
   removed: boolean;
+  /** Committed picks + strokes, in order. Union of picks, then strokes painted
+   * on top in sequence — this ordering is also what makes "undo last" well-defined. */
+  operations: BackgroundOperation[];
   replaceMode: BackgroundReplaceMode;
   replaceColor?: string; // hex, when replaceMode === "color"
   replaceImageUrl?: string; // objectURL, when replaceMode === "image"
