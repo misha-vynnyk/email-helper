@@ -8,6 +8,7 @@ import { selectBlock, useIsSelected } from "../state/selectionStore";
 import type { SectionBlock } from "../types";
 import { CanvasBlockShell } from "./CanvasBlockShell";
 import { NodeDropZone } from "./NodeDropZone";
+import { registerNodeRef } from "./nodeRectRegistry";
 
 interface CanvasSectionBoxProps {
   id: string;
@@ -29,7 +30,10 @@ export const CanvasSectionBox = memo(function CanvasSectionBox({ id }: CanvasSec
       isDragging={isDragging}
       isOver={isOver}
       style={style}
-      setNodeRef={setNodeRef}
+      setNodeRef={(el) => {
+        setNodeRef(el);
+        registerNodeRef(id, el);
+      }}
       attributes={attributes}
       listeners={listeners}
       onSelect={() => selectBlock(id)}

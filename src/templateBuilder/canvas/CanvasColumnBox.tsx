@@ -9,17 +9,21 @@ interface CanvasColumnBoxProps {
   rowId: string;
   columnId: string;
   columnCount: number;
+  /** Live divider-drag preview from CanvasRowBox — takes precedence over the committed
+   * `widthPercent` while a drag is in progress, so the box tracks the pointer before the store
+   * write happens on drag end. */
+  widthPercentOverride?: number;
 }
 
 /** One Row-column — a real node in the tree (see types.ts), but not independently selectable in
  * the Inspector; +/− stays the only way to manage it, same as before nesting existed. Sets its
  * own width from its own `widthPercent`, so `CanvasRowBox` doesn't need to know sibling widths. */
-export const CanvasColumnBox = memo(function CanvasColumnBox({ rowId, columnId, columnCount }: CanvasColumnBoxProps) {
+export const CanvasColumnBox = memo(function CanvasColumnBox({ rowId, columnId, columnCount, widthPercentOverride }: CanvasColumnBoxProps) {
   const column = useBuilderNode(columnId) as RowColumnBlock | undefined;
   if (!column) return null;
 
   return (
-    <div className='relative rounded-md border border-border/40 p-1' style={{ width: `${column.widthPercent}%` }}>
+    <div className='relative rounded-md border border-border/40 p-1' style={{ width: `${widthPercentOverride ?? column.widthPercent}%` }}>
       {columnCount > MIN_ROW_COLUMNS && (
         <button
           type='button'

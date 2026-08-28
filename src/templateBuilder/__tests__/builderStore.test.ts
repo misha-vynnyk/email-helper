@@ -1,5 +1,5 @@
-import { addColumn, addContainer, addLeaf, addReadyMade, findBlockOrLeaf, getNode, getRootIds, moveNode, removeColumn, removeNode, resetBuilderState, updateNodeFields, updateResponsiveClassNames, updateRowStyle, updateSectionStyle } from "../state/builderStore";
-import { getSelectedId, selectBlock } from "../state/selectionStore";
+import { addColumn, addContainer, addLeaf, addReadyMade, duplicateNode, findBlockOrLeaf, getNode, getRootIds, moveNode, redo, removeColumn, removeNode, resetBuilderState, undo, updateColumnWidths, updateNodeFields, updateResponsiveClassNames, updateRowStyle, updateSectionStyle } from "../state/builderStore";
+import { getSelectedId, getSelectedIds, selectBlock, toggleBlockSelection } from "../state/selectionStore";
 import { createDefaultButtonBlock, createDefaultDividerBlock, createDefaultSpacerBlock, MAX_ROW_COLUMNS, type ButtonBlock, type DividerBlock, type ReadyMadeBlock, type RowBlock, type RowColumnBlock, type SectionBlock, type SpacerBlock } from "../types";
 
 describe("builderStore", () => {
@@ -218,6 +218,26 @@ describe("builderStore", () => {
     expect(getSelectedId()).toBeNull();
   });
 
+  it("removeNode also clears the removed id out of multi-selection", () => {
+    const sectionId = addContainer(null, "section");
+    toggleBlockSelection(sectionId);
+
+    removeNode(sectionId);
+
+    expect(getSelectedIds().has(sectionId)).toBe(false);
+  });
+
+  it("removeColumn also clears a removed column's descendants out of multi-selection", () => {
+    const rowId = addContainer(null, "row", 2);
+    const columnId = (getNode(rowId) as RowBlock).childIds[0];
+    const textId = addLeaf(columnId, "text");
+    toggleBlockSelection(textId);
+
+    removeColumn(rowId, columnId);
+
+    expect(getSelectedIds().has(textId)).toBe(false);
+  });
+
   it("adds a button, divider, and spacer leaf matching their default factories", () => {
     const sectionId = addContainer(null, "section");
 
@@ -378,5 +398,154 @@ describe("builderStore", () => {
     const rowId = addContainer(null, "row", 2);
 
     expect(getRootIds()).toEqual([sectionId, textId, rowId]);
+  });
+
+  describe("duplicateNode", () => {
+    it("clones a leaf and inserts it immediately after the original in the same parent", () => {
+      const sectionId = addContainer(null, "section");
+      const textId = addLeaf(sectionId, "text");
+
+      const cloneId = duplicateNode(textId);
+
+      expect(cloneId).not.toBe("");
+      expect((getNode(sectionId) as SectionBlock).childIds).toEqual([textId, cloneId]);
+    });
+
+    it("clones a container and its children — cloned descendants have distinct ids with the same field values", () => {
+      const rowId = addContainer(null, "row", 2);
+      const columnId = (getNode(rowId) as RowBlock).childIds[0];
+      const textId = addLeaf(columnId, "text");
+
+      const cloneRowId = duplicateNode(rowId);
+
+      expect(cloneRowId).not.toBe(rowId);
+      const cloneRow = getNode(cloneRowId) as RowBlock;
+      expect(cloneRow.childIds).toHaveLength(2);
+      const cloneColumnId = cloneRow.childIds[0];
+      expect(cloneColumnId).not.toBe(columnId);
+      const cloneColumn = getNode(cloneColumnId) as RowColumnBlock;
+      expect(cloneColumn.childIds).toHaveLength(1);
+      const cloneTextId = cloneColumn.childIds[0];
+      expect(cloneTextId).not.toBe(textId);
+      expect(getNode(cloneTextId)).toEqual({ ...getNode(textId), id: cloneTextId, parentId: cloneColumnId });
+    });
+
+    it("selects the newly created clone, not the original", () => {
+      const sectionId = addContainer(null, "section");
+      selectBlock(sectionId);
+
+      const cloneId = duplicateNode(sectionId);
+
+      expect(getSelectedId()).toBe(cloneId);
+    });
+
+    it("on a nonexistent id returns \"\" and leaves rootIds/nodes unchanged", () => {
+      const sectionId = addContainer(null, "section");
+
+      const result = duplicateNode("does-not-exist");
+
+      expect(result).toBe("");
+      expect(getRootIds()).toEqual([sectionId]);
+    });
+  });
+
+  describe("updateColumnWidths", () => {
+    it("applies percents to a row's columns in order", () => {
+      const rowId = addContainer(null, "row", 2);
+      const columnIds = (getNode(rowId) as RowBlock).childIds;
+
+      updateColumnWidths(rowId, [70, 30]);
+
+      expect((getNode(columnIds[0]) as RowColumnBlock).widthPercent).toBe(70);
+      expect((getNode(columnIds[1]) as RowColumnBlock).widthPercent).toBe(30);
+    });
+
+    it("is a no-op when percents.length does not match the row's column count", () => {
+      const rowId = addContainer(null, "row", 2);
+      const columnIds = (getNode(rowId) as RowBlock).childIds;
+      const before = columnIds.map((id) => (getNode(id) as RowColumnBlock).widthPercent);
+
+      updateColumnWidths(rowId, [50, 25, 25]);
+
+      const after = columnIds.map((id) => (getNode(id) as RowColumnBlock).widthPercent);
+      expect(after).toEqual(before);
+    });
+  });
+
+  describe("undo/redo via commit()", () => {
+    // commit() coalesces commits within COALESCE_WINDOW_MS (historyStore.ts) — real test runs
+    // execute several mutator calls within a few milliseconds of each other, which would merge
+    // them into a single undo step and break these tests. Stubbing Date.now to advance by a full
+    // second per call keeps every commit in a test outside that window.
+    let now = 0;
+    let nowSpy: jest.SpiedFunction<typeof Date.now>;
+
+    beforeEach(() => {
+      now = 0;
+      nowSpy = jest.spyOn(Date, "now").mockImplementation(() => (now += 1000));
+    });
+
+    afterEach(() => {
+      nowSpy.mockRestore();
+    });
+
+    it("undo restores the tree to the state before the last mutation", () => {
+      const sectionId = addContainer(null, "section");
+      addContainer(null, "row", 2);
+
+      undo();
+
+      expect(getRootIds()).toEqual([sectionId]);
+    });
+
+    it("redo re-applies an undone mutation", () => {
+      const sectionId = addContainer(null, "section");
+      const rowId = addContainer(null, "row", 2);
+
+      undo();
+      redo();
+
+      expect(getRootIds()).toEqual([sectionId, rowId]);
+    });
+
+    it("undo is a no-op once history is exhausted", () => {
+      addContainer(null, "section");
+      undo();
+
+      undo(); // nothing left to undo
+
+      expect(getRootIds()).toEqual([]);
+    });
+
+    it("a fresh commit after undo clears the redo stack", () => {
+      const sectionId = addContainer(null, "section");
+      addContainer(null, "row", 2);
+      undo();
+
+      addLeaf(null, "text"); // new branch — the undone row should no longer be redoable
+      redo();
+
+      expect(getRootIds()).toEqual([sectionId, expect.any(String)]);
+    });
+
+    it("undo clears the selection when the restored snapshot no longer has the selected node", () => {
+      addContainer(null, "section");
+      const rowId = addContainer(null, "row", 2);
+      selectBlock(rowId);
+
+      undo(); // reverts back to before the row existed
+
+      expect(getSelectedId()).toBeNull();
+    });
+
+    it("does not push a history entry for a true no-op mutation (updateNodeFields on an unknown id)", () => {
+      const sectionId = addContainer(null, "section");
+
+      updateNodeFields("does-not-exist", { color: "#ff0000" });
+      undo(); // if the no-op had pushed a history entry, this would undo it instead of the addContainer above
+
+      expect(getRootIds()).toEqual([]);
+      expect(getNode(sectionId)).toBeUndefined();
+    });
   });
 });
