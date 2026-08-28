@@ -10,6 +10,7 @@ import { useConversionQueue } from "./internal/useConversionQueue";
 import { useFileManager } from "./internal/useFileManager";
 import { useWorkerPool } from "./internal/useWorkerPool";
 import { useImageConverterSettings } from "./useImageConverterSettings";
+import { ImageEditState } from "../types";
 
 export function useImageConverterLogic() {
   // 1. Settings
@@ -22,6 +23,7 @@ export function useImageConverterLogic() {
     filesRef,
     addFiles: addFilesBase,
     removeFile,
+    replaceFileSource: replaceFileSourceBase,
     clearFiles,
     reorderFiles,
     toggleSelection,
@@ -120,6 +122,19 @@ export function useImageConverterLogic() {
     [addFilesBase, settings.autoConvert, enqueueFiles]
   );
 
+  // Wrap replaceFileSource (image editor Confirm) to auto-convert, same as addFiles —
+  // otherwise the file resets to "pending" and just sits there until the user manually
+  // hits Convert All/Selected.
+  const replaceFileSource = useCallback(
+    (id: string, newFile: File, edit: ImageEditState | undefined) => {
+      replaceFileSourceBase(id, newFile, edit);
+      if (settings.autoConvert) {
+        enqueueFiles([id]);
+      }
+    },
+    [replaceFileSourceBase, settings.autoConvert, enqueueFiles]
+  );
+
   // Keep filesRef synced
   useEffect(() => {
     filesRef.current = files;
@@ -133,6 +148,7 @@ export function useImageConverterLogic() {
     actions: {
       addFiles,
       removeFile,
+      replaceFileSource,
       clearFiles,
       reorderFiles,
       toggleSelection,
