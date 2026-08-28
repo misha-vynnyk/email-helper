@@ -7,7 +7,7 @@ import { useCallback, useRef, useState } from "react";
 import { toast } from "react-toastify";
 
 import { MAX_FILE_SIZE_CLIENT, MAX_FILE_SIZE_SERVER } from "../../constants";
-import { ConversionSettings, ImageFile } from "../../types";
+import { ConversionSettings, ImageEditState, ImageFile } from "../../types";
 import { detectImageFormat, getExtensionForFormat } from "../../utils/imageFormatDetector";
 import { validateImageFiles } from "../../utils/validators";
 
@@ -51,6 +51,32 @@ export function useFileManager(settings: ConversionSettings) {
       if (file?.convertedUrl) URL.revokeObjectURL(file.convertedUrl);
       return prev.filter((f) => f.id !== id);
     });
+  }, []);
+
+  /** Swaps in an edited (cropped/background-processed) File — e.g. from the image editor
+   * modal — and resets conversion output, since the previous convertedBlob/Url was produced
+   * from the pre-edit bytes and no longer matches `file`. */
+  const replaceFileSource = useCallback((id: string, newFile: File, edit: ImageEditState | undefined) => {
+    setFiles((prev) =>
+      prev.map((f) => {
+        if (f.id !== id) return f;
+        if (f.previewUrl) URL.revokeObjectURL(f.previewUrl);
+        if (f.convertedUrl) URL.revokeObjectURL(f.convertedUrl);
+        return {
+          ...f,
+          file: newFile,
+          previewUrl: URL.createObjectURL(newFile),
+          status: "pending",
+          progress: 0,
+          convertedBlob: undefined,
+          convertedSize: undefined,
+          convertedUrl: undefined,
+          error: undefined,
+          eta: undefined,
+          edit,
+        };
+      })
+    );
   }, []);
 
   const clearFiles = useCallback(() => {
@@ -148,6 +174,7 @@ export function useFileManager(settings: ConversionSettings) {
     filesRef,
     addFiles,
     removeFile,
+    replaceFileSource,
     clearFiles,
     reorderFiles,
     toggleSelection,

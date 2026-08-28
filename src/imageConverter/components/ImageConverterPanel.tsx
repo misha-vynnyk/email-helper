@@ -64,6 +64,7 @@ export default function ImageConverterPanel() {
               files={state.files}
               addFiles={actions.addFiles}
               removeFile={actions.removeFile}
+              replaceFileSource={actions.replaceFileSource}
               downloadFile={actions.downloadFile}
               reorderFiles={actions.reorderFiles}
               toggleSelection={actions.toggleSelection}
