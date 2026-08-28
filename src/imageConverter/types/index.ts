@@ -68,9 +68,10 @@ export interface BrushStroke {
 export type BackgroundOperation = InstantAlphaPick | BrushStroke;
 
 export interface BackgroundEditState {
-  removed: boolean;
   /** Committed picks + strokes, in order. Union of picks, then strokes painted
-   * on top in sequence — this ordering is also what makes "undo last" well-defined. */
+   * on top in sequence — this ordering is also what makes "undo last" well-defined.
+   * An edit "exists" iff this is non-empty — there's no separate enable/disable flag,
+   * since picking up the Wand/Eraser tool and painting IS the act of removing the background. */
   operations: BackgroundOperation[];
   replaceMode: BackgroundReplaceMode;
   replaceColor?: string; // hex, when replaceMode === "color"

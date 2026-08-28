@@ -2,7 +2,7 @@ import { BackgroundEditState } from "../../../types";
 import { compositeBackground } from "../compositeBackground";
 
 function bg(overrides: Partial<BackgroundEditState>): BackgroundEditState {
-  return { removed: true, operations: [], replaceMode: "transparent", ...overrides };
+  return { operations: [], replaceMode: "transparent", ...overrides };
 }
 
 describe("compositeBackground", () => {
