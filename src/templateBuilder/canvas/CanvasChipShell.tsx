@@ -6,6 +6,7 @@ import { memo } from "react";
 import type { DragData } from "../dnd/dragTypes";
 import { removeNode } from "../state/builderStore";
 import { selectBlock, useIsSelected } from "../state/selectionStore";
+import { registerNodeRef } from "./nodeRectRegistry";
 
 interface CanvasChipShellProps {
   id: string;
@@ -26,7 +27,10 @@ export const CanvasChipShell = memo(function CanvasChipShell({ id, parentId, ico
 
   return (
     <div
-      ref={setNodeRef}
+      ref={(el) => {
+        setNodeRef(el);
+        registerNodeRef(id, el);
+      }}
       style={style}
       onClick={(e) => {
         e.stopPropagation();

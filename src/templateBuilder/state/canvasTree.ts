@@ -68,6 +68,43 @@ export function isDescendantOrSelf(nodes: Record<string, BuilderNode>, ancestorI
   return false;
 }
 
+export interface SubtreeClone {
+  rootId: string;
+  /** Кожен клонований вузол (корінь + усі нащадки), за новим id. childId кожної дитини вже
+   * ремапнутий на новий id клонованого батька; parentId кореня лишається старим — єдиний
+   * споживач (duplicateNode, builderStore.ts) завжди йде через insertNode одразу після, а той
+   * перезаписує parentId безумовно. */
+  nodes: Record<string, BuilderNode>;
+}
+
+/** Глибоко клонує піддерево `id` — контейнер (Section/Row/Row-column) разом з усіма нащадками,
+ * чи один лист — мінтячи новий id для кожного клонованого вузла через `nextId`. Прекондишн: `id`
+ * має існувати в `tree.nodes` (на відміну від `removeNodeFromTree`/`collectDescendantIds`, тут
+ * немає безпечного "не знайдено" сценарію — клонування неіснуючого вузла не має природного
+ * порожнього результату, тож викликач мусить перевірити існування заздалегідь).
+ *
+ * `nextId` — параметр, не інлайновий `crypto.randomUUID()`, свідомо відступаючи від конвенції
+ * решти файлу (яка ніколи не мінтить id, це відповідальність builderStore.ts): клонування
+ * структурно мусить згенерувати N нових id під час обходу, і функція-генератор лишає
+ * `cloneSubtree` детерміновано тестованою (лічильник у тестах) при реальній випадковості лише в
+ * реальному call site. */
+export function cloneSubtree(tree: CanvasTree, id: string, nextId: () => string = () => crypto.randomUUID()): SubtreeClone {
+  const node = tree.nodes[id];
+  const newId = nextId();
+  if (!isContainerNode(node)) {
+    return { rootId: newId, nodes: { [newId]: { ...node, id: newId } } };
+  }
+  const nodes: Record<string, BuilderNode> = {};
+  const newChildIds = node.childIds.map((childId) => {
+    const childClone = cloneSubtree(tree, childId, nextId);
+    Object.assign(nodes, childClone.nodes);
+    nodes[childClone.rootId] = { ...nodes[childClone.rootId], parentId: newId };
+    return childClone.rootId;
+  });
+  nodes[newId] = { ...node, id: newId, childIds: newChildIds };
+  return { rootId: newId, nodes };
+}
+
 /** Переміщує вузол (лист чи цілий піддерево-контейнер) в інший контейнер (чи в корінь,
  * коли `toParentId === null`), або переставляє в тому самому — один код-шлях для всього.
  * `toIndex` рахується від дітей контейнера-цілі ПІСЛЯ видалення вузла зі старого місця

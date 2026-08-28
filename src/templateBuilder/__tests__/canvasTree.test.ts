@@ -1,5 +1,5 @@
-import { childIdsOf, collectDescendantIds, insertNode, isDescendantOrSelf, moveNodeInTree, removeNodeFromTree, type CanvasTree } from "../state/canvasTree";
-import { createDefaultRowBlock, createDefaultRowColumnBlock, createDefaultSectionBlock, createDefaultTextBlock, type BuilderNode } from "../types";
+import { childIdsOf, cloneSubtree, collectDescendantIds, insertNode, isDescendantOrSelf, moveNodeInTree, removeNodeFromTree, type CanvasTree } from "../state/canvasTree";
+import { createDefaultRowBlock, createDefaultRowColumnBlock, createDefaultSectionBlock, createDefaultTextBlock, type BuilderNode, type RowBlock } from "../types";
 
 /** sA (root section) -> rB (row) -> colC (row-column) -> sE (nested section) -> tF (text) */
 function buildFixture(): CanvasTree {
@@ -114,5 +114,49 @@ describe("canvasTree", () => {
     const next = moveNodeInTree(tree, "sE", "sE", 0);
 
     expect(next).toBe(tree);
+  });
+
+  it("cloneSubtree on a leaf returns a single cloned node with a new id, same field values", () => {
+    const tree = buildFixture();
+
+    const clone = cloneSubtree(tree, "tF", () => "clone-tF");
+
+    expect(clone.rootId).toBe("clone-tF");
+    expect(Object.keys(clone.nodes)).toEqual(["clone-tF"]);
+    expect(clone.nodes["clone-tF"]).toEqual({ ...tree.nodes.tF, id: "clone-tF" });
+  });
+
+  it("cloneSubtree mints a new id for every node in the subtree and remaps childIds to match", () => {
+    const tree = buildFixture();
+    let n = 0;
+    const clone = cloneSubtree(tree, "rB", () => `c${n++}`); // pre-order: rB, colC, sE, tF
+
+    expect(clone.rootId).toBe("c0");
+    expect(Object.keys(clone.nodes).sort()).toEqual(["c0", "c1", "c2", "c3"]);
+    expect(clone.nodes.c0).toMatchObject({ id: "c0", type: "row", childIds: ["c1"], parentId: "sA" });
+    expect(clone.nodes.c1).toMatchObject({ id: "c1", type: "row-column", childIds: ["c2"], parentId: "c0" });
+    expect(clone.nodes.c2).toMatchObject({ id: "c2", type: "section", childIds: ["c3"], parentId: "c1" });
+    expect(clone.nodes.c3).toMatchObject({ id: "c3", type: "text", parentId: "c2" });
+  });
+
+  it("cloneSubtree defaults to crypto.randomUUID when nextId is omitted", () => {
+    const tree = buildFixture();
+
+    const clone = cloneSubtree(tree, "tF");
+
+    expect(clone.rootId).not.toBe("tF");
+    expect(clone.rootId).toMatch(/^[0-9a-f-]{36}$/i);
+  });
+
+  it("cloneSubtree does not mutate the original tree", () => {
+    const tree = buildFixture();
+    const rBBefore = tree.nodes.rB;
+    const colCBefore = tree.nodes.colC;
+
+    cloneSubtree(tree, "rB");
+
+    expect(tree.nodes.rB).toBe(rBBefore);
+    expect(tree.nodes.colC).toBe(colCBefore);
+    expect((tree.nodes.rB as RowBlock).childIds).toEqual(["colC"]);
   });
 });

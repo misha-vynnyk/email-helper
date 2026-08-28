@@ -1,13 +1,14 @@
 import { closestCenter, CollisionDetection, DndContext, DragEndEvent, DragOverlay, DragStartEvent, type DropAnimation, KeyboardSensor, PointerSensor, pointerWithin, useDroppable, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { DragData, DropData } from "../dnd/dragTypes";
 import { READY_MADE_BY_ID } from "../readyMadeCatalog";
-import { addContainer, addLeaf, addReadyMade, getChildIds, moveNode, useRootIds } from "../state/builderStore";
+import { addContainer, addLeaf, addReadyMade, duplicateNode, getChildIds, moveNode, redo, undo, useRootIds } from "../state/builderStore";
 import { selectBlock } from "../state/selectionStore";
 import { BuilderPalette } from "./BuilderPalette";
 import { CanvasNode } from "./CanvasNode";
+import { SelectionToolbar } from "./SelectionToolbar";
 
 /** Resolves a drag-over target to the container it addresses. `over.data.current` is either the
  * hovered container's own droppable payload (`DropData`, kind "container" — its background) or,
@@ -74,6 +75,49 @@ export function BuilderCanvas() {
   const dropAnimationRef = useRef<DropAnimation | null | undefined>(undefined);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
 
+  // Alt held during a canvas-node drag duplicates the dragged node instead of just moving it —
+  // read imperatively in handleDragEnd, not via React state (no re-render needed for this).
+  // Reset on window blur too: if the user Alt-tabs away with Alt physically still held, no keyup
+  // for "Alt" ever fires in this window, and the ref would otherwise stay stuck true.
+  const altPressedRef = useRef(false);
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Alt") altPressedRef.current = true;
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.key === "Alt") altPressedRef.current = false;
+    };
+    const onBlur = () => {
+      altPressedRef.current = false;
+    };
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", onBlur);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", onBlur);
+    };
+  }, []);
+
+  // Cmd/Ctrl+Z (undo) and Shift+Cmd/Ctrl+Z (redo) — ignored while focus sits in a text input or
+  // contenteditable so it doesn't hijack the browser's own undo inside those fields (Inspector
+  // text inputs, and any future contenteditable canvas text editing).
+  useEffect(() => {
+    const isEditableTarget = (target: EventTarget | null): boolean => {
+      if (!(target instanceof HTMLElement)) return false;
+      return target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() !== "z" || !(e.metaKey || e.ctrlKey) || isEditableTarget(e.target)) return;
+      e.preventDefault();
+      if (e.shiftKey) redo();
+      else undo();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   const handleDragStart = (event: DragStartEvent) => {
     const data = event.active.data.current as DragData | undefined;
     dropAnimationRef.current = data?.kind === "palette" || data?.kind === "ready-made" ? null : undefined;
@@ -117,12 +161,25 @@ export function BuilderCanvas() {
     if (activeData.kind === "node") {
       const targetParentId = resolveParentId(overData);
       if (targetParentId === undefined) return;
+      const activeId = String(active.id);
+
+      // Duplicate BEFORE computing newIndex, not after: duplicateNode inserts the clone into
+      // activeId's own parent's sibling list, immediately after activeId. When reordering within
+      // that same container (targetParentId === activeId's parent), getChildIds(targetParentId)
+      // reads that exact list — computing newIndex first and duplicating after would leave every
+      // index at or past the insertion point off by one.
+      if (altPressedRef.current) duplicateNode(activeId); // clone left behind, right after activeId
+
       const siblings = getChildIds(targetParentId);
       const newIndex = overData?.kind === "node" ? siblings.indexOf(String(over.id)) : siblings.length;
       if (newIndex === -1) return;
       // moveNode itself rejects (no-ops) a drop that would place a container inside its own
       // descendant or itself — no separate cycle-check needed here.
-      moveNode(String(active.id), targetParentId, newIndex);
+      moveNode(activeId, targetParentId, newIndex);
+      // The dragged original — not the clone left behind — is what the user's gesture was on,
+      // so it keeps the selection after an Alt-drag (overrides duplicateNode's own default of
+      // selecting the clone).
+      if (altPressedRef.current) selectBlock(activeId);
     }
   };
 
@@ -138,6 +195,7 @@ export function BuilderCanvas() {
       </div>
 
       <DragOverlay dropAnimation={dropAnimationRef.current}>{activeLabel ? <div className='rounded-md border border-primary bg-card px-3 py-1.5 text-xs font-semibold shadow-lg'>{activeLabel}</div> : null}</DragOverlay>
+      <SelectionToolbar />
     </DndContext>
   );
 }
