@@ -30,6 +30,33 @@ export interface ConversionSettings {
 
 export type ConversionStatus = "pending" | "processing" | "done" | "error";
 
+/** Normalized (0–1) crop rectangle — resolution-independent across the on-screen
+ * crop preview and the full-res source image. */
+export interface CropRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export type BackgroundReplaceMode = "transparent" | "color" | "image";
+
+export interface BackgroundEditState {
+  removed: boolean;
+  replaceMode: BackgroundReplaceMode;
+  replaceColor?: string; // hex, when replaceMode === "color"
+  replaceImageUrl?: string; // objectURL, when replaceMode === "image"
+}
+
+export interface ImageEditState {
+  crop?: CropRect;
+  background?: BackgroundEditState;
+  isEdited: boolean;
+  /** Kept so the editor can re-open pre-populated and "reset to original" stays possible
+   * after `ImageFile.file` has been overwritten with edited bytes. */
+  originalFile: File;
+}
+
 export interface ImageFile {
   id: string;
   file: File;
@@ -45,6 +72,7 @@ export interface ImageFile {
   startTime?: number; // When conversion started
   eta?: number; // Estimated time remaining (seconds)
   selected?: boolean; // For bulk selection
+  edit?: ImageEditState;
 }
 
 export interface ConversionResult {

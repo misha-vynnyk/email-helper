@@ -11,18 +11,21 @@ import {
   Eye,
   GripVertical,
   Loader2,
+  Pencil,
   Trash2,
 } from "lucide-react";
 import { useState } from "react";
 
-import { ImageFile } from "../types";
+import { ImageEditState, ImageFile } from "../types";
 import { formatFileSize } from "../utils/clientConverter";
+import ImageEditorModal from "../editor/ImageEditorModal";
 
 interface ImageGridItemProps {
   file: ImageFile;
   onDownload: () => void;
   onRemove: () => void;
   onToggleSelection: () => void;
+  onReplaceFile: (newFile: File, edit: ImageEditState | undefined) => void;
   dragListeners?: SyntheticListenerMap;
 }
 
@@ -31,9 +34,11 @@ export default function ImageGridItem({
   onDownload,
   onRemove,
   onToggleSelection,
+  onReplaceFile,
   dragListeners,
 }: ImageGridItemProps) {
   const [showComparison, setShowComparison] = useState(false);
+  const [showEditor, setShowEditor] = useState(false);
   const [hovered, setHovered] = useState(false);
 
   const isDone = file.status === "done";
@@ -177,6 +182,13 @@ export default function ImageGridItem({
                    </button>
                  )}
                  <button
+                   onClick={() => setShowEditor(true)}
+                   className='w-7 h-7 flex items-center justify-center text-muted-foreground enabled:hover:bg-primary/10 enabled:hover:text-primary rounded-lg transition-all disabled:opacity-30'
+                   title='Edit (crop)'
+                 >
+                   <Pencil size={14} />
+                 </button>
+                 <button
                    onClick={onRemove}
                    className='w-7 h-7 flex items-center justify-center text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded-lg transition-all'
                    title='Remove'
@@ -252,6 +264,14 @@ export default function ImageGridItem({
             </div>
           </div>
         </div>
+      )}
+
+      {showEditor && (
+        <ImageEditorModal
+          file={file}
+          onClose={() => setShowEditor(false)}
+          onApply={(newFile, edit) => onReplaceFile(newFile, edit)}
+        />
       )}
     </>
   );
