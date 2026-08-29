@@ -2,6 +2,7 @@
  * OCR Analyzer - Public API and orchestration layer
  */
 
+import { getApiBase } from "../../../config/api";
 import type { ImageAnalysisSettings } from "../../types";
 import { AiBackendClient } from "./aiClient";
 import { ALLOWED_SHORT_ALL_CAPS, COMMON_3_LETTER_WORDS } from "./constants";
@@ -152,7 +153,7 @@ export function createOcrAnalyzer(): OcrAnalyzer {
 
         if (isExternal && !isSameOrigin) {
           // Proxy through our server to bypass CORS
-          const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(imageUrl)}`;
+          const proxyUrl = `${getApiBase()}/api/image-proxy?url=${encodeURIComponent(imageUrl)}`;
           const res = await fetch(proxyUrl, { signal });
           if (!res.ok) throw new Error(`Proxy fetch failed: ${res.status} ${res.statusText}`);
           return res.blob();
