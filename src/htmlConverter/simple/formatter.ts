@@ -160,8 +160,14 @@ function processStyles(htmlContent: string): string {
     return inner; // No formatting — strip the span
   });
 
-  // Convert <div> to <p> so block structure is preserved by the paragraph formatter later
-  htmlContent = htmlContent.replace(/<div[^>]*>/gi, "<p>");
+  // Convert <div> to <p> so block structure is preserved by the paragraph formatter later.
+  // Keep the div's own style attribute (e.g. text-align:center) — browsers commonly
+  // normalize pasted Google Docs paragraphs into <div style="text-align:center">
+  // rather than <p>, and dropping it here silently un-centers that block downstream.
+  htmlContent = htmlContent.replace(/<div\b([^>]*)>/gi, (_match, attrs) => {
+    const styleMatch = attrs.match(/style\s*=\s*(["'])([\s\S]*?)\1/i);
+    return styleMatch ? `<p style="${styleMatch[2]}">` : "<p>";
+  });
   htmlContent = htmlContent.replace(/<\/div>/gi, "</p>");
 
   // Preserve basic spacing for tables before stripping their structure
