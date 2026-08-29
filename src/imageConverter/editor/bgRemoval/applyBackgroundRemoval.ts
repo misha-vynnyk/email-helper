@@ -11,10 +11,13 @@
 
 import { BackgroundEditState } from "../../types";
 import { compositeBackground } from "./compositeBackground";
+import { precomputeOklab } from "./instantAlpha";
 import { computeMaskFromOperations } from "./replayOperations";
 
-/** Draws `imageUrl` to fill a width×height canvas (object-fit: cover), returning raw RGBA. */
-async function loadBackgroundImageRgba(imageUrl: string, width: number, height: number): Promise<Uint8ClampedArray> {
+/** Draws `imageUrl` to fill a width×height canvas (object-fit: cover), returning raw RGBA.
+ * Exported so applyEditsToGif.ts can reuse it for the "replace with image" mode instead
+ * of reimplementing the same DOM/canvas image-load. */
+export async function loadBackgroundImageRgba(imageUrl: string, width: number, height: number): Promise<Uint8ClampedArray> {
   const response = await fetch(imageUrl);
   const blob = await response.blob();
   const bitmap = await createImageBitmap(blob);
@@ -52,7 +55,8 @@ export async function applyBackgroundRemoval(file: File, background: BackgroundE
   bitmap.close();
 
   const original = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const mask = computeMaskFromOperations(original.data, canvas.width, canvas.height, background.operations);
+  const oklab = precomputeOklab(original.data, canvas.width * canvas.height);
+  const mask = computeMaskFromOperations(oklab, canvas.width, canvas.height, background.operations);
 
   const backgroundRgba =
     background.replaceMode === "image" && background.replaceImageUrl

@@ -13,13 +13,15 @@
 
 import { Crop, RotateCcw, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "react-toastify";
 
-import { BackgroundEditState, BackgroundOperation, BackgroundReplaceMode, CropRect, ImageEditState, ImageFile } from "../types";
+import { LIMITS } from "../constants/limits";
+import { BackgroundEditState, BackgroundOperation, BackgroundReplaceMode, CropRect, ImageEditState, ImageFile, InstantAlphaPick } from "../types";
 import { detectImageFormat } from "../utils/imageFormatDetector";
 import { applyCropToImage } from "./applyEditToImage";
 import BackgroundOptions from "./BackgroundOptions";
-import { applyBackgroundRemoval } from "./bgRemoval/applyBackgroundRemoval";
 import BeforeAfterPreview from "./BeforeAfterPreview";
+import { applyBackgroundRemoval } from "./bgRemoval/applyBackgroundRemoval";
 import { defaultCropRect, isFullRect } from "./cropMath";
 import EditorStage, { EditorTool } from "./EditorStage";
 import EditorToolbar from "./EditorToolbar";
@@ -52,10 +54,17 @@ export default function ImageEditorModal({ file, onApply, onClose }: ImageEditor
   const [brushRadius, setBrushRadius] = useState(DEFAULT_BRUSH_RADIUS);
   const [isProcessing, setIsProcessing] = useState(false);
   const [statusText, setStatusText] = useState<string | null>(null);
-  const [review, setReview] = useState<{ file: File; url: string } | null>(null);
+  const [review, setReview] = useState<{ file: File; url: string; hasTransparency: boolean } | null>(null);
+  // Mirrored from EditorStage: an in-progress wand pick the user hasn't pressed
+  // Backspace to commit yet. Without folding this into Apply, clicking the
+  // background with the Wand and going straight to Apply is a silent no-op —
+  // operations stays empty, so both the crop and background-edit checks below see
+  // "nothing to do" and the modal just closes unchanged.
+  const [pendingPick, setPendingPick] = useState<InstantAlphaPick | null>(null);
 
-  // GIF background removal is Phase 4 — the Wand/Eraser tools are hidden entirely
-  // for GIFs rather than rendered-but-disabled, since there's nothing to wire them to yet.
+  // Wand/Eraser work on GIF too (Phase 4): picks/strokes are captured against the
+  // poster frame EditorStage shows (frame 0) and replayed identically across every
+  // frame at Apply time — see applyEditsToGif.ts.
   const isGif = detectImageFormat(baseFile.name, baseFile.type) === "gif";
 
   const bgImageUrlRef = useRef(background?.replaceImageUrl);
@@ -70,7 +79,6 @@ export default function ImageEditorModal({ file, onApply, onClose }: ImageEditor
   useEffect(() => () => { if (reviewRef.current) URL.revokeObjectURL(reviewRef.current.url); }, []);
 
   const operations = background?.operations ?? [];
-  const hasBackgroundEdit = !isGif && operations.length > 0;
 
   const updateBackground = (patch: Partial<BackgroundEditState>) =>
     setBackground((prev) => ({ operations: [], replaceMode: "transparent", ...prev, ...patch }));
@@ -100,10 +108,22 @@ export default function ImageEditorModal({ file, onApply, onClose }: ImageEditor
   const handleApply = async () => {
     const hasCrop = !isFullRect(rect);
 
-    if (!hasCrop && !hasBackgroundEdit) {
+    // Fold in a not-yet-committed wand pick so clicking the background then Apply
+    // (without also pressing Backspace) still does something — see the state comment.
+    const effectiveOperations = pendingPick ? [...operations, pendingPick] : operations;
+    const effectiveHasBackgroundEdit = effectiveOperations.length > 0;
+    const effectiveBackground: BackgroundEditState | undefined = effectiveHasBackgroundEdit
+      ? { operations: effectiveOperations, replaceMode: background?.replaceMode ?? "transparent", replaceColor: background?.replaceColor, replaceImageUrl: background?.replaceImageUrl }
+      : background;
+
+    if (!hasCrop && !effectiveHasBackgroundEdit) {
       onApply(baseFile, undefined);
       onClose();
       return;
+    }
+
+    if (pendingPick) {
+      handleCommitOperation(pendingPick);
     }
 
     setIsProcessing(true);
@@ -112,19 +132,37 @@ export default function ImageEditorModal({ file, onApply, onClose }: ImageEditor
       // rect's (0–1 normalized) coordinate space is unaffected by doing it first.
       let working = baseFile;
 
-      if (hasBackgroundEdit) {
-        setStatusText("Removing background…");
-        working = await applyBackgroundRemoval(working, background!);
+      if (isGif) {
+        if (effectiveHasBackgroundEdit) {
+          // Cheap pre-check decode so the frame-count warning fires before the
+          // actually-slow per-frame OKLab work starts, not partway through it.
+          const { decodeGif } = await import("./gif/decodeGif");
+          const frameCount = (await decodeGif(working)).frames.length;
+          if (frameCount > LIMITS.GIF_BG_REMOVAL_WARN_FRAME_COUNT) {
+            toast.warn(`This GIF has ${frameCount} frames — background removal may take a while.`);
+          }
+          setStatusText("Removing background…");
+          const { applyEditsToGif } = await import("./gif/applyEditsToGif");
+          working = await applyEditsToGif(working, { background: effectiveBackground, crop: hasCrop ? rect : undefined }, (progress) =>
+            setStatusText(`Removing background… (${progress.current}/${progress.total})`)
+          );
+        } else if (hasCrop) {
+          setStatusText("Applying crop…");
+          working = await (await import("./gif/applyCropToGif")).applyCropToGif(working, rect);
+        }
+      } else {
+        if (effectiveHasBackgroundEdit) {
+          setStatusText("Removing background…");
+          working = await applyBackgroundRemoval(working, effectiveBackground!);
+        }
+        if (hasCrop) {
+          setStatusText("Applying crop…");
+          working = await applyCropToImage(working, rect);
+        }
       }
 
-      if (hasCrop) {
-        setStatusText("Applying crop…");
-        working = isGif
-          ? await (await import("./gif/applyCropToGif")).applyCropToGif(working, rect)
-          : await applyCropToImage(working, rect);
-      }
-
-      setReview({ file: working, url: URL.createObjectURL(working) });
+      const hasTransparency = effectiveHasBackgroundEdit && (effectiveBackground?.replaceMode ?? "transparent") === "transparent";
+      setReview({ file: working, url: URL.createObjectURL(working), hasTransparency });
     } finally {
       setIsProcessing(false);
       setStatusText(null);
@@ -161,10 +199,10 @@ export default function ImageEditorModal({ file, onApply, onClose }: ImageEditor
           {!baseImageUrl ? (
             <div className='text-sm text-muted-foreground'>Loading…</div>
           ) : review ? (
-            <BeforeAfterPreview beforeSrc={baseImageUrl} afterSrc={review.url} />
+            <BeforeAfterPreview beforeSrc={baseImageUrl} afterSrc={review.url} afterHasTransparency={review.hasTransparency} />
           ) : (
             <>
-              <EditorToolbar tool={activeTool} onChange={setActiveTool} showBackgroundTools={!isGif} />
+              <EditorToolbar tool={activeTool} onChange={setActiveTool} showBackgroundTools={true} />
 
               <EditorStage
                 imageUrl={baseImageUrl}
@@ -176,24 +214,24 @@ export default function ImageEditorModal({ file, onApply, onClose }: ImageEditor
                 brushRadius={brushRadius}
                 onCommit={handleCommitOperation}
                 onUndoLast={handleUndoLastOperation}
+                isGif={isGif}
+                onPendingPickChange={setPendingPick}
               />
 
-              {!isGif && (
-                <BackgroundOptions
-                  tool={activeTool}
-                  hasOperations={operations.length > 0}
-                  eraserMode={eraserMode}
-                  onEraserModeChange={setEraserMode}
-                  brushRadius={brushRadius}
-                  onBrushRadiusChange={setBrushRadius}
-                  replaceMode={background?.replaceMode ?? "transparent"}
-                  onReplaceModeChange={handleReplaceModeChange}
-                  replaceColor={background?.replaceColor}
-                  onReplaceColorChange={handleReplaceColorChange}
-                  replaceImageUrl={background?.replaceImageUrl}
-                  onReplaceImageFile={handleReplaceImageFile}
-                />
-              )}
+              <BackgroundOptions
+                tool={activeTool}
+                hasOperations={operations.length > 0}
+                eraserMode={eraserMode}
+                onEraserModeChange={setEraserMode}
+                brushRadius={brushRadius}
+                onBrushRadiusChange={setBrushRadius}
+                replaceMode={background?.replaceMode ?? "transparent"}
+                onReplaceModeChange={handleReplaceModeChange}
+                replaceColor={background?.replaceColor}
+                onReplaceColorChange={handleReplaceColorChange}
+                replaceImageUrl={background?.replaceImageUrl}
+                onReplaceImageFile={handleReplaceImageFile}
+              />
             </>
           )}
         </div>

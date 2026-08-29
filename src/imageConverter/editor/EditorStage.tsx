@@ -26,7 +26,8 @@ import { BackgroundOperation, BrushStroke, CropRect, InstantAlphaPick, InstantAl
 import { computeInstantAlphaMaskFromOklab, DEFAULT_TOLERANCE, OklabBuffers, precomputeOklab } from "./bgRemoval/instantAlpha";
 import { paintStroke, unionMasks } from "./bgRemoval/maskOps";
 import { computeMaskFromOperations } from "./bgRemoval/replayOperations";
-import { CropHandle, clampRect, isFullRect, moveRect, resizeRectByHandle } from "./cropMath";
+import { CHECKERBOARD_STYLE } from "./checkerboardStyle";
+import { clampRect, CropHandle, isFullRect, moveRect, resizeRectByHandle } from "./cropMath";
 import { usePointerDrag } from "./usePointerDrag";
 
 export type EditorTool = "crop" | "wand" | "eraser";
@@ -41,6 +42,11 @@ interface EditorStageProps {
   brushRadius: number;
   onCommit: (operation: BackgroundOperation) => void;
   onUndoLast: () => void;
+  isGif?: boolean;
+  /** Mirrors the in-progress wand pick up to the parent, so Apply can fold it into
+   * the operation log even if the user never pressed Backspace to commit it — see
+   * ImageEditorModal's handleApply. */
+  onPendingPickChange?: (pick: InstantAlphaPick | null) => void;
 }
 
 const SAFETY_MAX_DIMENSION = 2400;
@@ -113,7 +119,19 @@ function ResizeHandle({
   );
 }
 
-export default function EditorStage({ imageUrl, tool, rect, onRectChange, operations, eraserMode, brushRadius, onCommit, onUndoLast }: EditorStageProps) {
+export default function EditorStage({
+  imageUrl,
+  tool,
+  rect,
+  onRectChange,
+  operations,
+  eraserMode,
+  brushRadius,
+  onCommit,
+  onUndoLast,
+  isGif,
+  onPendingPickChange,
+}: EditorStageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const originalImageDataRef = useRef<ImageData | null>(null);
@@ -199,12 +217,14 @@ export default function EditorStage({ imageUrl, tool, rect, onRectChange, operat
 
   // Rebuild the committed baseline whenever the operation log changes (i.e. on
   // every commit/undo) — this is the O(width×height) replay, deliberately not
-  // run on every drag frame.
+  // run on every drag frame. Reuses the OKLab buffer precomputed once per image
+  // load (oklabRef) instead of recomputing it here.
   useEffect(() => {
     const canvas = canvasRef.current;
     const original = originalImageDataRef.current;
-    if (!imageReady || !canvas || !original) return;
-    committedMaskRef.current = computeMaskFromOperations(original.data, canvas.width, canvas.height, operations);
+    const oklab = oklabRef.current;
+    if (!imageReady || !canvas || !original || !oklab) return;
+    committedMaskRef.current = computeMaskFromOperations(oklab, canvas.width, canvas.height, operations);
     draw();
   }, [imageReady, operations, draw]);
 
@@ -218,6 +238,10 @@ export default function EditorStage({ imageUrl, tool, rect, onRectChange, operat
   useEffect(() => {
     setPendingPick(null);
   }, [tool]);
+
+  useEffect(() => {
+    onPendingPickChange?.(pendingPick);
+  }, [pendingPick, onPendingPickChange]);
 
   // Backspace/Delete commits the pending wand pick; Escape discards it.
   useEffect(() => {
@@ -329,13 +353,7 @@ export default function EditorStage({ imageUrl, tool, rect, onRectChange, operat
           onPointerUp={isCropTool ? undefined : handlePointerUp}
           onPointerCancel={isCropTool ? undefined : handlePointerUp}
           className='block max-w-full max-h-[52vh] rounded-lg touch-none'
-          style={{
-            cursor: isCropTool ? "default" : "crosshair",
-            backgroundImage:
-              "linear-gradient(45deg, #94a3b8 25%, transparent 25%), linear-gradient(-45deg, #94a3b8 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #94a3b8 75%), linear-gradient(-45deg, transparent 75%, #94a3b8 75%)",
-            backgroundSize: "16px 16px",
-            backgroundPosition: "0 0, 0 8px, 8px -8px, -8px 0px",
-          }}
+          style={{ cursor: isCropTool ? "default" : "crosshair", ...CHECKERBOARD_STYLE }}
         />
 
         {isCropTool ? (
@@ -415,6 +433,8 @@ export default function EditorStage({ imageUrl, tool, rect, onRectChange, operat
         ))}
 
       {tool === "eraser" && <p className='text-[11px] text-muted-foreground'>Paint to erase or restore</p>}
+
+      {isGif && tool !== "crop" && <p className='text-[11px] text-muted-foreground'>Applied the same way to every frame of the GIF.</p>}
 
       {tool !== "crop" && operations.length > 0 && (
         <button onClick={onUndoLast} className='text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors'>
