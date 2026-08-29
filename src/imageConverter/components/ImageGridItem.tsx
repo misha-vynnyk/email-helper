@@ -26,6 +26,7 @@ interface ImageGridItemProps {
   onRemove: () => void;
   onToggleSelection: () => void;
   onReplaceFile: (newFile: File, edit: ImageEditState | undefined) => void;
+  onAddFile: (file: File) => void;
   dragListeners?: SyntheticListenerMap;
 }
 
@@ -35,6 +36,7 @@ export default function ImageGridItem({
   onRemove,
   onToggleSelection,
   onReplaceFile,
+  onAddFile,
   dragListeners,
 }: ImageGridItemProps) {
   const [showComparison, setShowComparison] = useState(false);
@@ -271,6 +273,7 @@ export default function ImageGridItem({
           file={file}
           onClose={() => setShowEditor(false)}
           onApply={(newFile, edit) => onReplaceFile(newFile, edit)}
+          onAddFile={onAddFile}
         />
       )}
     </>

@@ -141,6 +141,57 @@ export function computeInstantAlphaMaskFromOklab(
   return mask;
 }
 
+function smoothstep(edge0: number, edge1: number, x: number): number {
+  if (edge0 >= edge1) return x < edge0 ? 0 : 1;
+  const t = clamp((x - edge0) / (edge1 - edge0), 0, 1);
+  return t * t * (3 - 2 * t);
+}
+
+/**
+ * Photoshop/Photopea "Color Range" style selection — every pixel is scored by its
+ * own color distance to the seed, with NO connectivity requirement (unlike
+ * computeInstantAlphaMaskFromOklab's flood fill). That's what lets it remove one
+ * color out of a gradient with a smooth transition: a gradient's per-pixel distance
+ * to the sampled color already varies continuously across the image, so the mask
+ * inherits that same smooth spatial gradient instead of a flood-filled blob's hard
+ * edge. Also selects every matching pixel in the image, connected or not.
+ *
+ * @param oklab Precomputed via precomputeOklab(rgba, width*height).
+ * @param seedX, seedY Pixel coordinates (not normalized) of the clicked point.
+ * @param fuzzinessPercent 0-100 — same slider/units as computeInstantAlphaMaskFromOklab's
+ *   tolerance, reinterpreted as the width of the smooth falloff instead of a hard cutoff.
+ * @returns Single-channel mask, length = width*height. 0 = removed (matches the seed
+ *   color), 255 = kept, with a continuous ramp in between — never a hard boundary.
+ */
+export function computeColorRangeMaskFromOklab(
+  oklab: OklabBuffers,
+  width: number,
+  height: number,
+  seedX: number,
+  seedY: number,
+  fuzzinessPercent: number
+): Uint8ClampedArray<ArrayBuffer> {
+  const { L, a, b } = oklab;
+  const fuzzinessDistance = (clamp(fuzzinessPercent, 0, 100) / 100) * MAX_OKLAB_DISTANCE;
+  const pixelCount = width * height;
+
+  const seedIndex = seedY * width + seedX;
+  const sl = L[seedIndex];
+  const sa = a[seedIndex];
+  const sb = b[seedIndex];
+
+  const mask = new Uint8ClampedArray(pixelCount);
+  for (let p = 0; p < pixelCount; p++) {
+    const dl = L[p] - sl;
+    const da = a[p] - sa;
+    const db = b[p] - sb;
+    const distance = Math.sqrt(dl * dl + da * da + db * db);
+    mask[p] = Math.round(255 * smoothstep(0, fuzzinessDistance, distance));
+  }
+
+  return mask;
+}
+
 /** Convenience wrapper for one-off callers (tests, the final full-res bake in
  * applyBackgroundRemoval.ts via replayOperations.ts) that don't already have a
  * precomputed OklabBuffers to reuse. */

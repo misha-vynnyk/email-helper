@@ -11,7 +11,7 @@
  * subject and vice versa.
  */
 
-import { Crop, RotateCcw, X } from "lucide-react";
+import { Crop, RotateCcw, Scissors, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 
@@ -25,16 +25,61 @@ import { applyBackgroundRemoval } from "./bgRemoval/applyBackgroundRemoval";
 import { defaultCropRect, isFullRect } from "./cropMath";
 import EditorStage, { EditorTool } from "./EditorStage";
 import EditorToolbar from "./EditorToolbar";
+import { withSliceSuffix } from "./sliceFilename";
 
 const DEFAULT_BRUSH_RADIUS = 0.03;
+
+/**
+ * Shared by handleApply (replace the original, behind a review step) and
+ * handleSaveSlice (export an additional file, no review) so the isGif/
+ * background/crop branching — which format-specific module to dynamically
+ * import, and in what order — exists in exactly one place.
+ */
+async function bakeEdit(source: File, isGif: boolean, crop: CropRect | undefined, background: BackgroundEditState | undefined, onStatus: (text: string) => void): Promise<File> {
+  const hasCrop = !!crop;
+  const hasBackgroundEdit = !!background && background.operations.length > 0;
+  let working = source;
+
+  if (isGif) {
+    if (hasBackgroundEdit) {
+      // Cheap pre-check decode so the frame-count warning fires before the
+      // actually-slow per-frame OKLab work starts, not partway through it.
+      const { decodeGif } = await import("./gif/decodeGif");
+      const frameCount = (await decodeGif(working)).frames.length;
+      if (frameCount > LIMITS.GIF_BG_REMOVAL_WARN_FRAME_COUNT) {
+        toast.warn(`This GIF has ${frameCount} frames — background removal may take a while.`);
+      }
+      onStatus("Removing background…");
+      const { applyEditsToGif } = await import("./gif/applyEditsToGif");
+      working = await applyEditsToGif(working, { background, crop }, (progress) => onStatus(`Removing background… (${progress.current}/${progress.total})`));
+    } else if (hasCrop) {
+      onStatus("Applying crop…");
+      working = await (await import("./gif/applyCropToGif")).applyCropToGif(working, crop!);
+    }
+  } else {
+    if (hasBackgroundEdit) {
+      onStatus("Removing background…");
+      working = await applyBackgroundRemoval(working, background!);
+    }
+    if (hasCrop) {
+      onStatus("Applying crop…");
+      working = await applyCropToImage(working, crop!);
+    }
+  }
+
+  return working;
+}
 
 interface ImageEditorModalProps {
   file: ImageFile;
   onApply: (newFile: File, edit: ImageEditState | undefined) => void;
   onClose: () => void;
+  /** Adds a brand-new file to the grid, separate from `file` — used by "Save
+   * slice" to export a cropped region without replacing the source being edited. */
+  onAddFile?: (file: File) => void;
 }
 
-export default function ImageEditorModal({ file, onApply, onClose }: ImageEditorModalProps) {
+export default function ImageEditorModal({ file, onApply, onClose, onAddFile }: ImageEditorModalProps) {
   const baseFile = file.edit?.originalFile ?? file.file;
 
   // Object URLs must be created AND revoked inside the same effect instance — React
@@ -61,6 +106,11 @@ export default function ImageEditorModal({ file, onApply, onClose }: ImageEditor
   // operations stays empty, so both the crop and background-edit checks below see
   // "nothing to do" and the modal just closes unchanged.
   const [pendingPick, setPendingPick] = useState<InstantAlphaPick | null>(null);
+  // Numbers successive "Save slice" exports from this editing session distinctly —
+  // see sliceFilename.ts.
+  const sliceCountRef = useRef(0);
+
+  const hasCropSelection = !isFullRect(rect);
 
   // Wand/Eraser work on GIF too (Phase 4): picks/strokes are captured against the
   // poster frame EditorStage shows (frame 0) and replayed identically across every
@@ -105,18 +155,22 @@ export default function ImageEditorModal({ file, onApply, onClose }: ImageEditor
     }
   };
 
-  const handleApply = async () => {
-    const hasCrop = !isFullRect(rect);
-
-    // Fold in a not-yet-committed wand pick so clicking the background then Apply
-    // (without also pressing Backspace) still does something — see the state comment.
+  /** Folds a not-yet-committed wand pick in so clicking the background then acting
+   * (Apply or Save slice) without also pressing Backspace still does something —
+   * see the pendingPick state comment. */
+  const resolveEffectiveBackground = (): { background: BackgroundEditState | undefined; hasBackgroundEdit: boolean } => {
     const effectiveOperations = pendingPick ? [...operations, pendingPick] : operations;
-    const effectiveHasBackgroundEdit = effectiveOperations.length > 0;
-    const effectiveBackground: BackgroundEditState | undefined = effectiveHasBackgroundEdit
+    const hasBackgroundEdit = effectiveOperations.length > 0;
+    const effectiveBackground: BackgroundEditState | undefined = hasBackgroundEdit
       ? { operations: effectiveOperations, replaceMode: background?.replaceMode ?? "transparent", replaceColor: background?.replaceColor, replaceImageUrl: background?.replaceImageUrl }
       : background;
+    return { background: effectiveBackground, hasBackgroundEdit };
+  };
 
-    if (!hasCrop && !effectiveHasBackgroundEdit) {
+  const handleApply = async () => {
+    const { background: effectiveBackground, hasBackgroundEdit: effectiveHasBackgroundEdit } = resolveEffectiveBackground();
+
+    if (!hasCropSelection && !effectiveHasBackgroundEdit) {
       onApply(baseFile, undefined);
       onClose();
       return;
@@ -128,41 +182,37 @@ export default function ImageEditorModal({ file, onApply, onClose }: ImageEditor
 
     setIsProcessing(true);
     try {
-      // Background removal runs first and never changes dimensions, so the crop
-      // rect's (0–1 normalized) coordinate space is unaffected by doing it first.
-      let working = baseFile;
-
-      if (isGif) {
-        if (effectiveHasBackgroundEdit) {
-          // Cheap pre-check decode so the frame-count warning fires before the
-          // actually-slow per-frame OKLab work starts, not partway through it.
-          const { decodeGif } = await import("./gif/decodeGif");
-          const frameCount = (await decodeGif(working)).frames.length;
-          if (frameCount > LIMITS.GIF_BG_REMOVAL_WARN_FRAME_COUNT) {
-            toast.warn(`This GIF has ${frameCount} frames — background removal may take a while.`);
-          }
-          setStatusText("Removing background…");
-          const { applyEditsToGif } = await import("./gif/applyEditsToGif");
-          working = await applyEditsToGif(working, { background: effectiveBackground, crop: hasCrop ? rect : undefined }, (progress) =>
-            setStatusText(`Removing background… (${progress.current}/${progress.total})`)
-          );
-        } else if (hasCrop) {
-          setStatusText("Applying crop…");
-          working = await (await import("./gif/applyCropToGif")).applyCropToGif(working, rect);
-        }
-      } else {
-        if (effectiveHasBackgroundEdit) {
-          setStatusText("Removing background…");
-          working = await applyBackgroundRemoval(working, effectiveBackground!);
-        }
-        if (hasCrop) {
-          setStatusText("Applying crop…");
-          working = await applyCropToImage(working, rect);
-        }
-      }
-
+      const working = await bakeEdit(baseFile, isGif, hasCropSelection ? rect : undefined, effectiveBackground, setStatusText);
       const hasTransparency = effectiveHasBackgroundEdit && (effectiveBackground?.replaceMode ?? "transparent") === "transparent";
       setReview({ file: working, url: URL.createObjectURL(working), hasTransparency });
+    } finally {
+      setIsProcessing(false);
+      setStatusText(null);
+    }
+  };
+
+  /** Exports the current crop rect (plus whatever background edit is active) as a
+   * brand-new file, without touching the source being edited or closing the
+   * modal — lets the user cut several regions out of the same image in one sitting,
+   * Photoshop-slice-tool style. Skips the before/after review step: unlike Apply,
+   * this never overwrites anything, so the destructive-action gate doesn't apply,
+   * and the new grid card gets its own compare view for free. */
+  const handleSaveSlice = async () => {
+    if (!hasCropSelection || !onAddFile) return;
+
+    const { background: effectiveBackground } = resolveEffectiveBackground();
+    if (pendingPick) {
+      handleCommitOperation(pendingPick);
+    }
+
+    setIsProcessing(true);
+    try {
+      const baked = await bakeEdit(baseFile, isGif, rect, effectiveBackground, setStatusText);
+      sliceCountRef.current += 1;
+      const sliceFile = new File([baked], withSliceSuffix(baseFile.name, sliceCountRef.current), { type: baked.type });
+      onAddFile(sliceFile);
+      toast.success(`Saved ${sliceFile.name}`);
+      setRect(defaultCropRect());
     } finally {
       setIsProcessing(false);
       setStatusText(null);
@@ -207,6 +257,7 @@ export default function ImageEditorModal({ file, onApply, onClose }: ImageEditor
               <EditorStage
                 imageUrl={baseImageUrl}
                 tool={activeTool}
+                onToolChange={setActiveTool}
                 rect={rect}
                 onRectChange={setRect}
                 operations={operations}
@@ -252,14 +303,27 @@ export default function ImageEditorModal({ file, onApply, onClose }: ImageEditor
                 <RotateCcw size={14} />
                 Reset
               </button>
-              <button
-                onClick={handleApply}
-                disabled={isProcessing}
-                className='flex items-center gap-2 bg-primary hover:bg-primary/90 disabled:opacity-60 text-primary-foreground font-semibold text-sm px-5 py-2 rounded-xl transition-all active:scale-95'
-              >
-                <Crop size={14} />
-                {isProcessing ? statusText ?? "Applying…" : "Apply"}
-              </button>
+              <div className='flex items-center gap-2'>
+                {onAddFile && (
+                  <button
+                    onClick={handleSaveSlice}
+                    disabled={isProcessing || !hasCropSelection}
+                    title='Export the current crop as a new file and keep editing this one'
+                    className='flex items-center gap-1.5 text-sm font-semibold text-muted-foreground enabled:hover:text-foreground disabled:opacity-40 px-3 py-2 transition-colors'
+                  >
+                    <Scissors size={14} />
+                    Save slice
+                  </button>
+                )}
+                <button
+                  onClick={handleApply}
+                  disabled={isProcessing}
+                  className='flex items-center gap-2 bg-primary hover:bg-primary/90 disabled:opacity-60 text-primary-foreground font-semibold text-sm px-5 py-2 rounded-xl transition-all active:scale-95'
+                >
+                  <Crop size={14} />
+                  {isProcessing ? statusText ?? "Applying…" : "Apply"}
+                </button>
+              </div>
             </>
           )}
         </div>

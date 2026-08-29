@@ -15,6 +15,7 @@ interface SortableImageItemProps {
   onRemove: () => void;
   onToggleSelection: () => void;
   onReplaceFile: (newFile: File, edit: ImageEditState | undefined) => void;
+  onAddFile: (file: File) => void;
 }
 
 export default function SortableImageItem({
@@ -23,6 +24,7 @@ export default function SortableImageItem({
   onRemove,
   onToggleSelection,
   onReplaceFile,
+  onAddFile,
 }: SortableImageItemProps) {
   const {
     attributes,
@@ -52,6 +54,7 @@ export default function SortableImageItem({
         onRemove={onRemove}
         onToggleSelection={onToggleSelection}
         onReplaceFile={onReplaceFile}
+        onAddFile={onAddFile}
         dragListeners={listeners}
       />
     </div>

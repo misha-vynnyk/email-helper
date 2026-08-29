@@ -54,6 +54,12 @@ export interface InstantAlphaPick {
   type: "pick";
   seed: InstantAlphaSeed;
   tolerance: number; // 0-100
+  /** true (or omitted, for existing picks) = flood-fill from the seed pixel only
+   * (current Wand behavior). false = Photoshop/Photopea "Color Range" style: every
+   * pixel in the image is scored by color distance to the seed, independent of
+   * connectivity — the only way a gradient background fades out smoothly instead of
+   * being cut as a hard-edged blob. See instantAlpha.ts's two mask functions. */
+  contiguous?: boolean;
 }
 
 /** A committed manual brush stroke — touches up spots the wand missed

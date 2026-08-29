@@ -10,7 +10,7 @@
  */
 
 import { BackgroundOperation } from "../../types";
-import { computeInstantAlphaMaskFromOklab, OklabBuffers } from "./instantAlpha";
+import { computeColorRangeMaskFromOklab, computeInstantAlphaMaskFromOklab, OklabBuffers } from "./instantAlpha";
 import { paintStroke, unionMasks } from "./maskOps";
 
 function clamp(value: number, min: number, max: number): number {
@@ -29,7 +29,9 @@ export function computeMaskFromOperations(oklab: OklabBuffers, width: number, he
     if (op.type === "pick") {
       const seedX = clamp(Math.round(op.seed.x * width), 0, width - 1);
       const seedY = clamp(Math.round(op.seed.y * height), 0, height - 1);
-      const pickMask = computeInstantAlphaMaskFromOklab(oklab, width, height, seedX, seedY, op.tolerance);
+      const pickMask = (op.contiguous ?? true)
+        ? computeInstantAlphaMaskFromOklab(oklab, width, height, seedX, seedY, op.tolerance)
+        : computeColorRangeMaskFromOklab(oklab, width, height, seedX, seedY, op.tolerance);
       mask = unionMasks([mask, pickMask]);
     } else {
       mask = paintStroke(mask, width, height, op);

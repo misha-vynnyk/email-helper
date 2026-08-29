@@ -1,4 +1,4 @@
-import { computeInstantAlphaMask } from "../instantAlpha";
+import { computeColorRangeMaskFromOklab, computeInstantAlphaMask, precomputeOklab } from "../instantAlpha";
 
 /** Builds a flat width×height RGBA buffer, then overwrites one region with a
  * different color — a minimal "background + foreground" fixture. */
@@ -84,5 +84,58 @@ describe("computeInstantAlphaMask", () => {
     const squareCornerIndex = 3 * width + 3; // the black square's own top-left pixel, bordering removed white
     expect(mask[squareCornerIndex]).toBeGreaterThan(0);
     expect(mask[squareCornerIndex]).toBeLessThan(255);
+  });
+});
+
+describe("computeColorRangeMaskFromOklab", () => {
+  it("removes every matching-color pixel regardless of connectivity (Photoshop 'Contiguous' unchecked)", () => {
+    // Same split-by-a-wall fixture as the flood-fill test above, but Color Range
+    // has no connectivity requirement — both white sides must be removed.
+    const width = 10;
+    const height = 1;
+    const buf = new Uint8ClampedArray(width * 4).fill(255);
+    for (let x = 0; x < width; x++) buf[x * 4 + 3] = 255;
+    buf[5 * 4] = 0;
+    buf[5 * 4 + 1] = 0;
+    buf[5 * 4 + 2] = 0;
+
+    const oklab = precomputeOklab(buf, width * height);
+    const mask = computeColorRangeMaskFromOklab(oklab, width, height, 0, 0, 5);
+
+    expect(mask[0]).toBe(0); // seed side removed
+    expect(mask[4]).toBe(0); // still connected, same side
+    expect(mask[5]).toBe(255); // the wall pixel itself — far in color, stays
+    expect(mask[9]).toBe(0); // other side of the wall — same color, NOT unreachable this time
+  });
+
+  it("fades smoothly across a gradient instead of cutting a hard-edged blob", () => {
+    const width = 11;
+    const height = 1;
+    const buf = new Uint8ClampedArray(width * height * 4);
+    for (let x = 0; x < width; x++) {
+      const t = x / (width - 1);
+      const v = Math.round(t * 255);
+      buf[x * 4] = v;
+      buf[x * 4 + 1] = v;
+      buf[x * 4 + 2] = v;
+      buf[x * 4 + 3] = 255;
+    }
+
+    const oklab = precomputeOklab(buf, width * height);
+    const mask = computeColorRangeMaskFromOklab(oklab, width, height, 0, 0, 50);
+
+    expect(mask[0]).toBe(0); // the sampled pixel itself
+    expect(mask[width - 1]).toBe(255); // far enough along the gradient to be fully outside the fuzziness range
+
+    // Monotonic non-decreasing as we move away from the seed color — a smooth
+    // ramp shaped like the gradient itself, not a step function.
+    for (let x = 1; x < width; x++) {
+      expect(mask[x]).toBeGreaterThanOrEqual(mask[x - 1]);
+    }
+
+    // At least one interior pixel lands strictly between removed and kept —
+    // proof the transition isn't a hard 0/255 cutoff.
+    const hasSoftValue = Array.from(mask).some((v) => v > 0 && v < 255);
+    expect(hasSoftValue).toBe(true);
   });
 });
