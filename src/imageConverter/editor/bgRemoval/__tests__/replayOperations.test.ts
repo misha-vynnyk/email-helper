@@ -65,6 +65,26 @@ describe("computeMaskFromOperations", () => {
     expect(mask[5]).toBe(0);
   });
 
+  it("contiguous: false dispatches to the non-flood-fill Color Range mask", () => {
+    // White on both sides of a black wall — flood fill (contiguous, the default)
+    // can't cross it, but Color Range (contiguous: false) has no connectivity
+    // requirement and removes both sides.
+    const width = 10;
+    const height = 1;
+    const buf = new Uint8ClampedArray(width * 4).fill(255);
+    for (let x = 0; x < width; x++) buf[x * 4 + 3] = 255;
+    buf[5 * 4] = 0;
+    buf[5 * 4 + 1] = 0;
+    buf[5 * 4 + 2] = 0;
+    const oklab = precomputeOklab(buf, width * height);
+
+    const contiguous = computeMaskFromOperations(oklab, width, height, [{ type: "pick", seed: { x: 0, y: 0 }, tolerance: 5 }]);
+    const global = computeMaskFromOperations(oklab, width, height, [{ type: "pick", seed: { x: 0, y: 0 }, tolerance: 5, contiguous: false }]);
+
+    expect(contiguous[9]).toBe(255); // default behavior unchanged: far side unreachable
+    expect(global[9]).toBe(0); // contiguous: false reaches it anyway
+  });
+
   it("reusing the same precomputed OklabBuffers across two calls yields identical masks (buffers aren't mutated)", () => {
     const width = 10;
     const height = 1;

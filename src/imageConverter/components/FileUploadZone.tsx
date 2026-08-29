@@ -136,6 +136,7 @@ export default function FileUploadZone({ files, addFiles, removeFile, replaceFil
                     onRemove={() => removeFile(file.id)}
                     onToggleSelection={() => toggleSelection(file.id)}
                     onReplaceFile={(newFile, edit) => replaceFileSource(file.id, newFile, edit)}
+                    onAddFile={(newFile) => addFiles([newFile])}
                   />
                 ))}
 

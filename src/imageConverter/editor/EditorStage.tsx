@@ -20,10 +20,11 @@
  * unchanged from the former CropCanvas — see cropMath.ts and bgRemoval/instantAlpha.ts.
  */
 
+import { Eraser, Wand2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { BackgroundOperation, BrushStroke, CropRect, InstantAlphaPick, InstantAlphaSeed } from "../types";
-import { computeInstantAlphaMaskFromOklab, DEFAULT_TOLERANCE, OklabBuffers, precomputeOklab } from "./bgRemoval/instantAlpha";
+import { computeColorRangeMaskFromOklab, computeInstantAlphaMaskFromOklab, DEFAULT_TOLERANCE, OklabBuffers, precomputeOklab } from "./bgRemoval/instantAlpha";
 import { paintStroke, unionMasks } from "./bgRemoval/maskOps";
 import { computeMaskFromOperations } from "./bgRemoval/replayOperations";
 import { CHECKERBOARD_STYLE } from "./checkerboardStyle";
@@ -35,6 +36,7 @@ export type EditorTool = "crop" | "wand" | "eraser";
 interface EditorStageProps {
   imageUrl: string;
   tool: EditorTool;
+  onToolChange: (tool: EditorTool) => void;
   rect: CropRect;
   onRectChange: (rect: CropRect) => void;
   operations: BackgroundOperation[];
@@ -122,6 +124,7 @@ function ResizeHandle({
 export default function EditorStage({
   imageUrl,
   tool,
+  onToolChange,
   rect,
   onRectChange,
   operations,
@@ -139,11 +142,27 @@ export default function EditorStage({
   const committedMaskRef = useRef<Uint8ClampedArray | null>(null);
   const [imageReady, setImageReady] = useState(false);
   const [pendingPick, setPendingPick] = useState<InstantAlphaPick | null>(null);
+  // Photoshop/Photopea calls this the "Contiguous" checkbox on the Magic Wand —
+  // unchecked, a click selects every matching-color pixel in the image (Color
+  // Range), not just the flood-filled region touching the seed. Persists across
+  // picks/tool switches like brushRadius does, since it's a mode, not per-pick state.
+  const [contiguousMode, setContiguousMode] = useState(true);
 
   const activeWandDragRef = useRef<{ seed: InstantAlphaSeed; startClientX: number; startClientY: number; tolerance: number } | null>(null);
   const strokePointsRef = useRef<InstantAlphaSeed[]>([]);
   const rafScheduledRef = useRef(false);
   const rectBaselineRef = useRef(rect);
+  const pendingPickRef = useRef(pendingPick);
+  pendingPickRef.current = pendingPick;
+  const prevToolRef = useRef(tool);
+  // Read via ref, not a reactive dependency: onCommit (ImageEditorModal's
+  // handleCommitOperation) is a fresh function identity on every parent render,
+  // not just on real tool changes. Depending on it directly re-ran the effect below
+  // on every pendingPick update too (pendingPick change → onPendingPickChange →
+  // parent re-render → new onCommit) — its unconditional trailing setPendingPick(null)
+  // was wiping out a pick the instant pointerUp set it.
+  const onCommitRef = useRef(onCommit);
+  onCommitRef.current = onCommit;
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -161,7 +180,9 @@ export default function EditorStage({
       if (live) {
         const seedX = clamp(Math.round(live.seed.x * canvas.width), 0, canvas.width - 1);
         const seedY = clamp(Math.round(live.seed.y * canvas.height), 0, canvas.height - 1);
-        const pendingMask = computeInstantAlphaMaskFromOklab(oklab, canvas.width, canvas.height, seedX, seedY, live.tolerance);
+        const pendingMask = contiguousMode
+          ? computeInstantAlphaMaskFromOklab(oklab, canvas.width, canvas.height, seedX, seedY, live.tolerance)
+          : computeColorRangeMaskFromOklab(oklab, canvas.width, canvas.height, seedX, seedY, live.tolerance);
         displayMask = unionMasks([committed, pendingMask]);
       }
     } else if (tool === "eraser" && strokePointsRef.current.length > 0) {
@@ -176,7 +197,7 @@ export default function EditorStage({
     const preview = new Uint8ClampedArray(original.data);
     for (let p = 0; p < displayMask.length; p++) preview[p * 4 + 3] = displayMask[p];
     ctx.putImageData(new ImageData(preview, canvas.width, canvas.height), 0, 0);
-  }, [tool, pendingPick, eraserMode, brushRadius]);
+  }, [tool, pendingPick, eraserMode, brushRadius, contiguousMode]);
 
   const scheduleDraw = useCallback(() => {
     if (rafScheduledRef.current) return;
@@ -234,14 +255,29 @@ export default function EditorStage({
     if (imageReady) draw();
   }, [imageReady, pendingPick, draw]);
 
-  // Discard an in-progress pick when leaving the Wand tool.
+  // Auto-commit an in-progress pick when leaving the Wand tool, instead of discarding
+  // it — switching to Eraser to touch up the very selection you just made used to
+  // silently wipe the live preview (same failure mode Apply had before its own
+  // auto-commit fix — see ImageEditorModal's resolveEffectiveBackground). Compares
+  // against the tool the LAST run of this effect saw, so it only fires on an actual
+  // wand→other transition, never on mount or on unrelated re-renders.
   useEffect(() => {
+    if (prevToolRef.current === "wand" && tool !== "wand" && pendingPickRef.current) {
+      onCommitRef.current(pendingPickRef.current);
+    }
+    prevToolRef.current = tool;
     setPendingPick(null);
   }, [tool]);
 
   useEffect(() => {
     onPendingPickChange?.(pendingPick);
   }, [pendingPick, onPendingPickChange]);
+
+  // Keep a pending pick's stored mode in sync if the Contiguous/Global toggle changes
+  // while it's still uncommitted, so Backspace commits whatever the toggle currently shows.
+  useEffect(() => {
+    setPendingPick((prev) => (prev ? { ...prev, contiguous: contiguousMode } : prev));
+  }, [contiguousMode]);
 
   // Backspace/Delete commits the pending wand pick; Escape discards it.
   useEffect(() => {
@@ -283,7 +319,7 @@ export default function EditorStage({
 
     if (tool === "wand") {
       activeWandDragRef.current = { seed, startClientX: e.clientX, startClientY: e.clientY, tolerance: DEFAULT_TOLERANCE };
-      setPendingPick({ type: "pick", seed, tolerance: DEFAULT_TOLERANCE });
+      setPendingPick({ type: "pick", seed, tolerance: DEFAULT_TOLERANCE, contiguous: contiguousMode });
     } else {
       strokePointsRef.current = [seed];
     }
@@ -311,7 +347,7 @@ export default function EditorStage({
   const handlePointerUp = () => {
     if (tool === "wand") {
       const active = activeWandDragRef.current;
-      if (active) setPendingPick({ type: "pick", seed: active.seed, tolerance: active.tolerance });
+      if (active) setPendingPick({ type: "pick", seed: active.seed, tolerance: active.tolerance, contiguous: contiguousMode });
       activeWandDragRef.current = null;
     } else if (strokePointsRef.current.length > 0) {
       const stroke: BrushStroke = { type: "stroke", points: strokePointsRef.current, radius: brushRadius, mode: eraserMode };
@@ -407,30 +443,76 @@ export default function EditorStage({
         )}
       </div>
 
-      {tool === "wand" &&
-        (pendingPick ? (
-          <div className='w-full max-w-sm flex flex-col gap-1.5'>
-            <label className='flex items-center gap-2 text-xs text-muted-foreground'>
-              <span className='shrink-0'>Tolerance</span>
-              <input
-                type='range'
-                min={0}
-                max={100}
-                step={0.5}
-                value={pendingPick.tolerance}
-                onChange={(e) => setPendingPick((prev) => (prev ? { ...prev, tolerance: Number(e.target.value) } : prev))}
-                className='flex-1 accent-primary'
-              />
-              <span className='shrink-0 tabular-nums w-9 text-right'>{Math.round(pendingPick.tolerance)}%</span>
-            </label>
-            <p className='text-[11px] text-muted-foreground text-center'>
-              Press <kbd className='px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700'>⌫ Backspace</kbd> to remove,{" "}
-              <kbd className='px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700'>Esc</kbd> to cancel
-            </p>
+      {(tool === "wand" || tool === "eraser") && (
+        // Quick round-trip between Wand and Eraser without reaching for the main
+        // toolbar — press to hop into the other tool, do the touch-up, press again
+        // to hop back. Just a shortcut onto the same `activeTool` state the toolbar
+        // already controls, so nothing about the underlying tool switch changes —
+        // the auto-commit-on-switch fix above still applies here too.
+        <button
+          onClick={() => onToolChange(tool === "wand" ? "eraser" : "wand")}
+          className='flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-colors bg-slate-50 dark:bg-slate-800 text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-700'
+        >
+          {tool === "wand" ? (
+            <>
+              <Eraser size={12} />
+              Quick erase
+            </>
+          ) : (
+            <>
+              <Wand2 size={12} />
+              Back to Wand
+            </>
+          )}
+        </button>
+      )}
+
+      {tool === "wand" && (
+        <div className='w-full max-w-sm flex flex-col gap-1.5'>
+          <div className='flex gap-1.5'>
+            {([
+              { value: true, label: "Contiguous" },
+              { value: false, label: "Global (Color Range)" },
+            ] as const).map(({ value, label }) => (
+              <button
+                key={label}
+                onClick={() => setContiguousMode(value)}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  contiguousMode === value ? "bg-primary text-primary-foreground" : "bg-slate-50 dark:bg-slate-800 text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
-        ) : (
-          <p className='text-[11px] text-muted-foreground'>Click the background, drag outward to grow the selection</p>
-        ))}
+
+          {pendingPick ? (
+            <>
+              <label className='flex items-center gap-2 text-xs text-muted-foreground'>
+                <span className='shrink-0'>{contiguousMode ? "Tolerance" : "Fuzziness"}</span>
+                <input
+                  type='range'
+                  min={0}
+                  max={100}
+                  step={0.5}
+                  value={pendingPick.tolerance}
+                  onChange={(e) => setPendingPick((prev) => (prev ? { ...prev, tolerance: Number(e.target.value) } : prev))}
+                  className='flex-1 accent-primary'
+                />
+                <span className='shrink-0 tabular-nums w-9 text-right'>{Math.round(pendingPick.tolerance)}%</span>
+              </label>
+              <p className='text-[11px] text-muted-foreground text-center'>
+                Press <kbd className='px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700'>⌫ Backspace</kbd> to remove,{" "}
+                <kbd className='px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700'>Esc</kbd> to cancel
+              </p>
+            </>
+          ) : (
+            <p className='text-[11px] text-muted-foreground text-center'>
+              {contiguousMode ? "Click the background, drag outward to grow the selection" : "Click a color — every matching pixel in the image is selected, gradients fade smoothly"}
+            </p>
+          )}
+        </div>
+      )}
 
       {tool === "eraser" && <p className='text-[11px] text-muted-foreground'>Paint to erase or restore</p>}
 
