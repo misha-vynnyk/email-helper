@@ -10,21 +10,26 @@
  */
 
 import { BackgroundOperation } from "../../types";
-import { computeInstantAlphaMask } from "./instantAlpha";
+import { computeInstantAlphaMaskFromOklab, OklabBuffers } from "./instantAlpha";
 import { paintStroke, unionMasks } from "./maskOps";
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
-export function computeMaskFromOperations(rgba: Uint8ClampedArray, width: number, height: number, operations: BackgroundOperation[]): Uint8ClampedArray {
+/**
+ * @param oklab Precomputed via precomputeOklab(rgba, width*height) — callers with
+ *   multiple picks in their operations log should precompute this ONCE and pass it
+ *   in, rather than each pick recomputing OKLab from scratch.
+ */
+export function computeMaskFromOperations(oklab: OklabBuffers, width: number, height: number, operations: BackgroundOperation[]): Uint8ClampedArray {
   let mask: Uint8ClampedArray = new Uint8ClampedArray(width * height).fill(255);
 
   for (const op of operations) {
     if (op.type === "pick") {
       const seedX = clamp(Math.round(op.seed.x * width), 0, width - 1);
       const seedY = clamp(Math.round(op.seed.y * height), 0, height - 1);
-      const pickMask = computeInstantAlphaMask(rgba, width, height, seedX, seedY, op.tolerance);
+      const pickMask = computeInstantAlphaMaskFromOklab(oklab, width, height, seedX, seedY, op.tolerance);
       mask = unionMasks([mask, pickMask]);
     } else {
       mask = paintStroke(mask, width, height, op);
