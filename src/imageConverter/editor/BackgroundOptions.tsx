@@ -48,7 +48,7 @@ export default function BackgroundOptions({
   if (tool !== "eraser" && !hasOperations) return null;
 
   return (
-    <div className='w-full max-w-sm mx-auto flex flex-col gap-2.5'>
+    <div className='w-full flex flex-col gap-2.5'>
       {tool === "eraser" && (
         <div className='flex flex-col gap-2'>
           <div className='flex gap-1.5'>

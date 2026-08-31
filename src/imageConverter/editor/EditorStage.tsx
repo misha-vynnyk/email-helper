@@ -18,9 +18,15 @@
  * Background painting logic (OKLab wand flood-fill + eraser brush + keyboard commit/
  * undo) is unchanged from the former InstantAlphaCanvas; crop-rect math/handles are
  * unchanged from the former CropCanvas — see cropMath.ts and bgRemoval/instantAlpha.ts.
+ *
+ * Renders ONLY the canvas + crop overlay — the Wand/Eraser controls that used to sit
+ * in a strip below the canvas (Contiguous/Global, tolerance, replace-mode, undo, the
+ * Wand<->Eraser quick-swap) now live in the sibling EditorSidePanel to its left, so
+ * `pendingPick`/`contiguousMode` are controlled props from the parent (ImageEditorModal)
+ * instead of local state — the panel needs to read and mutate them too (e.g. the
+ * tolerance slider), not just this canvas's own pointer handlers.
  */
 
-import { Eraser, Wand2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { BackgroundOperation, BrushStroke, CropRect, InstantAlphaPick, InstantAlphaSeed } from "../types";
@@ -36,7 +42,6 @@ export type EditorTool = "crop" | "wand" | "eraser";
 interface EditorStageProps {
   imageUrl: string;
   tool: EditorTool;
-  onToolChange: (tool: EditorTool) => void;
   rect: CropRect;
   onRectChange: (rect: CropRect) => void;
   operations: BackgroundOperation[];
@@ -44,11 +49,16 @@ interface EditorStageProps {
   brushRadius: number;
   onCommit: (operation: BackgroundOperation) => void;
   onUndoLast: () => void;
-  isGif?: boolean;
-  /** Mirrors the in-progress wand pick up to the parent, so Apply can fold it into
-   * the operation log even if the user never pressed Backspace to commit it — see
-   * ImageEditorModal's handleApply. */
-  onPendingPickChange?: (pick: InstantAlphaPick | null) => void;
+  /** Persists across picks/tool switches (Photoshop's "Contiguous" checkbox) —
+   * lifted to the parent (EditorSidePanel owns the toggle UI) since this canvas
+   * only needs to read it, not change it. */
+  contiguousMode: boolean;
+  /** The in-progress, not-yet-committed wand pick. Lifted to the parent (rather than
+   * local state) so EditorSidePanel's tolerance slider can edit it, and so Apply can
+   * fold it into the operation log even if the user never pressed Backspace — see
+   * ImageEditorModal's handleApply/resolveEffectiveBackground. */
+  pendingPick: InstantAlphaPick | null;
+  onPendingPickChange: (pick: InstantAlphaPick | null) => void;
 }
 
 const SAFETY_MAX_DIMENSION = 2400;
@@ -124,7 +134,6 @@ function ResizeHandle({
 export default function EditorStage({
   imageUrl,
   tool,
-  onToolChange,
   rect,
   onRectChange,
   operations,
@@ -132,21 +141,20 @@ export default function EditorStage({
   brushRadius,
   onCommit,
   onUndoLast,
-  isGif,
+  contiguousMode,
+  pendingPick,
   onPendingPickChange,
 }: EditorStageProps) {
+  const viewportRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const originalImageDataRef = useRef<ImageData | null>(null);
   const oklabRef = useRef<OklabBuffers | null>(null);
   const committedMaskRef = useRef<Uint8ClampedArray | null>(null);
   const [imageReady, setImageReady] = useState(false);
-  const [pendingPick, setPendingPick] = useState<InstantAlphaPick | null>(null);
-  // Photoshop/Photopea calls this the "Contiguous" checkbox on the Magic Wand —
-  // unchecked, a click selects every matching-color pixel in the image (Color
-  // Range), not just the flood-filled region touching the seed. Persists across
-  // picks/tool switches like brushRadius does, since it's a mode, not per-pick state.
-  const [contiguousMode, setContiguousMode] = useState(true);
+  const [zoom, setZoom] = useState(1);
+  const zoomRef = useRef(1);
+  zoomRef.current = zoom;
 
   const activeWandDragRef = useRef<{ seed: InstantAlphaSeed; startClientX: number; startClientY: number; tolerance: number } | null>(null);
   const strokePointsRef = useRef<InstantAlphaSeed[]>([]);
@@ -213,7 +221,9 @@ export default function EditorStage({
   useEffect(() => {
     let cancelled = false;
     setImageReady(false);
-    setPendingPick(null);
+    onPendingPickChange(null);
+    zoomRef.current = 1;
+    setZoom(1);
     const img = new Image();
     img.onload = () => {
       if (cancelled) return;
@@ -266,17 +276,15 @@ export default function EditorStage({
       onCommitRef.current(pendingPickRef.current);
     }
     prevToolRef.current = tool;
-    setPendingPick(null);
+    onPendingPickChange(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tool]);
-
-  useEffect(() => {
-    onPendingPickChange?.(pendingPick);
-  }, [pendingPick, onPendingPickChange]);
 
   // Keep a pending pick's stored mode in sync if the Contiguous/Global toggle changes
   // while it's still uncommitted, so Backspace commits whatever the toggle currently shows.
   useEffect(() => {
-    setPendingPick((prev) => (prev ? { ...prev, contiguous: contiguousMode } : prev));
+    if (pendingPickRef.current) onPendingPickChange({ ...pendingPickRef.current, contiguous: contiguousMode });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contiguousMode]);
 
   // Backspace/Delete commits the pending wand pick; Escape discards it.
@@ -287,14 +295,14 @@ export default function EditorStage({
       if (e.key === "Backspace" || e.key === "Delete") {
         e.preventDefault();
         onCommit(pendingPick);
-        setPendingPick(null);
+        onPendingPickChange(null);
       } else if (e.key === "Escape") {
-        setPendingPick(null);
+        onPendingPickChange(null);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [tool, pendingPick, onCommit]);
+  }, [tool, pendingPick, onCommit, onPendingPickChange]);
 
   // Ctrl/Cmd+Z undoes the last committed background operation, wand or eraser.
   useEffect(() => {
@@ -310,6 +318,64 @@ export default function EditorStage({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [tool, onUndoLast]);
 
+  // Ctrl/Cmd+wheel zooms toward the cursor — the same gesture browsers report for
+  // trackpad pinch-to-zoom (ctrlKey is set synthetically), so both work identically.
+  // Plain wheel/two-finger scroll pans via the viewport's native overflow-auto
+  // scrolling, no code needed. A native (non-React) listener is required: React
+  // attaches its synthetic wheel handler as passive for scroll perf, so
+  // preventDefault() inside a normal onWheel prop silently no-ops.
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    const container = containerRef.current;
+    if (!viewport || !container) return;
+    const handleWheel = (e: WheelEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      e.preventDefault();
+      const oldZoom = zoomRef.current;
+      // A regular mouse wheel notch reports deltaY ≈ ±100; a trackpad pinch reports
+      // many small deltas in quick succession. This coefficient is tuned so one
+      // notch is a modest ~15-20% step, not the ~170% jump a larger coefficient
+      // produced — that jump was the "jerky" zoom, not a frame-timing issue.
+      const newZoom = clamp(oldZoom * Math.exp(-e.deltaY * 0.002), 1, 5);
+      if (newZoom === oldZoom) return;
+      const rect = viewport.getBoundingClientRect();
+      const cursorX = e.clientX - rect.left;
+      const cursorY = e.clientY - rect.top;
+      const contentX = (viewport.scrollLeft + cursorX) / oldZoom;
+      const contentY = (viewport.scrollTop + cursorY) / oldZoom;
+
+      // Apply the new scale AND the compensating scroll offset synchronously, in
+      // this same event handler — mutate the DOM directly rather than going through
+      // React state first. Deferring the scroll fix to a later paint (e.g. a
+      // requestAnimationFrame callback, or waiting for React's own re-render, both
+      // of which land on a later frame than the style write) let the scaled image
+      // visibly jump for one frame on every wheel tick, which is what read as
+      // jittery/stuttery zoom. React's later re-render (triggered by setZoom below)
+      // just reconciles to the same transform value — a harmless no-op paint.
+      container.style.transform = `scale(${newZoom})`;
+      viewport.scrollLeft = contentX * newZoom - cursorX;
+      viewport.scrollTop = contentY * newZoom - cursorY;
+
+      zoomRef.current = newZoom;
+      setZoom(newZoom);
+    };
+    viewport.addEventListener("wheel", handleWheel, { passive: false });
+    return () => viewport.removeEventListener("wheel", handleWheel);
+  }, []);
+
+  // Escape hatch back to 100% — no extra button, just the conventional
+  // double-click-to-reset-zoom gesture (Figma, Google Maps, Photos, ...).
+  const handleDoubleClick = () => {
+    const viewport = viewportRef.current;
+    const container = containerRef.current;
+    if (!viewport || !container || zoomRef.current === 1) return;
+    container.style.transform = "scale(1)";
+    viewport.scrollLeft = 0;
+    viewport.scrollTop = 0;
+    zoomRef.current = 1;
+    setZoom(1);
+  };
+
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas || !imageReady) return;
@@ -319,7 +385,7 @@ export default function EditorStage({
 
     if (tool === "wand") {
       activeWandDragRef.current = { seed, startClientX: e.clientX, startClientY: e.clientY, tolerance: DEFAULT_TOLERANCE };
-      setPendingPick({ type: "pick", seed, tolerance: DEFAULT_TOLERANCE, contiguous: contiguousMode });
+      onPendingPickChange({ type: "pick", seed, tolerance: DEFAULT_TOLERANCE, contiguous: contiguousMode });
     } else {
       strokePointsRef.current = [seed];
     }
@@ -347,7 +413,7 @@ export default function EditorStage({
   const handlePointerUp = () => {
     if (tool === "wand") {
       const active = activeWandDragRef.current;
-      if (active) setPendingPick({ type: "pick", seed: active.seed, tolerance: active.tolerance, contiguous: contiguousMode });
+      if (active) onPendingPickChange({ type: "pick", seed: active.seed, tolerance: active.tolerance, contiguous: contiguousMode });
       activeWandDragRef.current = null;
     } else if (strokePointsRef.current.length > 0) {
       const stroke: BrushStroke = { type: "stroke", points: strokePointsRef.current, radius: brushRadius, mode: eraserMode };
@@ -380,17 +446,25 @@ export default function EditorStage({
   const isCropTool = tool === "crop";
 
   return (
-    <div className='flex flex-col items-center gap-2 w-full'>
-      <div ref={containerRef} className='relative inline-block max-w-full select-none'>
-        <canvas
-          ref={canvasRef}
-          onPointerDown={isCropTool ? undefined : handlePointerDown}
-          onPointerMove={isCropTool ? undefined : handlePointerMove}
-          onPointerUp={isCropTool ? undefined : handlePointerUp}
-          onPointerCancel={isCropTool ? undefined : handlePointerUp}
-          className='block max-w-full max-h-[52vh] rounded-lg touch-none'
-          style={{ cursor: isCropTool ? "default" : "crosshair", ...CHECKERBOARD_STYLE }}
-        />
+    <div className='flex flex-col items-center w-full'>
+      {/* The zoom badge below is a sibling of this scrolling element, not a child of
+       * it — a child positioned absolute still scrolls along with the rest of the
+       * content (its containing block's padding box doesn't stay pinned to the
+       * visible frame the way `position: fixed` would), so it would drift off its
+       * bottom-right corner as soon as a zoom recentered the scroll position. Being
+       * outside the scroll container entirely sidesteps that. */}
+      <div className='relative w-full'>
+      <div ref={viewportRef} className='relative w-full max-h-[52vh] overflow-auto rounded-lg text-center' onDoubleClick={handleDoubleClick}>
+        <div ref={containerRef} className='relative inline-block max-w-full select-none' style={{ transform: `scale(${zoom})`, transformOrigin: "0 0" }}>
+          <canvas
+            ref={canvasRef}
+            onPointerDown={isCropTool ? undefined : handlePointerDown}
+            onPointerMove={isCropTool ? undefined : handlePointerMove}
+            onPointerUp={isCropTool ? undefined : handlePointerUp}
+            onPointerCancel={isCropTool ? undefined : handlePointerUp}
+            className='block max-w-full max-h-[52vh] rounded-lg touch-none'
+            style={{ cursor: isCropTool ? "default" : "crosshair", ...CHECKERBOARD_STYLE }}
+          />
 
         {isCropTool ? (
           <>
@@ -441,88 +515,15 @@ export default function EditorStage({
             />
           )
         )}
+        </div>
       </div>
 
-      {(tool === "wand" || tool === "eraser") && (
-        // Quick round-trip between Wand and Eraser without reaching for the main
-        // toolbar — press to hop into the other tool, do the touch-up, press again
-        // to hop back. Just a shortcut onto the same `activeTool` state the toolbar
-        // already controls, so nothing about the underlying tool switch changes —
-        // the auto-commit-on-switch fix above still applies here too.
-        <button
-          onClick={() => onToolChange(tool === "wand" ? "eraser" : "wand")}
-          className='flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-colors bg-slate-50 dark:bg-slate-800 text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-700'
-        >
-          {tool === "wand" ? (
-            <>
-              <Eraser size={12} />
-              Quick erase
-            </>
-          ) : (
-            <>
-              <Wand2 size={12} />
-              Back to Wand
-            </>
-          )}
-        </button>
-      )}
-
-      {tool === "wand" && (
-        <div className='w-full max-w-sm flex flex-col gap-1.5'>
-          <div className='flex gap-1.5'>
-            {([
-              { value: true, label: "Contiguous" },
-              { value: false, label: "Global (Color Range)" },
-            ] as const).map(({ value, label }) => (
-              <button
-                key={label}
-                onClick={() => setContiguousMode(value)}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                  contiguousMode === value ? "bg-primary text-primary-foreground" : "bg-slate-50 dark:bg-slate-800 text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          {pendingPick ? (
-            <>
-              <label className='flex items-center gap-2 text-xs text-muted-foreground'>
-                <span className='shrink-0'>{contiguousMode ? "Tolerance" : "Fuzziness"}</span>
-                <input
-                  type='range'
-                  min={0}
-                  max={100}
-                  step={0.5}
-                  value={pendingPick.tolerance}
-                  onChange={(e) => setPendingPick((prev) => (prev ? { ...prev, tolerance: Number(e.target.value) } : prev))}
-                  className='flex-1 accent-primary'
-                />
-                <span className='shrink-0 tabular-nums w-9 text-right'>{Math.round(pendingPick.tolerance)}%</span>
-              </label>
-              <p className='text-[11px] text-muted-foreground text-center'>
-                Press <kbd className='px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700'>⌫ Backspace</kbd> to remove,{" "}
-                <kbd className='px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700'>Esc</kbd> to cancel
-              </p>
-            </>
-          ) : (
-            <p className='text-[11px] text-muted-foreground text-center'>
-              {contiguousMode ? "Click the background, drag outward to grow the selection" : "Click a color — every matching pixel in the image is selected, gradients fade smoothly"}
-            </p>
-          )}
+      {zoom !== 1 && (
+        <div className='pointer-events-none absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-slate-950/70 text-white text-[10px] font-medium tabular-nums'>
+          {Math.round(zoom * 100)}%
         </div>
       )}
-
-      {tool === "eraser" && <p className='text-[11px] text-muted-foreground'>Paint to erase or restore</p>}
-
-      {isGif && tool !== "crop" && <p className='text-[11px] text-muted-foreground'>Applied the same way to every frame of the GIF.</p>}
-
-      {tool !== "crop" && operations.length > 0 && (
-        <button onClick={onUndoLast} className='text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors'>
-          Undo last (⌘Z)
-        </button>
-      )}
+      </div>
     </div>
   );
 }
