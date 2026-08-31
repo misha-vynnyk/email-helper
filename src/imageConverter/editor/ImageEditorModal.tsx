@@ -1,0 +1,347 @@
+/**
+ * Per-file image editor modal — opened from the file card. Always crops against the
+ * pristine original (`file.edit?.originalFile ?? file.file`), never against a
+ * previously-cropped result, so the stored crop rect and "reset to original" stay
+ * meaningful across repeated edits.
+ *
+ * Crop and background removal used to live on separate tabs, each swapping out the
+ * entire canvas. They're now one persistent stage (EditorStage) with a single tool
+ * switcher (EditorToolbar: Crop / Wand / Eraser) — switching tools no longer hides
+ * the other edit's result, so a crop can be framed against an already-cut-out
+ * subject and vice versa.
+ */
+
+import { Crop, RotateCcw, Scissors, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "react-toastify";
+
+import { LIMITS } from "../constants/limits";
+import { BackgroundEditState, BackgroundOperation, BackgroundReplaceMode, CropRect, ImageEditState, ImageFile, InstantAlphaPick } from "../types";
+import { detectImageFormat } from "../utils/imageFormatDetector";
+import { applyCropToImage } from "./applyEditToImage";
+import BeforeAfterPreview from "./BeforeAfterPreview";
+import { applyBackgroundRemoval } from "./bgRemoval/applyBackgroundRemoval";
+import { defaultCropRect, isFullRect } from "./cropMath";
+import EditorSidePanel from "./EditorSidePanel";
+import EditorStage, { EditorTool } from "./EditorStage";
+import EditorToolbar from "./EditorToolbar";
+import { withSliceSuffix } from "./sliceFilename";
+
+const DEFAULT_BRUSH_RADIUS = 0.03;
+
+/**
+ * Shared by handleApply (replace the original, behind a review step) and
+ * handleSaveSlice (export an additional file, no review) so the isGif/
+ * background/crop branching — which format-specific module to dynamically
+ * import, and in what order — exists in exactly one place.
+ */
+async function bakeEdit(source: File, isGif: boolean, crop: CropRect | undefined, background: BackgroundEditState | undefined, onStatus: (text: string) => void): Promise<File> {
+  const hasCrop = !!crop;
+  const hasBackgroundEdit = !!background && background.operations.length > 0;
+  let working = source;
+
+  if (isGif) {
+    if (hasBackgroundEdit) {
+      // Cheap pre-check decode so the frame-count warning fires before the
+      // actually-slow per-frame OKLab work starts, not partway through it.
+      const { decodeGif } = await import("./gif/decodeGif");
+      const frameCount = (await decodeGif(working)).frames.length;
+      if (frameCount > LIMITS.GIF_BG_REMOVAL_WARN_FRAME_COUNT) {
+        toast.warn(`This GIF has ${frameCount} frames — background removal may take a while.`);
+      }
+      onStatus("Removing background…");
+      const { applyEditsToGif } = await import("./gif/applyEditsToGif");
+      working = await applyEditsToGif(working, { background, crop }, (progress) => onStatus(`Removing background… (${progress.current}/${progress.total})`));
+    } else if (hasCrop) {
+      onStatus("Applying crop…");
+      working = await (await import("./gif/applyCropToGif")).applyCropToGif(working, crop!);
+    }
+  } else {
+    if (hasBackgroundEdit) {
+      onStatus("Removing background…");
+      working = await applyBackgroundRemoval(working, background!);
+    }
+    if (hasCrop) {
+      onStatus("Applying crop…");
+      working = await applyCropToImage(working, crop!);
+    }
+  }
+
+  return working;
+}
+
+interface ImageEditorModalProps {
+  file: ImageFile;
+  onApply: (newFile: File, edit: ImageEditState | undefined) => void;
+  onClose: () => void;
+  /** Adds a brand-new file to the grid, separate from `file` — used by "Save
+   * slice" to export a cropped region without replacing the source being edited. */
+  onAddFile?: (file: File) => void;
+}
+
+export default function ImageEditorModal({ file, onApply, onClose, onAddFile }: ImageEditorModalProps) {
+  const baseFile = file.edit?.originalFile ?? file.file;
+
+  // Object URLs must be created AND revoked inside the same effect instance — React
+  // StrictMode's dev-only mount→cleanup→mount dance would otherwise revoke a URL
+  // created during render (or in a cleanup-only effect) before it's ever painted.
+  const [baseImageUrl, setBaseImageUrl] = useState<string | null>(null);
+  useEffect(() => {
+    const url = URL.createObjectURL(baseFile);
+    setBaseImageUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [baseFile]);
+
+  const [rect, setRect] = useState<CropRect>(file.edit?.crop ?? defaultCropRect());
+  const [background, setBackground] = useState<BackgroundEditState | undefined>(file.edit?.background);
+  const [activeTool, setActiveTool] = useState<EditorTool>("crop");
+  const [eraserMode, setEraserMode] = useState<"erase" | "restore">("erase");
+  const [brushRadius, setBrushRadius] = useState(DEFAULT_BRUSH_RADIUS);
+  // Photoshop/Photopea calls this the "Contiguous" checkbox on the Magic Wand —
+  // unchecked, a click selects every matching-color pixel in the image (Color
+  // Range), not just the flood-filled region touching the seed. Lives here (not in
+  // EditorStage) so EditorSidePanel's toggle can control it directly.
+  const [contiguousMode, setContiguousMode] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [statusText, setStatusText] = useState<string | null>(null);
+  const [review, setReview] = useState<{ file: File; url: string; hasTransparency: boolean } | null>(null);
+  // Owned here (not EditorStage-local state) so both the canvas's pointer handlers
+  // and EditorSidePanel's tolerance slider can read/mutate the same in-progress wand
+  // pick. Without folding this into Apply, clicking the background with the Wand and
+  // going straight to Apply is a silent no-op — operations stays empty, so both the
+  // crop and background-edit checks below see "nothing to do" and the modal just
+  // closes unchanged.
+  const [pendingPick, setPendingPick] = useState<InstantAlphaPick | null>(null);
+  // Numbers successive "Save slice" exports from this editing session distinctly —
+  // see sliceFilename.ts.
+  const sliceCountRef = useRef(0);
+
+  const hasCropSelection = !isFullRect(rect);
+
+  // Wand/Eraser work on GIF too (Phase 4): picks/strokes are captured against the
+  // poster frame EditorStage shows (frame 0) and replayed identically across every
+  // frame at Apply time — see applyEditsToGif.ts.
+  const isGif = detectImageFormat(baseFile.name, baseFile.type) === "gif";
+
+  const bgImageUrlRef = useRef(background?.replaceImageUrl);
+  useEffect(() => () => {
+    if (bgImageUrlRef.current) URL.revokeObjectURL(bgImageUrlRef.current);
+  }, []);
+
+  // Only needs to fire on the component's real unmount — reading via ref (rather than
+  // depending on `review`) sidesteps the same StrictMode cleanup-timing issue.
+  const reviewRef = useRef(review);
+  reviewRef.current = review;
+  useEffect(() => () => { if (reviewRef.current) URL.revokeObjectURL(reviewRef.current.url); }, []);
+
+  const operations = background?.operations ?? [];
+
+  const updateBackground = (patch: Partial<BackgroundEditState>) =>
+    setBackground((prev) => ({ operations: [], replaceMode: "transparent", ...prev, ...patch }));
+
+  const handleCommitOperation = (operation: BackgroundOperation) => updateBackground({ operations: [...operations, operation] });
+  const handleUndoLastOperation = () => updateBackground({ operations: operations.slice(0, -1) });
+  const handleReplaceModeChange = (mode: BackgroundReplaceMode) => updateBackground({ replaceMode: mode });
+  const handleReplaceColorChange = (hex: string) => updateBackground({ replaceColor: hex });
+  const handleReplaceImageFile = (imageFile: File | undefined) => {
+    if (!imageFile) return;
+    if (bgImageUrlRef.current) URL.revokeObjectURL(bgImageUrlRef.current);
+    const url = URL.createObjectURL(imageFile);
+    bgImageUrlRef.current = url;
+    updateBackground({ replaceImageUrl: url });
+  };
+
+  const handleReset = () => {
+    if (activeTool === "crop") {
+      setRect(defaultCropRect());
+    } else {
+      if (bgImageUrlRef.current) URL.revokeObjectURL(bgImageUrlRef.current);
+      bgImageUrlRef.current = undefined;
+      setBackground(undefined);
+    }
+  };
+
+  /** Folds a not-yet-committed wand pick in so clicking the background then acting
+   * (Apply or Save slice) without also pressing Backspace still does something —
+   * see the pendingPick state comment. */
+  const resolveEffectiveBackground = (): { background: BackgroundEditState | undefined; hasBackgroundEdit: boolean } => {
+    const effectiveOperations = pendingPick ? [...operations, pendingPick] : operations;
+    const hasBackgroundEdit = effectiveOperations.length > 0;
+    const effectiveBackground: BackgroundEditState | undefined = hasBackgroundEdit
+      ? { operations: effectiveOperations, replaceMode: background?.replaceMode ?? "transparent", replaceColor: background?.replaceColor, replaceImageUrl: background?.replaceImageUrl }
+      : background;
+    return { background: effectiveBackground, hasBackgroundEdit };
+  };
+
+  const handleApply = async () => {
+    const { background: effectiveBackground, hasBackgroundEdit: effectiveHasBackgroundEdit } = resolveEffectiveBackground();
+
+    if (!hasCropSelection && !effectiveHasBackgroundEdit) {
+      onApply(baseFile, undefined);
+      onClose();
+      return;
+    }
+
+    if (pendingPick) {
+      handleCommitOperation(pendingPick);
+    }
+
+    setIsProcessing(true);
+    try {
+      const working = await bakeEdit(baseFile, isGif, hasCropSelection ? rect : undefined, effectiveBackground, setStatusText);
+      const hasTransparency = effectiveHasBackgroundEdit && (effectiveBackground?.replaceMode ?? "transparent") === "transparent";
+      setReview({ file: working, url: URL.createObjectURL(working), hasTransparency });
+    } finally {
+      setIsProcessing(false);
+      setStatusText(null);
+    }
+  };
+
+  /** Exports the current crop rect (plus whatever background edit is active) as a
+   * brand-new file, without touching the source being edited or closing the
+   * modal — lets the user cut several regions out of the same image in one sitting,
+   * Photoshop-slice-tool style. Skips the before/after review step: unlike Apply,
+   * this never overwrites anything, so the destructive-action gate doesn't apply,
+   * and the new grid card gets its own compare view for free. */
+  const handleSaveSlice = async () => {
+    if (!hasCropSelection || !onAddFile) return;
+
+    const { background: effectiveBackground } = resolveEffectiveBackground();
+    if (pendingPick) {
+      handleCommitOperation(pendingPick);
+    }
+
+    setIsProcessing(true);
+    try {
+      const baked = await bakeEdit(baseFile, isGif, rect, effectiveBackground, setStatusText);
+      sliceCountRef.current += 1;
+      const sliceFile = new File([baked], withSliceSuffix(baseFile.name, sliceCountRef.current), { type: baked.type });
+      onAddFile(sliceFile);
+      toast.success(`Saved ${sliceFile.name}`);
+      setRect(defaultCropRect());
+    } finally {
+      setIsProcessing(false);
+      setStatusText(null);
+    }
+  };
+
+  const handleBackToEdit = () => {
+    if (review) URL.revokeObjectURL(review.url);
+    setReview(null);
+  };
+
+  const handleConfirm = () => {
+    if (!review) return;
+    onApply(review.file, { crop: rect, background, isEdited: true, originalFile: baseFile });
+    onClose();
+  };
+
+  return (
+    <div className='fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 backdrop-blur-lg p-4 md:p-8' onClick={onClose}>
+      <div className='relative bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden border border-slate-200 dark:border-slate-800 flex flex-col' onClick={(e) => e.stopPropagation()}>
+        <div className='flex items-center justify-between p-5 pb-3'>
+          <div>
+            <h3 className='text-lg font-bold text-foreground'>{review ? "Review changes" : "Edit image"}</h3>
+            <p className='text-[10px] text-muted-foreground mt-0.5 truncate max-w-xs' title={file.file.name}>
+              {file.file.name}
+            </p>
+          </div>
+          <button onClick={onClose} className='w-9 h-9 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center hover:bg-destructive/10 hover:text-destructive transition-all'>
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className='p-5 pt-3 overflow-y-auto flex flex-col items-center gap-4 min-h-[200px] justify-center'>
+          {!baseImageUrl ? (
+            <div className='text-sm text-muted-foreground'>Loading…</div>
+          ) : review ? (
+            <BeforeAfterPreview beforeSrc={baseImageUrl} afterSrc={review.url} afterHasTransparency={review.hasTransparency} />
+          ) : (
+            <div className='flex gap-4 w-full items-start justify-center'>
+              <EditorToolbar tool={activeTool} onChange={setActiveTool} showBackgroundTools={true} />
+
+              <EditorSidePanel
+                tool={activeTool}
+                contiguousMode={contiguousMode}
+                onContiguousModeChange={setContiguousMode}
+                pendingPick={pendingPick}
+                onPendingPickChange={setPendingPick}
+                operations={operations}
+                onUndoLast={handleUndoLastOperation}
+                eraserMode={eraserMode}
+                onEraserModeChange={setEraserMode}
+                brushRadius={brushRadius}
+                onBrushRadiusChange={setBrushRadius}
+                replaceMode={background?.replaceMode ?? "transparent"}
+                onReplaceModeChange={handleReplaceModeChange}
+                replaceColor={background?.replaceColor}
+                onReplaceColorChange={handleReplaceColorChange}
+                replaceImageUrl={background?.replaceImageUrl}
+                onReplaceImageFile={handleReplaceImageFile}
+                isGif={isGif}
+              />
+
+              <div className='flex-1 min-w-0 flex justify-center'>
+                <EditorStage
+                  imageUrl={baseImageUrl}
+                  tool={activeTool}
+                  rect={rect}
+                  onRectChange={setRect}
+                  operations={operations}
+                  eraserMode={eraserMode}
+                  brushRadius={brushRadius}
+                  onCommit={handleCommitOperation}
+                  onUndoLast={handleUndoLastOperation}
+                  contiguousMode={contiguousMode}
+                  pendingPick={pendingPick}
+                  onPendingPickChange={setPendingPick}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className='px-5 pb-5 pt-2 flex items-center justify-between'>
+          {review ? (
+            <>
+              <button onClick={handleBackToEdit} className='text-sm font-semibold text-muted-foreground hover:text-foreground px-3 py-2 transition-colors'>
+                Back to edit
+              </button>
+              <button onClick={handleConfirm} className='flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-sm px-5 py-2 rounded-xl transition-all active:scale-95'>
+                Confirm
+              </button>
+            </>
+          ) : (
+            <>
+              <button onClick={handleReset} className='flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground px-3 py-2 transition-colors'>
+                <RotateCcw size={14} />
+                Reset
+              </button>
+              <div className='flex items-center gap-2'>
+                {onAddFile && (
+                  <button
+                    onClick={handleSaveSlice}
+                    disabled={isProcessing || !hasCropSelection}
+                    title='Export the current crop as a new file and keep editing this one'
+                    className='flex items-center gap-1.5 text-sm font-semibold text-muted-foreground enabled:hover:text-foreground disabled:opacity-40 px-3 py-2 transition-colors'
+                  >
+                    <Scissors size={14} />
+                    Save slice
+                  </button>
+                )}
+                <button
+                  onClick={handleApply}
+                  disabled={isProcessing}
+                  className='flex items-center gap-2 bg-primary hover:bg-primary/90 disabled:opacity-60 text-primary-foreground font-semibold text-sm px-5 py-2 rounded-xl transition-all active:scale-95'
+                >
+                  <Crop size={14} />
+                  {isProcessing ? statusText ?? "Applying…" : "Apply"}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -5,6 +5,9 @@
 export const LIMITS = {
   MAX_CONCURRENT_CONVERSIONS: 3,
   MAX_RETRIES: 3,
+  // Soft, non-blocking warn threshold for GIF background removal — this pipeline
+  // has no cancellation, so a huge GIF just runs (with progress text), it doesn't fail.
+  GIF_BG_REMOVAL_WARN_FRAME_COUNT: 60,
 } as const;
 
 export const TIMING = {
