@@ -6,7 +6,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-import { ImageFile } from "../types";
+import { ImageEditState, ImageFile } from "../types";
 import ImageGridItem from "./ImageGridItem";
 
 interface SortableImageItemProps {
@@ -14,6 +14,8 @@ interface SortableImageItemProps {
   onDownload: () => void;
   onRemove: () => void;
   onToggleSelection: () => void;
+  onReplaceFile: (newFile: File, edit: ImageEditState | undefined) => void;
+  onAddFile: (file: File) => void;
 }
 
 export default function SortableImageItem({
@@ -21,6 +23,8 @@ export default function SortableImageItem({
   onDownload,
   onRemove,
   onToggleSelection,
+  onReplaceFile,
+  onAddFile,
 }: SortableImageItemProps) {
   const {
     attributes,
@@ -49,6 +53,8 @@ export default function SortableImageItem({
         onDownload={onDownload}
         onRemove={onRemove}
         onToggleSelection={onToggleSelection}
+        onReplaceFile={onReplaceFile}
+        onAddFile={onAddFile}
         dragListeners={listeners}
       />
     </div>

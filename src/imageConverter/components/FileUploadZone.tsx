@@ -8,7 +8,7 @@ import { rectSortingStrategy, SortableContext, sortableKeyboardCoordinates } fro
 import { ImageIcon, Upload } from "lucide-react";
 import { useCallback, useState } from "react";
 
-import { ImageFile } from "../types";
+import { ImageEditState, ImageFile } from "../types";
 import BulkActions from "./BulkActions";
 import SortableImageItem from "./SortableImageItem";
 
@@ -16,6 +16,7 @@ interface FileUploadZoneProps {
   files: ImageFile[];
   addFiles: (files: File[]) => void;
   removeFile: (id: string) => void;
+  replaceFileSource: (id: string, newFile: File, edit: ImageEditState | undefined) => void;
   downloadFile: (id: string) => void;
   reorderFiles: (oldIndex: number, newIndex: number) => void;
   toggleSelection: (id: string) => void;
@@ -27,7 +28,7 @@ interface FileUploadZoneProps {
   selectedCount: number;
 }
 
-export default function FileUploadZone({ files, addFiles, removeFile, downloadFile, reorderFiles, toggleSelection, selectAll, deselectAll, removeSelected, downloadSelected, convertSelected, selectedCount }: FileUploadZoneProps) {
+export default function FileUploadZone({ files, addFiles, removeFile, replaceFileSource, downloadFile, reorderFiles, toggleSelection, selectAll, deselectAll, removeSelected, downloadSelected, convertSelected, selectedCount }: FileUploadZoneProps) {
   const [isDragOver, setIsDragOver] = useState(false);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
@@ -128,7 +129,15 @@ export default function FileUploadZone({ files, addFiles, removeFile, downloadFi
             <SortableContext items={files.map((f) => f.id)} strategy={rectSortingStrategy}>
               <div className='grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3'>
                 {files.map((file) => (
-                  <SortableImageItem key={file.id} file={file} onDownload={() => downloadFile(file.id)} onRemove={() => removeFile(file.id)} onToggleSelection={() => toggleSelection(file.id)} />
+                  <SortableImageItem
+                    key={file.id}
+                    file={file}
+                    onDownload={() => downloadFile(file.id)}
+                    onRemove={() => removeFile(file.id)}
+                    onToggleSelection={() => toggleSelection(file.id)}
+                    onReplaceFile={(newFile, edit) => replaceFileSource(file.id, newFile, edit)}
+                    onAddFile={(newFile) => addFiles([newFile])}
+                  />
                 ))}
 
                 {/* Add More Minimalist Button */}
