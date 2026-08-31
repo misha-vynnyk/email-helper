@@ -19,10 +19,10 @@ import { LIMITS } from "../constants/limits";
 import { BackgroundEditState, BackgroundOperation, BackgroundReplaceMode, CropRect, ImageEditState, ImageFile, InstantAlphaPick } from "../types";
 import { detectImageFormat } from "../utils/imageFormatDetector";
 import { applyCropToImage } from "./applyEditToImage";
-import BackgroundOptions from "./BackgroundOptions";
 import BeforeAfterPreview from "./BeforeAfterPreview";
 import { applyBackgroundRemoval } from "./bgRemoval/applyBackgroundRemoval";
 import { defaultCropRect, isFullRect } from "./cropMath";
+import EditorSidePanel from "./EditorSidePanel";
 import EditorStage, { EditorTool } from "./EditorStage";
 import EditorToolbar from "./EditorToolbar";
 import { withSliceSuffix } from "./sliceFilename";
@@ -97,14 +97,20 @@ export default function ImageEditorModal({ file, onApply, onClose, onAddFile }: 
   const [activeTool, setActiveTool] = useState<EditorTool>("crop");
   const [eraserMode, setEraserMode] = useState<"erase" | "restore">("erase");
   const [brushRadius, setBrushRadius] = useState(DEFAULT_BRUSH_RADIUS);
+  // Photoshop/Photopea calls this the "Contiguous" checkbox on the Magic Wand —
+  // unchecked, a click selects every matching-color pixel in the image (Color
+  // Range), not just the flood-filled region touching the seed. Lives here (not in
+  // EditorStage) so EditorSidePanel's toggle can control it directly.
+  const [contiguousMode, setContiguousMode] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [statusText, setStatusText] = useState<string | null>(null);
   const [review, setReview] = useState<{ file: File; url: string; hasTransparency: boolean } | null>(null);
-  // Mirrored from EditorStage: an in-progress wand pick the user hasn't pressed
-  // Backspace to commit yet. Without folding this into Apply, clicking the
-  // background with the Wand and going straight to Apply is a silent no-op —
-  // operations stays empty, so both the crop and background-edit checks below see
-  // "nothing to do" and the modal just closes unchanged.
+  // Owned here (not EditorStage-local state) so both the canvas's pointer handlers
+  // and EditorSidePanel's tolerance slider can read/mutate the same in-progress wand
+  // pick. Without folding this into Apply, clicking the background with the Wand and
+  // going straight to Apply is a silent no-op — operations stays empty, so both the
+  // crop and background-edit checks below see "nothing to do" and the modal just
+  // closes unchanged.
   const [pendingPick, setPendingPick] = useState<InstantAlphaPick | null>(null);
   // Numbers successive "Save slice" exports from this editing session distinctly —
   // see sliceFilename.ts.
@@ -232,7 +238,7 @@ export default function ImageEditorModal({ file, onApply, onClose, onAddFile }: 
 
   return (
     <div className='fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 backdrop-blur-lg p-4 md:p-8' onClick={onClose}>
-      <div className='relative bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden border border-slate-200 dark:border-slate-800 flex flex-col' onClick={(e) => e.stopPropagation()}>
+      <div className='relative bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden border border-slate-200 dark:border-slate-800 flex flex-col' onClick={(e) => e.stopPropagation()}>
         <div className='flex items-center justify-between p-5 pb-3'>
           <div>
             <h3 className='text-lg font-bold text-foreground'>{review ? "Review changes" : "Edit image"}</h3>
@@ -251,27 +257,17 @@ export default function ImageEditorModal({ file, onApply, onClose, onAddFile }: 
           ) : review ? (
             <BeforeAfterPreview beforeSrc={baseImageUrl} afterSrc={review.url} afterHasTransparency={review.hasTransparency} />
           ) : (
-            <>
+            <div className='flex gap-4 w-full items-start justify-center'>
               <EditorToolbar tool={activeTool} onChange={setActiveTool} showBackgroundTools={true} />
 
-              <EditorStage
-                imageUrl={baseImageUrl}
+              <EditorSidePanel
                 tool={activeTool}
-                onToolChange={setActiveTool}
-                rect={rect}
-                onRectChange={setRect}
-                operations={operations}
-                eraserMode={eraserMode}
-                brushRadius={brushRadius}
-                onCommit={handleCommitOperation}
-                onUndoLast={handleUndoLastOperation}
-                isGif={isGif}
+                contiguousMode={contiguousMode}
+                onContiguousModeChange={setContiguousMode}
+                pendingPick={pendingPick}
                 onPendingPickChange={setPendingPick}
-              />
-
-              <BackgroundOptions
-                tool={activeTool}
-                hasOperations={operations.length > 0}
+                operations={operations}
+                onUndoLast={handleUndoLastOperation}
                 eraserMode={eraserMode}
                 onEraserModeChange={setEraserMode}
                 brushRadius={brushRadius}
@@ -282,8 +278,26 @@ export default function ImageEditorModal({ file, onApply, onClose, onAddFile }: 
                 onReplaceColorChange={handleReplaceColorChange}
                 replaceImageUrl={background?.replaceImageUrl}
                 onReplaceImageFile={handleReplaceImageFile}
+                isGif={isGif}
               />
-            </>
+
+              <div className='flex-1 min-w-0 flex justify-center'>
+                <EditorStage
+                  imageUrl={baseImageUrl}
+                  tool={activeTool}
+                  rect={rect}
+                  onRectChange={setRect}
+                  operations={operations}
+                  eraserMode={eraserMode}
+                  brushRadius={brushRadius}
+                  onCommit={handleCommitOperation}
+                  onUndoLast={handleUndoLastOperation}
+                  contiguousMode={contiguousMode}
+                  pendingPick={pendingPick}
+                  onPendingPickChange={setPendingPick}
+                />
+              </div>
+            </div>
           )}
         </div>
 
