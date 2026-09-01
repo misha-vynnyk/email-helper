@@ -296,7 +296,7 @@ export function gapAfterDrag(startGapPx: number, deltaPx: number, min = 0, max =
 
 ### Чеклист Stage 0-дисципліни
 
-- [ ] Gap-ручка комітить `updateSectionStyle` лише на `onDragEnd`, не на кожен `onDrag`.
+- [x] Gap-ручка комітить `updateSectionStyle` лише на `onDragEnd`, не на кожен `onDrag`.
 
 ---
 

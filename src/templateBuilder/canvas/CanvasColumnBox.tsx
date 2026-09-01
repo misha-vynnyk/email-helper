@@ -36,7 +36,7 @@ export const CanvasColumnBox = memo(function CanvasColumnBox({ rowId, columnId, 
           <X size={12} />
         </button>
       )}
-      <NodeDropZone parentId={columnId} childIds={column.childIds} />
+      <NodeDropZone parentId={columnId} childIds={column.childIds} containerKind='column' />
     </div>
   );
 });

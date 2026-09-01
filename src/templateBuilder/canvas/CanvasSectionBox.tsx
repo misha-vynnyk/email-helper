@@ -1,6 +1,6 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { memo } from "react";
+import { memo, useEffect, useState } from "react";
 
 import type { DragData } from "../dnd/dragTypes";
 import { removeNode, useBuilderNode } from "../state/builderStore";
@@ -20,6 +20,14 @@ export const CanvasSectionBox = memo(function CanvasSectionBox({ id }: CanvasSec
   const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({ id, data: dragData });
   const isSelected = useIsSelected(id);
   const style = { transform: CSS.Transform.toString(transform), transition };
+  // Live preview of a SpacingOverlay gap-handle drag — same pattern as CanvasRowBox's
+  // previewWidths for column dividers: fed straight back into NodeDropZone's real `gap` CSS so
+  // the drag looks live, committed to the store only on release (via updateSectionStyle).
+  const [previewGapPx, setPreviewGapPx] = useState<number | null>(null);
+  // Same guard CanvasRowBox has for previewWidths: a child added/removed elsewhere (e.g. an undo
+  // firing) while a gap-handle drag is somehow still active would otherwise leave this preview
+  // stuck showing a value the store never actually committed.
+  useEffect(() => setPreviewGapPx(null), [section?.childIds.length]);
 
   if (!section) return null;
 
@@ -39,7 +47,7 @@ export const CanvasSectionBox = memo(function CanvasSectionBox({ id }: CanvasSec
       onSelect={() => selectBlock(id)}
       onRemove={() => removeNode(id)}
       removeAriaLabel='Remove section'>
-      <NodeDropZone parentId={id} childIds={section.childIds} />
+      <NodeDropZone parentId={id} childIds={section.childIds} containerKind='section' gapPx={previewGapPx ?? section.gapPx} onGapPreview={setPreviewGapPx} />
     </CanvasBlockShell>
   );
 });
