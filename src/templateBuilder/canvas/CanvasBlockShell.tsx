@@ -45,7 +45,7 @@ export const CanvasBlockShell = memo(function CanvasBlockShell({
         e.stopPropagation();
         onSelect();
       }}
-      className={`rounded-lg border-2 p-3 cursor-pointer transition-colors ${borderClass}`}>
+      className={`relative rounded-lg border-2 p-3 cursor-pointer transition-colors ${borderClass}`}>
       <div className='flex items-center justify-between mb-2'>
         <div className='flex items-center gap-2 text-xs font-semibold text-muted-foreground'>
           <button type='button' {...attributes} {...listeners} className='cursor-grab hover:text-foreground' aria-label='Drag to reorder'>
