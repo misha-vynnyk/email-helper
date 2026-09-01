@@ -78,12 +78,6 @@ export function useConversionQueue({
 
         // Apply compression mode overrides
         switch (effectiveSettings.compressionMode) {
-          case "maximum-quality":
-            effectiveSettings = { ...effectiveSettings, quality: 92 };
-            break;
-          case "maximum-compression":
-            effectiveSettings = { ...effectiveSettings, quality: 75 };
-            break;
           case "lossless":
             effectiveSettings = { ...effectiveSettings, quality: 100 };
             break;

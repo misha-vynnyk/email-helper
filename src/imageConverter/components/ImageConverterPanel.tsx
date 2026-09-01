@@ -80,7 +80,6 @@ export default function ImageConverterPanel() {
           {/* RIGHT COLUMN — Settings (4 cols) — Sticky */}
           <div className='col-span-1 lg:col-span-4 sticky top-20'>
             <SettingsSidebar
-              files={state.files}
               settings={settings.settings}
               updateSettings={settings.updateSettings}
             />

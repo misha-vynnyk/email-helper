@@ -13,7 +13,7 @@ export interface ResizeOptions {
   allowUpscale: boolean;
 }
 
-export type CompressionMode = "balanced" | "maximum-quality" | "maximum-compression" | "lossless";
+export type CompressionMode = "balanced" | "lossless";
 
 export interface ConversionSettings {
   format: ImageFormat;
