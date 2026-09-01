@@ -6,26 +6,20 @@
 import { ChevronDown, ChevronRight,Settings } from "lucide-react";
 import { useState } from "react";
 
-import { ConversionSettings, ImageFile } from "../types";
+import { ConversionSettings } from "../types";
 import AdvancedSettingsSection from "./AdvancedSettingsSection";
 import AutoConvertToggle from "./AutoConvertToggle";
-import CompressionModeSelector from "./CompressionModeSelector";
-import EstimatedSizeIndicator from "./EstimatedSizeIndicator";
 import FormatTabsSelector from "./FormatTabsSelector";
 import ProcessingModeToggle from "./ProcessingModeToggle";
 import QualityControl from "./QualityControl";
 
 interface SettingsSidebarProps {
-  files: ImageFile[];
   settings: ConversionSettings;
   updateSettings: (s: Partial<ConversionSettings>) => void;
 }
 
-export default function SettingsSidebar({ files, settings, updateSettings }: SettingsSidebarProps) {
+export default function SettingsSidebar({ settings, updateSettings }: SettingsSidebarProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
-
-  const selectedFiles = files.filter((f) => f.selected);
-  const targetFile = selectedFiles.length === 1 ? selectedFiles[0] : (files.length === 1 ? files[0] : null);
 
   return (
     <div className='flex flex-col gap-4'>
@@ -60,14 +54,6 @@ export default function SettingsSidebar({ files, settings, updateSettings }: Set
 
           <div className='h-px bg-slate-100 dark:bg-slate-800/50' />
 
-          {/* Compression Mode */}
-          <section className='space-y-2'>
-            <h4 className='text-[10px] font-semibold text-muted-foreground uppercase'>Compression</h4>
-            <CompressionModeSelector settings={settings} updateSettings={updateSettings} />
-          </section>
-
-          <div className='h-px bg-slate-100 dark:bg-slate-800/50' />
-
           {/* Quality */}
           <QualityControl
             autoQuality={settings.autoQuality}
@@ -75,16 +61,8 @@ export default function SettingsSidebar({ files, settings, updateSettings }: Set
             onAutoQualityChange={(auto) => updateSettings({ autoQuality: auto })}
             onQualityChange={(quality) => updateSettings({ quality })}
             compressionMode={settings.compressionMode}
-          />
-
-          <div className='h-px bg-slate-100 dark:bg-slate-800/50' />
-
-          {/* Estimated Size */}
-          <EstimatedSizeIndicator
-            originalSize={targetFile?.originalSize || 0}
-            originalFormat={targetFile?.file?.type || ""}
-            settings={settings}
-            disabled={!targetFile}
+            onCompressionModeChange={(compressionMode) => updateSettings({ compressionMode })}
+            format={settings.format}
           />
         </div>
       </div>

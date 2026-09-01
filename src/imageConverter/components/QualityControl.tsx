@@ -1,14 +1,15 @@
 /**
- * Quality Control — Auto/Manual quality with slider.
+ * Quality Control — Auto/Manual quality with slider, plus a Lossless toggle
+ * for formats that support it (PNG/WebP).
  * Props-based. Tailwind styling.
  */
 
-import { Lock,SlidersHorizontal, Sparkles, Unlock } from "lucide-react";
+import { Lock, ShieldCheck, SlidersHorizontal, Sparkles, Unlock } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { useDebounce } from "@/hooks/useDebounce";
 
-import { CompressionMode } from "../types";
+import { CompressionMode, ImageFormat } from "../types";
 
 // Below this, output gets visibly degraded (blocky/blurry) for most images —
 // matches the "Low" boundary in getQualityLevel below, so the default
@@ -23,7 +24,9 @@ interface QualityControlProps {
   quality: number;
   onAutoQualityChange: (auto: boolean) => void;
   onQualityChange: (quality: number) => void;
-  compressionMode?: CompressionMode;
+  compressionMode: CompressionMode;
+  onCompressionModeChange: (mode: CompressionMode) => void;
+  format: ImageFormat;
   disabled?: boolean;
 }
 
@@ -35,25 +38,27 @@ const getQualityLevel = (quality: number): { label: string; color: string } => {
   return { label: "Low", color: "text-destructive" };
 };
 
-const getCompressionModeQuality = (mode: CompressionMode): number => {
-  switch (mode) {
-    case "maximum-quality": return 92;
-    case "maximum-compression": return 75;
-    case "lossless": return 100;
-    default: return 85;
-  }
-};
-
 export default function QualityControl({
-
   autoQuality,
   quality,
   onAutoQualityChange,
   onQualityChange,
-  compressionMode = "balanced",
+  compressionMode,
+  onCompressionModeChange,
+  format,
   disabled = false,
 }: QualityControlProps) {
-  const isControlledByCompressionMode = compressionMode !== "balanced";
+  const isLosslessAvailable = format === "png" || format === "webp";
+  const isLossless = compressionMode === "lossless";
+
+  // If the user was on Lossless and then switches format away from PNG/WebP,
+  // fall back to Balanced — otherwise compressionMode stays "lossless" while
+  // the format no longer supports it.
+  useEffect(() => {
+    if (isLossless && !isLosslessAvailable) {
+      onCompressionModeChange("balanced");
+    }
+  }, [isLossless, isLosslessAvailable, onCompressionModeChange]);
 
   // Local, instantly-updating slider value — the drag thumb and % label follow
   // every tick immediately. Only the debounced value is pushed up to settings,
@@ -67,7 +72,7 @@ export default function QualityControl({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedQuality]);
 
-  const effectiveQuality = isControlledByCompressionMode ? getCompressionModeQuality(compressionMode) : localQuality;
+  const effectiveQuality = isLossless ? 100 : localQuality;
   const qualityLevel = getQualityLevel(effectiveQuality);
 
   // Auto-unlocked if a previously saved quality is already below the floor —
@@ -95,25 +100,26 @@ export default function QualityControl({
         </div>
       </div>
 
-      {isControlledByCompressionMode ? (
-        /* Locked state for non-balanced modes */
-        <div className='relative overflow-hidden p-5 rounded-3xl bg-slate-50 dark:bg-slate-900/50 border border-border/50 group'>
-          <div className='relative z-10 flex items-center justify-between'>
-            <div className='flex flex-col'>
-              <div className='flex items-center gap-2 mb-1'>
-                <Lock size={12} className='text-primary' />
-                <span className='text-xs font-bold text-foreground'>Active Profile</span>
-              </div>
-              <p className='text-[10px] text-muted-foreground uppercase font-medium tracking-tight'>
-                {compressionMode.replace("-", " ")}
-              </p>
-            </div>
-            <div className='text-right'>
-              <span className='text-3xl font-black text-primary tabular-nums tracking-tighter'>{effectiveQuality}%</span>
-            </div>
-          </div>
-          {/* Subtle decoration */}
-          <Sparkles size={40} className='absolute -bottom-4 -right-4 text-primary/10 -rotate-12 transition-transform group-hover:rotate-0 duration-700' />
+      {isLosslessAvailable && (
+        <label className='flex items-center justify-between gap-2 px-1 cursor-pointer'>
+          <span className='flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-tight text-muted-foreground'>
+            <ShieldCheck size={12} />
+            Lossless (bit-perfect)
+          </span>
+          <input
+            type='checkbox'
+            checked={isLossless}
+            disabled={disabled}
+            onChange={(e) => onCompressionModeChange(e.target.checked ? "lossless" : "balanced")}
+            className='w-4 h-4 accent-primary cursor-pointer disabled:opacity-50'
+          />
+        </label>
+      )}
+
+      {isLossless ? (
+        <div className='flex items-center justify-between px-1 py-2 text-[10px] font-bold uppercase tracking-tight text-muted-foreground'>
+          <span>Quality</span>
+          <span className='text-lg font-black text-primary tabular-nums'>100%</span>
         </div>
       ) : (
         <div className='flex flex-col gap-4'>
@@ -181,4 +187,3 @@ export default function QualityControl({
     </div>
   );
 }
-
