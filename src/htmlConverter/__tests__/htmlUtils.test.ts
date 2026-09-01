@@ -177,6 +177,25 @@ describe("htmlConverter utils", () => {
       const result = mergeSimilarTags(input);
       expect(result).toContain("[[BR_SEP]]");
     });
+
+    // GDocs pastes an image paragraph and the paragraph right after it with the exact same
+    // <p style="..."> when both share the same alignment/margins — e.g. a centered image
+    // followed by a centered link. Merging them would splice htmlTemplates.wrapImg's
+    // "close current row / open new one" markup mid-block, stranding the trailing paragraph
+    // outside its own align wrapper (see formatter.ts's block-wrapper stage).
+    it("should NOT merge a <p> containing an <img> with the next identical <p>", () => {
+      const input =
+        '<p style="text-align: center;"><img src="a.png"/></p><br /><p style="text-align: center;">Link text</p>';
+      const result = mergeSimilarTags(input);
+      expect(result).not.toContain("[[BR_SEP]]");
+      expect(result).toBe(input);
+    });
+
+    it("should still merge two identical <p> tags when neither contains an <img>", () => {
+      const input = '<p style="text-align: center;">A</p><br /><p style="text-align: center;">B</p>';
+      const result = mergeSimilarTags(input);
+      expect(result).toContain("[[BR_SEP]]");
+    });
   });
 
   describe("replaceAllEmojisAndSymbolsExcludingHTML", () => {

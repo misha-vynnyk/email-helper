@@ -208,8 +208,16 @@ export function mergeSimilarTags(htmlContent: string): string {
     prevLen = htmlContent.length;
     // Merge IDENTICAL adjacent blocks (same exact opening tag) for p and h1-h6
     // This perfectly joins equivalently styled blocks (e.g. <p text-align: center>) across multiple lines.
+    // Skips merging when the leading block contains an <img>: wrapTextInSpan's image
+    // substitution (htmlTemplates.wrapImg) splices in its own "close current row / open a
+    // new one" markup at the <img>'s position, assuming the image sits alone in its own
+    // block. If trailing content (e.g. a link paragraph) got merged onto the same block,
+    // that trailing content ends up stranded after the splice, outside the block's own
+    // align/style wrapper — e.g. a centered link paragraph silently rendering left-aligned
+    // when Google Docs happens to give it the exact same <p style="..."> as the image above it.
     const exactMatchRegex = /(<(p|h[1-6])(?:\s+[^>]*|)>)((?:(?!<\/\2>)[\s\S])*?)<\/\2>\s*(?:<br\s*\/?>\s*)*\1/gi;
-    htmlContent = htmlContent.replace(exactMatchRegex, (_match, openTag, _tagName, innerContent) => {
+    htmlContent = htmlContent.replace(exactMatchRegex, (match, openTag, _tagName, innerContent) => {
+      if (/<img\b/i.test(innerContent)) return match;
       return `${openTag}${innerContent}[[BR_SEP]]`;
     });
   }
