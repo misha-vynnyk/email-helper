@@ -1,3 +1,4 @@
+import { computeSectionBox } from "../styling/sectionBoxStyle";
 import type { BuilderNode, SectionBlock, ShellConfig } from "../types";
 import { escapeHtml } from "./escape";
 import { renderNodeList } from "./renderNode";
@@ -13,29 +14,25 @@ import { responsiveClassAttr } from "./responsiveClassAttr";
  * без max-width-кепу й тягнеться на всю цю успадковану ширину замість фіксованих 552px.
  */
 export function renderSection(block: SectionBlock, nodes: Record<string, BuilderNode>, shell: ShellConfig, availableWidthPx: number): string {
-  const paddingStyle = `padding-right: ${block.padding.right}px; padding-left: ${block.padding.left}px; padding-top: ${block.padding.top}px; padding-bottom: ${block.padding.bottom}px;`;
+  const c = computeSectionBox(block, availableWidthPx);
+  const paddingStyle = `padding-right: ${c.paddingRight}px; padding-left: ${c.paddingLeft}px; padding-top: ${c.paddingTop}px; padding-bottom: ${c.paddingBottom}px;`;
 
   const extraStyleParts: string[] = [];
-  if (block.fill) extraStyleParts.push(`background-color: ${escapeHtml(block.fill)}`);
-  if (block.border) extraStyleParts.push(`border: ${block.border.widthPx}px solid ${escapeHtml(block.border.color)}`);
-  if (block.cornerRadius) extraStyleParts.push(`border-radius: ${block.cornerRadius}px`);
-  if (block.shadow) extraStyleParts.push(`box-shadow: ${block.shadow.xPx}px ${block.shadow.yPx}px ${block.shadow.blurPx}px ${escapeHtml(block.shadow.color)}`);
+  if (c.fill) extraStyleParts.push(`background-color: ${escapeHtml(c.fill)}`);
+  if (c.border) extraStyleParts.push(`border: ${c.border.widthPx}px solid ${escapeHtml(c.border.color)}`);
+  if (c.cornerRadius) extraStyleParts.push(`border-radius: ${c.cornerRadius}px`);
+  if (c.shadow) extraStyleParts.push(`box-shadow: ${c.shadow.xPx}px ${c.shadow.yPx}px ${c.shadow.blurPx}px ${escapeHtml(c.shadow.color)}`);
   // The shell's global `table { border-collapse: collapse; }` (renderShell.ts) otherwise wins
   // and silently kills border-radius on this table — border-radius doesn't render on a
   // collapsed table regardless of border-width, so this has to override it inline whenever a
   // border or corner radius is actually in play.
-  if (block.border || block.cornerRadius) extraStyleParts.push("border-collapse: separate", "border-spacing: 0");
+  if (c.border || c.cornerRadius) extraStyleParts.push("border-collapse: separate", "border-spacing: 0");
   const extraStyle = extraStyleParts.length > 0 ? ` ${extraStyleParts.join("; ")};` : "";
-  const bgcolorAttr = block.fill ? ` bgcolor="${escapeHtml(block.fill)}"` : "";
+  const bgcolorAttr = c.fill ? ` bgcolor="${escapeHtml(c.fill)}"` : "";
 
-  const ownWidthPx = block.widthPx ?? availableWidthPx;
   const widthAttr = block.widthPx !== undefined ? ` width="${block.widthPx}"` : "";
   const maxWidthStyle = block.widthPx !== undefined ? ` max-width:${block.widthPx}px;` : "";
-  // Clamped to 0: padding wider than the section's own width would otherwise drive this negative
-  // and propagate into a nested Row's column min-width as invalid CSS (browsers silently zero
-  // it, collapsing the intended layout instead of erroring).
-  const childrenAvailableWidthPx = Math.max(0, ownWidthPx - block.padding.left - block.padding.right);
-  const childrenHtml = renderNodeList(nodes, block.childIds, shell, childrenAvailableWidthPx, block.gapPx);
+  const childrenHtml = renderNodeList(nodes, block.childIds, shell, c.childrenAvailableWidthPx, block.gapPx);
 
   return `<!--[------ Section start ------]-->
 <tr>

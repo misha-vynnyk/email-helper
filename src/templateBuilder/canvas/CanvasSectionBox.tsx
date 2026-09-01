@@ -3,10 +3,11 @@ import { CSS } from "@dnd-kit/utilities";
 import { memo, useEffect, useState } from "react";
 
 import type { DragData } from "../dnd/dragTypes";
-import { removeNode, useBuilderNode } from "../state/builderStore";
+import { removeNode, useBuilderNode, useShellConfig } from "../state/builderStore";
 import { selectBlock, useIsSelected } from "../state/selectionStore";
+import { computeSectionBox, toReactStyle } from "../styling/sectionBoxStyle";
 import type { SectionBlock } from "../types";
-import { CanvasBlockShell } from "./CanvasBlockShell";
+import { CanvasWysiwygShell } from "./CanvasWysiwygShell";
 import { NodeDropZone } from "./NodeDropZone";
 import { registerNodeRef } from "./nodeRectRegistry";
 
@@ -16,6 +17,7 @@ interface CanvasSectionBoxProps {
 
 export const CanvasSectionBox = memo(function CanvasSectionBox({ id }: CanvasSectionBoxProps) {
   const section = useBuilderNode(id) as SectionBlock | undefined;
+  const shell = useShellConfig();
   const dragData: DragData = { kind: "node", parentId: section?.parentId ?? null };
   const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({ id, data: dragData });
   const isSelected = useIsSelected(id);
@@ -31,13 +33,20 @@ export const CanvasSectionBox = memo(function CanvasSectionBox({ id }: CanvasSec
 
   if (!section) return null;
 
+  // undefined widthPx = a nested instance (types.ts's own convention) — stretch to 100% of the
+  // parent instead of rendering computed.ownWidthPx, which for a nested Section is only a
+  // fallback used for the childrenAvailableWidthPx math, not a real own-width to paint.
+  const widthMode = section.widthPx !== undefined ? "fixed" : "fill";
+  const computed = computeSectionBox(section, shell.contentWidthPx);
+
   return (
-    <CanvasBlockShell
+    <CanvasWysiwygShell
       label='SECTION'
+      computedStyle={toReactStyle(computed, { widthMode })}
       isSelected={isSelected}
       isDragging={isDragging}
       isOver={isOver}
-      style={style}
+      positionStyle={style}
       setNodeRef={(el) => {
         setNodeRef(el);
         registerNodeRef(id, el);
@@ -48,6 +57,6 @@ export const CanvasSectionBox = memo(function CanvasSectionBox({ id }: CanvasSec
       onRemove={() => removeNode(id)}
       removeAriaLabel='Remove section'>
       <NodeDropZone parentId={id} childIds={section.childIds} containerKind='section' gapPx={previewGapPx ?? section.gapPx} onGapPreview={setPreviewGapPx} />
-    </CanvasBlockShell>
+    </CanvasWysiwygShell>
   );
 });
