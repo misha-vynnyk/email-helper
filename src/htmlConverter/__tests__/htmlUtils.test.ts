@@ -196,6 +196,55 @@ describe("htmlConverter utils", () => {
       const result = mergeSimilarTags(input);
       expect(result).toContain("[[BR_SEP]]");
     });
+
+    // GDocs footers put every line in its own <tr><td>...</td></tr> row, so the gap between
+    // </h6> and the next <h6> is table-row plumbing, not bare whitespace/<br>. mergeSimilarTags
+    // runs before processStyles() strips table tags, so it must tolerate that plumbing itself.
+    it("should merge footer h6 lines separated by table-row markup", () => {
+      const input =
+        '<tr><td><h6 style="line-height:1.7;text-align:center;margin-top:12pt;margin-bottom:4pt;">' +
+        '<span style="font-size:11pt;">This is an advertisement</span></h6></td></tr>\n' +
+        '<tr><td><h6 style="line-height:1.7;text-align:center;margin-top:12pt;margin-bottom:4pt;">' +
+        "<span style=\"font-size:9pt;\">America's Gold Company</span></h6></td></tr>\n" +
+        '<tr><td><h6 style="line-height:1.7;text-align:center;margin-top:12pt;margin-bottom:4pt;">' +
+        '<span style="font-size:9pt;">601 Heritage Drive, Suite 211, Jupiter, FL 33458</span></h6></td></tr>';
+      const result = mergeSimilarTags(input);
+      expect((result.match(/\[\[BR_SEP\]\]/g) || []).length).toBe(2);
+      expect((result.match(/<h6/gi) || []).length).toBe(1);
+      expect(result).toContain("This is an advertisement</span>[[BR_SEP]]");
+      expect(result).toContain("601 Heritage Drive, Suite 211, Jupiter, FL 33458</span></h6>");
+    });
+
+    it("should skip a blank spacer row between two mergeable footer h6 lines", () => {
+      const input =
+        '<tr><td><h6 style="text-align:center;">Line A</h6></td></tr>\n' +
+        "<tr><td><br /></td></tr>\n" +
+        '<tr><td><h6 style="text-align:center;">Line B</h6></td></tr>';
+      const result = mergeSimilarTags(input);
+      expect((result.match(/\[\[BR_SEP\]\]/g) || []).length).toBe(1);
+      expect((result.match(/<h6/gi) || []).length).toBe(1);
+      expect(result).not.toContain("<br />");
+    });
+
+    it("should NOT merge through two consecutive spacer rows (only exactly one is tolerated)", () => {
+      const input =
+        '<tr><td><h6 style="text-align:center;">Line A</h6></td></tr>\n' +
+        "<tr><td><br /></td></tr>\n" +
+        "<tr><td><br /></td></tr>\n" +
+        '<tr><td><h6 style="text-align:center;">Line B</h6></td></tr>';
+      const result = mergeSimilarTags(input);
+      expect(result).not.toContain("[[BR_SEP]]");
+    });
+
+    it("should NOT merge h6 rows separated by a row with real, non-blank content", () => {
+      const input =
+        '<tr><td><h6 style="text-align:center;">First footer line</h6></td></tr>\n' +
+        '<tr><td><p style="text-align:center;">Some unrelated paragraph in between</p></td></tr>\n' +
+        '<tr><td><h6 style="text-align:center;">Unrelated later h6</h6></td></tr>';
+      const result = mergeSimilarTags(input);
+      expect(result).not.toContain("[[BR_SEP]]");
+      expect(result).toBe(input);
+    });
   });
 
   describe("replaceAllEmojisAndSymbolsExcludingHTML", () => {
