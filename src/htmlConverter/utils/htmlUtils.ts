@@ -226,15 +226,31 @@ export function mergeSimilarTags(htmlContent: string): string {
   // This handles footer text from Google Docs where tags are split but differ only in minor
   // style attributes like margin-bottom. Skips pairs with mismatched text-align (e.g. center
   // vs left) to avoid the layout bug the deprecated generic merge caused.
+  //
+  // GDocs also frequently puts every footer line in its own <tr><td>...</td></tr> row, so the
+  // gap between </h6> and the next <h6> is table-row plumbing rather than bare whitespace/<br>.
+  // This pass runs before processStyles() strips table tags (see formatter.ts), so the gap has
+  // to be tolerated here. ROW_BOUNDARY matches "close this row / open the next" with permissive
+  // attributes (same tolerance style as attrs1/attrs2 above); TABLE_GAP additionally allows
+  // hopping over exactly one spacer row (e.g. a lone <br>) that contains no <h6>, so a blank
+  // row between two footer lines doesn't break the merge.
   {
     const getAlign = (attrs: string) =>
       (attrs.match(/text-align:\s*(\w+)/i) || [])[1]?.toLowerCase() ?? "";
+    const ROW_BOUNDARY = "<\\/td>\\s*<\\/tr>\\s*<tr(?:\\s+[^>]*)?>\\s*<td(?:\\s+[^>]*)?>";
+    // A "spacer row" we tolerate hopping over must be genuinely blank content only
+    // (whitespace/<br>/&nbsp;) — anything else (e.g. a stray <p>) is real content and must
+    // still break the merge, so this can't be a generic "no <h6>" wildcard.
+    const SPACER_ROW_CONTENT = "(?:\\s|<br\\s*\\/?>|&nbsp;)*";
+    const TABLE_GAP = `\\s*${ROW_BOUNDARY}\\s*(?:${SPACER_ROW_CONTENT}${ROW_BOUNDARY}\\s*)?`;
+    const GAP = `(?:\\s*(?:<br\\s*\\/?>\\s*)*|${TABLE_GAP})`;
+    const h6MergeRegex = new RegExp(`<h6([^>]*)>([\\s\\S]*?)<\\/h6>${GAP}<h6([^>]*)>`, "gi");
     let matchFound = true;
     let iterations = 0;
     while (matchFound && iterations < 50) {
       matchFound = false;
       htmlContent = htmlContent.replace(
-        /<h6([^>]*)>([\s\S]*?)<\/h6>\s*(?:<br\s*\/?>\s*)*<h6([^>]*)>/gi,
+        h6MergeRegex,
         (_match, attrs1, innerContent, attrs2) => {
           if (getAlign(attrs1) === getAlign(attrs2)) {
             matchFound = true;
