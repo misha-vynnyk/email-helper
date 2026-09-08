@@ -40,6 +40,11 @@ describe("computeSectionBox", () => {
     expect(computed.cornerRadius).toBe(8);
     expect(computed.shadow).toEqual({ xPx: 0, yPx: 2, blurPx: 4, color: "rgba(0,0,0,0.1)" });
   });
+
+  it("prefers cornerRadii (unlocked per-corner) over the scalar cornerRadius when both are set", () => {
+    const block = { ...createDefaultSectionBlock("s7", null), cornerRadius: 8, cornerRadii: { topLeft: 4, topRight: 8, bottomRight: 12, bottomLeft: 16 } };
+    expect(computeSectionBox(block, 552).cornerRadius).toEqual({ topLeft: 4, topRight: 8, bottomRight: 12, bottomLeft: 16 });
+  });
 });
 
 describe("toReactStyle", () => {
@@ -79,6 +84,11 @@ describe("toReactStyle", () => {
   it("maps cornerRadius straight through to borderRadius", () => {
     const computed = { ...baseComputed, cornerRadius: 8 };
     expect(toReactStyle(computed, { widthMode: "fixed" }).borderRadius).toBe(8);
+  });
+
+  it("formats an unlocked per-corner cornerRadius as the CSS 4-value shorthand (top-left top-right bottom-right bottom-left)", () => {
+    const computed = { ...baseComputed, cornerRadius: { topLeft: 4, topRight: 8, bottomRight: 12, bottomLeft: 16 } };
+    expect(toReactStyle(computed, { widthMode: "fixed" }).borderRadius).toBe("4px 8px 12px 16px");
   });
 
   it("uses computed.ownWidthPx as a numeric width when widthMode is fixed", () => {

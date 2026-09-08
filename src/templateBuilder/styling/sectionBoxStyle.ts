@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 
-import type { SectionBlock } from "../types";
+import type { CornerRadiusValue, SectionBlock } from "../types";
 
 export interface ComputedSectionBox {
   paddingTop: number;
@@ -9,7 +9,8 @@ export interface ComputedSectionBox {
   paddingLeft: number;
   fill?: string;
   border?: { widthPx: number; color: string };
-  cornerRadius?: number;
+  /** A plain number in locked/uniform mode, a `CornerRadiusValue` in unlocked per-corner mode (see `SectionBlock.cornerRadii`). */
+  cornerRadius?: number | CornerRadiusValue;
   shadow?: { xPx: number; yPx: number; blurPx: number; color: string };
   ownWidthPx: number;
   childrenAvailableWidthPx: number;
@@ -34,7 +35,7 @@ export function computeSectionBox(block: SectionBlock, availableWidthPx: number)
     paddingLeft: block.padding.left,
     fill: block.fill,
     border: block.border,
-    cornerRadius: block.cornerRadius,
+    cornerRadius: block.cornerRadii ?? block.cornerRadius,
     shadow: block.shadow,
     ownWidthPx,
     childrenAvailableWidthPx: Math.max(0, ownWidthPx - block.padding.left - block.padding.right),
@@ -44,6 +45,16 @@ export function computeSectionBox(block: SectionBlock, availableWidthPx: number)
 export interface ToReactStyleOptions {
   /** "fixed" = own widthPx is a real, top-level px value; "fill" = nested instance, stretch to 100% of the parent instead of computed.ownWidthPx (which is only a fallback for childrenAvailableWidthPx math, not a real own-width in that case). */
   widthMode: "fixed" | "fill";
+}
+
+/** `cornerRadius` is a plain number in locked/uniform mode (passed straight through, same as
+ * before per-corner support existed — React appends "px" itself) or a `CornerRadiusValue` in
+ * unlocked mode, formatted as the CSS 4-value shorthand (top-left top-right bottom-right
+ * bottom-left — the same corner order `render/renderSection.ts` uses for the email export, so the
+ * two can never disagree on which number goes where). */
+export function formatCornerRadiusReactValue(cornerRadius: number | CornerRadiusValue | undefined): CSSProperties["borderRadius"] {
+  if (cornerRadius === undefined || typeof cornerRadius === "number") return cornerRadius;
+  return `${cornerRadius.topLeft}px ${cornerRadius.topRight}px ${cornerRadius.bottomRight}px ${cornerRadius.bottomLeft}px`;
 }
 
 /** Canvas-only CSS formatting — the email exporter keeps building its own style string directly
@@ -56,7 +67,7 @@ export function toReactStyle(computed: ComputedSectionBox, options: ToReactStyle
     paddingLeft: computed.paddingLeft,
     backgroundColor: computed.fill,
     border: computed.border ? `${computed.border.widthPx}px solid ${computed.border.color}` : undefined,
-    borderRadius: computed.cornerRadius,
+    borderRadius: formatCornerRadiusReactValue(computed.cornerRadius),
     boxShadow: computed.shadow ? `${computed.shadow.xPx}px ${computed.shadow.yPx}px ${computed.shadow.blurPx}px ${computed.shadow.color}` : undefined,
     width: options.widthMode === "fixed" ? computed.ownWidthPx : "100%",
     // A "fixed" box sits in a block-layout parent (CanvasRootDropZone) narrower than the parent's

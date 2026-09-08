@@ -28,16 +28,16 @@ export function RowInspectorForm({ row }: RowInspectorFormProps) {
       </Field>
       <div />
       <Field label='Padding top'>
-        <Input type='number' value={row.padding.top} onChange={(e) => update({ padding: { ...row.padding, top: Number(e.target.value) || 0 } })} />
+        <Input type='number' value={row.padding.top} onChange={(e) => update({ padding: { ...row.padding, top: Math.round(Number(e.target.value) || 0) } })} />
       </Field>
       <Field label='Padding right'>
-        <Input type='number' value={row.padding.right} onChange={(e) => update({ padding: { ...row.padding, right: Number(e.target.value) || 0 } })} />
+        <Input type='number' value={row.padding.right} onChange={(e) => update({ padding: { ...row.padding, right: Math.round(Number(e.target.value) || 0) } })} />
       </Field>
       <Field label='Padding bottom'>
-        <Input type='number' value={row.padding.bottom} onChange={(e) => update({ padding: { ...row.padding, bottom: Number(e.target.value) || 0 } })} />
+        <Input type='number' value={row.padding.bottom} onChange={(e) => update({ padding: { ...row.padding, bottom: Math.round(Number(e.target.value) || 0) } })} />
       </Field>
       <Field label='Padding left'>
-        <Input type='number' value={row.padding.left} onChange={(e) => update({ padding: { ...row.padding, left: Number(e.target.value) || 0 } })} />
+        <Input type='number' value={row.padding.left} onChange={(e) => update({ padding: { ...row.padding, left: Math.round(Number(e.target.value) || 0) } })} />
       </Field>
     </div>
   );

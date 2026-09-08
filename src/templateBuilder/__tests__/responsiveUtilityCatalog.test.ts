@@ -39,4 +39,22 @@ describe("responsiveUtilityCatalog", () => {
     expect(byName.get("spacer-hide")?.declaration).toBe("display: none !important;");
     expect(byName.get("no-radius")?.declaration).toBe("border-radius: 0 !important;");
   });
+
+  it("every entry has a non-empty properties array", () => {
+    for (const entry of UTILITY_CLASS_CATALOG) {
+      expect(entry.properties.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("spacingScale-generated padding entries carry exactly the cssProps they were built from", () => {
+    const byName = new Map(UTILITY_CLASS_CATALOG.map((e) => [e.className, e]));
+    expect(byName.get("pt-24")?.properties).toEqual(["padding-top"]);
+    expect(byName.get("px-16")?.properties).toEqual(["padding-left", "padding-right"]);
+    expect(byName.get("py-16")?.properties).toEqual(["padding-top", "padding-bottom"]);
+  });
+
+  it("w-full touches all three width-related properties, not just width", () => {
+    const byName = new Map(UTILITY_CLASS_CATALOG.map((e) => [e.className, e]));
+    expect(byName.get("w-full")?.properties).toEqual(["width", "max-width", "min-width"]);
+  });
 });

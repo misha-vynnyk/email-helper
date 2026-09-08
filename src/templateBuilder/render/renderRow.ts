@@ -1,4 +1,5 @@
-import { MIN_ROW_COLUMNS, type BuilderNode, type RowBlock, type RowColumnBlock, type ShellConfig } from "../types";
+import { type BuilderNode, MIN_ROW_COLUMNS, type RowBlock, type RowColumnBlock, type ShellConfig } from "../types";
+import { buildPaddingStyle } from "./paddingStyle";
 import { renderNodeList } from "./renderNode";
 import { responsiveClassAttr } from "./responsiveClassAttr";
 
@@ -18,7 +19,7 @@ const COLUMN_CHILD_GAP_PX = 8;
  * ширини напряму, бо ряд візуально рендериться саме на `ownWidthPx`, не ширше.
  */
 export function renderRow(row: RowBlock, nodes: Record<string, BuilderNode>, shell: ShellConfig, availableWidthPx: number): string {
-  const paddingStyle = `padding-right: ${row.padding.right}px; padding-left: ${row.padding.left}px; padding-top: ${row.padding.top}px; padding-bottom: ${row.padding.bottom}px;`;
+  const paddingStyle = buildPaddingStyle(row.padding);
 
   const ownWidthPx = row.widthPx ?? availableWidthPx;
   const widthAttr = row.widthPx !== undefined ? ` width="${row.widthPx}"` : "";

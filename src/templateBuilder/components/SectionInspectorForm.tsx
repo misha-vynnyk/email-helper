@@ -1,10 +1,20 @@
+import { Lock, Unlock } from "lucide-react";
+
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 import { updateSectionStyle } from "../state/builderStore";
-import type { ContainerShadow, SectionBlock } from "../types";
+import { type ContainerShadow, type CornerRadiusValue, type SectionBlock,toggleCornerRadiusLock } from "../types";
 import { parseOptionalWidthPx } from "./parseOptionalWidthPx";
+
+const ZERO_CORNER_RADII: CornerRadiusValue = { topLeft: 0, topRight: 0, bottomRight: 0, bottomLeft: 0 };
+const CORNER_LABELS: Array<{ key: keyof CornerRadiusValue; label: string }> = [
+  { key: "topLeft", label: "Top left" },
+  { key: "topRight", label: "Top right" },
+  { key: "bottomRight", label: "Bottom right" },
+  { key: "bottomLeft", label: "Bottom left" },
+];
 
 const DEFAULT_SHADOW: ContainerShadow = { xPx: 0, yPx: 2, blurPx: 4, color: "rgba(0,0,0,0.1)" };
 
@@ -56,16 +66,16 @@ export function SectionInspectorForm({ section }: SectionInspectorFormProps) {
           <Input type='number' value={section.gapPx} onChange={(e) => update({ gapPx: Number(e.target.value) || 0 })} />
         </Field>
         <Field label='Padding top'>
-          <Input type='number' value={section.padding.top} onChange={(e) => update({ padding: { ...section.padding, top: Number(e.target.value) || 0 } })} />
+          <Input type='number' value={section.padding.top} onChange={(e) => update({ padding: { ...section.padding, top: Math.round(Number(e.target.value) || 0) } })} />
         </Field>
         <Field label='Padding right'>
-          <Input type='number' value={section.padding.right} onChange={(e) => update({ padding: { ...section.padding, right: Number(e.target.value) || 0 } })} />
+          <Input type='number' value={section.padding.right} onChange={(e) => update({ padding: { ...section.padding, right: Math.round(Number(e.target.value) || 0) } })} />
         </Field>
         <Field label='Padding bottom'>
-          <Input type='number' value={section.padding.bottom} onChange={(e) => update({ padding: { ...section.padding, bottom: Number(e.target.value) || 0 } })} />
+          <Input type='number' value={section.padding.bottom} onChange={(e) => update({ padding: { ...section.padding, bottom: Math.round(Number(e.target.value) || 0) } })} />
         </Field>
         <Field label='Padding left'>
-          <Input type='number' value={section.padding.left} onChange={(e) => update({ padding: { ...section.padding, left: Number(e.target.value) || 0 } })} />
+          <Input type='number' value={section.padding.left} onChange={(e) => update({ padding: { ...section.padding, left: Math.round(Number(e.target.value) || 0) } })} />
         </Field>
       </div>
 
@@ -84,8 +94,35 @@ export function SectionInspectorForm({ section }: SectionInspectorFormProps) {
         </div>
       </OptionalSection>
 
-      <OptionalSection label='Corner radius' enabled={section.cornerRadius !== undefined} onToggle={(enabled) => update({ cornerRadius: enabled ? 8 : undefined })}>
-        <Input type='number' value={section.cornerRadius ?? 8} onChange={(e) => update({ cornerRadius: Number(e.target.value) || 0 })} />
+      <OptionalSection
+        label='Corner radius'
+        enabled={section.cornerRadius !== undefined || section.cornerRadii !== undefined}
+        onToggle={(enabled) => update(enabled ? { cornerRadius: 8, cornerRadii: undefined } : { cornerRadius: undefined, cornerRadii: undefined })}>
+        <div className='flex items-center justify-between'>
+          <Label className='text-xs text-muted-foreground'>{section.cornerRadii === undefined ? "All corners" : "Per corner"}</Label>
+          <button
+            type='button'
+            onClick={() => update(toggleCornerRadiusLock(section.cornerRadius, section.cornerRadii))}
+            className='text-muted-foreground hover:text-foreground'
+            aria-label={section.cornerRadii === undefined ? "Unlock corner radius (edit each corner independently)" : "Lock corner radius (all corners follow one value)"}>
+            {section.cornerRadii === undefined ? <Lock size={13} /> : <Unlock size={13} />}
+          </button>
+        </div>
+        {section.cornerRadii === undefined ? (
+          <Input type='number' value={section.cornerRadius ?? 8} onChange={(e) => update({ cornerRadius: Number(e.target.value) || 0 })} />
+        ) : (
+          <div className='grid grid-cols-2 gap-2'>
+            {CORNER_LABELS.map(({ key, label }) => (
+              <Field key={key} label={label}>
+                <Input
+                  type='number'
+                  value={section.cornerRadii?.[key] ?? 0}
+                  onChange={(e) => update({ cornerRadii: { ...(section.cornerRadii ?? ZERO_CORNER_RADII), [key]: Number(e.target.value) || 0 } })}
+                />
+              </Field>
+            ))}
+          </div>
+        )}
       </OptionalSection>
 
       <OptionalSection label='Shadow' enabled={section.shadow !== undefined} onToggle={(enabled) => update({ shadow: enabled ? DEFAULT_SHADOW : undefined })}>

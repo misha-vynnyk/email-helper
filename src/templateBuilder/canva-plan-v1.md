@@ -498,7 +498,11 @@ export function useResponsiveConflict(nodeId: string, cssProperty: string): bool
 
 ### Чеклист Stage 0-дисципліни
 
-- [ ] Усі 5 ручок комітять `updateSectionStyle` лише на `onDragEnd` (через `usePointerDrag`, не напряму).
+- [x] Усі ручок комітять `updateSectionStyle` лише на `onDragEnd` (через `usePointerDrag`, не напряму).
+
+### Реалізовано (2026-09-08) — з одним свідомим відхиленням від плану
+
+Corner radius вийшов НЕ скаляром "один хендл в одному куті" (v2's п.3 "Відкриті питання до користувача"), а гібридом за прямою вказівкою користувача: `SectionBlock.cornerRadii?: CornerRadiusValue` (нове опційне поле) — присутність = "unlocked" per-corner режим (перекриває скаляр `cornerRadius`), відсутність = "locked"/uniform режим (як і планувалось). Спільний `toggleCornerRadiusLock()` (types.ts) — один шар для canvas-хендлів і Inspector-тумблера, щоб не розійшлись. Locked показує 1 хендл (top-right), unlocked — 4 незалежні. `computeSectionBox`/`toReactStyle` (sectionBoxStyle.ts) і `renderSection.ts` обидва форматують per-corner як CSS 4-значний shorthand (top-left top-right bottom-right bottom-left) — `renderSection.test.ts`'s існуючі тести не чіпались (byte-parity збережено), новий тест доданий окремо. `responsiveUtilityCatalog.ts`'s `properties: string[]` рефакторинг і `useResponsiveConflict` (нове `state/responsiveConflict.ts`) реалізовані за планом — конфлікт-індикатор показаний як колір хендла (amber) + `title`-tooltip, не Popover (спрощення, не Radix-компонент). `paddingAfterEdgeDrag`/`cornerRadiusFromPointerOffset` — точно за планом. 242/242 тестів, `tsc --noEmit` чисто, eslint чисто (усі 4× `usePointerDrag`-виклики для padding-ручок і 4× для corner-ручок винесені в локальні `useEdgeDrag`/`useCornerDrag`-хелпери, названі з префіксом `use`, щоб `eslint-plugin-react-hooks` розпізнав їх як хуки).
 
 ---
 
