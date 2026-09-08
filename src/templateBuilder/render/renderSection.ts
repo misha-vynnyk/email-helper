@@ -1,6 +1,7 @@
 import { computeSectionBox } from "../styling/sectionBoxStyle";
 import type { BuilderNode, SectionBlock, ShellConfig } from "../types";
 import { escapeHtml } from "./escape";
+import { buildPaddingStyle } from "./paddingStyle";
 import { renderNodeList } from "./renderNode";
 import { responsiveClassAttr } from "./responsiveClassAttr";
 
@@ -15,12 +16,17 @@ import { responsiveClassAttr } from "./responsiveClassAttr";
  */
 export function renderSection(block: SectionBlock, nodes: Record<string, BuilderNode>, shell: ShellConfig, availableWidthPx: number): string {
   const c = computeSectionBox(block, availableWidthPx);
-  const paddingStyle = `padding-right: ${c.paddingRight}px; padding-left: ${c.paddingLeft}px; padding-top: ${c.paddingTop}px; padding-bottom: ${c.paddingBottom}px;`;
+  const paddingStyle = buildPaddingStyle({ top: c.paddingTop, right: c.paddingRight, bottom: c.paddingBottom, left: c.paddingLeft });
 
   const extraStyleParts: string[] = [];
   if (c.fill) extraStyleParts.push(`background-color: ${escapeHtml(c.fill)}`);
   if (c.border) extraStyleParts.push(`border: ${c.border.widthPx}px solid ${escapeHtml(c.border.color)}`);
-  if (c.cornerRadius) extraStyleParts.push(`border-radius: ${c.cornerRadius}px`);
+  // Locked/uniform mode: same single-value output as before per-corner support existed. Unlocked
+  // mode (SectionBlock.cornerRadii set): CSS 4-value shorthand, top-left top-right bottom-right
+  // bottom-left — same corner order styling/sectionBoxStyle.ts's toReactStyle uses for canvas, so
+  // the two renderers can never disagree on which number goes where.
+  if (typeof c.cornerRadius === "number") extraStyleParts.push(`border-radius: ${c.cornerRadius}px`);
+  else if (c.cornerRadius) extraStyleParts.push(`border-radius: ${c.cornerRadius.topLeft}px ${c.cornerRadius.topRight}px ${c.cornerRadius.bottomRight}px ${c.cornerRadius.bottomLeft}px`);
   if (c.shadow) extraStyleParts.push(`box-shadow: ${c.shadow.xPx}px ${c.shadow.yPx}px ${c.shadow.blurPx}px ${escapeHtml(c.shadow.color)}`);
   // The shell's global `table { border-collapse: collapse; }` (renderShell.ts) otherwise wins
   // and silently kills border-radius on this table — border-radius doesn't render on a

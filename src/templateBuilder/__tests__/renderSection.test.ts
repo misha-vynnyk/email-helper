@@ -34,6 +34,19 @@ describe("renderSection", () => {
     expect(html).toContain("box-shadow: 0px 2px 4px rgba(0,0,0,0.1)");
   });
 
+  it("renders an unlocked per-corner cornerRadii as the CSS 4-value shorthand (top-left top-right bottom-right bottom-left), ignoring the scalar cornerRadius", () => {
+    const block = {
+      ...createDefaultSectionBlock("c9", null),
+      cornerRadius: 8,
+      cornerRadii: { topLeft: 4, topRight: 8, bottomRight: 12, bottomLeft: 16 },
+    };
+
+    const html = renderSection(block, {}, shell, shell.contentWidthPx);
+
+    expect(html).toContain("border-radius: 4px 8px 12px 16px");
+    expect(html).not.toContain("border-radius: 8px;");
+  });
+
   it("overrides the shell's global border-collapse:collapse inline whenever a border or corner radius is set, since collapse silently kills border-radius", () => {
     const withBorderOnly = { ...createDefaultSectionBlock("c5", null), border: { widthPx: 1, color: "#000000" } };
     const withRadiusOnly = { ...createDefaultSectionBlock("c6", null), cornerRadius: 8 };

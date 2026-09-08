@@ -3,7 +3,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { memo, useEffect, useState } from "react";
 
 import type { DragData } from "../dnd/dragTypes";
-import { removeNode, useBuilderNode, useShellConfig } from "../state/builderStore";
+import { removeNode, updateSectionStyle, useBuilderNode, useShellConfig } from "../state/builderStore";
 import { selectBlock, useIsSelected } from "../state/selectionStore";
 import { computeSectionBox, toReactStyle } from "../styling/sectionBoxStyle";
 import type { SectionBlock } from "../types";
@@ -41,6 +41,7 @@ export const CanvasSectionBox = memo(function CanvasSectionBox({ id }: CanvasSec
 
   return (
     <CanvasWysiwygShell
+      id={id}
       label='SECTION'
       computedStyle={toReactStyle(computed, { widthMode })}
       isSelected={isSelected}
@@ -55,7 +56,12 @@ export const CanvasSectionBox = memo(function CanvasSectionBox({ id }: CanvasSec
       listeners={listeners}
       onSelect={() => selectBlock(id)}
       onRemove={() => removeNode(id)}
-      removeAriaLabel='Remove section'>
+      removeAriaLabel='Remove section'
+      padding={section.padding}
+      cornerRadius={section.cornerRadius}
+      cornerRadii={section.cornerRadii}
+      onPaddingChange={(padding) => updateSectionStyle(id, { padding })}
+      onCornerRadiusChange={(patch) => updateSectionStyle(id, patch)}>
       <NodeDropZone parentId={id} childIds={section.childIds} containerKind='section' gapPx={previewGapPx ?? section.gapPx} onGapPreview={setPreviewGapPx} />
     </CanvasWysiwygShell>
   );

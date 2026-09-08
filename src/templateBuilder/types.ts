@@ -29,6 +29,14 @@ export interface ContainerShadow {
   color: string;
 }
 
+/** Independent per-corner radius values, used only in "unlocked" mode — see `SectionBlock.cornerRadii`. */
+export interface CornerRadiusValue {
+  topLeft: number;
+  topRight: number;
+  bottomRight: number;
+  bottomLeft: number;
+}
+
 export type TextAlign = "left" | "center" | "right";
 
 /**
@@ -121,7 +129,10 @@ export interface SectionBlock extends BaseNode {
   gapPx: number;
   fill?: string;
   border?: ContainerBorder;
+  /** Uniform ("locked") radius, applied to all four corners. Ignored when `cornerRadii` is set. */
   cornerRadius?: number;
+  /** Presence = "unlocked" per-corner mode, takes precedence over `cornerRadius`; absence = locked/uniform mode. */
+  cornerRadii?: CornerRadiusValue;
   shadow?: ContainerShadow;
   childIds: string[];
 }
@@ -194,6 +205,26 @@ export function createDefaultSectionBlock(id: string, parentId: string | null): 
     gapPx: 14,
     childIds: [],
   };
+}
+
+/**
+ * Toggles a Section's corner radius between locked (uniform `cornerRadius`) and unlocked
+ * (per-corner `cornerRadii`) mode — the single shared implementation for both the canvas drag
+ * handles (`canvas/CanvasWysiwygShell.tsx`) and the Inspector's lock icon
+ * (`components/SectionInspectorForm.tsx`), so the two UIs can never disagree on what
+ * locking/unlocking actually does to the data.
+ *
+ * Unlocking seeds every corner with the current uniform value (visually a no-op — nothing changes
+ * until the user drags/types a corner). Re-locking has to collapse four (possibly different)
+ * values into one; it picks `topLeft` — arbitrary but consistent, not an average, matching this
+ * codebase's other "pick a representative value" collapses.
+ */
+export function toggleCornerRadiusLock(cornerRadius: number | undefined, cornerRadii: CornerRadiusValue | undefined): { cornerRadius?: number; cornerRadii?: CornerRadiusValue } {
+  if (cornerRadii === undefined) {
+    const r = cornerRadius ?? 0;
+    return { cornerRadius, cornerRadii: { topLeft: r, topRight: r, bottomRight: r, bottomLeft: r } };
+  }
+  return { cornerRadius: cornerRadii.topLeft, cornerRadii: undefined };
 }
 
 export function evenWidthPercents(count: number): number[] {
