@@ -3,6 +3,7 @@ import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrate
 import { useEffect, useRef, useState } from "react";
 
 import type { DragData, DropData } from "../dnd/dragTypes";
+import { useSyncGoogleFontsIntoDocument } from "../hooks/useSyncGoogleFontsIntoDocument";
 import { READY_MADE_BY_ID } from "../readyMadeCatalog";
 import { addContainer, addLeaf, addReadyMade, duplicateNode, getChildIds, moveNode, redo, undo, useRootIds } from "../state/builderStore";
 import { selectBlock } from "../state/selectionStore";
@@ -62,6 +63,7 @@ function CanvasRootDropZone({ rootIds }: { rootIds: string[] }) {
 }
 
 export function BuilderCanvas() {
+  useSyncGoogleFontsIntoDocument();
   const rootIds = useRootIds();
   const [activeLabel, setActiveLabel] = useState<string | null>(null);
   // A palette drag spawns a brand-new block elsewhere in the canvas — the palette chip itself
