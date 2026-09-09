@@ -1,9 +1,5 @@
 import { create } from "zustand";
 
-import { type CanvasTree, childIdsOf, cloneSubtree, collectDescendantIds, insertNode, isDescendantOrSelf, moveNodeInTree, removeNodeFromTree } from "./canvasTree";
-import { pushHistorySnapshot, redoToSnapshot, resetHistory, undoToSnapshot } from "./historyStore";
-import { clearMultiSelection, getSelectedId, getSelectedIds, removeIdsFromSelection, selectBlock } from "./selectionStore";
-
 import { READY_MADE_BY_ID } from "../readyMadeCatalog";
 import type { BuilderLeafBlock, BuilderNode, NonContainerNode, ReadyMadeBlock, RowBlock, RowColumnBlock, SectionBlock, ShellConfig } from "../types";
 import {
@@ -21,6 +17,9 @@ import {
   MAX_ROW_COLUMNS,
   MIN_ROW_COLUMNS,
 } from "../types";
+import { type CanvasTree, childIdsOf, cloneSubtree, collectDescendantIds, insertNode, isDescendantOrSelf, moveNodeInTree, removeNodeFromTree } from "./canvasTree";
+import { pushHistorySnapshot, redoToSnapshot, resetHistory, undoToSnapshot } from "./historyStore";
+import { clearMultiSelection, getSelectedId, getSelectedIds, removeIdsFromSelection, selectBlock } from "./selectionStore";
 
 interface BuilderState {
   shell: ShellConfig;
@@ -328,7 +327,7 @@ export function updateSectionStyle(sectionId: string, patch: Partial<Omit<Sectio
   });
 }
 
-export function updateRowStyle(rowId: string, patch: Partial<Pick<RowBlock, "padding" | "widthPx">>) {
+export function updateRowStyle(rowId: string, patch: Partial<Omit<RowBlock, "id" | "parentId" | "type" | "childIds">>) {
   commit((tree) => {
     const row = tree.nodes[rowId];
     if (!row || row.type !== "row") return tree;

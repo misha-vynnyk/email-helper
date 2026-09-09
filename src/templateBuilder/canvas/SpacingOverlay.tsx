@@ -1,15 +1,17 @@
 import { type RefObject, useLayoutEffect, useRef, useState } from "react";
 
+import { SPACING_SNAP_STEPS_PX } from "../responsiveUtilityCatalog";
 import { updateSectionStyle } from "../state/builderStore";
 import { getNodeRect } from "./nodeRectRegistry";
 import { gapAfterDrag } from "./resizeMath";
+import { snapBadgeClassName, snapToNearest } from "./snapValue";
 import { usePointerDrag } from "./usePointerDrag";
 
 interface SpacingOverlayProps {
   sectionId: string;
   /** NodeDropZone's own div — the actual `position: relative` ancestor these handles are absolutely
    * positioned against. Deliberately NOT looked up via nodeRectRegistry (that registry only covers
-   * the outer CanvasBlockShell box and the children, whose rects are used below — not this inner
+   * the outer CanvasWysiwygShell box and the children, whose rects are used below — not this inner
    * div, which sits offset from the shell's top by its header/padding). */
   containerRef: RefObject<HTMLDivElement>;
   childIds: string[];
@@ -32,7 +34,7 @@ interface GapHandlePosition {
  * of them moves them all together, which is the correct outcome, not a bug.
  *
  * Child positions come from `getNodeRect` (nodeRectRegistry.ts, already populated for every direct
- * child — leaf/ready-made chips via CanvasChipShell, nested Section/Row via CanvasBlockShell).
+ * child — leaf/ready-made chips via CanvasChipShell, nested Section/Row via CanvasWysiwygShell).
  * Both that and `containerRef`'s own `getBoundingClientRect()` are read in the same frame, so a
  * page scroll shifts both by the same amount and cancels out of the `top - containerTop`
  * difference. No portal (unlike SelectionToolbar): these handles never need to escape the
@@ -94,14 +96,19 @@ export function SpacingOverlay({ sectionId, containerRef, childIds, gapPx, onPre
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Snapped state is derivable from `gapPx` itself once dragging (it's the live preview value
+  // round-tripped back through `onPreview`/CanvasSectionBox) — same "the preview IS the candidate
+  // when snapped" trick CanvasWysiwygShell's padding/corner handles use, no separate state needed.
+  const isSnapped = SPACING_SNAP_STEPS_PX.includes(Math.round(gapPx));
+
   const { isDragging, handlers } = usePointerDrag({
     cursor: "ns-resize",
     onDragStart: () => {
       baseGapRef.current = gapPx;
     },
-    onDrag: ({ dy }) => onPreview(gapAfterDrag(baseGapRef.current, dy)),
+    onDrag: ({ dy }) => onPreview(snapToNearest(gapAfterDrag(baseGapRef.current, dy), SPACING_SNAP_STEPS_PX).value),
     onDragEnd: ({ dy }) => {
-      updateSectionStyle(sectionId, { gapPx: gapAfterDrag(baseGapRef.current, dy) });
+      updateSectionStyle(sectionId, { gapPx: snapToNearest(gapAfterDrag(baseGapRef.current, dy), SPACING_SNAP_STEPS_PX).value });
       onPreview(null);
     },
   });
@@ -119,8 +126,8 @@ export function SpacingOverlay({ sectionId, containerRef, childIds, gapPx, onPre
           className={`group/gap absolute left-1.5 right-1.5 -mt-2 flex h-4 cursor-ns-resize items-center justify-center transition-opacity ${
             isDragging ? "opacity-100" : "opacity-0 hover:opacity-100"
           }`}>
-          <div className={`h-0.5 w-full rounded-full ${isDragging ? "bg-primary" : "bg-primary/40 group-hover/gap:bg-primary/60"}`} />
-          {isDragging && <span className='absolute rounded bg-card px-1.5 py-0.5 text-[10px] font-medium text-foreground shadow-sm border border-border'>{Math.round(gapPx)}px</span>}
+          <div className={`h-0.5 w-full rounded-full ${isDragging ? (isSnapped ? "bg-emerald-400" : "bg-primary") : "bg-primary/40 group-hover/gap:bg-primary/60"}`} />
+          {isDragging && <span className={snapBadgeClassName(isSnapped)}>{Math.round(gapPx)}px</span>}
         </div>
       ))}
     </>

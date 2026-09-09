@@ -4,12 +4,13 @@ import { Plus } from "lucide-react";
 import { Fragment, memo, useEffect, useRef, useState } from "react";
 
 import type { DragData } from "../dnd/dragTypes";
-import { addColumn, removeNode, useBuilderNode } from "../state/builderStore";
+import { addColumn, updateRowStyle, useBuilderNode, useShellConfig } from "../state/builderStore";
 import { selectBlock, useIsSelected } from "../state/selectionStore";
+import { computeBoxStyle, toReactStyle } from "../styling/boxStyle";
 import { MAX_ROW_COLUMNS, type RowBlock } from "../types";
-import { CanvasBlockShell } from "./CanvasBlockShell";
 import { CanvasColumnBox } from "./CanvasColumnBox";
 import { CanvasColumnDivider } from "./CanvasColumnDivider";
+import { CanvasWysiwygShell } from "./CanvasWysiwygShell";
 import { registerNodeRef } from "./nodeRectRegistry";
 
 interface CanvasRowBoxProps {
@@ -18,6 +19,7 @@ interface CanvasRowBoxProps {
 
 export const CanvasRowBox = memo(function CanvasRowBox({ id }: CanvasRowBoxProps) {
   const row = useBuilderNode(id) as RowBlock | undefined;
+  const shell = useShellConfig();
   const dragData: DragData = { kind: "node", parentId: row?.parentId ?? null };
   const { attributes, listeners, setNodeRef, transform, transition, isDragging, isOver } = useSortable({ id, data: dragData });
   const isSelected = useIsSelected(id);
@@ -31,13 +33,21 @@ export const CanvasRowBox = memo(function CanvasRowBox({ id }: CanvasRowBoxProps
 
   if (!row) return null;
 
+  // Same convention as CanvasSectionBox: undefined widthPx = a nested instance, stretch to 100%
+  // of the parent instead of rendering computed.ownWidthPx (a fallback for childrenAvailableWidthPx
+  // math, not a real own-width to paint in that case).
+  const widthMode = row.widthPx !== undefined ? "fixed" : "fill";
+  const computed = computeBoxStyle(row, shell.contentWidthPx);
+
   return (
-    <CanvasBlockShell
+    <CanvasWysiwygShell
+      id={id}
       label={`ROW (${row.childIds.length} col)`}
+      computedStyle={toReactStyle(computed, { widthMode })}
       isSelected={isSelected}
       isDragging={isDragging}
       isOver={isOver}
-      style={style}
+      positionStyle={style}
       setNodeRef={(el) => {
         setNodeRef(el);
         registerNodeRef(id, el);
@@ -45,8 +55,11 @@ export const CanvasRowBox = memo(function CanvasRowBox({ id }: CanvasRowBoxProps
       attributes={attributes}
       listeners={listeners}
       onSelect={() => selectBlock(id)}
-      onRemove={() => removeNode(id)}
-      removeAriaLabel='Remove row'>
+      padding={row.padding}
+      cornerRadius={row.cornerRadius}
+      cornerRadii={row.cornerRadii}
+      onPaddingChange={(padding) => updateRowStyle(id, { padding })}
+      onCornerRadiusChange={(patch) => updateRowStyle(id, patch)}>
       {row.childIds.length < MAX_ROW_COLUMNS && (
         <div className='flex justify-end mb-1'>
           <button
@@ -70,6 +83,6 @@ export const CanvasRowBox = memo(function CanvasRowBox({ id }: CanvasRowBoxProps
           </Fragment>
         ))}
       </div>
-    </CanvasBlockShell>
+    </CanvasWysiwygShell>
   );
 });

@@ -1,25 +1,25 @@
-import { computeSectionBox, toReactStyle } from "../styling/sectionBoxStyle";
-import { createDefaultSectionBlock } from "../types";
+import { computeBoxStyle, toReactStyle } from "../styling/boxStyle";
+import { createDefaultRowBlock, createDefaultSectionBlock } from "../types";
 
-describe("computeSectionBox", () => {
+describe("computeBoxStyle", () => {
   it("uses block.widthPx as ownWidthPx when set", () => {
     const block = { ...createDefaultSectionBlock("s1", null), widthPx: 552 };
-    expect(computeSectionBox(block, 300).ownWidthPx).toBe(552);
+    expect(computeBoxStyle(block, 300).ownWidthPx).toBe(552);
   });
 
   it("falls back to availableWidthPx as ownWidthPx when block.widthPx is undefined", () => {
     const block = { ...createDefaultSectionBlock("s2", "parent"), widthPx: undefined };
-    expect(computeSectionBox(block, 300).ownWidthPx).toBe(300);
+    expect(computeBoxStyle(block, 300).ownWidthPx).toBe(300);
   });
 
   it("clamps childrenAvailableWidthPx to 0 when padding exceeds the section's own width", () => {
     const block = { ...createDefaultSectionBlock("s3", null), widthPx: 552, padding: { top: 0, right: 400, bottom: 0, left: 400 } };
-    expect(computeSectionBox(block, 552).childrenAvailableWidthPx).toBe(0);
+    expect(computeBoxStyle(block, 552).childrenAvailableWidthPx).toBe(0);
   });
 
   it("passes through fill/border/cornerRadius/shadow as undefined when unset on the block", () => {
     const block = createDefaultSectionBlock("s4", null);
-    const computed = computeSectionBox(block, 552);
+    const computed = computeBoxStyle(block, 552);
     expect(computed.fill).toBeUndefined();
     expect(computed.border).toBeUndefined();
     expect(computed.cornerRadius).toBeUndefined();
@@ -34,7 +34,7 @@ describe("computeSectionBox", () => {
       cornerRadius: 8,
       shadow: { xPx: 0, yPx: 2, blurPx: 4, color: "rgba(0,0,0,0.1)" },
     };
-    const computed = computeSectionBox(block, 552);
+    const computed = computeBoxStyle(block, 552);
     expect(computed.fill).toBe("#fff9e9");
     expect(computed.border).toEqual({ widthPx: 1, color: "#365373" });
     expect(computed.cornerRadius).toBe(8);
@@ -43,12 +43,35 @@ describe("computeSectionBox", () => {
 
   it("prefers cornerRadii (unlocked per-corner) over the scalar cornerRadius when both are set", () => {
     const block = { ...createDefaultSectionBlock("s7", null), cornerRadius: 8, cornerRadii: { topLeft: 4, topRight: 8, bottomRight: 12, bottomLeft: 16 } };
-    expect(computeSectionBox(block, 552).cornerRadius).toEqual({ topLeft: 4, topRight: 8, bottomRight: 12, bottomLeft: 16 });
+    expect(computeBoxStyle(block, 552).cornerRadius).toEqual({ topLeft: 4, topRight: 8, bottomRight: 12, bottomLeft: 16 });
+  });
+
+  // Generalized off SectionBlock in canva-plan-v2.md Stage 2 once RowBlock gained the same
+  // fill/border/cornerRadius/cornerRadii/shadow fields — these prove a RowBlock computes
+  // identically to a SectionBlock with the same field values, not just that the types line up.
+  it("computes the same box style from a RowBlock as from a SectionBlock given the same field values", () => {
+    const row = {
+      ...createDefaultRowBlock("r1", null),
+      fill: "#fff9e9",
+      border: { widthPx: 1, color: "#365373" },
+      cornerRadius: 8,
+      shadow: { xPx: 0, yPx: 2, blurPx: 4, color: "rgba(0,0,0,0.1)" },
+    };
+    const computed = computeBoxStyle(row, 552);
+    expect(computed.fill).toBe("#fff9e9");
+    expect(computed.border).toEqual({ widthPx: 1, color: "#365373" });
+    expect(computed.cornerRadius).toBe(8);
+    expect(computed.shadow).toEqual({ xPx: 0, yPx: 2, blurPx: 4, color: "rgba(0,0,0,0.1)" });
+  });
+
+  it("falls back to availableWidthPx for a nested RowBlock the same way it does for a nested SectionBlock", () => {
+    const row = { ...createDefaultRowBlock("r2", "parent"), widthPx: undefined };
+    expect(computeBoxStyle(row, 300).ownWidthPx).toBe(300);
   });
 });
 
 describe("toReactStyle", () => {
-  const baseComputed = computeSectionBox(createDefaultSectionBlock("s6", null), 552);
+  const baseComputed = computeBoxStyle(createDefaultSectionBlock("s6", null), 552);
 
   it("maps padding fields straight through", () => {
     const style = toReactStyle(baseComputed, { widthMode: "fixed" });

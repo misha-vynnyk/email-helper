@@ -1,8 +1,8 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 
 import { getChildIds, getNode, updateColumnWidths } from "../state/builderStore";
 import type { RowColumnBlock } from "../types";
-import { columnWidthsAfterDividerDrag } from "./resizeMath";
+import { columnWidthsAfterDividerDrag, snapColumnWidths } from "./resizeMath";
 import { usePointerDrag } from "./usePointerDrag";
 
 interface CanvasColumnDividerProps {
@@ -19,6 +19,7 @@ interface CanvasColumnDividerProps {
  * of Hooks. */
 export function CanvasColumnDivider({ rowId, dividerIndex, rowRef, onPreview }: CanvasColumnDividerProps) {
   const baseWidthsRef = useRef<number[]>([]);
+  const [isSnapped, setIsSnapped] = useState(false);
 
   const { isDragging, handlers } = usePointerDrag({
     cursor: "col-resize",
@@ -27,12 +28,17 @@ export function CanvasColumnDivider({ rowId, dividerIndex, rowRef, onPreview }: 
     },
     onDrag: ({ dx }) => {
       const clientWidth = rowRef.current?.clientWidth ?? 1;
-      onPreview(columnWidthsAfterDividerDrag(baseWidthsRef.current, dividerIndex, (dx / clientWidth) * 100));
+      const clamped = columnWidthsAfterDividerDrag(baseWidthsRef.current, dividerIndex, (dx / clientWidth) * 100);
+      const snapped = snapColumnWidths(clamped, dividerIndex);
+      setIsSnapped(snapped[dividerIndex] !== clamped[dividerIndex]);
+      onPreview(snapped);
     },
     onDragEnd: ({ dx }) => {
       const clientWidth = rowRef.current?.clientWidth ?? 1;
-      updateColumnWidths(rowId, columnWidthsAfterDividerDrag(baseWidthsRef.current, dividerIndex, (dx / clientWidth) * 100));
+      const clamped = columnWidthsAfterDividerDrag(baseWidthsRef.current, dividerIndex, (dx / clientWidth) * 100);
+      updateColumnWidths(rowId, snapColumnWidths(clamped, dividerIndex));
       onPreview(null);
+      setIsSnapped(false);
     },
   });
 
@@ -42,7 +48,9 @@ export function CanvasColumnDivider({ rowId, dividerIndex, rowRef, onPreview }: 
       role='separator'
       aria-orientation='vertical'
       aria-label='Resize columns'
-      className={`w-1.5 shrink-0 cursor-col-resize self-stretch rounded-sm transition-colors ${isDragging ? "bg-primary" : "bg-transparent hover:bg-primary/40"}`}
+      className={`w-1.5 shrink-0 cursor-col-resize self-stretch rounded-sm transition-colors ${
+        isDragging ? (isSnapped ? "bg-emerald-400" : "bg-primary") : "bg-transparent hover:bg-primary/40"
+      }`}
     />
   );
 }

@@ -145,11 +145,23 @@ export interface RowColumnBlock extends BaseNode {
   childIds: string[];
 }
 
-/** Явний ряд на N колонок (Variant 1 — користувач сам додає з палітри, не авто-визначення). */
+/** Явний ряд на N колонок (Variant 1 — користувач сам додає з палітри, не авто-визначення).
+ * `fill`/`border`/`cornerRadius`/`cornerRadii`/`shadow` — той самий набір, що й у `SectionBlock`
+ * (canva-plan-v2.md Stage 2), даючи Row той самий WYSIWYG. Свідомо БЕЗ `gapPx`: Section's `gapPx`
+ * керує вертикальним проміжком між СТЕКОВАНИМИ дітьми, тоді як діти Row — колонки, розташовані
+ * side-by-side, тож пряма аналогія не застосовна (гутер між колонками — окрема, більш інвазивна
+ * фіча, поза цим stage). */
 export interface RowBlock extends BaseNode {
   type: "row";
   padding: ContainerPadding;
   widthPx?: number;
+  fill?: string;
+  border?: ContainerBorder;
+  /** Uniform ("locked") radius, applied to all four corners. Ignored when `cornerRadii` is set. */
+  cornerRadius?: number;
+  /** Presence = "unlocked" per-corner mode, takes precedence over `cornerRadius`; absence = locked/uniform mode. */
+  cornerRadii?: CornerRadiusValue;
+  shadow?: ContainerShadow;
   /** id-и RowColumnBlock-вузлів, у порядку показу. */
   childIds: string[];
 }
