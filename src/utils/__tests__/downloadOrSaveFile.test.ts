@@ -33,6 +33,30 @@ describe("downloadOrSaveFile", () => {
     }
   });
 
+  it("defaults to a text/html Blob, and honors an explicit mimeType override", async () => {
+    window.electronAPI = undefined;
+    const originalCreateObjectURL = URL.createObjectURL;
+    const originalRevokeObjectURL = URL.revokeObjectURL;
+    let capturedBlob: Blob | undefined;
+    URL.createObjectURL = jest.fn((blob: Blob) => {
+      capturedBlob = blob;
+      return "blob:mock";
+    });
+    URL.revokeObjectURL = jest.fn();
+    jest.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+
+    try {
+      await downloadOrSaveFile("<html></html>", "test.html", { getFolder: () => undefined });
+      expect(capturedBlob?.type).toBe("text/html");
+
+      await downloadOrSaveFile("{}", "test.json", { getFolder: () => undefined, mimeType: "application/json" });
+      expect(capturedBlob?.type).toBe("application/json");
+    } finally {
+      URL.createObjectURL = originalCreateObjectURL;
+      URL.revokeObjectURL = originalRevokeObjectURL;
+    }
+  });
+
   it("uses the already-known folder and reports saved on success, without re-prompting", async () => {
     const saveToPath = jest.fn().mockResolvedValue({ saved: true });
     const openFolderDialog = jest.fn();

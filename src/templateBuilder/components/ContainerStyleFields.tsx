@@ -4,7 +4,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-import { type ContainerBorder, type ContainerShadow, type CornerRadiusValue, toggleCornerRadiusLock } from "../types";
+import { type ContainerBorder, type ContainerFill, type ContainerShadow, type CornerRadiusValue, toggleCornerRadiusLock } from "../types";
 
 const ZERO_CORNER_RADII: CornerRadiusValue = { topLeft: 0, topRight: 0, bottomRight: 0, bottomLeft: 0 };
 const CORNER_LABELS: Array<{ key: keyof CornerRadiusValue; label: string }> = [
@@ -48,7 +48,7 @@ function OptionalSection({
 }
 
 export interface ContainerStylePatch {
-  fill?: string;
+  fill?: ContainerFill;
   border?: ContainerBorder;
   cornerRadius?: number;
   cornerRadii?: CornerRadiusValue;
@@ -70,7 +70,10 @@ export function ContainerStyleFields({ fill, border, cornerRadius, cornerRadii, 
   return (
     <>
       <OptionalSection label='Fill' enabled={fill !== undefined} onToggle={(enabled) => onChange({ fill: enabled ? "#ffffff" : undefined })}>
-        <Input type='color' value={fill ?? "#ffffff"} onChange={(e) => onChange({ fill: e.target.value })} />
+        {/* No gradient-authoring UI yet — a JSON-imported gradient fill renders correctly on
+         * canvas/export either way; this guard just keeps a gradient object from being fed
+         * straight into a <input type="color">, which only understands a hex string. */}
+        <Input type='color' value={typeof fill === "string" ? fill : "#ffffff"} onChange={(e) => onChange({ fill: e.target.value })} />
       </OptionalSection>
 
       <OptionalSection label='Border' enabled={border !== undefined} onToggle={(enabled) => onChange({ border: enabled ? { widthPx: 1, color: "#000000" } : undefined })}>

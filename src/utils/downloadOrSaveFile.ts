@@ -13,10 +13,14 @@ interface DownloadOrSaveOptions {
   getFolder: () => string | undefined;
   /** Called once a folder was picked via the dialog, so the caller can persist it for next time. */
   onFolderResolved?: (folder: string) => void;
+  /** Blob MIME type for the browser-download fallback only — the Electron `saveToPath` path below
+   * doesn't take one, it writes raw content by filename extension. Defaults to `"text/html"`,
+   * this module's original (and still most common) caller. */
+  mimeType?: string;
 }
 
-function downloadViaBrowserAnchor(content: string, filename: string): void {
-  const blob = new Blob([content], { type: "text/html" });
+function downloadViaBrowserAnchor(content: string, filename: string, mimeType: string): void {
+  const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -31,10 +35,10 @@ function downloadViaBrowserAnchor(content: string, filename: string): void {
  * React state, some use localStorage) and their own outcome→user-feedback mapping (toast, log
  * line, ...) — this only does the actual save/download and reports what happened.
  */
-export async function downloadOrSaveFile(content: string, filename: string, { getFolder, onFolderResolved }: DownloadOrSaveOptions): Promise<DownloadOrSaveOutcome> {
+export async function downloadOrSaveFile(content: string, filename: string, { getFolder, onFolderResolved, mimeType = "text/html" }: DownloadOrSaveOptions): Promise<DownloadOrSaveOutcome> {
   const electronAPI = getElectronAPI();
   if (!electronAPI?.saveToPath) {
-    downloadViaBrowserAnchor(content, filename);
+    downloadViaBrowserAnchor(content, filename, mimeType);
     return { kind: "browser-download" };
   }
 

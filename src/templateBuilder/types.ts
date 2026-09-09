@@ -39,6 +39,19 @@ export interface CornerRadiusValue {
 
 export type TextAlign = "left" | "center" | "right";
 
+export interface LinearGradientFill {
+  kind: "linearGradient";
+  angleDeg: number;
+  stops: { color: string; position: number }[];
+}
+
+/** A Section/Row's background — a plain color (the original, still-default shape) or a CSS
+ * linear-gradient (real-template footers use `background: linear-gradient(...)`, e.g.
+ * `linear-gradient(180deg, #DADAD8 0%, #F9F7F3 7.44%)`). Mirrors `figmaImport/schema.ts`'s
+ * `fillSchema` shape, narrowed to just `linearGradient` — this codebase's real templates only
+ * ever use that variant, not `radialGradient`. */
+export type ContainerFill = string | LinearGradientFill;
+
 /**
  * Кожен вузол дерева канви (лист чи контейнер) — плаский запис у нормалізованій мапі
  * `BuilderState.nodes`, що знає свого батька за id. Дерево існує лише логічно, через
@@ -76,6 +89,22 @@ export interface ImageBlock extends BaseNode {
 /** "auto" shrinks to label content, "full" fills the container (width:100%), a number is a fixed px width. */
 export type ButtonWidth = "auto" | "full" | number;
 
+/** A small icon rendered before a button's label (e.g. an "Unsubscribe" button's icon) — the
+ * concept mirrors `figmaImport/schema.ts`'s `buttonIconSchema`, but not its field shape: that
+ * schema models a not-yet-resolved Figma node (`altDescription`/`side`/`heightPx`, no real image
+ * URL), while this is a real, renderable image reference, same spirit as `ImageBlock.src`/`alt`.
+ * `src` is required (same as `ImageBlock.src`) — a JSON import that has no real uploaded URL yet
+ * should set it to `PLACEHOLDER_IMAGE_SRC` (see below) explicitly; the app's normal image-upload
+ * flow replaces it later, same as any other placeholder image on canvas.
+ * `alt` either comes straight from the imported JSON, or is left for the existing AI alt-text
+ * tool (`/ai-api/api/analyze`) to fill in afterward — not this phase's concern. */
+export interface ButtonIcon {
+  src: string;
+  alt: string;
+  widthPx: number;
+  gapPx: number;
+}
+
 export interface ButtonBlock extends BaseNode {
   type: "button";
   label: string;
@@ -89,6 +118,7 @@ export interface ButtonBlock extends BaseNode {
   fontSizePx: number;
   fontWeight: number;
   width: ButtonWidth;
+  icon?: ButtonIcon;
 }
 
 export interface DividerBlock extends BaseNode {
@@ -127,7 +157,7 @@ export interface SectionBlock extends BaseNode {
   /** undefined = вкладений інстанс: не рендерить max-width-кеп, тягнеться на 100% наявного місця в предку. */
   widthPx?: number;
   gapPx: number;
-  fill?: string;
+  fill?: ContainerFill;
   border?: ContainerBorder;
   /** Uniform ("locked") radius, applied to all four corners. Ignored when `cornerRadii` is set. */
   cornerRadius?: number;
@@ -155,7 +185,7 @@ export interface RowBlock extends BaseNode {
   type: "row";
   padding: ContainerPadding;
   widthPx?: number;
-  fill?: string;
+  fill?: ContainerFill;
   border?: ContainerBorder;
   /** Uniform ("locked") radius, applied to all four corners. Ignored when `cornerRadii` is set. */
   cornerRadius?: number;

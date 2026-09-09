@@ -109,4 +109,46 @@ describe("renderButton", () => {
     expect(html).toContain('height="40"');
     expect(html.match(new RegExp(`color:${block.textColor}`, "g"))?.length).toBe(2);
   });
+
+  it("renders no icon markup at all when icon is unset (no regression on the default button)", () => {
+    const block = createDefaultButtonBlock("b13", "parent");
+    const html = renderButton(block, FONT, 0);
+
+    expect(html).not.toContain("mso 9");
+    expect(html).not.toContain("<img");
+    expect(html).toContain(`>${block.label}<`);
+  });
+
+  it("renders the MSO-safe icon markup before the label when icon is set", () => {
+    const block = createDefaultButtonBlock("b14", "parent");
+    block.icon = { src: "https://storage.5th-elementagency.com/files/icon.png", alt: "Unsubscribe icon", widthPx: 10, gapPx: 8 };
+    const html = renderButton(block, FONT, 0);
+
+    expect(html).toContain("<!--[if !mso 9]><!-->");
+    expect(html).toContain("<!--<![endif]-->");
+    expect(html).toContain('display:table-cell; vertical-align:middle; text-align:left; width:10px; min-width:10px;');
+    expect(html).toContain('<img alt="Unsubscribe icon" width="10" src="https://storage.5th-elementagency.com/files/icon.png"');
+    expect(html).toContain("padding-left:8px;");
+    expect(html).toContain(block.label);
+  });
+
+  it("hides the icon cell from Outlook (inside the !mso 9 comment) while the label stays outside it", () => {
+    const block = createDefaultButtonBlock("b15", "parent");
+    block.icon = { src: "https://example.com/icon.png", alt: "Icon", widthPx: 12, gapPx: 6 };
+    const html = renderButton(block, FONT, 0);
+
+    const iconCommentEnd = html.indexOf("<!--<![endif]-->");
+    const labelIndex = html.indexOf(`>${block.label}<`);
+    expect(iconCommentEnd).toBeGreaterThan(-1);
+    expect(labelIndex).toBeGreaterThan(iconCommentEnd);
+  });
+
+  it("escapes the icon's alt text and src", () => {
+    const block = createDefaultButtonBlock("b16", "parent");
+    block.icon = { src: "https://example.com/a.png?x=1&y=2", alt: 'Say "hi"', widthPx: 10, gapPx: 8 };
+    const html = renderButton(block, FONT, 0);
+
+    expect(html).toContain('alt="Say &quot;hi&quot;"');
+    expect(html).toContain("a.png?x=1&amp;y=2");
+  });
 });
