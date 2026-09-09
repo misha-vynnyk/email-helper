@@ -1,7 +1,7 @@
 import { Loader2 } from "lucide-react";
 import React from "react";
 
-import { BLOCK_LIBRARY_ENABLED, TEMPLATE_BUILDER_ENABLED } from "../../config/featureFlags";
+import { BLOCK_LIBRARY_ENABLED, FIGMA_IMPORT_ENABLED, TEMPLATE_BUILDER_ENABLED } from "../../config/featureFlags";
 import { useSelectedMainTab } from "../../contexts/AppState";
 import { EmailSenderProvider } from "../../emailSender/EmailSenderContext";
 import { cn } from "../../lib/utils";
@@ -17,6 +17,7 @@ const TemplateLibrary = React.lazy(() => import("../../templateLibrary/TemplateL
 const ImageConverterPanel = React.lazy(() => import("../../imageConverter/components/ImageConverterPanel"));
 const HtmlConverterPanel = React.lazy(() => import("../../htmlConverter/HtmlConverterPanel"));
 const BuilderPanel = React.lazy(() => import("../../templateBuilder/BuilderPanel"));
+const FigmaImportPanel = React.lazy(() => import("../../figmaImport/FigmaImportPanel"));
 
 const tabLoadingFallback = (
   <div className='flex items-center justify-center h-full'>
@@ -104,6 +105,12 @@ export default function TemplatePanel() {
           {TEMPLATE_BUILDER_ENABLED && (
             <TabPanel value='builder' selectedValue={deferredTab} mounted={mountedTabs.has("builder")}>
               <BuilderPanel />
+            </TabPanel>
+          )}
+
+          {FIGMA_IMPORT_ENABLED && (
+            <TabPanel value='figma-import' selectedValue={deferredTab} mounted={mountedTabs.has("figma-import")}>
+              <FigmaImportPanel />
             </TabPanel>
           )}
         </React.Suspense>
