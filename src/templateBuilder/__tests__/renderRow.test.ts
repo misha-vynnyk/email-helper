@@ -1,6 +1,6 @@
 import { renderRow } from "../render/renderRow";
-import { createDefaultImageBlock, createDefaultRowBlock, createDefaultRowColumnBlock, createDefaultShellConfig, createDefaultTextBlock, type BuilderNode, type RowBlock } from "../types";
 import { nodeMap } from "../testSupport/nodeMap";
+import { type BuilderNode, createDefaultImageBlock, createDefaultRowBlock, createDefaultRowColumnBlock, createDefaultShellConfig, createDefaultTextBlock, type RowBlock } from "../types";
 
 const shell = createDefaultShellConfig();
 const OUTER_TD_STYLE = 'style="padding-right: 20px; padding-left: 20px; padding-top: 32px; padding-bottom: 24px;"';
@@ -110,5 +110,46 @@ describe("renderRow", () => {
     // output belongs to the column-level inline-block technique, unrelated to the row's own cap)
     expect(html).toContain('<table align="center" border="0" cellspacing="0" cellpadding="0" style="width: 100%; padding: 0; margin: 0;" role="presentation">');
     expect(html.match(/display: inline-block; width: 50%; max-width: 100%; min-width: 150px/g)?.length).toBe(2);
+  });
+
+  // canva-plan-v2.md Stage 2 — RowBlock gained the same fill/border/cornerRadius/cornerRadii/shadow
+  // fields SectionBlock already had; these mirror renderSection.test.ts's own coverage for those.
+  it("omits fill/border/cornerRadius/shadow from the outer table when unset", () => {
+    const { row, nodes } = makeRow([50, 50]);
+    const html = renderRow(row, nodes, shell, shell.contentWidthPx);
+
+    expect(html).not.toContain("bgcolor=");
+    expect(html).not.toContain("border-radius");
+    expect(html).not.toContain("box-shadow");
+  });
+
+  it("adds fill/border/cornerRadius/shadow to the outer table only when explicitly set", () => {
+    const { row, nodes } = makeRow([50, 50]);
+    const styled: RowBlock = {
+      ...row,
+      fill: "#fff9e9",
+      border: { widthPx: 1, color: "#365373" },
+      cornerRadius: 8,
+      shadow: { xPx: 0, yPx: 2, blurPx: 4, color: "rgba(0,0,0,0.1)" },
+    };
+
+    const html = renderRow(styled, nodes, shell, shell.contentWidthPx);
+
+    expect(html).toContain('bgcolor="#fff9e9"');
+    expect(html).toContain("background-color: #fff9e9");
+    expect(html).toContain("border: 1px solid #365373");
+    expect(html).toContain("border-radius: 8px");
+    expect(html).toContain("box-shadow: 0px 2px 4px rgba(0,0,0,0.1)");
+    expect(html).toContain("border-collapse: separate");
+  });
+
+  it("renders an unlocked per-corner cornerRadii as the CSS 4-value shorthand, ignoring the scalar cornerRadius", () => {
+    const { row, nodes } = makeRow([50, 50]);
+    const styled: RowBlock = { ...row, cornerRadius: 8, cornerRadii: { topLeft: 4, topRight: 8, bottomRight: 12, bottomLeft: 16 } };
+
+    const html = renderRow(styled, nodes, shell, shell.contentWidthPx);
+
+    expect(html).toContain("border-radius: 4px 8px 12px 16px");
+    expect(html).not.toContain("border-radius: 8px;");
   });
 });

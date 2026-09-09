@@ -4,7 +4,6 @@ import { CanvasWysiwygShell } from "../canvas/CanvasWysiwygShell";
 
 function renderShell(overrides: Partial<Parameters<typeof CanvasWysiwygShell>[0]> = {}) {
   const onSelect = jest.fn();
-  const onRemove = jest.fn();
   const onPointerDown = jest.fn();
   const onPaddingChange = jest.fn();
   const onCornerRadiusChange = jest.fn();
@@ -21,8 +20,6 @@ function renderShell(overrides: Partial<Parameters<typeof CanvasWysiwygShell>[0]
       attributes={{} as never}
       listeners={{ onPointerDown }}
       onSelect={onSelect}
-      onRemove={onRemove}
-      removeAriaLabel='Remove section'
       positionStyle={{}}
       padding={{ top: 32, right: 20, bottom: 24, left: 20 }}
       cornerRadius={8}
@@ -33,7 +30,7 @@ function renderShell(overrides: Partial<Parameters<typeof CanvasWysiwygShell>[0]
     </CanvasWysiwygShell>,
   );
 
-  return { onSelect, onRemove, onPointerDown, onPaddingChange, onCornerRadiusChange };
+  return { onSelect, onPointerDown, onPaddingChange, onCornerRadiusChange };
 }
 
 describe("CanvasWysiwygShell", () => {
@@ -55,7 +52,10 @@ describe("CanvasWysiwygShell", () => {
 
   it("always reserves an inline marginTop for the chrome strip, immune to a parent's space-y-* class winning the cascade", () => {
     renderShell();
-    expect(screen.getByTestId("wysiwyg-box")).toHaveStyle({ marginTop: "24px" });
+    // 32px = the chrome's own -top-6 (24px) offset plus 8px of visible clearance — not just the
+    // offset itself, otherwise the chrome sits flush against whatever's above it (see Stage 1 of
+    // canva-plan-v2.md).
+    expect(screen.getByTestId("wysiwyg-box")).toHaveStyle({ marginTop: "32px" });
   });
 
   it("renders children inside the box element", () => {
@@ -69,22 +69,18 @@ describe("CanvasWysiwygShell", () => {
     expect(onSelect).toHaveBeenCalledTimes(1);
   });
 
-  it("calls onRemove (and not onSelect) when the remove button is clicked", () => {
-    const { onSelect, onRemove } = renderShell();
-    fireEvent.click(screen.getByLabelText("Remove section"));
-    expect(onRemove).toHaveBeenCalledTimes(1);
-    expect(onSelect).not.toHaveBeenCalled();
-  });
-
   it("spreads dnd-kit listeners onto the grip button", () => {
     const { onPointerDown } = renderShell();
     fireEvent.pointerDown(screen.getByLabelText("Drag to reorder"));
     expect(onPointerDown).toHaveBeenCalledTimes(1);
   });
 
-  it("uses the passed removeAriaLabel on the remove button", () => {
-    renderShell({ removeAriaLabel: "Remove row" });
-    expect(screen.getByLabelText("Remove row")).toBeInTheDocument();
+  // No remove button in this chrome strip — it duplicated SelectionToolbar's own duplicate/remove
+  // pair and, on Section, crowded the corner-radius lock toggle right next to it. Deletion goes
+  // through SelectionToolbar exclusively now.
+  it("does not render a remove button — deletion goes through SelectionToolbar instead", () => {
+    renderShell();
+    expect(screen.queryByLabelText(/remove/i)).not.toBeInTheDocument();
   });
 
   it("marks the selection ring idle when neither selected nor a drop target", () => {

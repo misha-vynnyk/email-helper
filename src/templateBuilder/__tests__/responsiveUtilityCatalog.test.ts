@@ -1,4 +1,4 @@
-import { RESPONSIVE_BREAKPOINT_PX, RESPONSIVE_TIER_ORDER, UTILITY_CLASS_CATALOG } from "../responsiveUtilityCatalog";
+import { RESPONSIVE_BREAKPOINT_PX, RESPONSIVE_TIER_ORDER, SPACING_SNAP_STEPS_PX, UTILITY_CLASS_CATALOG } from "../responsiveUtilityCatalog";
 
 describe("responsiveUtilityCatalog", () => {
   it("has no duplicate class names", () => {
@@ -56,5 +56,13 @@ describe("responsiveUtilityCatalog", () => {
   it("w-full touches all three width-related properties, not just width", () => {
     const byName = new Map(UTILITY_CLASS_CATALOG.map((e) => [e.className, e]));
     expect(byName.get("w-full")?.properties).toEqual(["width", "max-width", "min-width"]);
+  });
+
+  // canva-plan-v2.md Stage 3 — reused by the canvas padding/gap snap-to-value handles.
+  it("SPACING_SNAP_STEPS_PX starts at 0 and is sorted ascending with no duplicates", () => {
+    expect(SPACING_SNAP_STEPS_PX[0]).toBe(0);
+    const sorted = [...SPACING_SNAP_STEPS_PX].sort((a, b) => a - b);
+    expect(SPACING_SNAP_STEPS_PX).toEqual(sorted);
+    expect(new Set(SPACING_SNAP_STEPS_PX).size).toBe(SPACING_SNAP_STEPS_PX.length);
   });
 });

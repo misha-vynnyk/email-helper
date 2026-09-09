@@ -1,3 +1,4 @@
+import { Italic, List, ListOrdered, Underline } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 import { sanitizeRichText } from "../render/sanitizeRichText";
@@ -11,9 +12,12 @@ const buttonClass =
   "px-2 py-1 rounded-md text-xs font-semibold border border-border/60 bg-muted/40 text-foreground hover:bg-muted transition-colors select-none";
 
 /**
- * Мінімальний rich-text редактор (contentEditable + Bold/Link/Color через execCommand),
- * не EditorSelectionToolbar з htmlConverter — той пише власний marker-синтаксис для formatter.ts,
- * тут потрібен прямий інлайн-HTML (b/font/span/a), який рендериться буквально в email-розмітку.
+ * Мінімальний rich-text редактор (contentEditable + Bold/Italic/Underline/Link/Color/Lists через
+ * execCommand), не EditorSelectionToolbar з htmlConverter — той пише власний marker-синтаксис для
+ * formatter.ts, тут потрібен прямий інлайн-HTML (b/i/u/font/span/a/ul/ol/li), який рендериться
+ * буквально в email-розмітку. Свідомо БЕЗ вирівнювання (canva-plan-v2.md Stage 4) — `TextBlock`
+ * вже має власне block-рівневе поле `align`, кероване через Inspector; окрема rich-text-команда
+ * вирівнювання створила б два джерела правди для тієї самої властивості на одному блоці.
  */
 export function RichTextEditor({ value, onChange }: RichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
@@ -48,6 +52,30 @@ export function RichTextEditor({ value, onChange }: RichTextEditorProps) {
     emitChange();
   };
 
+  const applyItalic = () => {
+    editorRef.current?.focus();
+    document.execCommand("italic");
+    emitChange();
+  };
+
+  const applyUnderline = () => {
+    editorRef.current?.focus();
+    document.execCommand("underline");
+    emitChange();
+  };
+
+  const applyBulletedList = () => {
+    editorRef.current?.focus();
+    document.execCommand("insertUnorderedList");
+    emitChange();
+  };
+
+  const applyNumberedList = () => {
+    editorRef.current?.focus();
+    document.execCommand("insertOrderedList");
+    emitChange();
+  };
+
   const applyLink = () => {
     const url = window.prompt("URL", "https://");
     if (!url) return;
@@ -67,6 +95,18 @@ export function RichTextEditor({ value, onChange }: RichTextEditorProps) {
       <div className='flex items-center gap-1'>
         <button type='button' onMouseDown={keepFocus} onClick={applyBold} className={buttonClass}>
           B
+        </button>
+        <button type='button' onMouseDown={keepFocus} onClick={applyItalic} className={buttonClass} aria-label='Italic'>
+          <Italic size={14} />
+        </button>
+        <button type='button' onMouseDown={keepFocus} onClick={applyUnderline} className={buttonClass} aria-label='Underline'>
+          <Underline size={14} />
+        </button>
+        <button type='button' onMouseDown={keepFocus} onClick={applyBulletedList} className={buttonClass} aria-label='Bulleted list'>
+          <List size={14} />
+        </button>
+        <button type='button' onMouseDown={keepFocus} onClick={applyNumberedList} className={buttonClass} aria-label='Numbered list'>
+          <ListOrdered size={14} />
         </button>
         <button type='button' onMouseDown={keepFocus} onClick={applyLink} className={buttonClass}>
           Link

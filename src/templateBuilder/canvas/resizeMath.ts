@@ -1,4 +1,6 @@
 import type { ContainerPadding } from "../types";
+import { evenWidthPercents } from "../types";
+import { snapToNearest } from "./snapValue";
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -17,6 +19,26 @@ export function columnWidthsAfterDividerDrag(widths: number[], dividerIndex: num
   const next = [...widths];
   next[dividerIndex] = newLeft;
   next[dividerIndex + 1] = newRight;
+  return next;
+}
+
+const ROUND_PERCENT_SNAP_STEPS = [25, 33, 50, 66, 75];
+
+/** Snap-to-value pass for a column-divider drag (canva-plan-v2.md Stage 3) — applied to
+ * `columnWidthsAfterDividerDrag`'s already-clamped result, not folded into it, so a snap can
+ * never push a width outside its clamped range. Snaps only the divider's LEFT column
+ * (`dividerIndex`) to a notable percent — round fractions (25/33/50/66/75) plus the value that
+ * column would have under a perfectly even split of the row's CURRENT column count
+ * (`evenWidthPercents`, already used by add/removeColumn) — then re-derives the right column as
+ * `pairSum - snappedLeft` so the pair still sums to its own pre-drag total, the same invariant
+ * `columnWidthsAfterDividerDrag` itself guarantees. */
+export function snapColumnWidths(widths: number[], dividerIndex: number): number[] {
+  const pairSum = widths[dividerIndex] + widths[dividerIndex + 1];
+  const evenSplit = evenWidthPercents(widths.length)[dividerIndex];
+  const snappedLeft = snapToNearest(widths[dividerIndex], [...ROUND_PERCENT_SNAP_STEPS, evenSplit]).value;
+  const next = [...widths];
+  next[dividerIndex] = snappedLeft;
+  next[dividerIndex + 1] = pairSum - snappedLeft;
   return next;
 }
 

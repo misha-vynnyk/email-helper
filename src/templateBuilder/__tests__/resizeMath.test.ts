@@ -1,4 +1,4 @@
-import { columnWidthsAfterDividerDrag, cornerRadiusFromPointerOffset, gapAfterDrag, paddingAfterEdgeDrag } from "../canvas/resizeMath";
+import { columnWidthsAfterDividerDrag, cornerRadiusFromPointerOffset, gapAfterDrag, paddingAfterEdgeDrag, snapColumnWidths } from "../canvas/resizeMath";
 import type { ContainerPadding } from "../types";
 
 describe("columnWidthsAfterDividerDrag", () => {
@@ -45,6 +45,32 @@ describe("columnWidthsAfterDividerDrag", () => {
     expect(() => columnWidthsAfterDividerDrag([5, 5], 0, 3, 8)).not.toThrow();
     const next = columnWidthsAfterDividerDrag([5, 5], 0, 3, 8);
     expect(next[0] + next[1]).toBe(10); // sum invariant still holds even when the floor guarantee can't
+  });
+});
+
+describe("snapColumnWidths", () => {
+  it("snaps the divider's left column to a round percent within the threshold", () => {
+    expect(snapColumnWidths([48, 52], 0)).toEqual([50, 50]);
+  });
+
+  it("leaves widths untouched when the left column is far from every candidate", () => {
+    expect(snapColumnWidths([40, 60], 0)).toEqual([40, 60]);
+  });
+
+  it("includes the even split for the current column count among the snap candidates", () => {
+    // 3 columns -> evenWidthPercents(3) = [33, 33, 34], so the even-split target for column 0 is
+    // 33 — same as the round-percent list's own 33, so this also covers "both sources agree."
+    expect(snapColumnWidths([32, 33, 35], 0)).toEqual([33, 32, 35]);
+  });
+
+  it("re-derives the right column as pairSum - snappedLeft, preserving the pair's total", () => {
+    const result = snapColumnWidths([49, 31, 20], 0);
+    expect(result[0] + result[1]).toBe(49 + 31);
+    expect(result[2]).toBe(20);
+  });
+
+  it("only touches the dividerIndex pair, leaving other columns untouched", () => {
+    expect(snapColumnWidths([26, 24, 50], 0)).toEqual([25, 25, 50]);
   });
 });
 

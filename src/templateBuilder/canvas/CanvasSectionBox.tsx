@@ -3,9 +3,9 @@ import { CSS } from "@dnd-kit/utilities";
 import { memo, useEffect, useState } from "react";
 
 import type { DragData } from "../dnd/dragTypes";
-import { removeNode, updateSectionStyle, useBuilderNode, useShellConfig } from "../state/builderStore";
+import { updateSectionStyle, useBuilderNode, useShellConfig } from "../state/builderStore";
 import { selectBlock, useIsSelected } from "../state/selectionStore";
-import { computeSectionBox, toReactStyle } from "../styling/sectionBoxStyle";
+import { computeBoxStyle, toReactStyle } from "../styling/boxStyle";
 import type { SectionBlock } from "../types";
 import { CanvasWysiwygShell } from "./CanvasWysiwygShell";
 import { NodeDropZone } from "./NodeDropZone";
@@ -37,7 +37,7 @@ export const CanvasSectionBox = memo(function CanvasSectionBox({ id }: CanvasSec
   // parent instead of rendering computed.ownWidthPx, which for a nested Section is only a
   // fallback used for the childrenAvailableWidthPx math, not a real own-width to paint.
   const widthMode = section.widthPx !== undefined ? "fixed" : "fill";
-  const computed = computeSectionBox(section, shell.contentWidthPx);
+  const computed = computeBoxStyle(section, shell.contentWidthPx);
 
   return (
     <CanvasWysiwygShell
@@ -55,8 +55,6 @@ export const CanvasSectionBox = memo(function CanvasSectionBox({ id }: CanvasSec
       attributes={attributes}
       listeners={listeners}
       onSelect={() => selectBlock(id)}
-      onRemove={() => removeNode(id)}
-      removeAriaLabel='Remove section'
       padding={section.padding}
       cornerRadius={section.cornerRadius}
       cornerRadii={section.cornerRadii}

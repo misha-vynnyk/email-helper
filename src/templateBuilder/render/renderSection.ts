@@ -1,6 +1,6 @@
-import { computeSectionBox } from "../styling/sectionBoxStyle";
+import { computeBoxStyle } from "../styling/boxStyle";
 import type { BuilderNode, SectionBlock, ShellConfig } from "../types";
-import { escapeHtml } from "./escape";
+import { buildBgcolorAttr, buildContainerExtraStyleParts } from "./containerStyleParts";
 import { buildPaddingStyle } from "./paddingStyle";
 import { renderNodeList } from "./renderNode";
 import { responsiveClassAttr } from "./responsiveClassAttr";
@@ -15,26 +15,12 @@ import { responsiveClassAttr } from "./responsiveClassAttr";
  * без max-width-кепу й тягнеться на всю цю успадковану ширину замість фіксованих 552px.
  */
 export function renderSection(block: SectionBlock, nodes: Record<string, BuilderNode>, shell: ShellConfig, availableWidthPx: number): string {
-  const c = computeSectionBox(block, availableWidthPx);
+  const c = computeBoxStyle(block, availableWidthPx);
   const paddingStyle = buildPaddingStyle({ top: c.paddingTop, right: c.paddingRight, bottom: c.paddingBottom, left: c.paddingLeft });
 
-  const extraStyleParts: string[] = [];
-  if (c.fill) extraStyleParts.push(`background-color: ${escapeHtml(c.fill)}`);
-  if (c.border) extraStyleParts.push(`border: ${c.border.widthPx}px solid ${escapeHtml(c.border.color)}`);
-  // Locked/uniform mode: same single-value output as before per-corner support existed. Unlocked
-  // mode (SectionBlock.cornerRadii set): CSS 4-value shorthand, top-left top-right bottom-right
-  // bottom-left — same corner order styling/sectionBoxStyle.ts's toReactStyle uses for canvas, so
-  // the two renderers can never disagree on which number goes where.
-  if (typeof c.cornerRadius === "number") extraStyleParts.push(`border-radius: ${c.cornerRadius}px`);
-  else if (c.cornerRadius) extraStyleParts.push(`border-radius: ${c.cornerRadius.topLeft}px ${c.cornerRadius.topRight}px ${c.cornerRadius.bottomRight}px ${c.cornerRadius.bottomLeft}px`);
-  if (c.shadow) extraStyleParts.push(`box-shadow: ${c.shadow.xPx}px ${c.shadow.yPx}px ${c.shadow.blurPx}px ${escapeHtml(c.shadow.color)}`);
-  // The shell's global `table { border-collapse: collapse; }` (renderShell.ts) otherwise wins
-  // and silently kills border-radius on this table — border-radius doesn't render on a
-  // collapsed table regardless of border-width, so this has to override it inline whenever a
-  // border or corner radius is actually in play.
-  if (c.border || c.cornerRadius) extraStyleParts.push("border-collapse: separate", "border-spacing: 0");
+  const extraStyleParts = buildContainerExtraStyleParts(c);
   const extraStyle = extraStyleParts.length > 0 ? ` ${extraStyleParts.join("; ")};` : "";
-  const bgcolorAttr = c.fill ? ` bgcolor="${escapeHtml(c.fill)}"` : "";
+  const bgcolorAttr = buildBgcolorAttr(c.fill);
 
   const widthAttr = block.widthPx !== undefined ? ` width="${block.widthPx}"` : "";
   const maxWidthStyle = block.widthPx !== undefined ? ` max-width:${block.widthPx}px;` : "";

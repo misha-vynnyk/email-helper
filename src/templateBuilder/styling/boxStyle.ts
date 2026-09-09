@@ -1,8 +1,25 @@
 import type { CSSProperties } from "react";
 
-import type { CornerRadiusValue, SectionBlock } from "../types";
+import type { ContainerBorder, ContainerPadding, ContainerShadow, CornerRadiusValue } from "../types";
 
-export interface ComputedSectionBox {
+/**
+ * Structural subset of `SectionBlock`/`RowBlock` that `computeBoxStyle` actually reads — both
+ * block types carry these same fields (canva-plan-v2.md Stage 2 added them to `RowBlock` to match
+ * `SectionBlock`), so this is a `Pick`-style intersection rather than either concrete type. Deliberately
+ * excludes `gapPx` (only `SectionBlock` has it, and `computeBoxStyle` never reads it — the vertical
+ * gap between stacked children is unrelated to this box-model computation).
+ */
+export interface BoxStyleSource {
+  padding: ContainerPadding;
+  widthPx?: number;
+  fill?: string;
+  border?: ContainerBorder;
+  cornerRadius?: number;
+  cornerRadii?: CornerRadiusValue;
+  shadow?: ContainerShadow;
+}
+
+export interface ComputedBoxStyle {
   paddingTop: number;
   paddingRight: number;
   paddingBottom: number;
@@ -17,16 +34,19 @@ export interface ComputedSectionBox {
 }
 
 /**
- * Pure box-model computation shared by the email exporter (`render/renderSection.ts`) and the
- * canvas WYSIWYG preview (`canvas/CanvasWysiwygShell.tsx`) — single source of truth for the
- * padding/fill/border/cornerRadius/shadow/width math, so the two rendering paths can never drift.
+ * Pure box-model computation shared by the email exporter (`render/renderSection.ts`,
+ * `render/renderRow.ts`) and the canvas WYSIWYG preview (`canvas/CanvasWysiwygShell.tsx`) —
+ * single source of truth for the padding/fill/border/cornerRadius/shadow/width math, so the
+ * rendering paths can never drift. Originally Section-only (`computeSectionBox`); generalized to
+ * `BoxStyleSource` once `RowBlock` gained the same fields (canva-plan-v2.md Stage 2) — a second
+ * real consumer, not a hypothetical one.
  *
  * `ownWidthPx` falls back to `availableWidthPx` when `block.widthPx` is undefined (a nested
  * instance) even though nothing renders that fallback number directly as its own width — it still
  * feeds `childrenAvailableWidthPx`, which the email exporter needs to be a real, non-negative
  * number regardless of nesting depth.
  */
-export function computeSectionBox(block: SectionBlock, availableWidthPx: number): ComputedSectionBox {
+export function computeBoxStyle(block: BoxStyleSource, availableWidthPx: number): ComputedBoxStyle {
   const ownWidthPx = block.widthPx ?? availableWidthPx;
   return {
     paddingTop: block.padding.top,
@@ -50,16 +70,17 @@ export interface ToReactStyleOptions {
 /** `cornerRadius` is a plain number in locked/uniform mode (passed straight through, same as
  * before per-corner support existed — React appends "px" itself) or a `CornerRadiusValue` in
  * unlocked mode, formatted as the CSS 4-value shorthand (top-left top-right bottom-right
- * bottom-left — the same corner order `render/renderSection.ts` uses for the email export, so the
- * two can never disagree on which number goes where). */
+ * bottom-left — the same corner order `render/renderSection.ts`/`render/renderRow.ts` use for the
+ * email export, so the two can never disagree on which number goes where). */
 export function formatCornerRadiusReactValue(cornerRadius: number | CornerRadiusValue | undefined): CSSProperties["borderRadius"] {
   if (cornerRadius === undefined || typeof cornerRadius === "number") return cornerRadius;
   return `${cornerRadius.topLeft}px ${cornerRadius.topRight}px ${cornerRadius.bottomRight}px ${cornerRadius.bottomLeft}px`;
 }
 
 /** Canvas-only CSS formatting — the email exporter keeps building its own style string directly
- * (see `render/renderSection.ts`), since its exact format/order is part of its test contract. */
-export function toReactStyle(computed: ComputedSectionBox, options: ToReactStyleOptions): CSSProperties {
+ * (see `render/renderSection.ts`/`render/renderRow.ts`), since its exact format/order is part of
+ * its test contract. */
+export function toReactStyle(computed: ComputedBoxStyle, options: ToReactStyleOptions): CSSProperties {
   return {
     paddingTop: computed.paddingTop,
     paddingRight: computed.paddingRight,

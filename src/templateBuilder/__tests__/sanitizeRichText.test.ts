@@ -17,4 +17,16 @@ describe("sanitizeRichText", () => {
     expect(sanitizeRichText("<table><tr><td>x</td></tr></table>")).toBe("x");
     expect(sanitizeRichText('<img src="x.png" onerror="alert(1)">')).toBe("");
   });
+
+  // canva-plan-v2.md Stage 4 — RichTextEditor's new Italic/Underline/List buttons emit these tags;
+  // without them here they'd be silently stripped right back out.
+  it("keeps underline and italic tags", () => {
+    expect(sanitizeRichText("<u>underlined</u>")).toBe("<u>underlined</u>");
+    expect(sanitizeRichText("<i>italic</i>")).toBe("<i>italic</i>");
+  });
+
+  it("keeps unordered and ordered list markup", () => {
+    expect(sanitizeRichText("<ul><li>one</li><li>two</li></ul>")).toBe("<ul><li>one</li><li>two</li></ul>");
+    expect(sanitizeRichText("<ol><li>one</li><li>two</li></ol>")).toBe("<ol><li>one</li><li>two</li></ol>");
+  });
 });

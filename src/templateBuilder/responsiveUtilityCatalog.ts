@@ -52,6 +52,11 @@ const PADDING_RIGHT: Record<ResponsiveTier, number[]> = { base: [0, 8, 16, 24], 
 const PADDING_X: Record<ResponsiveTier, number[]> = { base: [0, 8, 12, 16, 20, 24], sm: [0, 8, 16, 20], xs: [0, 8, 12] };
 const PADDING_Y: Record<ResponsiveTier, number[]> = { base: [8, 16, 24, 32, 40], sm: [8, 16, 24, 32], xs: [8, 16, 24] };
 
+/** Reused by the canvas padding-edge/gap drag handles' snap-to-value feature
+ * (canvas/snapValue.ts, canva-plan-v2.md Stage 3) — the densest existing px scale in this
+ * catalog, not a fresh list invented for that unrelated feature. */
+export const SPACING_SNAP_STEPS_PX = PADDING_TOP.base;
+
 const FONT_SIZE: Record<ResponsiveTier, Array<[string, number]>> = {
   base: [
     ["xs", 12],

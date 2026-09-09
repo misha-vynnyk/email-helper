@@ -30,7 +30,7 @@ export function NodeDropZone({ parentId, childIds, containerKind, gapPx, onGapPr
   const dropData: DropData = { kind: "container", parentId };
   const { setNodeRef, isOver } = useDroppable({ id: containerDropZoneId(parentId), data: dropData });
   // SpacingOverlay's handles are `position: absolute` inside THIS div — it needs this exact
-  // element's own rect as its positioning frame of reference, not the outer CanvasBlockShell box
+  // element's own rect as its positioning frame of reference, not the outer CanvasWysiwygShell box
   // (whose header/padding would otherwise throw off every computed offset). A local ref, not
   // nodeRectRegistry (that registry is keyed by node id for the outer shell/chip boxes only).
   const containerRef = useRef<HTMLDivElement | null>(null);
