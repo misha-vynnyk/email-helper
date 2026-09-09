@@ -1,4 +1,4 @@
-import { computeBoxStyle, toReactStyle } from "../styling/boxStyle";
+import { computeBoxStyle, formatLinearGradientCss, toReactStyle } from "../styling/boxStyle";
 import { createDefaultRowBlock, createDefaultSectionBlock } from "../types";
 
 describe("computeBoxStyle", () => {
@@ -68,6 +68,12 @@ describe("computeBoxStyle", () => {
     const row = { ...createDefaultRowBlock("r2", "parent"), widthPx: undefined };
     expect(computeBoxStyle(row, 300).ownWidthPx).toBe(300);
   });
+
+  it("passes a linearGradient fill through unchanged, same as a solid fill", () => {
+    const gradient = { kind: "linearGradient" as const, angleDeg: 180, stops: [{ color: "#DADAD8", position: 0 }, { color: "#F9F7F3", position: 0.0744 }] };
+    const block = { ...createDefaultSectionBlock("s8", null), fill: gradient };
+    expect(computeBoxStyle(block, 552).fill).toEqual(gradient);
+  });
 });
 
 describe("toReactStyle", () => {
@@ -134,5 +140,32 @@ describe("toReactStyle", () => {
     const style = toReactStyle(baseComputed, { widthMode: "fill" });
     expect(style.marginLeft).toBeUndefined();
     expect(style.marginRight).toBeUndefined();
+  });
+
+  it("maps a linearGradient fill to the background shorthand, leaving backgroundColor undefined", () => {
+    const gradient = { kind: "linearGradient" as const, angleDeg: 180, stops: [{ color: "#DADAD8", position: 0 }, { color: "#F9F7F3", position: 0.0744 }] };
+    const computed = { ...baseComputed, fill: gradient };
+    const style = toReactStyle(computed, { widthMode: "fixed" });
+    expect(style.background).toBe("linear-gradient(180deg, #DADAD8 0%, #F9F7F3 7.44%)");
+    expect(style.backgroundColor).toBeUndefined();
+  });
+
+  it("maps a solid string fill to backgroundColor, leaving background undefined (unchanged solid-fill behavior)", () => {
+    const computed = { ...baseComputed, fill: "#fff9e9" };
+    const style = toReactStyle(computed, { widthMode: "fixed" });
+    expect(style.backgroundColor).toBe("#fff9e9");
+    expect(style.background).toBeUndefined();
+  });
+});
+
+describe("formatLinearGradientCss", () => {
+  it("formats angle and stops as a CSS linear-gradient() string", () => {
+    const gradient = { kind: "linearGradient" as const, angleDeg: 180, stops: [{ color: "#DADAD8", position: 0 }, { color: "#F9F7F3", position: 0.0744 }] };
+    expect(formatLinearGradientCss(gradient)).toBe("linear-gradient(180deg, #DADAD8 0%, #F9F7F3 7.44%)");
+  });
+
+  it("rounds a position with floating-point noise to a clean percentage", () => {
+    const gradient = { kind: "linearGradient" as const, angleDeg: 90, stops: [{ color: "#000", position: 0.29 }, { color: "#fff", position: 1 }] };
+    expect(formatLinearGradientCss(gradient)).toBe("linear-gradient(90deg, #000 29%, #fff 100%)");
   });
 });

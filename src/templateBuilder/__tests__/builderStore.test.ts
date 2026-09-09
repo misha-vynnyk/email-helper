@@ -1,6 +1,6 @@
-import { addColumn, addContainer, addLeaf, addReadyMade, duplicateNode, findBlockOrLeaf, getNode, getRootIds, moveNode, redo, removeColumn, removeNode, resetBuilderState, undo, updateColumnWidths, updateNodeFields, updateResponsiveClassNames, updateRowStyle, updateSectionStyle } from "../state/builderStore";
+import { addColumn, addContainer, addLeaf, addReadyMade, duplicateNode, exportDocument, findBlockOrLeaf, getNode, getRootIds, loadDocument, moveNode, redo, removeColumn, removeNode, resetBuilderState, undo, updateColumnWidths, updateNodeFields, updateResponsiveClassNames, updateRowStyle, updateSectionStyle } from "../state/builderStore";
 import { getSelectedId, getSelectedIds, selectBlock, toggleBlockSelection } from "../state/selectionStore";
-import { createDefaultButtonBlock, createDefaultDividerBlock, createDefaultSpacerBlock, MAX_ROW_COLUMNS, type ButtonBlock, type DividerBlock, type ReadyMadeBlock, type RowBlock, type RowColumnBlock, type SectionBlock, type SpacerBlock } from "../types";
+import { createDefaultButtonBlock, createDefaultDividerBlock, createDefaultSectionBlock, createDefaultShellConfig, createDefaultSpacerBlock, MAX_ROW_COLUMNS, type ButtonBlock, type BuilderNode, type DividerBlock, type ReadyMadeBlock, type RowBlock, type RowColumnBlock, type SectionBlock, type SpacerBlock } from "../types";
 
 describe("builderStore", () => {
   beforeEach(() => {
@@ -546,6 +546,54 @@ describe("builderStore", () => {
 
       expect(getRootIds()).toEqual([]);
       expect(getNode(sectionId)).toBeUndefined();
+    });
+  });
+
+  describe("loadDocument / exportDocument", () => {
+    it("loadDocument replaces the whole canvas and resets selection", () => {
+      const sectionId = addContainer(null, "section");
+      selectBlock(sectionId);
+
+      const importedSection = createDefaultSectionBlock("imported-1", null);
+      loadDocument(createDefaultShellConfig(), { "imported-1": importedSection }, ["imported-1"]);
+
+      expect(getRootIds()).toEqual(["imported-1"]);
+      expect(getNode(sectionId)).toBeUndefined();
+      expect(getSelectedId()).toBeNull();
+    });
+
+    it("loadDocument resets undo history — undo after loading is a no-op", () => {
+      addContainer(null, "section");
+
+      loadDocument(createDefaultShellConfig(), {}, []);
+      undo();
+
+      expect(getRootIds()).toEqual([]);
+    });
+
+    it("exportDocument returns the current shell and nodes as a flat array", () => {
+      const sectionId = addContainer(null, "section");
+      const textId = addLeaf(sectionId, "text");
+
+      const doc = exportDocument();
+
+      expect(doc.nodes.map((n) => n.id).sort()).toEqual([sectionId, textId].sort());
+    });
+
+    it("round-trips exportDocument() through loadDocument() unchanged", () => {
+      const sectionId = addContainer(null, "section");
+      const textId = addLeaf(sectionId, "text");
+      updateNodeFields(textId, { color: "#ff0000" });
+
+      const before = exportDocument();
+      const nodesMap: Record<string, BuilderNode> = Object.fromEntries(before.nodes.map((n) => [n.id, n]));
+      const rootIds = before.nodes.filter((n) => n.parentId === null).map((n) => n.id);
+      loadDocument(before.shell, nodesMap, rootIds);
+
+      const after = exportDocument();
+      expect(after.shell).toEqual(before.shell);
+      expect(after.nodes.sort((a, b) => a.id.localeCompare(b.id))).toEqual(before.nodes.sort((a, b) => a.id.localeCompare(b.id)));
+      expect(getNode(sectionId)).toEqual(before.nodes.find((n) => n.id === sectionId));
     });
   });
 });

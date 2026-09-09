@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 
-import type { ContainerBorder, ContainerPadding, ContainerShadow, CornerRadiusValue } from "../types";
+import type { ContainerBorder, ContainerFill, ContainerPadding, ContainerShadow, CornerRadiusValue, LinearGradientFill } from "../types";
 
 /**
  * Structural subset of `SectionBlock`/`RowBlock` that `computeBoxStyle` actually reads — both
@@ -12,7 +12,7 @@ import type { ContainerBorder, ContainerPadding, ContainerShadow, CornerRadiusVa
 export interface BoxStyleSource {
   padding: ContainerPadding;
   widthPx?: number;
-  fill?: string;
+  fill?: ContainerFill;
   border?: ContainerBorder;
   cornerRadius?: number;
   cornerRadii?: CornerRadiusValue;
@@ -24,7 +24,7 @@ export interface ComputedBoxStyle {
   paddingRight: number;
   paddingBottom: number;
   paddingLeft: number;
-  fill?: string;
+  fill?: ContainerFill;
   border?: { widthPx: number; color: string };
   /** A plain number in locked/uniform mode, a `CornerRadiusValue` in unlocked per-corner mode (see `SectionBlock.cornerRadii`). */
   cornerRadius?: number | CornerRadiusValue;
@@ -62,6 +62,23 @@ export function computeBoxStyle(block: BoxStyleSource, availableWidthPx: number)
   };
 }
 
+/** `position` is stored as a 0-1 fraction (matching `figmaImport/schema.ts`'s `fillSchema`
+ * convention); CSS gradient stops want a percentage. Rounds to 4 decimal places after the *100
+ * multiply to avoid raw floating-point artifacts (e.g. `0.0744 * 100` producing a long tail of
+ * 9s/0s) while still preserving real precision like the real template's `7.44%` stop. */
+function formatGradientStopPosition(position: number): string {
+  return `${Math.round(position * 1_000_000) / 10_000}%`;
+}
+
+/** Shared by canvas (`toReactStyle`, below) and the email exporter
+ * (`render/containerStyleParts.ts`'s `buildContainerExtraStyleParts`) so the two can never
+ * disagree on gradient CSS formatting — the same "single source of truth" reasoning as the rest
+ * of this module. */
+export function formatLinearGradientCss(fill: LinearGradientFill): string {
+  const stops = fill.stops.map((stop) => `${stop.color} ${formatGradientStopPosition(stop.position)}`).join(", ");
+  return `linear-gradient(${fill.angleDeg}deg, ${stops})`;
+}
+
 export interface ToReactStyleOptions {
   /** "fixed" = own widthPx is a real, top-level px value; "fill" = nested instance, stretch to 100% of the parent instead of computed.ownWidthPx (which is only a fallback for childrenAvailableWidthPx math, not a real own-width in that case). */
   widthMode: "fixed" | "fill";
@@ -86,7 +103,8 @@ export function toReactStyle(computed: ComputedBoxStyle, options: ToReactStyleOp
     paddingRight: computed.paddingRight,
     paddingBottom: computed.paddingBottom,
     paddingLeft: computed.paddingLeft,
-    backgroundColor: computed.fill,
+    backgroundColor: typeof computed.fill === "string" ? computed.fill : undefined,
+    background: computed.fill && typeof computed.fill !== "string" ? formatLinearGradientCss(computed.fill) : undefined,
     border: computed.border ? `${computed.border.widthPx}px solid ${computed.border.color}` : undefined,
     borderRadius: formatCornerRadiusReactValue(computed.cornerRadius),
     boxShadow: computed.shadow ? `${computed.shadow.xPx}px ${computed.shadow.yPx}px ${computed.shadow.blurPx}px ${computed.shadow.color}` : undefined,

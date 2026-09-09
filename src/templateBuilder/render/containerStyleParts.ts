@@ -1,4 +1,5 @@
-import type { ComputedBoxStyle } from "../styling/boxStyle";
+import { formatLinearGradientCss, type ComputedBoxStyle } from "../styling/boxStyle";
+import type { ContainerFill } from "../types";
 import { escapeHtml } from "./escape";
 
 /**
@@ -14,7 +15,8 @@ import { escapeHtml } from "./escape";
  */
 export function buildContainerExtraStyleParts(computed: ComputedBoxStyle): string[] {
   const parts: string[] = [];
-  if (computed.fill) parts.push(`background-color: ${escapeHtml(computed.fill)}`);
+  if (typeof computed.fill === "string") parts.push(`background-color: ${escapeHtml(computed.fill)}`);
+  else if (computed.fill) parts.push(`background: ${escapeHtml(formatLinearGradientCss(computed.fill))}`);
   if (computed.border) parts.push(`border: ${computed.border.widthPx}px solid ${escapeHtml(computed.border.color)}`);
   // Locked/uniform mode: same single-value output as before per-corner support existed. Unlocked
   // mode: CSS 4-value shorthand, top-left top-right bottom-right bottom-left — same corner order
@@ -29,8 +31,16 @@ export function buildContainerExtraStyleParts(computed: ComputedBoxStyle): strin
 }
 
 /** The `bgcolor="..."` HTML attribute (not CSS) — a fallback for email clients that don't apply
- * `background-color` from a style attribute. Shared by Section and Row for the same reason as
- * `buildContainerExtraStyleParts`. */
-export function buildBgcolorAttr(fill: string | undefined): string {
-  return fill ? ` bgcolor="${escapeHtml(fill)}"` : "";
+ * `background-color`/`background` from a style attribute. Shared by Section and Row for the same
+ * reason as `buildContainerExtraStyleParts`. A gradient has no valid HTML `bgcolor` value, so it
+ * falls back to the stop closest to `position: 0` (the gradient's visual start) — matching the
+ * real template's own convention of pairing a plain `bgcolor` fallback with a CSS gradient for
+ * capable clients. `stops` isn't guaranteed to be sorted by `position`, so this can't just take
+ * `stops[0]`. */
+export function buildBgcolorAttr(fill: ContainerFill | undefined): string {
+  const color =
+    typeof fill === "string"
+      ? fill
+      : fill?.stops.reduce((earliest, stop) => (stop.position < earliest.position ? stop : earliest), fill.stops[0])?.color;
+  return color ? ` bgcolor="${escapeHtml(color)}"` : "";
 }

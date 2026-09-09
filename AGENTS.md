@@ -64,15 +64,12 @@ A synthesized, cross-referenced knowledge base for this project — decisions, s
 | CORS | cross-origin support |
 | express-rate-limit | rate limiting |
 
-### AI Microservice (Python — `server/ai/`)
+### AI Integration (Ollama proxy — `server/routes/aiProxy.js`)
 | Tool | Purpose |
 |------|---------|
-| FastAPI | HTTP framework |
-| Uvicorn | ASGI server |
-| PaddleOCR | Text extraction from images |
-| Gemma 3 (via Ollama) | LLM for generating ALT text / smart names |
-| CLIP | Image understanding & embeddings |
-| PyTorch | Deep learning backend |
+| Ollama (local, external process) | Runs the vision-capable model (default `qwen2.5vl`, configurable) |
+
+No separate Python/FastAPI service — the old `server/ai/` microservice (FastAPI + PaddleOCR + CLIP + Gemma 3) was removed and replaced by a single Express route that proxies image bytes straight to a local Ollama instance's `/api/generate` and parses its JSON response. See the full write-up under "AI Integration" below.
 
 ### Automation
 | Tool | Purpose |
@@ -116,13 +113,8 @@ email-helper-copy/
 │   ├── pathValidator.ts        # Path security validation
 │   ├── workspaceManager.ts     # Workspace/project management
 │   ├── utils/                  # htmlSanitizer, storagePathResolver, gifOptimizer
-│   └── ai/                     # Python AI microservice (port 8000)
-│       ├── start.py            # Uvicorn entry
-│       ├── requirements.txt    # Python deps
-│       └── app/
-│           ├── main.py         # FastAPI app
-│           ├── api/routes.py   # /ocr, /caption, /merge
-│           └── services/       # ocr.py, caption.py, gemma.py, clip.py, merge.py
+│   ├── routes/aiProxy.js       # Proxies image analysis to local Ollama (/ai-api) — replaces the old Python service
+│   └── ollama-settings.json    # Persisted Ollama host/model/prompt settings
 ├── automation/                 # Playwright browser automation
 │   ├── config.json             # Browser profiles & storage provider config
 │   ├── run-upload.js           # CLI entry point
@@ -131,8 +123,7 @@ email-helper-copy/
 │   └── scripts/
 │       └── upload-playwright-brave.js  # Main upload logic
 ├── scripts/                    # Build & dev scripts
-│   ├── dev-runner.js           # Orchestrates all 4 services
-│   ├── run-ai.js               # Start Python AI service
+│   ├── dev-runner.js           # Orchestrates dev services (Vite + backend + dashboard)
 │   ├── print-dashboard.js      # Print dev URLs
 │   └── ensure-node.js          # Node version check
 ├── public/                     # Static assets
@@ -408,28 +399,30 @@ POST /api/storage/upload         → upload to storage provider (triggers browse
 
 ---
 
-## AI Microservice (`server/ai/` — port 8000)
+## AI Integration (`server/routes/aiProxy.js`, mounted at `/ai-api`)
 
-FastAPI + Uvicorn Python service.
+No separate Python microservice — this used to be a FastAPI + PaddleOCR + CLIP + Gemma 3 process on port 8000; it was removed and replaced by a single Express route that proxies straight to a local Ollama instance. `/ai-api` is proxied by Vite to the same backend port as `/api` (see `vite.config.ts`), not to a standalone AI port.
 
 ### Endpoints
 ```
-POST /ocr     → extract text from image (PaddleOCR)
-POST /caption → generate image caption (CLIP + Gemma 3)
-POST /merge   → combine OCR + caption → { alt_text, name_suggestion }
+GET    /ai-api/health         → { status, ollama_running, ollama_host }
+GET    /ai-api/api/models     → list of models currently pulled in Ollama
+POST   /ai-api/api/analyze    → image upload → { filename, alt_text, cta, raw, cached }
+POST   /ai-api/api/test       → text-only prompt roundtrip (latency check)
+DELETE /ai-api/api/cache      → clear in-memory response cache
+GET    /ai-api/api/settings   → current host/model/generation params/prompt
+PUT    /ai-api/api/settings   → update host/model/generation params/prompt
 ```
 
-### Services
-- `ocr.py` — PaddleOCR text extraction
-- `caption.py` — CLIP + Gemma 3 image captioning
-- `gemma.py` — Ollama Gemma 3 4B integration
-- `clip.py` — CLIP embeddings
-- `merge.py` — Merge OCR + caption results
+### How it works
+- Resizes the uploaded image to ≤768px JPEG (Sharp), sends it to Ollama's `/api/generate` with `format: "json"` and a fixed prompt asking for `filename`/`alt_text`/`cta`, then parses the JSON out of the response.
+- Model/host/temperature/prompt persist to `ollama-settings.json` (next to `ELECTRON_USER_DATA`, or cwd in dev/web) and survive restarts.
+- If the configured model isn't actually pulled in Ollama, silently falls back to whatever *is* installed and returns a `warning` string instead of failing.
+- In-memory response cache keyed by image MD5 hash (cap 100 entries).
 
 ### Requirements
-- Ollama running locally with Gemma 3 4B model
-- `OLLAMA_HOST=http://localhost:11434` (or custom IP for remote Ollama)
-- `OMP_NUM_THREADS=1` — critical for Mac performance
+- Ollama running locally (or reachable via `OLLAMA_HOST`) with a vision-capable model pulled — default is `qwen2.5vl:latest`, but any Ollama vision model works and is configurable via `PUT /ai-api/api/settings` or `ollama-settings.json`.
+- No Python, no `OMP_NUM_THREADS` tuning, no PaddleOCR/CLIP dependencies — those were specific to the removed FastAPI service.
 
 ---
 
@@ -477,16 +470,14 @@ VITE_EMAIL_PASS=your-16-char-app-password
 PORT=3001
 NODE_ENV=development
 OLLAMA_HOST=http://localhost:11434
-# VITE_AI_BACKEND_URL=http://192.168.0.241:8000  # for remote Ollama
 ```
 
 ### NPM Scripts
 ```bash
-npm run dev           # Start all services (Vite + server + AI + info dashboard)
+npm run dev           # Start dev services (Vite + backend + info dashboard)
 npm run dev-host      # Same but exposed on network IP
 npm run dev-frontend  # Frontend only (port 5173)
 npm run dev-backend   # Backend only (port 3001)
-npm run dev:ai        # Python AI service only (port 8000)
 npm run build         # Production build → dist/
 npm run deploy        # Build + push to GitHub Pages (gh-pages)
 npm run test          # Jest tests
@@ -499,8 +490,8 @@ npm run automation:upload  # Run browser upload automation
 
 ### Multi-Instance Support
 ```bash
-npm run dev 0   # Instance 0: frontend=5173, backend=3001, AI=8000
-npm run dev 1   # Instance 1: frontend=5183, backend=3011, AI=8010
+npm run dev 0   # Instance 0: frontend=5173, backend=3001
+npm run dev 1   # Instance 1: frontend=5183, backend=3011
 ```
 
 ### Vite Proxy (dev mode)
@@ -634,7 +625,7 @@ Base path: `/email-helper/`
 ### Full Stack
 - Frontend: Vite build → any static host
 - Backend: Node.js 18+ required, set `PORT` env var
-- AI: Python 3.8+ + Ollama with Gemma 3 4B
+- AI: Ollama running locally (or reachable via `OLLAMA_HOST`) with a vision-capable model pulled — no separate Python service to deploy
 
 ---
 
@@ -663,10 +654,10 @@ npm run automation:upload -- ./file.png health --provider default
 ```
 
 ### Run AI Features
-Requires Ollama with Gemma 3 running locally:
+Requires Ollama running locally with a vision-capable model pulled (no separate service to start — `aiProxy.js` is part of the regular backend, started by `npm run dev`/`dev-backend`):
 ```bash
-ollama pull gemma3:4b
-npm run dev:ai    # Start AI service
+ollama pull qwen2.5vl:latest   # or any other Ollama vision model; configurable in Settings
+npm run dev
 ```
 
 ---
@@ -675,7 +666,7 @@ npm run dev:ai    # Start AI service
 
 - **No traditional router** — tab-based SPA navigation
 - **Server is required** for full functionality (blocks, templates, email, image conversion via Sharp)
-- **AI service is optional** — gracefully degrades when unavailable
+- **AI features are optional** — `aiProxy.js` gracefully degrades (returns a 503 with a clear message) when Ollama isn't running or has no models pulled; it's a route on the main backend, not a separate process
 - **Automation requires Brave browser** — configured automatically on `npm install`
 - **Multi-instance dev** — each instance uses different ports (offset by 10 per instance)
 - **Frontend proxies all `/api` and `/ai-api` requests** in dev mode via Vite proxy

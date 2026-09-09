@@ -16,4 +16,4 @@ export const TEMPLATE_BUILDER_ENABLED = true;
 
 // Figma Import (Stage 1: read + validate only, no renderer yet) is local-only —
 // flip to true in your own checkout to work on the tab.
-export const FIGMA_IMPORT_ENABLED = true;
+export const FIGMA_IMPORT_ENABLED = false;

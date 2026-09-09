@@ -357,3 +357,25 @@ export function resetBuilderState() {
   clearMultiSelection();
   resetHistory();
 }
+
+/** Replaces the whole canvas with an already-validated document — the write side of the JSON
+ * Import dialog (`validateBuilderDocument()` → `loadDocument(...)`) and, later, Phase 2's
+ * `build_template` MCP tool. Same reset-side-effects as `resetBuilderState`: dropping selection
+ * and undo history, since neither one means anything against a document the user didn't build
+ * step-by-step in this session. Bypasses `commit()` deliberately — this is a wholesale replace,
+ * not an incremental edit, so it has nothing to push onto undo history. */
+export function loadDocument(shell: ShellConfig, nodes: Record<string, BuilderNode>, rootIds: string[]): void {
+  builderStore.setState({ shell, nodes, rootIds });
+  selectBlock(null);
+  clearMultiSelection();
+  resetHistory();
+}
+
+/** The read side of the JSON Export button and, later, Phase 2's `get_template` MCP tool.
+ * `nodes` comes back as a flat array (`Object.values`, not the internal id-keyed map) — exactly
+ * the shape `builderDocumentSchema`/`validateBuilderDocument` expect back in, so export → import
+ * round-trips through the same document shape with no reshaping on either side. */
+export function exportDocument(): { shell: ShellConfig; nodes: BuilderNode[] } {
+  const state = builderStore.getState();
+  return { shell: state.shell, nodes: Object.values(state.nodes) };
+}

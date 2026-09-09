@@ -1,17 +1,20 @@
-import { Download, Eye, LayoutTemplate } from "lucide-react";
+import { Download, Eye, LayoutTemplate, Upload } from "lucide-react";
 import { useState } from "react";
 
 import { BuilderCanvas } from "./canvas/BuilderCanvas";
 import { BuilderPreviewPane } from "./components/BuilderPreviewPane";
+import { ImportJsonDialog } from "./components/ImportJsonDialog";
 import { Inspector } from "./components/Inspector";
 import { downloadHtmlFile } from "./downloadHtmlFile";
+import { downloadJsonFile } from "./downloadJsonFile";
 import { buildDocumentHtml } from "./render/buildDocumentHtml";
-import { getNodesMap, getRootIds, getShellConfig } from "./state/builderStore";
+import { exportDocument, getNodesMap, getRootIds, getShellConfig } from "./state/builderStore";
 
 type ViewMode = "canvas" | "preview";
 
 export default function BuilderPanel() {
   const [viewMode, setViewMode] = useState<ViewMode>("canvas");
+  const [importOpen, setImportOpen] = useState(false);
 
   // Read via imperative getters instead of subscribing — this component doesn't need to
   // re-render on every canvas/shell edit, only at click time when the user actually exports.
@@ -21,6 +24,11 @@ export default function BuilderPanel() {
     const rootIds = getRootIds();
     const html = buildDocumentHtml(shell, nodes, rootIds);
     await downloadHtmlFile(html, `${shell.title || "template"}.html`);
+  };
+
+  const handleExportJson = async () => {
+    const doc = exportDocument();
+    await downloadJsonFile(JSON.stringify(doc, null, 2), `${doc.shell.title || "template"}.json`);
   };
 
   return (
@@ -43,8 +51,22 @@ export default function BuilderPanel() {
           </button>
           <button
             type='button'
+            onClick={() => setImportOpen(true)}
+            className='ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold border border-border/60 bg-muted/40 hover:bg-muted transition-colors'>
+            <Upload size={14} />
+            Import JSON
+          </button>
+          <button
+            type='button'
+            onClick={handleExportJson}
+            className='flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold border border-border/60 bg-muted/40 hover:bg-muted transition-colors'>
+            <Download size={14} />
+            Export JSON
+          </button>
+          <button
+            type='button'
             onClick={handleDownload}
-            className='ml-auto flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs px-3 py-1.5 rounded-md shadow-sm transition-all'>
+            className='flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs px-3 py-1.5 rounded-md shadow-sm transition-all'>
             <Download size={14} />
             Download HTML
           </button>
@@ -56,6 +78,8 @@ export default function BuilderPanel() {
       <div className='overflow-y-auto'>
         <Inspector />
       </div>
+
+      <ImportJsonDialog open={importOpen} onClose={() => setImportOpen(false)} />
     </div>
   );
 }
