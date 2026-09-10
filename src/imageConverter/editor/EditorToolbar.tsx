@@ -2,7 +2,9 @@
  * The single tool switcher for the image editor — replaces the old two-level
  * navigation (a Crop/Background tab, with Wand/Eraser nested inside Background).
  * Picking Wand or Eraser directly here IS how background removal starts; there's
- * no separate "enable background removal" toggle to find first.
+ * no separate "enable background removal" toggle to find first. Picking Slice
+ * likewise is how a cut-out-a-region selection starts — a rect independent of
+ * Crop's, drawn from scratch anywhere on the image (see EditorStage/ImageEditorModal).
  *
  * Rendered as a vertical rail of icon-only pills to the left of the canvas
  * (Photoshop/GIMP-style tool dock) rather than a horizontal row above it — frees
@@ -10,7 +12,7 @@
  * Labels live in `title` (native tooltip on hover) instead of on-button text.
  */
 
-import { Crop, Eraser, Wand2 } from "lucide-react";
+import { Crop, Eraser, Scissors, Wand2 } from "lucide-react";
 
 import { EditorTool } from "./EditorStage";
 
@@ -22,6 +24,7 @@ interface EditorToolbarProps {
 
 const TOOLS: { tool: EditorTool; label: string; icon: typeof Crop }[] = [
   { tool: "crop", label: "Crop", icon: Crop },
+  { tool: "slice", label: "Slice", icon: Scissors },
   { tool: "wand", label: "Wand", icon: Wand2 },
   { tool: "eraser", label: "Eraser", icon: Eraser },
 ];

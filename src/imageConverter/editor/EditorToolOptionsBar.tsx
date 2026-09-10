@@ -1,15 +1,18 @@
 /**
- * Left context panel for the active tool — sits between the icon rail
- * (EditorToolbar) and the canvas (EditorStage), mirroring the icon-rail +
- * settings-panel layout of dedicated design tools. Replaces the strip of
- * controls that used to live stacked below the canvas: Wand's Contiguous/Global
- * toggle and tolerance slider, and Eraser's mode/brush size and the
- * replace-mode picker (both via BackgroundOptions) live here now, so the
- * canvas itself stays uncluttered.
+ * Options bar for the active tool — a full-width horizontal strip above the
+ * canvas, only mounted while Wand or Eraser is the active tool (Crop and Slice
+ * need no controls beyond direct canvas interaction).
  *
- * Deliberately narrow (w-48, not w-56) and without a Wand<->Eraser shortcut
- * button — the icon rail already switches tools in one click, so a second
- * shortcut for the same action was reviewed as redundant complexity.
+ * Was a floating popover anchored to the icon rail before this — reviewed live
+ * and rejected: it overlapped the image itself (right where Wand/Eraser need to
+ * see pixels to pick a color or paint a stroke), which a "don't reserve
+ * permanent space" win didn't make up for. A bar that pushes the canvas down
+ * instead of floating over it keeps the same "only takes space when relevant"
+ * property without ever covering the thing you're editing.
+ *
+ * Deliberately without a Wand<->Eraser shortcut button — the icon rail already
+ * switches tools in one click, so a second shortcut for the same action was
+ * reviewed as redundant complexity.
  */
 
 import { BackgroundOperation, BackgroundReplaceMode, InstantAlphaPick } from "../types";
@@ -18,11 +21,12 @@ import { EditorTool } from "./EditorStage";
 
 const TOOL_LABELS: Record<EditorTool, string> = {
   crop: "Crop",
+  slice: "Slice",
   wand: "Wand",
   eraser: "Eraser",
 };
 
-interface EditorSidePanelProps {
+interface EditorToolOptionsBarProps {
   tool: EditorTool;
   contiguousMode: boolean;
   onContiguousModeChange: (value: boolean) => void;
@@ -43,7 +47,7 @@ interface EditorSidePanelProps {
   isGif: boolean;
 }
 
-export default function EditorSidePanel({
+export default function EditorToolOptionsBar({
   tool,
   contiguousMode,
   onContiguousModeChange,
@@ -62,18 +66,16 @@ export default function EditorSidePanel({
   replaceImageUrl,
   onReplaceImageFile,
   isGif,
-}: EditorSidePanelProps) {
+}: EditorToolOptionsBarProps) {
   const hasOperations = operations.length > 0;
 
   return (
-    <div className='w-48 shrink-0 flex flex-col gap-3'>
-      <div className='text-xs font-bold text-foreground uppercase tracking-wide'>{TOOL_LABELS[tool]}</div>
-
-      {tool === "crop" && <p className='text-[11px] text-muted-foreground'>Drag the frame or its handles to crop.</p>}
+    <div className='w-full flex flex-wrap items-center gap-x-4 gap-y-2 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 px-4 py-2.5'>
+      <span className='text-xs font-bold text-foreground uppercase tracking-wide shrink-0'>{TOOL_LABELS[tool]}</span>
 
       {tool === "wand" && (
-        <div className='flex flex-col gap-1.5'>
-          <div className='flex gap-1.5'>
+        <div className='flex flex-wrap items-center gap-3'>
+          <div className='flex gap-1.5 shrink-0'>
             {(
               [
                 { value: true, label: "Contiguous" },
@@ -83,7 +85,7 @@ export default function EditorSidePanel({
               <button
                 key={label}
                 onClick={() => onContiguousModeChange(value)}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors ${contiguousMode === value ? "bg-primary text-primary-foreground" : "bg-slate-50 dark:bg-slate-800 text-muted-foreground hover:text-foreground"
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${contiguousMode === value ? "bg-primary text-primary-foreground" : "bg-slate-50 dark:bg-slate-800 text-muted-foreground hover:text-foreground"
                   }`}
               >
                 {label}
@@ -93,7 +95,7 @@ export default function EditorSidePanel({
 
           {pendingPick ? (
             <>
-              <label className='flex items-center gap-2 text-xs text-muted-foreground'>
+              <label className='flex items-center gap-2 text-xs text-muted-foreground shrink-0 w-48'>
                 <span className='shrink-0'>{contiguousMode ? "Tolerance" : "Fuzziness"}</span>
                 <input
                   type='range'
@@ -106,9 +108,9 @@ export default function EditorSidePanel({
                 />
                 <span className='shrink-0 tabular-nums w-9 text-right'>{Math.round(pendingPick.tolerance)}%</span>
               </label>
-              <p className='text-[11px] text-muted-foreground'>
-                Press <kbd className='px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700'>⌫ Backspace</kbd> to remove,{" "}
-                <kbd className='px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700'>Esc</kbd> to cancel
+              <p className='text-[11px] text-muted-foreground shrink-0'>
+                <kbd className='px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700'>⌫</kbd> remove ·{" "}
+                <kbd className='px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700'>Esc</kbd> cancel
               </p>
             </>
           ) : (
@@ -119,9 +121,11 @@ export default function EditorSidePanel({
         </div>
       )}
 
-      {tool === "eraser" && <p className='text-[11px] text-muted-foreground'>Paint to erase or restore.</p>}
+      {tool === "eraser" && <span className='text-[11px] text-muted-foreground shrink-0'>Paint to erase or restore.</span>}
 
-      {isGif && tool !== "crop" && <p className='text-[11px] text-muted-foreground'>Applied the same way to every frame of the GIF.</p>}
+      {isGif && <span className='text-[11px] text-muted-foreground shrink-0'>Applied the same way to every frame of the GIF.</span>}
+
+      <div className='flex-1 min-w-2' />
 
       <BackgroundOptions
         tool={tool}
@@ -138,8 +142,8 @@ export default function EditorSidePanel({
         onReplaceImageFile={onReplaceImageFile}
       />
 
-      {tool !== "crop" && hasOperations && (
-        <button onClick={onUndoLast} className='self-start text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors'>
+      {hasOperations && (
+        <button onClick={onUndoLast} className='shrink-0 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors'>
           Undo last (⌘Z)
         </button>
       )}

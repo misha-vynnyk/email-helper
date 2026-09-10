@@ -58,6 +58,19 @@ export function rectToPixels(rect: CropRect, imageWidth: number, imageHeight: nu
   };
 }
 
+/** Builds a normalized rect from two arbitrary corners — used to draw a brand-new
+ * selection from scratch (e.g. the Slice tool's click-drag-anywhere gesture), where,
+ * unlike resizeRectByHandle, there's no existing rect/handle to anchor the drag to
+ * and the two points can be in any order (drag up-left just as validly as down-right). */
+export function rectFromPoints(a: { x: number; y: number }, b: { x: number; y: number }): CropRect {
+  return clampRect({
+    x: Math.min(a.x, b.x),
+    y: Math.min(a.y, b.y),
+    width: Math.abs(a.x - b.x),
+    height: Math.abs(a.y - b.y),
+  });
+}
+
 /** True when the rect covers effectively the whole image — used to skip a pointless crop. */
 export function isFullRect(rect: CropRect): boolean {
   const EPSILON = 0.001;
