@@ -1,9 +1,9 @@
 /**
- * The single interactive image surface shared by all three edit tools (Crop, Wand,
- * Eraser). Previously Crop and Background lived on separate tabs, each swapping in
- * its own canvas/img element — this merges them into one persistent stage so a crop
- * rect and a background edit can both be reviewed (and built up) without navigating
- * away from either.
+ * The single interactive image surface shared by all four edit tools (Crop, Slice,
+ * Wand, Eraser). Previously Crop and Background lived on separate tabs, each swapping
+ * in its own canvas/img element — this merges them into one persistent stage so a
+ * crop rect and a background edit can both be reviewed (and built up) without
+ * navigating away from either.
  *
  * Renders at native resolution on a <canvas> (needed for pixel-accurate Wand/Eraser
  * painting and an accurate background-removal preview) with the crop-rect overlay
@@ -11,6 +11,14 @@
  * - `tool === "crop"`: the rect is interactive (move + 8 resize handles), dimmed
  *   outside its bounds. The canvas underneath still shows the baked background edit,
  *   so cropping happens against the same pixels the final export will have.
+ * - `tool === "slice"`: a SEPARATE rect (`sliceRect`, independent of the crop rect
+ *   above) that the user draws from scratch anywhere on the image by clicking and
+ *   dragging on open canvas, then repositions/resizes the same way the crop rect
+ *   does. A corner-anchored cut-out button exports just that region as a new file
+ *   without touching the crop rect or closing the editor — see ImageEditorModal's
+ *   handleSaveSlice. Deliberately a distinct rect from crop: crop always describes
+ *   the one region Apply keeps, slice is a repeatable "grab this piece too" gesture
+ *   that shouldn't disturb it.
  * - `tool === "wand" | "eraser"`: the canvas takes pointer input for painting: the
  *   crop rect (if not full-image) renders as a read-only dashed outline so its bounds
  *   stay visible without competing for input.
@@ -19,14 +27,15 @@
  * undo) is unchanged from the former InstantAlphaCanvas; crop-rect math/handles are
  * unchanged from the former CropCanvas — see cropMath.ts and bgRemoval/instantAlpha.ts.
  *
- * Renders ONLY the canvas + crop overlay — the Wand/Eraser controls that used to sit
- * in a strip below the canvas (Contiguous/Global, tolerance, replace-mode, undo, the
- * Wand<->Eraser quick-swap) now live in the sibling EditorSidePanel to its left, so
- * `pendingPick`/`contiguousMode` are controlled props from the parent (ImageEditorModal)
- * instead of local state — the panel needs to read and mutate them too (e.g. the
- * tolerance slider), not just this canvas's own pointer handlers.
+ * Renders ONLY the canvas + crop overlay — the Wand/Eraser controls (Contiguous/
+ * Global, tolerance, replace-mode, undo) live in EditorToolOptionsBar, a horizontal
+ * strip above this whole stage, so `pendingPick`/`contiguousMode` are controlled
+ * props from the parent (ImageEditorModal) instead of local state — the bar needs to
+ * read and mutate them too (e.g. the tolerance slider), not just this canvas's own
+ * pointer handlers.
  */
 
+import { Scissors } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { BackgroundOperation, BrushStroke, CropRect, InstantAlphaPick, InstantAlphaSeed } from "../types";
@@ -34,10 +43,10 @@ import { computeColorRangeMaskFromOklab, computeInstantAlphaMaskFromOklab, DEFAU
 import { paintStroke, unionMasks } from "./bgRemoval/maskOps";
 import { computeMaskFromOperations } from "./bgRemoval/replayOperations";
 import { CHECKERBOARD_STYLE } from "./checkerboardStyle";
-import { clampRect, CropHandle, isFullRect, moveRect, resizeRectByHandle } from "./cropMath";
+import { clampRect, CropHandle, isFullRect, moveRect, rectFromPoints, resizeRectByHandle } from "./cropMath";
 import { usePointerDrag } from "./usePointerDrag";
 
-export type EditorTool = "crop" | "wand" | "eraser";
+export type EditorTool = "crop" | "slice" | "wand" | "eraser";
 
 interface EditorStageProps {
   imageUrl: string;
@@ -59,6 +68,15 @@ interface EditorStageProps {
    * ImageEditorModal's handleApply/resolveEffectiveBackground. */
   pendingPick: InstantAlphaPick | null;
   onPendingPickChange: (pick: InstantAlphaPick | null) => void;
+  /** The Slice tool's own selection — independent of `rect` (the crop tool's rect)
+   * so drawing a cut-out region never disturbs whatever crop is set up for Apply.
+   * `null` until the user draws one; drawing a new one on open canvas replaces it. */
+  sliceRect: CropRect | null;
+  onSliceRectChange: (rect: CropRect | null) => void;
+  /** Exports the current `sliceRect` as a new file in the grid, without closing the
+   * editor or touching the source being edited. Omitted entirely (no button
+   * rendered) when the caller has no add-file destination. */
+  onCutOut?: () => void;
 }
 
 const SAFETY_MAX_DIMENSION = 2400;
@@ -144,6 +162,9 @@ export default function EditorStage({
   contiguousMode,
   pendingPick,
   onPendingPickChange,
+  sliceRect,
+  onSliceRectChange,
+  onCutOut,
 }: EditorStageProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -160,6 +181,11 @@ export default function EditorStage({
   const strokePointsRef = useRef<InstantAlphaSeed[]>([]);
   const rafScheduledRef = useRef(false);
   const rectBaselineRef = useRef(rect);
+  // Origin of an in-progress "draw a brand-new slice rect from scratch" drag,
+  // started by a pointerdown on open canvas (not on the existing sliceRect's own
+  // body/handles, which have their own pointer handlers and stop propagation).
+  const sliceDragOriginRef = useRef<{ x: number; y: number } | null>(null);
+  const sliceRectBaselineRef = useRef<CropRect | null>(sliceRect);
   const pendingPickRef = useRef(pendingPick);
   pendingPickRef.current = pendingPick;
   const prevToolRef = useRef(tool);
@@ -304,9 +330,11 @@ export default function EditorStage({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [tool, pendingPick, onCommit, onPendingPickChange]);
 
-  // Ctrl/Cmd+Z undoes the last committed background operation, wand or eraser.
+  // Ctrl/Cmd+Z undoes the last committed background operation — Wand/Eraser only;
+  // Slice has no operation log to undo (dragging a new rect already just replaces
+  // the old one, and Reset clears it).
   useEffect(() => {
-    if (tool === "crop") return;
+    if (tool !== "wand" && tool !== "eraser") return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isEditableTarget(e.target)) return;
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") {
@@ -386,6 +414,12 @@ export default function EditorStage({
     if (tool === "wand") {
       activeWandDragRef.current = { seed, startClientX: e.clientX, startClientY: e.clientY, tolerance: DEFAULT_TOLERANCE };
       onPendingPickChange({ type: "pick", seed, tolerance: DEFAULT_TOLERANCE, contiguous: contiguousMode });
+    } else if (tool === "slice") {
+      // A pointerdown that reaches the canvas (rather than the existing sliceRect's
+      // body/handles, which stopPropagation in their own usePointerDrag handlers)
+      // always starts a brand-new rect from this point, replacing whatever was there.
+      sliceDragOriginRef.current = seed;
+      onSliceRectChange(rectFromPoints(seed, seed));
     } else {
       strokePointsRef.current = [seed];
     }
@@ -402,6 +436,12 @@ export default function EditorStage({
       const distance = Math.hypot(e.clientX - active.startClientX, e.clientY - active.startClientY);
       active.tolerance = clamp(DEFAULT_TOLERANCE + distance * TOLERANCE_PER_PIXEL, 0, 100);
       scheduleDraw();
+    } else if (tool === "slice") {
+      const origin = sliceDragOriginRef.current;
+      if (!origin) return;
+      const box = canvas.getBoundingClientRect();
+      const current = { x: clamp((e.clientX - box.left) / box.width, 0, 1), y: clamp((e.clientY - box.top) / box.height, 0, 1) };
+      onSliceRectChange(rectFromPoints(origin, current));
     } else {
       if (strokePointsRef.current.length === 0) return;
       const box = canvas.getBoundingClientRect();
@@ -415,6 +455,8 @@ export default function EditorStage({
       const active = activeWandDragRef.current;
       if (active) onPendingPickChange({ type: "pick", seed: active.seed, tolerance: active.tolerance, contiguous: contiguousMode });
       activeWandDragRef.current = null;
+    } else if (tool === "slice") {
+      sliceDragOriginRef.current = null;
     } else if (strokePointsRef.current.length > 0) {
       const stroke: BrushStroke = { type: "stroke", points: strokePointsRef.current, radius: brushRadius, mode: eraserMode };
       strokePointsRef.current = [];
@@ -441,9 +483,32 @@ export default function EditorStage({
     },
   });
 
+  const { handlers: sliceMoveHandlers } = usePointerDrag({
+    cursor: "grabbing",
+    onDragStart: () => {
+      sliceRectBaselineRef.current = sliceRect;
+    },
+    onDrag: (delta) => {
+      const box = containerRef.current;
+      const baseline = sliceRectBaselineRef.current;
+      if (!box || !baseline) return;
+      const { width, height } = box.getBoundingClientRect();
+      onSliceRectChange(moveRect(baseline, delta.dx / width, delta.dy / height));
+    },
+    onDragEnd: (delta) => {
+      const box = containerRef.current;
+      const baseline = sliceRectBaselineRef.current;
+      if (!box || !baseline) return;
+      const { width, height } = box.getBoundingClientRect();
+      onSliceRectChange(moveRect(baseline, delta.dx / width, delta.dy / height));
+    },
+  });
+
   const safeRect = clampRect(rect);
+  const safeSliceRect = sliceRect ? clampRect(sliceRect) : null;
   const maskClass = "absolute bg-slate-950/55";
   const isCropTool = tool === "crop";
+  const isSliceTool = tool === "slice";
 
   return (
     <div className='flex flex-col items-center w-full'>
@@ -514,6 +579,48 @@ export default function EditorStage({
               }}
             />
           )
+        )}
+
+        {/* Slice tool: a rect fully independent of the crop rect above — drawn from
+         * scratch by dragging on open canvas (handled by handlePointerDown/Move/Up),
+         * then moved/resized the same way the crop rect is. Rendered as a sibling
+         * (not nested in the isCropTool branch) so it can coexist with the crop
+         * rect's own dashed read-only outline just above. */}
+        {isSliceTool && safeSliceRect && (
+          <div className='absolute inset-0'>
+            <div
+              {...sliceMoveHandlers}
+              style={{
+                left: `${safeSliceRect.x * 100}%`,
+                top: `${safeSliceRect.y * 100}%`,
+                width: `${safeSliceRect.width * 100}%`,
+                height: `${safeSliceRect.height * 100}%`,
+              }}
+              className='absolute border-2 border-primary cursor-grab touch-none'
+            >
+              {HANDLES.map(({ handle, left, top, cursor }) => (
+                <ResizeHandle key={handle} handle={handle} left={left} top={top} cursor={cursor} rect={safeSliceRect} onChange={onSliceRectChange} boxRef={containerRef} />
+              ))}
+
+              {/* Same corner-anchored placement (not floating above the rect) as the
+               * removed crop-rect version used to have, for the same clipping reason:
+               * it stays inside the canvas's bounds no matter where this rect sits,
+               * so the viewport's overflow-auto (needed for zoom/pan) never clips it. */}
+              {onCutOut && (
+                <button
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onCutOut();
+                  }}
+                  title='Cut out as new image'
+                  className='absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:brightness-110 active:scale-95 transition-all touch-none'
+                >
+                  <Scissors size={14} />
+                </button>
+              )}
+            </div>
+          </div>
         )}
         </div>
       </div>

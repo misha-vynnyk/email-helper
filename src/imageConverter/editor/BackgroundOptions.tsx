@@ -3,6 +3,9 @@
  * replace-mode picker (transparent / solid color / another image). The replace-mode
  * picker stays visible whenever a background edit exists, regardless of which tool
  * is currently active, so switching to Crop to check framing doesn't hide it.
+ *
+ * Laid out as inline flex-wrap groups (not a stacked column) — this renders inside
+ * EditorToolOptionsBar, a horizontal strip above the canvas, not a vertical panel.
  */
 
 import { Image as ImageIcon, ImageOff, Palette } from "lucide-react";
@@ -48,15 +51,15 @@ export default function BackgroundOptions({
   if (tool !== "eraser" && !hasOperations) return null;
 
   return (
-    <div className='w-full flex flex-col gap-2.5'>
+    <div className='flex flex-wrap items-center gap-3'>
       {tool === "eraser" && (
-        <div className='flex flex-col gap-2'>
+        <div className='flex items-center gap-3 shrink-0'>
           <div className='flex gap-1.5'>
             {(["erase", "restore"] as const).map((mode) => (
               <button
                 key={mode}
                 onClick={() => onEraserModeChange(mode)}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${
                   eraserMode === mode ? "bg-primary text-primary-foreground" : "bg-slate-50 dark:bg-slate-800 text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -73,49 +76,47 @@ export default function BackgroundOptions({
               step={0.005}
               value={brushRadius}
               onChange={(e) => onBrushRadiusChange(Number(e.target.value))}
-              className='flex-1 accent-primary'
+              className='w-24 accent-primary'
             />
           </label>
         </div>
       )}
 
       {hasOperations && (
-        <>
-          <div className='flex gap-1.5'>
+        <div className='flex flex-wrap items-center gap-2 shrink-0'>
+          <div className='flex gap-1'>
             {REPLACE_MODES.map(({ mode, label, icon: Icon }) => (
               <button
                 key={mode}
                 onClick={() => onReplaceModeChange(mode)}
-                className={`flex-1 flex flex-col items-center gap-1 py-2 rounded-lg text-xs font-medium transition-colors ${
+                title={label}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                   replaceMode === mode ? "bg-primary text-primary-foreground" : "bg-slate-50 dark:bg-slate-800 text-muted-foreground hover:text-foreground"
                 }`}
               >
-                <Icon size={14} />
+                <Icon size={13} />
                 {label}
               </button>
             ))}
           </div>
 
           {replaceMode === "color" && (
-            <label className='flex items-center justify-between text-sm'>
-              <span className='text-muted-foreground'>Fill color</span>
-              <input
-                type='color'
-                value={replaceColor ?? "#ffffff"}
-                onChange={(e) => onReplaceColorChange(e.target.value)}
-                className='w-9 h-7 rounded cursor-pointer border border-slate-200 dark:border-slate-700'
-              />
-            </label>
+            <input
+              type='color'
+              value={replaceColor ?? "#ffffff"}
+              onChange={(e) => onReplaceColorChange(e.target.value)}
+              className='w-8 h-7 rounded cursor-pointer border border-slate-200 dark:border-slate-700'
+            />
           )}
 
           {replaceMode === "image" && (
-            <label className='flex items-center justify-between text-sm cursor-pointer'>
-              <span className='text-muted-foreground truncate'>{replaceImageUrl ? "Change image…" : "Choose image…"}</span>
+            <label className='flex items-center gap-2 text-xs cursor-pointer'>
+              <span className='text-muted-foreground'>{replaceImageUrl ? "Change…" : "Choose…"}</span>
               <input type='file' accept='image/*' className='hidden' onChange={(e) => onReplaceImageFile(e.target.files?.[0])} />
-              {replaceImageUrl && <img src={replaceImageUrl} alt='' className='w-9 h-7 object-cover rounded border border-slate-200 dark:border-slate-700' />}
+              {replaceImageUrl && <img src={replaceImageUrl} alt='' className='w-8 h-7 object-cover rounded border border-slate-200 dark:border-slate-700' />}
             </label>
           )}
-        </>
+        </div>
       )}
     </div>
   );

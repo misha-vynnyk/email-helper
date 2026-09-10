@@ -20,6 +20,11 @@ import { ImageEditState, ImageFile } from "../types";
 import { formatFileSize } from "../utils/clientConverter";
 import ImageEditorModal from "../editor/ImageEditorModal";
 
+// md:opacity-0 + md:group-hover:opacity-100 hides these controls until hover ONLY at
+// the md breakpoint and up (real mouse territory) — below md they stay opacity-100 from
+// the base class, since touch devices can't hover and this grid is used on phones too.
+const REVEAL_ON_HOVER = "opacity-100 md:opacity-0 md:pointer-events-none md:group-hover:opacity-100 md:group-hover:pointer-events-auto";
+
 interface ImageGridItemProps {
   file: ImageFile;
   onDownload: () => void;
@@ -41,7 +46,6 @@ export default function ImageGridItem({
 }: ImageGridItemProps) {
   const [showComparison, setShowComparison] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
-  const [hovered, setHovered] = useState(false);
 
   const isDone = file.status === "done";
   const isProcessing = file.status === "processing";
@@ -57,14 +61,12 @@ export default function ImageGridItem({
       <div
         className={`
           relative bg-white dark:bg-slate-900 rounded-xl border overflow-hidden transition-all duration-300 group
-          ${file.selected 
-            ? "border-primary shadow-lg shadow-primary/10 ring-2 ring-primary/10" 
+          ${file.selected
+            ? "border-primary shadow-lg shadow-primary/10 ring-2 ring-primary/10"
             : "border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 shadow-sm hover:shadow-md"
           }
           ${isError ? "border-destructive/30 shadow-destructive/10" : ""}
         `}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
       >
         {/* Image Preview Container */}
         <div className='relative aspect-[4/3] overflow-hidden bg-slate-50 dark:bg-slate-950/50'>
@@ -72,7 +74,7 @@ export default function ImageGridItem({
             <img
               src={file.previewUrl}
               alt={file.file.name}
-              className={`w-full h-full object-cover transition-all duration-500 ${hovered ? "scale-105" : "scale-100"}`}
+              className='w-full h-full object-cover scale-100 transition-all duration-500 md:group-hover:scale-105'
             />
           </div>
 
@@ -98,8 +100,9 @@ export default function ImageGridItem({
             </div>
           )}
 
-          {/* Toggle Selection & Drag Handle (Top-Left, visible on hover or if selected) */}
-          <div className={`absolute top-2 left-2 z-20 flex gap-1 transition-all duration-200 ${hovered || file.selected ? "opacity-100" : "opacity-0"}`}>
+          {/* Toggle Selection & Drag Handle (Top-Left) — always visible on touch (no hover
+              to reveal them), hover-revealed on desktop unless already selected */}
+          <div className={`absolute top-2 left-2 z-20 flex gap-1 transition-opacity duration-200 ${file.selected ? "opacity-100" : REVEAL_ON_HOVER}`}>
             <button
               onClick={(e) => { e.stopPropagation(); onToggleSelection(); }}
               className={`w-6 h-6 rounded-md flex items-center justify-center transition-all ${
@@ -119,11 +122,12 @@ export default function ImageGridItem({
             </div>
           </div>
 
-          {/* Comparison / Preview Overlay (Bottom Center, hover only) */}
-          {isDone && hovered && (
+          {/* Comparison / Preview Overlay (Bottom Center) — always visible on touch,
+              hover-revealed on desktop */}
+          {isDone && (
             <button
               onClick={() => setShowComparison(true)}
-              className='absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-slate-900/80 hover:bg-primary text-white text-[10px] font-semibold rounded-full backdrop-blur-sm transition-all flex items-center gap-1.5'
+              className={`absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-slate-900/80 hover:bg-primary text-white text-[10px] font-semibold rounded-full backdrop-blur-sm transition-opacity flex items-center gap-1.5 ${REVEAL_ON_HOVER}`}
             >
               <Eye size={12} />
               Compare

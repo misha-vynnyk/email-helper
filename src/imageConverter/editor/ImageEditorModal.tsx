@@ -6,12 +6,17 @@
  *
  * Crop and background removal used to live on separate tabs, each swapping out the
  * entire canvas. They're now one persistent stage (EditorStage) with a single tool
- * switcher (EditorToolbar: Crop / Wand / Eraser) — switching tools no longer hides
- * the other edit's result, so a crop can be framed against an already-cut-out
+ * switcher (EditorToolbar: Crop / Slice / Wand / Eraser) — switching tools no longer
+ * hides the other edit's result, so a crop can be framed against an already-cut-out
  * subject and vice versa.
+ *
+ * Crop and Slice are deliberately two separate rects/tools, not one: `rect` is what
+ * Apply keeps (one region, replacing the source); `sliceRect` is an independent,
+ * repeatable "grab this piece too" selection the user draws from scratch anywhere on
+ * the image — cutting it out via handleSaveSlice never touches `rect` or the source.
  */
 
-import { Crop, RotateCcw, Scissors, X } from "lucide-react";
+import { Crop, RotateCcw, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 
@@ -22,9 +27,9 @@ import { applyCropToImage } from "./applyEditToImage";
 import BeforeAfterPreview from "./BeforeAfterPreview";
 import { applyBackgroundRemoval } from "./bgRemoval/applyBackgroundRemoval";
 import { defaultCropRect, isFullRect } from "./cropMath";
-import EditorSidePanel from "./EditorSidePanel";
 import EditorStage, { EditorTool } from "./EditorStage";
 import EditorToolbar from "./EditorToolbar";
+import EditorToolOptionsBar from "./EditorToolOptionsBar";
 import { withSliceSuffix } from "./sliceFilename";
 
 const DEFAULT_BRUSH_RADIUS = 0.03;
@@ -93,6 +98,8 @@ export default function ImageEditorModal({ file, onApply, onClose, onAddFile }: 
   }, [baseFile]);
 
   const [rect, setRect] = useState<CropRect>(file.edit?.crop ?? defaultCropRect());
+  // Independent of `rect` — see the module doc comment above.
+  const [sliceRect, setSliceRect] = useState<CropRect | null>(null);
   const [background, setBackground] = useState<BackgroundEditState | undefined>(file.edit?.background);
   const [activeTool, setActiveTool] = useState<EditorTool>("crop");
   const [eraserMode, setEraserMode] = useState<"erase" | "restore">("erase");
@@ -154,6 +161,8 @@ export default function ImageEditorModal({ file, onApply, onClose, onAddFile }: 
   const handleReset = () => {
     if (activeTool === "crop") {
       setRect(defaultCropRect());
+    } else if (activeTool === "slice") {
+      setSliceRect(null);
     } else {
       if (bgImageUrlRef.current) URL.revokeObjectURL(bgImageUrlRef.current);
       bgImageUrlRef.current = undefined;
@@ -197,14 +206,14 @@ export default function ImageEditorModal({ file, onApply, onClose, onAddFile }: 
     }
   };
 
-  /** Exports the current crop rect (plus whatever background edit is active) as a
-   * brand-new file, without touching the source being edited or closing the
+  /** Exports the current `sliceRect` (plus whatever background edit is active) as a
+   * brand-new file, without touching `rect`, the source being edited, or closing the
    * modal — lets the user cut several regions out of the same image in one sitting,
    * Photoshop-slice-tool style. Skips the before/after review step: unlike Apply,
    * this never overwrites anything, so the destructive-action gate doesn't apply,
    * and the new grid card gets its own compare view for free. */
   const handleSaveSlice = async () => {
-    if (!hasCropSelection || !onAddFile) return;
+    if (!sliceRect || !onAddFile) return;
 
     const { background: effectiveBackground } = resolveEffectiveBackground();
     if (pendingPick) {
@@ -213,12 +222,12 @@ export default function ImageEditorModal({ file, onApply, onClose, onAddFile }: 
 
     setIsProcessing(true);
     try {
-      const baked = await bakeEdit(baseFile, isGif, rect, effectiveBackground, setStatusText);
+      const baked = await bakeEdit(baseFile, isGif, sliceRect, effectiveBackground, setStatusText);
       sliceCountRef.current += 1;
       const sliceFile = new File([baked], withSliceSuffix(baseFile.name, sliceCountRef.current), { type: baked.type });
       onAddFile(sliceFile);
       toast.success(`Saved ${sliceFile.name}`);
-      setRect(defaultCropRect());
+      setSliceRect(null);
     } finally {
       setIsProcessing(false);
       setStatusText(null);
@@ -257,45 +266,52 @@ export default function ImageEditorModal({ file, onApply, onClose, onAddFile }: 
           ) : review ? (
             <BeforeAfterPreview beforeSrc={baseImageUrl} afterSrc={review.url} afterHasTransparency={review.hasTransparency} />
           ) : (
-            <div className='flex gap-4 w-full items-start justify-center'>
-              <EditorToolbar tool={activeTool} onChange={setActiveTool} showBackgroundTools={true} />
-
-              <EditorSidePanel
-                tool={activeTool}
-                contiguousMode={contiguousMode}
-                onContiguousModeChange={setContiguousMode}
-                pendingPick={pendingPick}
-                onPendingPickChange={setPendingPick}
-                operations={operations}
-                onUndoLast={handleUndoLastOperation}
-                eraserMode={eraserMode}
-                onEraserModeChange={setEraserMode}
-                brushRadius={brushRadius}
-                onBrushRadiusChange={setBrushRadius}
-                replaceMode={background?.replaceMode ?? "transparent"}
-                onReplaceModeChange={handleReplaceModeChange}
-                replaceColor={background?.replaceColor}
-                onReplaceColorChange={handleReplaceColorChange}
-                replaceImageUrl={background?.replaceImageUrl}
-                onReplaceImageFile={handleReplaceImageFile}
-                isGif={isGif}
-              />
-
-              <div className='flex-1 min-w-0 flex justify-center'>
-                <EditorStage
-                  imageUrl={baseImageUrl}
+            <div className='flex flex-col gap-3 w-full'>
+              {(activeTool === "wand" || activeTool === "eraser") && (
+                <EditorToolOptionsBar
                   tool={activeTool}
-                  rect={rect}
-                  onRectChange={setRect}
-                  operations={operations}
-                  eraserMode={eraserMode}
-                  brushRadius={brushRadius}
-                  onCommit={handleCommitOperation}
-                  onUndoLast={handleUndoLastOperation}
                   contiguousMode={contiguousMode}
+                  onContiguousModeChange={setContiguousMode}
                   pendingPick={pendingPick}
                   onPendingPickChange={setPendingPick}
+                  operations={operations}
+                  onUndoLast={handleUndoLastOperation}
+                  eraserMode={eraserMode}
+                  onEraserModeChange={setEraserMode}
+                  brushRadius={brushRadius}
+                  onBrushRadiusChange={setBrushRadius}
+                  replaceMode={background?.replaceMode ?? "transparent"}
+                  onReplaceModeChange={handleReplaceModeChange}
+                  replaceColor={background?.replaceColor}
+                  onReplaceColorChange={handleReplaceColorChange}
+                  replaceImageUrl={background?.replaceImageUrl}
+                  onReplaceImageFile={handleReplaceImageFile}
+                  isGif={isGif}
                 />
+              )}
+
+              <div className='flex gap-4 w-full items-start justify-center'>
+                <EditorToolbar tool={activeTool} onChange={setActiveTool} showBackgroundTools={true} />
+
+                <div className='flex-1 min-w-0 flex justify-center'>
+                  <EditorStage
+                    imageUrl={baseImageUrl}
+                    tool={activeTool}
+                    rect={rect}
+                    onRectChange={setRect}
+                    sliceRect={sliceRect}
+                    onSliceRectChange={setSliceRect}
+                    operations={operations}
+                    eraserMode={eraserMode}
+                    brushRadius={brushRadius}
+                    onCommit={handleCommitOperation}
+                    onUndoLast={handleUndoLastOperation}
+                    contiguousMode={contiguousMode}
+                    pendingPick={pendingPick}
+                    onPendingPickChange={setPendingPick}
+                    onCutOut={onAddFile ? handleSaveSlice : undefined}
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -317,27 +333,14 @@ export default function ImageEditorModal({ file, onApply, onClose, onAddFile }: 
                 <RotateCcw size={14} />
                 Reset
               </button>
-              <div className='flex items-center gap-2'>
-                {onAddFile && (
-                  <button
-                    onClick={handleSaveSlice}
-                    disabled={isProcessing || !hasCropSelection}
-                    title='Export the current crop as a new file and keep editing this one'
-                    className='flex items-center gap-1.5 text-sm font-semibold text-muted-foreground enabled:hover:text-foreground disabled:opacity-40 px-3 py-2 transition-colors'
-                  >
-                    <Scissors size={14} />
-                    Save slice
-                  </button>
-                )}
-                <button
-                  onClick={handleApply}
-                  disabled={isProcessing}
-                  className='flex items-center gap-2 bg-primary hover:bg-primary/90 disabled:opacity-60 text-primary-foreground font-semibold text-sm px-5 py-2 rounded-xl transition-all active:scale-95'
-                >
-                  <Crop size={14} />
-                  {isProcessing ? statusText ?? "Applying…" : "Apply"}
-                </button>
-              </div>
+              <button
+                onClick={handleApply}
+                disabled={isProcessing}
+                className='flex items-center gap-2 bg-primary hover:bg-primary/90 disabled:opacity-60 text-primary-foreground font-semibold text-sm px-5 py-2 rounded-xl transition-all active:scale-95'
+              >
+                <Crop size={14} />
+                {isProcessing ? statusText ?? "Applying…" : "Apply"}
+              </button>
             </>
           )}
         </div>
