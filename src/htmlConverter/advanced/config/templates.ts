@@ -2,6 +2,7 @@
 // `buildTemplates(tok)` bakes a token set into every template so profile overrides
 // (TTT, Alfa, …) propagate automatically without forking markup.
 
+import { capImageWidth } from "../../utils/imageUtils";
 import { escapeHtml } from "../escape";
 import { isDarkBg } from "../ir/color";
 import type { Align, BorderSpec, Run } from "../ir/types";
@@ -161,6 +162,8 @@ export interface ImageOpts {
   /** § next to the image — zero the corresponding padding (see ImageProps). */
   tightBefore?: boolean;
   tightAfter?: boolean;
+  /** Real pixel width of the source image — see `ImageNode.declaredWidthPx`. */
+  declaredWidthPx?: number;
 }
 
 export interface SideImageOpts {
@@ -405,18 +408,19 @@ ${indentHtml(label, 8)}
  * their own base width, not a shared formula).
  */
 export function imageRowHtml(
-  opts: { tightBefore?: boolean; tightAfter?: boolean },
+  opts: { tightBefore?: boolean; tightAfter?: boolean; declaredWidthPx?: number },
   tok: Tokens = defaultTokens,
   padX = 0,
 ): string {
-  const { tightBefore, tightAfter } = opts;
+  const { tightBefore, tightAfter, declaredWidthPx } = opts;
   const padTop = tightBefore ? 0 : tok.layout.blockPadY;
   const padBottom = tightAfter ? 0 : tok.layout.blockPadY;
   // Outlook's Word engine honors the HTML width attribute literally (unlike width:100% in
   // style, which every other client uses) — if the row sits inside a padded box (padX > 0),
   // the true usable width is narrower than the base placeholder width, or the fixed-width
   // <img> overflows its <td> by 2×padX in Outlook specifically.
-  const w = tok.layout.placeholderImageWidth - 2 * padX;
+  const containerW = tok.layout.placeholderImageWidth - 2 * padX;
+  const w = capImageWidth(containerW, declaredWidthPx);
   const padXCss = padX ? `padding-left:${padX}px;padding-right:${padX}px;` : "";
   return `<tr>
   <td class="${tok.classes.imgBg}" align="center" style="padding-top:${padTop}px;padding-bottom:${padBottom}px;${padXCss}">

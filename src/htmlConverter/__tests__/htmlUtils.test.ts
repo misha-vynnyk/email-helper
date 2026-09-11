@@ -8,9 +8,23 @@ describe("htmlConverter utils", () => {
       expect(cleanEmptyHtmlTags(input)).toBe("Hello World");
     });
 
-    it("should remove empty bold tags", () => {
+    it("should replace whitespace-only bold tags with a space, not delete them", () => {
       const input = "Hello <b>   </b> World";
-      expect(cleanEmptyHtmlTags(input)).toBe("Hello  World");
+      expect(cleanEmptyHtmlTags(input)).toBe("Hello   World");
+    });
+
+    // Regression: Google Docs sometimes puts the ONLY space between two runs inside its
+    // own <b>/<span style="font-weight:700"> wrapper (e.g. between a link and the word
+    // right after it). Deleting that tag outright — instead of replacing it with " " —
+    // silently glues the surrounding words together (e.g. "food</a>that").
+    it("preserves the word gap when the tag's whitespace is the ONLY separator between two words", () => {
+      const input = "food<b> </b>that";
+      expect(cleanEmptyHtmlTags(input)).toBe("food that");
+    });
+
+    it("preserves the word gap for a whitespace-only <u> the same way", () => {
+      const input = "food<u> </u>that";
+      expect(cleanEmptyHtmlTags(input)).toBe("food that");
     });
 
     it("should collapse multiple <br> tags into max two", () => {

@@ -128,6 +128,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
   const [triggerExtract, setTriggerExtract] = useState(0);
   const [uploadedUrlMap, setUploadedUrlMap] = useState<Record<string, string>>({});
   const [uploadedAltMap, setUploadedAltMap] = useState<Record<string, string>>({});
+  const [uploadedWidthMap, setUploadedWidthMap] = useState<Record<string, number>>({});
   const [isAutoExporting, setIsAutoExporting] = useState(false);
   const [hasOutput, setHasOutput] = useState(false);
 
@@ -170,6 +171,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
     clearMemory: () => {
       setUploadedUrlMap({});
       setUploadedAltMap({});
+      setUploadedWidthMap({});
     },
   });
 
@@ -180,6 +182,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
     outputMjmlRef,
     uploadedUrlMap,
     uploadedAltMap,
+    uploadedWidthMap,
     addLog,
     setHasOutput,
     storageProfile,
@@ -213,7 +216,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
       if (converterMode !== "advanced") handleExportMJML();
 
       if (Object.keys(uploadedUrlMap).length > 0) {
-        handleReplaceUrls(uploadedUrlMap);
+        handleReplaceUrls(uploadedUrlMap, uploadedWidthMap);
       } else {
         addLog("ℹ️ Немає завантажених URLs для підстановки — пропускаю replace");
       }
@@ -227,7 +230,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
     } finally {
       setIsAutoExporting(false);
     }
-  }, [addLog, editorRef, handleExportHTML, handleExportMJML, handleReplaceUrls, uploadedUrlMap, handleDownloadHTML, handleDownloadMJML, exportType, converterMode]);
+  }, [addLog, editorRef, handleExportHTML, handleExportMJML, handleReplaceUrls, uploadedUrlMap, uploadedWidthMap, handleDownloadHTML, handleDownloadMJML, exportType, converterMode]);
 
   const handleClear = useCallback(() => {
     if (editorRef.current) editorRef.current.innerHTML = "";
@@ -243,6 +246,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
     setHasOutput(false);
     setUploadedUrlMap({});
     setUploadedAltMap({});
+    setUploadedWidthMap({});
 
     triggerResetReplacement();
     addLog("🧹 Очищено");
@@ -306,6 +310,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
       setConverterMode,
       setAutoProcess,
       setUploadedUrlMap,
+      setUploadedWidthMap,
       setShowImageProcessor,
       changeFileNumber,
       addLog,

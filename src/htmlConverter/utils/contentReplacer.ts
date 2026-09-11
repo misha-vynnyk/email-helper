@@ -4,6 +4,7 @@
  */
 
 import { isSignatureImageTag } from "./htmlUtils";
+import { capImageWidth } from "./imageUtils";
 
 export interface ContentReplacerResult {
   replaced: string;
@@ -61,6 +62,47 @@ export function replaceUrlsInContent(content: string, pattern: RegExp, storageUr
   });
 
   return { replaced, count: replacedCount };
+}
+
+/**
+ * Shrinks the `width`/`max-width` of placeholder `<img>` tags down to each
+ * image's real pixel width when that's smaller than the declared width —
+ * avoids upscaling low-res source images. Matches positionally (`widths[i]`
+ * is the real width of the i-th non-signature image, in document order)
+ * rather than by src, because every rendered placeholder `<img>` shares one
+ * fixed src (see `tok.storageUrl` / `tok.placeholderImageSrc`) — the same
+ * reason `replaceUrlsInContent` falls back to positional matching.
+ */
+export function capImageWidthsInContent(content: string, pattern: RegExp, widths: Array<number | undefined>): ContentReplacerResult {
+  let cappedCount = 0;
+  let imageIndex = 0;
+
+  const replaced = content.replace(pattern, (match, prefix, oldUrl, suffix) => {
+    if (isSignatureImageTag(match)) return match;
+
+    const realWidth = widths[imageIndex++];
+    if (!realWidth) return match;
+
+    let changed = false;
+    let newSuffix = suffix.replace(/(\swidth=["'])(\d+)(px)?(["'])/i, (attrMatch: string, p1: string, w: string, unit: string, p4: string) => {
+      const capped = capImageWidth(parseInt(w, 10), realWidth);
+      if (capped === parseInt(w, 10)) return attrMatch;
+      changed = true;
+      return `${p1}${capped}${unit || ""}${p4}`;
+    });
+    newSuffix = newSuffix.replace(/(max-width:\s*)(\d+)(px)/i, (styleMatch: string, p1: string, w: string, p3: string) => {
+      const capped = capImageWidth(parseInt(w, 10), realWidth);
+      if (capped === parseInt(w, 10)) return styleMatch;
+      changed = true;
+      return `${p1}${capped}${p3}`;
+    });
+
+    if (!changed) return match;
+    cappedCount++;
+    return `${prefix}${oldUrl}${newSuffix}`;
+  });
+
+  return { replaced, count: cappedCount };
 }
 
 /**

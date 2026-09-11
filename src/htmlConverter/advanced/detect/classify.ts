@@ -311,7 +311,7 @@ export function classify(nodes: StructuralNode[], tok: Tokens = defaultTokens, w
         pushMerged(result, comp, tok, warn);
       }
     } else if (node.type === "img") {
-      const comp: ComponentNode = { kind: "image", props: { src: node.src, alt: node.alt } };
+      const comp: ComponentNode = { kind: "image", props: { src: node.src, alt: node.alt, declaredWidthPx: node.declaredWidthPx } };
       // § at the end of the paragraph right before this image ("text§ [image]") —
       // mirror of the image-then-paragraph case in pushMerged: zero the paragraph's
       // bottom padding and the image's top padding.

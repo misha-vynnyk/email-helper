@@ -39,6 +39,26 @@ describe("convertAdvanced — structural invariants", () => {
     expect(html).not.toContain("javascript:");
     expect(html).toContain("evil");
   });
+
+  // Same underlying bug class as the Simple converter's regression tests
+  // (simple/__tests__/formatter.test.ts) — the advanced pipeline classifies
+  // images and text runs as separate IR nodes rather than regex-replacing a
+  // styled <span>'s content, so it isn't structurally exposed to either bug,
+  // but the invariant is worth pinning here too in case that ever changes.
+  it("does not leave a stray <u>/<b>/<em> tag when a styled span's only content is an image", () => {
+    const { html } = convertAdvancedDetailed('<p><span style="text-decoration:underline;"><img src="photo.jpg" width="400" height="300"></span></p>');
+    expect(html).not.toMatch(/<u>/i);
+    expect(html).not.toMatch(/<\/u>/i);
+  });
+
+  it("preserves the word gap when a link is immediately followed by a whitespace-only bold span", () => {
+    const { html } = convertAdvancedDetailed(
+      '<p><span style="color: rgb(17,85,204);">a common food</span>' +
+      '<span style="font-weight:700;"> </span>' +
+      "<span>that follows</span></p>",
+    );
+    expect(html).not.toContain("food</a>that");
+  });
 });
 
 // ── plain-text.html fixture ───────────────────────────────────────────────────

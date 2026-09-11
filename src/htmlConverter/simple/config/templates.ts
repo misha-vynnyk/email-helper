@@ -20,6 +20,7 @@
  * once this factory is wired in during Stage 3/4 — content and structure do
  * not change, only formatting.
  */
+import { capImageWidth } from "../../utils/imageUtils";
 import type { SimpleTokens } from "./tokens";
 
 interface BlockOptions {
@@ -238,8 +239,9 @@ export function buildSimpleTemplates(tok: SimpleTokens): { htmlTemplates: Simple
         `;
     },
 
-    wrapImg: (_content) => {
+    wrapImg: (_content: string, declaredWidth?: number) => {
       void _content;
+      const w = capImageWidth(parseInt(tok.wrapImg.widthHtml, 10), declaredWidth);
       return `            </${tok.blockWrapTag}>
                        </td>
                    </tr>
@@ -248,8 +250,8 @@ export function buildSimpleTemplates(tok: SimpleTokens): { htmlTemplates: Simple
                            <a href="${tok.placeholderHref}" target="_blank">
                                <img alt="Video preview" height="auto"
                                     src="${tok.storageUrl}"
-                                    style="border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;max-width: ${tok.wrapImg.widthHtml}px;font-size:${tok.wrapImg.fontSizeHtml};"
-                                    width="${tok.wrapImg.widthHtml}"/>
+                                    style="border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;max-width: ${w}px;font-size:${tok.wrapImg.fontSizeHtml};"
+                                    width="${w}"/>
                            </a>
                        </td>
                     </tr>
@@ -411,8 +413,9 @@ export function buildSimpleTemplates(tok: SimpleTokens): { htmlTemplates: Simple
         `;
     },
 
-    wrapImg: (_content) => {
+    wrapImg: (_content: string, declaredWidth?: number) => {
       void _content;
+      const w = capImageWidth(parseInt(tok.wrapImg.widthMjml, 10), declaredWidth);
       return `       </div>
                        </td>
                      </tr>
@@ -421,9 +424,9 @@ export function buildSimpleTemplates(tok: SimpleTokens): { htmlTemplates: Simple
                          <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse:collapse;border-spacing:0px;">
                            <tbody>
                              <tr>
-                               <td style="width:${tok.wrapImg.widthMjml}px;">
+                               <td style="width:${w}px;">
                                  <a href="${tok.placeholderHref}" target="_blank">
-                                   <img alt="Video preview" src="${tok.storageUrl}" style="border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;font-size:13px;" width="${tok.wrapImg.widthMjml}" height="auto" />
+                                   <img alt="Video preview" src="${tok.storageUrl}" style="border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;font-size:13px;" width="${w}" height="auto" />
                                  </a>
                                </td>
                              </tr>

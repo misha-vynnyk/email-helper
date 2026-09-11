@@ -20,6 +20,8 @@ export interface ProcessedImage {
   error?: string;
   formatOverride?: ImageFormatOverride; // Per-image format override
   hasTransparency?: boolean; // Detected transparency
+  finalWidth?: number; // Real pixel width of the converted output (post any downscale)
+  finalHeight?: number; // Real pixel height of the converted output (post any downscale)
 }
 
 export interface ImageSettings {

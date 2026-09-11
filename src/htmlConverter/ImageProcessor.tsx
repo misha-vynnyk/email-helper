@@ -28,9 +28,10 @@ interface ImageProcessorProps {
   triggerExtract?: number;
   fileName?: string;
   onHistoryAdd?: (category: string, folderName: string, results: Array<{ filename: string; url: string; success: boolean }>, customAlts?: Record<string, string>) => void;
-  onReplaceUrls?: (urlMap: Record<string, string>) => void;
+  onReplaceUrls?: (urlMap: Record<string, string>, widthMap?: Record<string, number>) => void;
   onUploadedUrlsChange?: (urlMap: Record<string, string>) => void;
   onUploadedAltsChange?: (altMap: Record<string, string>) => void;
+  onUploadedWidthsChange?: (widthMap: Record<string, number>) => void;
   onResetReplacement?: (resetFn: () => void) => void;
   hasOutput?: boolean;
   autoProcess?: boolean;
@@ -46,7 +47,7 @@ interface ImageProcessorProps {
   browserExecutablePath?: string;
 }
 
-export default function ImageProcessor({ editorRef, onLog, visible, onVisibilityChange, triggerExtract = 0, fileName = "", onHistoryAdd, onReplaceUrls, onUploadedUrlsChange, onUploadedAltsChange, onResetReplacement, hasOutput = false, autoProcess: autoProcessProp, storageProvider = "default", imageAnalysisSettings, uploadHistory, uploadMode, browserExecutablePath }: ImageProcessorProps) {
+export default function ImageProcessor({ editorRef, onLog, visible, onVisibilityChange, triggerExtract = 0, fileName = "", onHistoryAdd, onReplaceUrls, onUploadedUrlsChange, onUploadedAltsChange, onUploadedWidthsChange, onResetReplacement, hasOutput = false, autoProcess: autoProcessProp, storageProvider = "default", imageAnalysisSettings, uploadHistory, uploadMode, browserExecutablePath }: ImageProcessorProps) {
   // 1. Conversion Logic
   const {
     images,
@@ -88,6 +89,7 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
     onUploadedUrlsChange,
     onReplaceUrls,
     onUploadedAltsChange,
+    onUploadedWidthsChange,
     showSnackbar,
     uploadHistory,
     uploadMode,

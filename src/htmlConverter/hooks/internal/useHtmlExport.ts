@@ -14,9 +14,9 @@ import { profile as simpleAlphaoneProfile } from "../../simple/profiles/alphaone
 import { profile as simpleDefaultProfile } from "../../simple/profiles/default";
 import { profile as simpleRedProfile } from "../../simple/profiles/red";
 import { profile as simpleTttProfile } from "../../simple/profiles/ttt";
-import { replaceAltsInContent,replaceUrlsInContent, replaceUrlsInContentByMap } from "../../utils/contentReplacer";
-import { supportsMjml } from "../useHtmlConverterLogic";
+import { capImageWidthsInContent,replaceAltsInContent,replaceUrlsInContent, replaceUrlsInContentByMap } from "../../utils/contentReplacer";
 import type { ConverterMode,StorageProfile } from "../useHtmlConverterLogic";
+import { supportsMjml } from "../useHtmlConverterLogic";
 
 interface UseHtmlExportProps {
   editorRef: React.RefObject<HTMLDivElement>;
@@ -24,6 +24,7 @@ interface UseHtmlExportProps {
   outputMjmlRef: React.RefObject<HTMLTextAreaElement>;
   uploadedUrlMap: Record<string, string>;
   uploadedAltMap: Record<string, string>;
+  uploadedWidthMap: Record<string, number>;
   addLog: (msg: string) => void;
   setHasOutput: (val: boolean) => void;
   storageProfile: StorageProfile;
@@ -40,6 +41,7 @@ export function useHtmlExport({
   outputMjmlRef,
   uploadedUrlMap,
   uploadedAltMap,
+  uploadedWidthMap,
   addLog,
   setHasOutput,
   storageProfile,
@@ -63,7 +65,7 @@ export function useHtmlExport({
   }, []);
 
   const handleReplaceUrls = useCallback(
-    (urlMap: Record<string, string>) => {
+    (urlMap: Record<string, string>, widthMap: Record<string, number> = {}) => {
       const storageUrls = Object.values(urlMap);
 
       if (storageUrls.length === 0) {
@@ -78,6 +80,13 @@ export function useHtmlExport({
             type === "HTML"
               ? /(<img[^>]+src=["'])([^"']+)(["'][^>]*>)/gi
               : /(<(?:mj-image|img)[^>]+src=["'])([^"']+)(["'][^>]*>)/gi;
+
+          const widths = Object.keys(urlMap).map((src) => widthMap[src]);
+          const capped = capImageWidthsInContent(content, regex, widths);
+          if (capped.count > 0) {
+            content = capped.replaced;
+            addLog(`🖼️ Зменшено ширину ${capped.count} зображень до їх реального розміру (щоб не втрачати якість)`);
+          }
 
           const mapped = replaceUrlsInContentByMap(content, regex, urlMap);
 
@@ -133,6 +142,8 @@ export function useHtmlExport({
         if (Object.keys(uploadedUrlMap).length > 0) {
           const storageUrls = Object.values(uploadedUrlMap);
           const regex = /(<img[^>]+src=["'])([^"']+)(["'][^>]*>)/gi;
+          const widths = Object.keys(uploadedUrlMap).map((src) => uploadedWidthMap[src]);
+          result = capImageWidthsInContent(result, regex, widths).replaced;
           const mapped = replaceUrlsInContentByMap(result, regex, uploadedUrlMap);
           result = mapped.count > 0
             ? mapped.replaced
@@ -163,6 +174,8 @@ export function useHtmlExport({
       if (Object.keys(uploadedUrlMap).length > 0) {
         const storageUrls = Object.values(uploadedUrlMap);
         const regex = /(<img[^>]+src=["'])([^"']+)(["'][^>]*>)/gi;
+        const widths = Object.keys(uploadedUrlMap).map((src) => uploadedWidthMap[src]);
+        formattedContent = capImageWidthsInContent(formattedContent, regex, widths).replaced;
         const mapped = replaceUrlsInContentByMap(formattedContent, regex, uploadedUrlMap);
         formattedContent =
           mapped.count > 0
@@ -182,7 +195,7 @@ export function useHtmlExport({
       const message = error instanceof Error ? error.message : "Невідома помилка";
       addLog(`❌ Помилка експорту HTML: ${message}`);
     }
-  }, [addLog, editorRef, outputHtmlRef, outputMjmlRef, uploadedUrlMap, uploadedAltMap, setHasOutput, triggerResetReplacement, storageProfile, converterMode, rawPastedHtmlRef, oneBrSymbol]);
+  }, [addLog, editorRef, outputHtmlRef, outputMjmlRef, uploadedUrlMap, uploadedAltMap, uploadedWidthMap, setHasOutput, triggerResetReplacement, storageProfile, converterMode, rawPastedHtmlRef, oneBrSymbol]);
 
   const handleExportMJML = useCallback(() => {
     if (converterMode === "advanced") {
@@ -216,6 +229,8 @@ export function useHtmlExport({
       if (Object.keys(uploadedUrlMap).length > 0) {
         const storageUrls = Object.values(uploadedUrlMap);
         const regex = /(<(?:mj-image|img)[^>]+src=["'])([^"']+)(["'][^>]*>)/gi;
+        const widths = Object.keys(uploadedUrlMap).map((src) => uploadedWidthMap[src]);
+        formattedContent = capImageWidthsInContent(formattedContent, regex, widths).replaced;
         const mapped = replaceUrlsInContentByMap(formattedContent, regex, uploadedUrlMap);
         formattedContent =
           mapped.count > 0
@@ -234,7 +249,7 @@ export function useHtmlExport({
       const message = error instanceof Error ? error.message : "Невідома помилка";
       addLog(`❌ Помилка експорту MJML: ${message}`);
     }
-  }, [addLog, editorRef, outputMjmlRef, uploadedUrlMap, uploadedAltMap, setHasOutput, triggerResetReplacement, storageProfile, converterMode, oneBrSymbol]);
+  }, [addLog, editorRef, outputMjmlRef, uploadedUrlMap, uploadedAltMap, uploadedWidthMap, setHasOutput, triggerResetReplacement, storageProfile, converterMode, oneBrSymbol]);
 
   const downloadFile = useCallback(
     async (content: string, extension: string, fileName: string, approveNeeded: boolean) => {

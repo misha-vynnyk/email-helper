@@ -103,6 +103,36 @@ describe("simple converter unified formatter", () => {
         expect(result).toContain("<b>bank accounts frozen overnight…</b>");
         expect(result).toContain("<b>foreign reserves seized…</b>");
       });
+
+      // Regression: Google Docs wraps a standalone image in its OWN styled <span> (e.g.
+      // text-decoration:underline carried over from an adjacent link run). processStyles
+      // used to convert that into <u><img/></u> BEFORE wrapTextInBlock replaces the <img>
+      // with its whole multi-row table block — splitting <u>/</u> across table row
+      // boundaries and rendering as a stray empty block.
+      it("does not leave a stray <u>/<b>/<em> tag when a styled span's only content is an image", () => {
+        const underlineOnly = formatHtml('<p><span style="text-decoration:underline;">' + '<img src="photo.jpg" width="400" height="300"></span></p>', tok, tmpl);
+        expect(underlineOnly).not.toMatch(/<u>/i);
+        expect(underlineOnly).not.toMatch(/<\/u>/i);
+
+        const boldOnly = formatHtml('<p><span style="font-weight:700;">' + '<img src="photo.jpg" width="400" height="300"></span></p>', tok, tmpl);
+        expect(boldOnly).not.toMatch(/<b>/i);
+        expect(boldOnly).not.toMatch(/<\/b>/i);
+      });
+
+      // Regression: Google Docs sometimes encodes the ONLY space between a link and the
+      // word right after it as its own bold, non-underlined <span> (e.g. "...common food"
+      // </link><span style="font-weight:700"> </span>"that most certainly..."). The
+      // whitespace-only-tag cleanup used to delete that span's tag AND its space, gluing
+      // "food" and "that" together with no separator at all.
+      it("preserves the word gap when a link is immediately followed by a whitespace-only bold span", () => {
+        const input =
+          '<p><span style="color: rgb(17,85,204);">a common food</span>' +
+          '<span style="font-weight:700;"> </span>' +
+          "<span>that follows</span></p>";
+        const result = formatHtml(input, tok, tmpl);
+        expect(result).toMatch(/food<\/a>\s+that follows/);
+        expect(result).not.toContain("food</a>that");
+      });
     });
 
     describe("formatMjml", () => {
