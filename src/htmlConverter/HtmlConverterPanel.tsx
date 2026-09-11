@@ -111,6 +111,7 @@ export default function HtmlConverterPanel() {
         onReplaceUrls={actions.handleReplaceUrls}
         onUploadedUrlsChange={actions.setUploadedUrlMap}
         onUploadedAltsChange={actions.handleAltsUpdate}
+        onUploadedWidthsChange={actions.setUploadedWidthMap}
         onResetReplacement={actions.handleResetReplacement}
         hasOutput={state.hasOutput}
         autoProcess={state.autoProcess}

@@ -20,6 +20,7 @@
  */
 import * as colorUtils from "../utils/colorUtils";
 import * as htmlUtils from "../utils/htmlUtils";
+import { extractDeclaredImageWidth } from "../utils/imageUtils";
 import type { buildSimpleTemplates } from "./config/templates";
 import type { SimpleTokens } from "./config/tokens";
 
@@ -145,6 +146,11 @@ function processStyles(htmlContent: string): string {
 
   // Single-pass style detection: parse style once, emit correct semantic tag
   htmlContent = htmlContent.replace(/<span[^>]*style=["']([^"']*)["'][^>]*>(.*?)<\/span>/gi, (_match: string, style: string, inner: string) => {
+    // An image never wants inline text formatting (bold/italic/underline) — wrapping it
+    // here would leave the open/close halves of that tag stranded around wrapTextInBlock's
+    // later multi-row <img> replacement, splitting the output table across the tag boundary.
+    if (/^\s*<img[^>]*>\s*$/i.test(inner)) return inner;
+
     const bold = /font-weight:\s*700/i.test(style);
     const italic = /font-style:\s*italic/i.test(style);
     const underline = /text-decoration(?:-line)?\s*:[^;]*\bunderline\b/i.test(style);
@@ -181,7 +187,7 @@ function processStyles(htmlContent: string): string {
   // Delete remaining empty/wrapper tags
   htmlContent = htmlContent.replace(/<a[^>]*>\s*<\/a>/g, " ");
   htmlContent = htmlContent.replace(/<span[^>]*>/gi, "").replace(/<\/span>/gi, "");
-  htmlContent = htmlContent.replace(/<b>\s*<\/b>/g, "");
+  htmlContent = htmlContent.replace(/<b>\s*<\/b>/g, " ");
 
   return htmlContent;
 }
@@ -191,9 +197,9 @@ function applyTemplate(content: string, regex: RegExp, templateFn: (content: str
 }
 
 // Wraps images and the whole content in the outer block (span for default, div for ttt/alphaone).
-function wrapTextInBlock(htmlContent: string, templateFn: (content: string) => string, type: "html" | "mjml", tok: SimpleTokens): string {
+function wrapTextInBlock(htmlContent: string, templateFn: (content: string, declaredWidth?: number) => string, type: "html" | "mjml", tok: SimpleTokens): string {
   // 1. Replace Images
-  htmlContent = htmlContent.replace(/<img[^>]*src=["']([^"']+)["'][^>]*>/gi, (_match, src) => templateFn(src));
+  htmlContent = htmlContent.replace(/<img[^>]*src=["']([^"']+)["'][^>]*>/gi, (fullMatch, src) => templateFn(src, extractDeclaredImageWidth(fullMatch)));
 
   // 2. Wrap the whole result in the default block
   if (type === "html") {

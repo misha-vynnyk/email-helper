@@ -37,17 +37,19 @@ interface UseImageUploaderProps {
   format: ImageFormat;
   onLog?: (message: string) => void;
   onUploadedUrlsChange?: (urlMap: Record<string, string>) => void;
-  onReplaceUrls?: (urlMap: Record<string, string>) => void;
+  onReplaceUrls?: (urlMap: Record<string, string>, widthMap?: Record<string, number>) => void;
   onUploadedAltsChange?: (altMap: Record<string, string>) => void;
+  onUploadedWidthsChange?: (widthMap: Record<string, number>) => void;
   showSnackbar: (message: string, severity?: "success" | "info" | "warning" | "error") => void;
   uploadHistory?: UploadSession[];
   uploadMode?: UploadMode;
   browserExecutablePath?: string;
 }
 
-export function useImageUploader({ images, imagesSessionId, storageProvider, format, onLog, onUploadedUrlsChange, onReplaceUrls, onUploadedAltsChange, showSnackbar, uploadHistory, uploadMode = "playwright", browserExecutablePath }: UseImageUploaderProps) {
+export function useImageUploader({ images, imagesSessionId, storageProvider, format, onLog, onUploadedUrlsChange, onReplaceUrls, onUploadedAltsChange, onUploadedWidthsChange, showSnackbar, uploadHistory, uploadMode = "playwright", browserExecutablePath }: UseImageUploaderProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [lastUploadedUrls, setLastUploadedUrls] = useState<Record<string, string>>({});
+  const [lastImageWidths, setLastImageWidths] = useState<Record<string, number>>({});
   const [lastUploadedSessionId, setLastUploadedSessionId] = useState<number | null>(null);
 
   const [replacementDone, setReplacementDone] = useState(false);
@@ -108,6 +110,7 @@ export function useImageUploader({ images, imagesSessionId, storageProvider, for
       const sessionIdAtStart = imagesSessionId;
       setLastUploadedSessionId(null);
       setLastUploadedUrls({});
+      setLastImageWidths({});
       setReplacementDone(false);
       onUploadedUrlsChange?.({});
 
@@ -117,6 +120,7 @@ export function useImageUploader({ images, imagesSessionId, storageProvider, for
       onLog?.(`🚀 Початок завантаження ${completed.length} зображень на storage...`);
 
       const uploadedUrls: Record<string, string> = {};
+      const imageWidths: Record<string, number> = {};
       const results: Array<UploadResult> = [];
       let successCount = 0;
       let skippedCount = 0;
@@ -178,6 +182,7 @@ export function useImageUploader({ images, imagesSessionId, storageProvider, for
             if (existingUrl) {
               onLog?.(`🔁 [${i + 1}/${completed.length}] ${filename} знайдено в історії (реюз URLs)`);
               uploadedUrls[img.src] = existingUrl;
+              if (img.finalWidth) imageWidths[img.src] = img.finalWidth;
               if (existingAlt) customAlts[img.id] = existingAlt;
               successCount++;
               const resObj = { fileId: img.id, filename, url: existingUrl, success: true };
@@ -247,6 +252,7 @@ export function useImageUploader({ images, imagesSessionId, storageProvider, for
             if (result.filePath) {
               const fullUrl = result.publicUrl || `${STORAGE_URL_PREFIX}${result.filePath}`;
               uploadedUrls[img.src] = fullUrl;
+              if (img.finalWidth) imageWidths[img.src] = img.finalWidth;
               if (result.skipped) {
                 skippedCount++;
                 onLog?.(`⚠️ [${i + 1}/${completed.length}] ${filename}: вже існує (пропущено)`);
@@ -288,9 +294,11 @@ export function useImageUploader({ images, imagesSessionId, storageProvider, for
         // Update state logic
         if (Object.keys(uploadedUrls).length > 0) {
           setLastUploadedUrls(uploadedUrls);
+          setLastImageWidths(imageWidths);
           setLastUploadedSessionId(sessionIdAtStart);
           setReplacementDone(false);
           onUploadedUrlsChange?.(uploadedUrls);
+          onUploadedWidthsChange?.(imageWidths);
 
           const altMap: Record<string, string> = {};
           completed.forEach((img) => {
@@ -333,7 +341,7 @@ export function useImageUploader({ images, imagesSessionId, storageProvider, for
         uploadAbortControllerRef.current = null;
       }
     },
-    [images, imagesSessionId, isUploading, storageProvider, format, onLog, onUploadedUrlsChange, onUploadedAltsChange, uploadHistory, uploadMode, browserExecutablePath]
+    [images, imagesSessionId, isUploading, storageProvider, format, onLog, onUploadedUrlsChange, onUploadedAltsChange, onUploadedWidthsChange, uploadHistory, uploadMode, browserExecutablePath]
   );
 
   const handleReplaceInOutput = useCallback(() => {
@@ -348,17 +356,18 @@ export function useImageUploader({ images, imagesSessionId, storageProvider, for
 
     const n = Object.keys(lastUploadedUrls).length;
     if (onReplaceUrls && n > 0) {
-      onReplaceUrls(lastUploadedUrls);
+      onReplaceUrls(lastUploadedUrls, lastImageWidths);
       setReplacementDone(true);
       onLog?.(`✅ Замінено ${n} посилань в Output`);
       showSnackbar(`🔄 Посилання та ALT тексти замінено (${n})`, "success");
     }
-  }, [isUploading, lastUploadedSessionId, imagesSessionId, lastUploadedUrls, onReplaceUrls, onLog, showSnackbar]);
+  }, [isUploading, lastUploadedSessionId, imagesSessionId, lastUploadedUrls, lastImageWidths, onReplaceUrls, onLog, showSnackbar]);
 
   // Expose methods to reset state
   const resetUploadState = useCallback(() => {
     setLastUploadedSessionId(null);
     setLastUploadedUrls({});
+    setLastImageWidths({});
     setReplacementDone(false);
   }, []);
   const resetReplacementOnly = useCallback(() => {
@@ -373,10 +382,12 @@ export function useImageUploader({ images, imagesSessionId, storageProvider, for
       const sessionIdAtStart = imagesSessionId;
       setLastUploadedSessionId(null);
       setLastUploadedUrls({});
+      setLastImageWidths({});
       setReplacementDone(false);
       onUploadedUrlsChange?.({});
 
       const uploadedUrls: Record<string, string> = {};
+      const imageWidths: Record<string, number> = {};
       const customAlts: Record<string, string> = {};
       let successCount = 0;
 
@@ -394,6 +405,7 @@ export function useImageUploader({ images, imagesSessionId, storageProvider, for
         if (existingUrl) {
           onLog?.(`🔁 [${i + 1}/${completed.length}] ${filename} знайдено в історії`);
           uploadedUrls[img.src] = existingUrl;
+          if (img.finalWidth) imageWidths[img.src] = img.finalWidth;
           if (existingAlt) customAlts[img.id] = existingAlt;
           successCount++;
         } else {
@@ -404,8 +416,10 @@ export function useImageUploader({ images, imagesSessionId, storageProvider, for
       // Update States
       if (Object.keys(uploadedUrls).length > 0) {
         setLastUploadedUrls(uploadedUrls);
+        setLastImageWidths(imageWidths);
         setLastUploadedSessionId(sessionIdAtStart);
         onUploadedUrlsChange?.(uploadedUrls);
+        onUploadedWidthsChange?.(imageWidths);
 
         const altMap: Record<string, string> = {};
         completed.forEach((img) => {
@@ -416,7 +430,7 @@ export function useImageUploader({ images, imagesSessionId, storageProvider, for
 
         // Automatically substitute into the output files (html/mjml)
         if (onReplaceUrls) {
-          onReplaceUrls(uploadedUrls);
+          onReplaceUrls(uploadedUrls, imageWidths);
           setReplacementDone(true);
         }
 
@@ -435,12 +449,13 @@ export function useImageUploader({ images, imagesSessionId, storageProvider, for
         showSnackbar("❌ Дані в історії для цих файлів відсутні", "error");
       }
     },
-    [images, imagesSessionId, format, onLog, onUploadedUrlsChange, onUploadedAltsChange, uploadHistory, onReplaceUrls, showSnackbar]
+    [images, imagesSessionId, format, onLog, onUploadedUrlsChange, onUploadedAltsChange, onUploadedWidthsChange, uploadHistory, onReplaceUrls, showSnackbar]
   );
 
   return {
     isUploading,
     lastUploadedUrls,
+    lastImageWidths,
     lastUploadedSessionId,
     replacementDone,
     abortUploads,

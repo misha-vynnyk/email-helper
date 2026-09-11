@@ -5,7 +5,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { getApiBase, isApiAvailable } from "../../config/api";
 import { IMAGE_DEFAULTS, STORAGE_KEYS } from "../constants";
 import type { ImageFormat, ImageSettings, ProcessedImage } from "../types";
-import { detectTransparency, getImageFormat, isCrossOrigin, isSignatureImageAlt } from "../utils/imageUtils";
+import { detectTransparency, getBlobDimensions, getImageFormat, isCrossOrigin, isSignatureImageAlt } from "../utils/imageUtils";
 
 export interface UseImageConversionProps {
   editorRef: React.RefObject<HTMLDivElement>;
@@ -273,6 +273,7 @@ export function useImageConversion({ editorRef, onLog, onVisibilityChange, autoP
       try {
         const result = await convertImage(image.src, imageFormat, { quality, maxWidth }, signal);
         const originalSize = result.originalSize || image.originalSize;
+        const dimensions = await getBlobDimensions(result.blob);
 
         setImages((prev) =>
           prev.map((img) =>
@@ -283,6 +284,8 @@ export function useImageConversion({ editorRef, onLog, onVisibilityChange, autoP
                 convertedBlob: result.blob,
                 convertedSize: result.blob.size,
                 originalSize,
+                finalWidth: dimensions?.width,
+                finalHeight: dimensions?.height,
               }
               : img
           )

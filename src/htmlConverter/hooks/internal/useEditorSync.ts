@@ -1,6 +1,36 @@
 import { useEffect,useRef, useState } from "react";
 
+import { getImageDimensionsFromBytes } from "../../utils/imageUtils";
+
 const IMAGE_DETECT_DEBOUNCE_MS = 250;
+
+/**
+ * Overwrites width/height on every embedded-base64 <img> with the REAL pixel
+ * size measured from its own bytes, instead of whatever display size the
+ * source document (e.g. Google Docs) declared — the doc's own attribute can
+ * be arbitrary (an image resized smaller in the doc, then pasted) and every
+ * downstream consumer (wrapImg/imageRowHtml) needs the actual resolution to
+ * decide whether upscaling would lose quality.
+ */
+function withRealImageDimensions(html: string): string {
+  return html.replace(/<img\b[^>]*>/gi, (imgTag) => {
+    const match = imgTag.match(/\ssrc="data:image\/[^;]+;base64,([^"]+)"/i);
+    if (!match) return imgTag;
+    try {
+      const byteChars = atob(match[1]);
+      const byteArray = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) byteArray[i] = byteChars.charCodeAt(i);
+      const dims = getImageDimensionsFromBytes(byteArray);
+      if (!dims || !dims.width || !dims.height) return imgTag;
+      return imgTag
+        .replace(/\swidth=["'][^"']*["']/gi, "")
+        .replace(/\sheight=["'][^"']*["']/gi, "")
+        .replace(/^<img/i, `<img width="${dims.width}" height="${dims.height}"`);
+    } catch {
+      return imgTag;
+    }
+  });
+}
 
 interface UseEditorSyncProps {
   editorRef: React.RefObject<HTMLDivElement>;
@@ -48,8 +78,12 @@ export function useEditorSync({
       };
 
       const handlePaste = (e: ClipboardEvent) => {
-        const html = e.clipboardData?.getData("text/html");
-        if (html) {
+        const rawHtml = e.clipboardData?.getData("text/html");
+        if (rawHtml) {
+          // Overwrite the doc's own declared width/height with the image's real
+          // measured resolution before anything downstream reads it.
+          const html = withRealImageDimensions(rawHtml);
+
           // Save unmodified raw HTML for Advanced converter (before browser or our code alters it).
           if (rawPastedHtmlRef) rawPastedHtmlRef.current = html;
 

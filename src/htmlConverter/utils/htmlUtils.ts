@@ -15,7 +15,6 @@ export function cleanEmptyHtmlTags(htmlContent: string): string {
   // would get fused into a single anchor.
   htmlContent = htmlContent.replace(/<\/a>\s*<a[^>]*>/g, " ");
   htmlContent = htmlContent.replace(/&nbsp;/g, " ");
-  htmlContent = htmlContent.replace(/<b>\s*<\/b>/g, "");
   htmlContent = htmlContent.replace(/<li>\s*<\/li>/g, "");
   // Crush any sequence of 3+ breaks into 2
   htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*){3,}/gi, "\n<br><br>\n");

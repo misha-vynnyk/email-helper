@@ -3,6 +3,12 @@
  */
 import { act, fireEvent, render, screen } from "@testing-library/react";
 
+// CheatsheetPanel -> useHtmlConverterSettings -> config/api, whose real module
+// reads import.meta.env (Vite) at the top level — ts-jest can't compile that
+// under tsconfig.test.json's CommonJS module target. Same pattern as
+// UiSettingsTab.test.tsx.
+jest.mock("@/config/api", () => ({ getApiBase: () => "", isApiAvailable: () => true, apiCall: jest.fn(), API_URL: "", default: "" }));
+
 import { CheatsheetPanel } from "../components/CheatsheetPanel";
 
 const writeText = jest.fn().mockResolvedValue(undefined);

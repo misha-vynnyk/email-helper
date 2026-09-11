@@ -488,7 +488,7 @@ export function renderNode(
       // src is never rendered (see imageRowHtml) — this only guards against malformed IR
       // built outside the type system (fromDom always sets a non-empty src or drops the node).
       if (!node.props.src) return "";
-      const opts: ImageOpts = { tightBefore: node.props.tightBefore, tightAfter: node.props.tightAfter };
+      const opts: ImageOpts = { tightBefore: node.props.tightBefore, tightAfter: node.props.tightAfter, declaredWidthPx: node.props.declaredWidthPx };
       return tmpl.image(opts);
     }
 

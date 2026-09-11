@@ -259,7 +259,9 @@ function parseImage(el: Element, warn?: WarnFn): ImageNode | null {
     return null;
   }
   const alt = el.getAttribute("alt") ?? undefined;
-  return { type: "img", src, alt };
+  const widthAttr = parseInt(el.getAttribute("width") ?? "", 10);
+  const declaredWidthPx = Number.isFinite(widthAttr) && widthAttr > 0 ? widthAttr : undefined;
+  return { type: "img", src, alt, declaredWidthPx };
 }
 
 /**

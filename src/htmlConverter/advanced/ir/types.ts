@@ -59,6 +59,10 @@ export interface ImageNode {
   type: "img";
   src: string;
   alt?: string;
+  /** Real pixel width of the source image (measured from its bytes at paste time,
+   *  not the doc's own declared display width — see useEditorSync's dimension
+   *  injection). Absent when unmeasurable — renderers fall back to the width token. */
+  declaredWidthPx?: number;
 }
 
 export interface BorderSide {
@@ -367,6 +371,8 @@ export interface ImageProps {
    *  approximation as the cross-style paragraph path in pushMerged. */
   tightBefore?: boolean;
   tightAfter?: boolean;
+  /** Real pixel width of the source image — see `ImageNode.declaredWidthPx`. */
+  declaredWidthPx?: number;
 }
 
 export interface SpacerProps {
