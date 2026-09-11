@@ -53,14 +53,14 @@ describe("prettyPrintHtml", () => {
     expect(output).toContain(collapseBeforeCloseAngle(closeComment));
   });
 
-  it("normalizes self-closed void elements back to bare tags (br, img)", async () => {
-    const input = '<div>Line1<br>Line2<img src="x.png"></div>';
+  it("normalizes self-closed <br/> back to bare <br>, collapses whitespace before punctuation and inside <a> text", async () => {
+    const input = '<div>Line1<br>Line2 .<a href="x">  Click   here  </a></div>';
     const output = await prettyPrintHtml(input);
 
     expect(output).not.toContain("<br />");
-    expect(output).not.toContain('<img src="x.png" />');
     expect(output).toContain("<br>");
-    expect(output).toContain('<img src="x.png">');
+    expect(output).not.toMatch(/\s\./);
+    expect(output).toContain(">Click here</a>");
   });
 
   it("falls back to the original string if Prettier throws", async () => {

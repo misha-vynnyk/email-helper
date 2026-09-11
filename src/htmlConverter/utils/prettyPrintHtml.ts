@@ -31,17 +31,22 @@ export async function prettyPrintHtml(html: string): Promise<string> {
       htmlWhitespaceSensitivity: "ignore",
     });
 
-    // Prettier's html printer always self-closes void elements ("<br />",
-    // "<img ... />") with no option to turn it off — normalize back to bare
-    // "<br>"/"<img ...>" to match this app's own convention.
-    const VOID_ELEMENTS = ["area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"];
-    const voidSelfCloseRegex = new RegExp(`(<(?:${VOID_ELEMENTS.join("|")})\\b[^>]*?)\\s*/>`, "gi");
-    formatted = formatted.replace(voidSelfCloseRegex, "$1>");
-
     formatted = formatted.trim();
+
     formatted = formatted.replace(/(<[a-z0-9]+)\s+([^>]+?)\s*>/gi, (_match, tag, attrs) => {
       const cleanAttrs = attrs.replace(/\s+/g, " ").trim();
       return `${tag} ${cleanAttrs}>`;
+    });
+
+    // Prettier's html printer always self-closes void elements ("<br />")
+    // with no option to turn it off — undo that for <br> specifically.
+    formatted = formatted.replace(/<br\s*\/?>/gi, "<br>");
+    formatted = formatted.replace(/<br>\s+(?=<br>)/g, "<br>");
+    formatted = formatted.replace(/\s+([.,!?:;])/g, "$1");
+
+    formatted = formatted.replace(/(<a[^>]*>)([\s\S]*?)(<\/a>)/gi, (_match, startTag, content, endTag) => {
+      const cleanContent = content.replace(/\s+/g, " ").trim();
+      return `${startTag}${cleanContent}${endTag}`;
     });
 
     return formatted;
