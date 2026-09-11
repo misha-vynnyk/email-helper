@@ -1,3 +1,4 @@
+import { formatHtml } from "../formatter";
 import { prettyPrintHtml } from "../utils/prettyPrintHtml";
 
 describe("prettyPrintHtml", () => {
@@ -67,5 +68,42 @@ describe("prettyPrintHtml", () => {
     const input = "<div><p>unclosed";
     const output = await prettyPrintHtml(input);
     expect(typeof output).toBe("string");
+  });
+
+  describe("does not reintroduce the text-gluing bug (see bug_glued_text.test.ts)", () => {
+    // formatHtml already guards against gluing table cells / stacked divs
+    // together with no separator (bug_glued_text.test.ts). This final
+    // Prettier pass runs on formatHtml's output right before download, so it
+    // must not undo that guarantee.
+    it("table cells stay separated", async () => {
+      const formatted = formatHtml("<table><tr><td>Cell 1</td><td>Cell 2</td></tr></table>");
+      const output = await prettyPrintHtml(formatted);
+      expect(output).not.toContain("Cell 1Cell 2");
+    });
+
+    it("div-derived lines stay separated", async () => {
+      const formatted = formatHtml("<div>First line</div><div>Second line</div>");
+      const output = await prettyPrintHtml(formatted);
+      expect(output).not.toContain("First lineSecond line");
+    });
+
+    it("a link separated from adjacent text by a space outside the tag stays separated", async () => {
+      const output = await prettyPrintHtml('text <a href="https://x.com">Hello</a> more text');
+      expect(output).not.toContain("textHello");
+      expect(output).not.toContain("Hellomore");
+    });
+
+    it("a link whose separating space sits just inside the tag (<a> Hello</a>) stays separated", async () => {
+      // The risky case: the anchor-content-cleanup regex trims leading/
+      // trailing whitespace inside <a>...</a>. If that trimmed space were the
+      // only thing separating the link from adjacent sibling text, trimming
+      // it would glue the words together. In practice Prettier's own
+      // whitespace handling relocates that separating space outside the <a>
+      // (into a newline between the tags) before the cleanup regex ever
+      // runs, so there is nothing load-bearing left inside the tag to trim.
+      const output = await prettyPrintHtml('text<a href="https://x.com"> Hello </a>more');
+      expect(output).not.toContain("textHello");
+      expect(output).not.toContain("Hellomore");
+    });
   });
 });
