@@ -42,6 +42,13 @@ export async function prettyPrintHtml(html: string): Promise<string> {
     // with no option to turn it off — undo that for <br> specifically.
     formatted = formatted.replace(/<br\s*\/?>/gi, "<br>");
     formatted = formatted.replace(/<br>\s+(?=<br>)/g, "<br>");
+
+    // Prettier's html printer always isolates <br> onto its own line, whether
+    // it's a mid-paragraph single break or a <br><br> paragraph separator —
+    // this app's own templates never do that (a <br>/<br><br> run always sits
+    // glued to whatever text/tags surround it). Reattach it to match.
+    formatted = formatted.replace(/\n[ \t]*((?:<br>)+)\n[ \t]*/g, "$1");
+
     formatted = formatted.replace(/\s+([.,!?:;])/g, "$1");
 
     formatted = formatted.replace(/(<a[^>]*>)([\s\S]*?)(<\/a>)/gi, (_match, startTag, content, endTag) => {

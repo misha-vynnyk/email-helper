@@ -64,6 +64,18 @@ describe("prettyPrintHtml", () => {
     expect(output).toContain(">Click here</a>");
   });
 
+  it("keeps single and double <br> glued to surrounding text instead of isolated on their own line", async () => {
+    // Prettier's html printer always puts <br> on its own line regardless of
+    // width or whether it's a single mid-paragraph break or a <br><br>
+    // paragraph separator — this app's own templates never do that (a
+    // <br>/<br><br> run always sits flush against the surrounding text/tags),
+    // so re-glue it after Prettier's pass.
+    const input = "<div>Line one text<br>Line two after single break<br><br>New paragraph after double break</div>";
+    const output = await prettyPrintHtml(input);
+
+    expect(output).toContain("Line one text<br>Line two after single break<br><br>New paragraph after double break");
+  });
+
   it("falls back to the original string if Prettier throws", async () => {
     const input = "<div><p>unclosed";
     const output = await prettyPrintHtml(input);
