@@ -154,7 +154,7 @@ export function addBrAfterClosingP(htmlContent: string): string {
 
   // Delete extra <p> tags (but not inside lists - already processed)
   // Use \n for opening tag to avoid gluing with preceding text
-  htmlContent = htmlContent.replace(/<p[^>]*>/gi, "\n").replace(/<\/p>/gi, "");
+  htmlContent = htmlContent.replace(/\s*<p[^>]*>/gi, "\n").replace(/<\/p>/gi, "");
 
   // Remove <br> between <li> elements (lists should not have <br> between items)
   htmlContent = htmlContent.replace(/<\/li>\s*<br>\s*<br>\s*<li>/gi, "</li>\n<li>");

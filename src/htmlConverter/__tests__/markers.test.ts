@@ -1,4 +1,4 @@
-import { formatHtml } from "../formatter";
+import { formatHtmlDefault as formatHtml } from "../testHelpers/simpleFormatHtml";
 import { buildMarkers, getHighlightTokens } from "../markers";
 
 describe("markers registry", () => {

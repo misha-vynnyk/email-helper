@@ -283,7 +283,7 @@ export function buildSimpleTemplates(tok: SimpleTokens): { htmlTemplates: Simple
                             <table class="${fs.innerTableClassName}" border="0" cellspacing="0" role="presentation"
                                    cellpadding="0" width="100%" style="width: 100%;">
                                 ${spacerRow}
-                                ${content}
+                                ${content.trim()}
                                 ${spacerRow}
                             </table>
                         </td>
