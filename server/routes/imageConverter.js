@@ -333,7 +333,7 @@ router.post("/convert-from-url", async (req, res) => {
 /**
  * Convert multiple images
  */
-router.post("/convert-batch", upload.array("images", 50), async (req, res) => {
+router.post("/convert-batch", upload.array("images", 20), async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ error: "No image files provided" });
