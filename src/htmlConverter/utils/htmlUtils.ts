@@ -16,8 +16,7 @@ export function cleanEmptyHtmlTags(htmlContent: string): string {
   htmlContent = htmlContent.replace(/<\/a>\s*<a[^>]*>/g, " ");
   htmlContent = htmlContent.replace(/&nbsp;/g, " ");
   htmlContent = htmlContent.replace(/<li>\s*<\/li>/g, "");
-  // Crush any sequence of 3+ breaks into 2
-  htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*){3,}/gi, "\n<br><br>\n");
+  htmlContent = htmlContent.replace(/\s*(?:<br\s*\/?>\s*){3,}/gi, "\n<br><br>\n");
   htmlContent = htmlContent.replace(/(<span[^>]*>)\s*<br><br>/gi, "$1");
   htmlContent = htmlContent.replace(/<pre>/g, "");
   htmlContent = htmlContent.replace(/<a[^>]*>\s*<\/a>/g, " ");
@@ -80,6 +79,23 @@ export function cleanEmptyHtmlTags(htmlContent: string): string {
   // Clear line breaks directly adjacent to the boundaries of block elements
   htmlContent = htmlContent.replace(/(<(?:div|p|span|td|th)[^>]*>)\s*(?:<br\s*\/?>\s*)+/gi, "$1\n");
   htmlContent = htmlContent.replace(/(?:<br\s*\/?>\s*)+(<\/(?:div|p|span|td|th)>)/gi, "\n$1");
+
+  // Give a <br><br> a newline before/after ONLY when it's fully glued to adjacent
+  // text with zero whitespace — a <br><br> the source document already had literally
+  // typed mid-paragraph (e.g. Google Docs manual line breaks within one big <p>) never
+  // gets one otherwise, since nothing else in the pipeline touches pre-existing
+  // <br><br> runs that aren't at a </p> boundary. Purely additive (never replaces
+  // existing whitespace) so it can't clobber indentation the advanced converter's own
+  // templates already emit around a <br><br> it renders itself.
+  htmlContent = htmlContent.replace(/(?<!\s)(<br><br>)/g, "\n$1");
+  htmlContent = htmlContent.replace(/(<br><br>)(?!\s)/g, "$1\n");
+
+  // A single <br> follows a different convention: it stays a trailing suffix on the
+  // text it ends (flush, same line — no newline added before it), while the text that
+  // follows starts fresh on the next line. Only touches a genuinely single <br> glued
+  // to following text with zero whitespace — the negative lookaheads skip both halves
+  // of an (already-handled, possibly still glued-before-this-line) <br><br> pair.
+  htmlContent = htmlContent.replace(/(<br>)(?!<br>)(?!\s)/g, "$1\n");
 
   return htmlContent;
 }
