@@ -44,13 +44,14 @@ export async function prettyPrintHtml(html: string): Promise<string> {
     formatted = formatted.replace(/<br>\s+(?=<br>)/g, "<br>");
 
     // Prettier's html printer always isolates a mid-paragraph single <br>
-    // onto its own line — this app's convention keeps it flush against the
-    // surrounding text instead. A <br><br> paragraph separator is left alone
-    // (kept on its own line): the negative lookahead below only matches a
-    // <br> that ISN'T immediately followed by another one, so a glued
-    // <br><br> pair (produced by the whitespace-collapse above) never
-    // matches here.
-    formatted = formatted.replace(/\n[ \t]*<br>(?!<br>)\n[ \t]*/g, "<br>");
+    // onto its own line — this app's convention instead keeps it as a
+    // trailing suffix on the text it ends ("text<br>", next text starts on
+    // the following line), so only the LEADING newline before it is removed,
+    // not the trailing one. A <br><br> paragraph separator keeps its own
+    // line: the negative lookahead only matches a <br> that ISN'T
+    // immediately followed by another one, so a glued <br><br> pair
+    // (produced by the whitespace-collapse above) never matches here.
+    formatted = formatted.replace(/\n[ \t]*(<br>(?!<br>))/g, "$1");
 
     formatted = formatted.replace(/\s+([.,!?:;])/g, "$1");
 
