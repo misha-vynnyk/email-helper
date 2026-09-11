@@ -75,8 +75,8 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
-app.use(express.json({ limit: "50mb" }));
-app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+app.use(express.json({ limit: "20mb" }));
+app.use(express.urlencoded({ extended: true, limit: "20mb" }));
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
@@ -118,6 +118,12 @@ app.use((req, res) => {
  * keeps working for LAN testing from a phone/other device. The packaged
  * Electron app passes "127.0.0.1" explicitly — its embedded server has no
  * business being reachable from other machines on the network.
+ *
+ * SECURITY: there is no auth on any /api or /ai-api route. Accepted for the
+ * local-only default (`npm run dev`/`dist:*`); `npm run dev-host` trades that
+ * away deliberately for LAN testing, so anyone else on the same network can
+ * reach this backend while it runs. Do not point `dev-host` at an untrusted
+ * network.
  */
 const startServer = (port, host) => {
   port = parseInt(port) || parseInt(process.env.PORT) || 3001;
