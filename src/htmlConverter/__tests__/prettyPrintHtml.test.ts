@@ -53,6 +53,16 @@ describe("prettyPrintHtml", () => {
     expect(output).toContain(collapseBeforeCloseAngle(closeComment));
   });
 
+  it("normalizes self-closed void elements back to bare tags (br, img)", async () => {
+    const input = '<div>Line1<br>Line2<img src="x.png"></div>';
+    const output = await prettyPrintHtml(input);
+
+    expect(output).not.toContain("<br />");
+    expect(output).not.toContain('<img src="x.png" />');
+    expect(output).toContain("<br>");
+    expect(output).toContain('<img src="x.png">');
+  });
+
   it("falls back to the original string if Prettier throws", async () => {
     const input = "<div><p>unclosed";
     const output = await prettyPrintHtml(input);
