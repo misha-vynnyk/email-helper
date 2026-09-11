@@ -12,7 +12,7 @@ export const EMAIL_VALIDATOR_ENABLED = false;
 export const BLOCK_LIBRARY_ENABLED = false;
 
 // Template Builder (drag-and-drop canvas, Stage 1) — WIP, local-only.
-export const TEMPLATE_BUILDER_ENABLED = true;
+export const TEMPLATE_BUILDER_ENABLED = false;
 
 // Figma Import (Stage 1: read + validate only, no renderer yet) is local-only —
 // flip to true in your own checkout to work on the tab.
