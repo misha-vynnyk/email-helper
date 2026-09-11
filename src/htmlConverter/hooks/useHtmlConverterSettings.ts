@@ -21,6 +21,7 @@ export type UiSettings = {
   editorMarkerHighlight: boolean;
   editorHotkeys: boolean;
   browserExecutablePath: string;
+  formatHtmlOnDownload: boolean;
 };
 
 export const DEFAULT_UI_SETTINGS: UiSettings = {
@@ -39,6 +40,7 @@ export const DEFAULT_UI_SETTINGS: UiSettings = {
   editorMarkerHighlight: false,
   editorHotkeys: false,
   browserExecutablePath: "",
+  formatHtmlOnDownload: true,
 };
 
 export const DEFAULT_IMAGE_ANALYSIS_SETTINGS: ImageAnalysisSettings = {

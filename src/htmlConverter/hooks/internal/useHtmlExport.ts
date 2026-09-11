@@ -15,6 +15,7 @@ import { profile as simpleDefaultProfile } from "../../simple/profiles/default";
 import { profile as simpleRedProfile } from "../../simple/profiles/red";
 import { profile as simpleTttProfile } from "../../simple/profiles/ttt";
 import { capImageWidthsInContent,replaceAltsInContent,replaceUrlsInContent, replaceUrlsInContentByMap } from "../../utils/contentReplacer";
+import { prettyPrintHtml } from "../../utils/prettyPrintHtml";
 import type { ConverterMode,StorageProfile } from "../useHtmlConverterLogic";
 import { supportsMjml } from "../useHtmlConverterLogic";
 
@@ -33,6 +34,7 @@ interface UseHtmlExportProps {
   downloadFolder?: string;
   setDownloadFolder?: (folder: string) => void;
   oneBrSymbol?: string;
+  formatHtmlOnDownload?: boolean;
 }
 
 export function useHtmlExport({
@@ -50,6 +52,7 @@ export function useHtmlExport({
   downloadFolder = "",
   setDownloadFolder,
   oneBrSymbol,
+  formatHtmlOnDownload = false,
 }: UseHtmlExportProps) {
   const [previewHtml, setPreviewHtml] = useState("");
   const clearPreviewHtml = useCallback(() => setPreviewHtml(""), []);
@@ -257,7 +260,11 @@ export function useHtmlExport({
       const approvalText = approveNeeded ? "(Approve needed)" : "";
       const fullName = `${name}_${extension}${approvalText}.html`;
 
-      const outcome = await downloadOrSaveFile(content, fullName, {
+      // Cosmetic re-indentation only. Both "html" and "mjml" exports are plain
+      // HTML under the hood (see prettyPrintHtml.ts), so both go through it.
+      const finalContent = formatHtmlOnDownload ? await prettyPrintHtml(content) : content;
+
+      const outcome = await downloadOrSaveFile(finalContent, fullName, {
         getFolder: () => downloadFolder,
         onFolderResolved: (folder) => setDownloadFolder?.(folder),
       });
@@ -267,7 +274,7 @@ export function useHtmlExport({
       else if (outcome.kind === "save-error") addLog(`❌ Помилка збереження: ${outcome.error ?? "невідома помилка"}`);
       else if (outcome.kind === "browser-download") addLog(`📥 Завантажено: ${fullName}`);
     },
-    [addLog, downloadFolder, setDownloadFolder]
+    [addLog, downloadFolder, setDownloadFolder, formatHtmlOnDownload]
   );
 
   return {

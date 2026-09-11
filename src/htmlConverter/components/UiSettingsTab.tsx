@@ -70,6 +70,7 @@ export const UiSettingsTab: React.FC<UiSettingsTabProps> = ({ ui, setUi, uploadM
           <Row id='rememberUiLayout'      label='Запамʼятовувати layout'          hint='Вимкни, щоб скидати вигляд при перезавантаженні'   checked={ui.rememberUiLayout}      onCheckedChange={(v) => set("rememberUiLayout", v)} />
           <Row id='autoCloseUploadDialog' label='Авто-закриття після завантаження' checked={ui.autoCloseUploadDialog} onCheckedChange={(v) => set("autoCloseUploadDialog", v)} />
           <Row id='showApproveNeeded'     label='Показувати "Approve Needed"'      checked={ui.showApproveNeeded}     onCheckedChange={(v) => set("showApproveNeeded", v)} />
+          <Row id='formatHtmlOnDownload'  label='Форматувати HTML при завантаженні' hint='Prettier-відступи у скачаному файлі — лише для читабельності коду, на рендер не впливає' checked={ui.formatHtmlOnDownload} onCheckedChange={(v) => set("formatHtmlOnDownload", v)} />
         </div>
       </section>
 
