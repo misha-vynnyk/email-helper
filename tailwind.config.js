@@ -90,10 +90,20 @@ export default {
             height: "0",
           },
         },
+        "squash-x": {
+          "0%, 100%": { transform: "scale(1, 1)" },
+          "40%": { transform: "scale(0.72, 1.18)" },
+        },
+        "squash-y": {
+          "0%, 100%": { transform: "scale(1, 1)" },
+          "40%": { transform: "scale(1.18, 0.72)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "squash-x": "squash-x 380ms cubic-bezier(0.4, 0, 0.2, 1)",
+        "squash-y": "squash-y 380ms cubic-bezier(0.4, 0, 0.2, 1)",
       },
     },
   },

@@ -81,6 +81,7 @@ interface EditorStageProps {
 
 const SAFETY_MAX_DIMENSION = 2400;
 const TOLERANCE_PER_PIXEL = 0.6;
+const LOAD_TIMEOUT_MS = 8000;
 
 const HANDLES: { handle: CropHandle; left: string; top: string; cursor: string }[] = [
   { handle: "nw", left: "0%", top: "0%", cursor: "nwse-resize" },
@@ -173,9 +174,27 @@ export default function EditorStage({
   const oklabRef = useRef<OklabBuffers | null>(null);
   const committedMaskRef = useRef<Uint8ClampedArray | null>(null);
   const [imageReady, setImageReady] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  // Bumped to force the load effect below to re-run — used both by the user's
+  // "Try again" click and by an automatic contextrestored recovery.
+  const [retryToken, setRetryToken] = useState(0);
   const [zoom, setZoom] = useState(1);
   const zoomRef = useRef(1);
   zoomRef.current = zoom;
+  // The container's un-zoomed CSS box size — offsetWidth/Height ignore the `scale(zoom)`
+  // transform on this same element, so thresholds computed from it stay valid at any
+  // zoom level (the cut-out button, itself inside the zoomed content, scales right along
+  // with the rect it's anchored to). Drives the collision-avoidance flip below.
+  const [containerSize, setContainerSize] = useState<{ width: number; height: number } | null>(null);
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const update = () => setContainerSize({ width: container.offsetWidth, height: container.offsetHeight });
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
 
   const activeWandDragRef = useRef<{ seed: InstantAlphaSeed; startClientX: number; startClientY: number; tolerance: number } | null>(null);
   const strokePointsRef = useRef<InstantAlphaSeed[]>([]);
@@ -244,33 +263,90 @@ export default function EditorStage({
 
   // Load the image once per URL, at native resolution (capped only for extreme
   // sizes), and precompute OKLab once so per-frame drag recompute stays cheap.
+  //
+  // Decodes via createImageBitmap (same pipeline the optimize step already uses
+  // successfully via imageWorker.ts) instead of a plain `new Image()` + <img>
+  // decode. The latter was observed to silently fail to decode a freshly-created
+  // blob: URL right after the OS wakes from sleep (a known Chromium GPU/decode-
+  // pipeline hiccup) with no onerror ever firing — draw() would then just keep
+  // early-returning forever, leaving the checkerboard background as the only
+  // visible thing. A hard timeout below covers the "never settles at all" variant
+  // of that same failure, and both paths now surface a visible retry instead of
+  // an indefinitely blank canvas.
   useEffect(() => {
     let cancelled = false;
     setImageReady(false);
+    setLoadError(false);
     onPendingPickChange(null);
     zoomRef.current = 1;
     setZoom(1);
-    const img = new Image();
-    img.onload = () => {
+
+    const timeoutId = window.setTimeout(() => {
       if (cancelled) return;
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const scale = Math.min(1, SAFETY_MAX_DIMENSION / Math.max(img.naturalWidth, img.naturalHeight));
-      canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
-      canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
-      const ctx = canvas.getContext("2d", { willReadFrequently: true });
-      if (!ctx) return;
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      originalImageDataRef.current = imageData;
-      oklabRef.current = precomputeOklab(imageData.data, canvas.width * canvas.height);
-      setImageReady(true);
-    };
-    img.src = imageUrl;
+      cancelled = true;
+      console.error("EditorStage: image decode timed out");
+      setLoadError(true);
+    }, LOAD_TIMEOUT_MS);
+
+    (async () => {
+      let bitmap: ImageBitmap | null = null;
+      try {
+        const blob = await fetch(imageUrl).then((res) => res.blob());
+        bitmap = await createImageBitmap(blob);
+        if (cancelled) return;
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const scale = Math.min(1, SAFETY_MAX_DIMENSION / Math.max(bitmap.width, bitmap.height));
+        canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+        canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        if (!ctx) throw new Error("2D context unavailable");
+        ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        originalImageDataRef.current = imageData;
+        oklabRef.current = precomputeOklab(imageData.data, canvas.width * canvas.height);
+        setImageReady(true);
+      } catch (err) {
+        if (!cancelled) {
+          console.error("EditorStage: failed to decode image", err);
+          setLoadError(true);
+        }
+      } finally {
+        window.clearTimeout(timeoutId);
+        bitmap?.close();
+      }
+    })();
+
     return () => {
       cancelled = true;
+      window.clearTimeout(timeoutId);
     };
-  }, [imageUrl]);
+  }, [imageUrl, retryToken]);
+
+  // Defense-in-depth against the 2D canvas's backing surface being dropped out
+  // from under us (some Chromium versions fire contextlost/contextrestored on a
+  // plain 2D context, mirroring WebGL, particularly around GPU-process resets
+  // after OS sleep). Not universally supported, but where it is, this recovers
+  // automatically via the same retry path as the manual button instead of
+  // leaving stale/blank pixels on screen.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const handleContextLost = (e: Event) => {
+      e.preventDefault();
+      originalImageDataRef.current = null;
+      oklabRef.current = null;
+      committedMaskRef.current = null;
+      setImageReady(false);
+    };
+    const handleContextRestored = () => setRetryToken((t) => t + 1);
+    canvas.addEventListener("contextlost", handleContextLost);
+    canvas.addEventListener("contextrestored", handleContextRestored);
+    return () => {
+      canvas.removeEventListener("contextlost", handleContextLost);
+      canvas.removeEventListener("contextrestored", handleContextRestored);
+    };
+  }, []);
 
   // Rebuild the committed baseline whenever the operation log changes (i.e. on
   // every commit/undo) — this is the O(width×height) replay, deliberately not
@@ -510,6 +586,71 @@ export default function EditorStage({
   const isCropTool = tool === "crop";
   const isSliceTool = tool === "slice";
 
+  // Collision-avoidance for the slice tool's cut-out button: it hangs off whichever
+  // corner of sliceRect currently has room for it outside the canvas, flipping to the
+  // opposite side the moment the user drags the rect close enough to an edge that the
+  // default corner (top-right) would run out of bounds. BUTTON_CLEARANCE is the
+  // button's own footprint (36px) plus a small gap, expressed as a fraction of the
+  // container's un-zoomed size so the threshold holds at any zoom level.
+  const BUTTON_CLEARANCE = 44;
+  const cutOutPlacement = (() => {
+    if (!safeSliceRect || !containerSize || !containerSize.width || !containerSize.height) {
+      return { vertical: "above" as const, horizontal: "right" as const };
+    }
+    const thresholdX = BUTTON_CLEARANCE / containerSize.width;
+    const thresholdY = BUTTON_CLEARANCE / containerSize.height;
+    const spaceAbove = safeSliceRect.y;
+    const spaceBelow = 1 - (safeSliceRect.y + safeSliceRect.height);
+    const spaceLeft = safeSliceRect.x;
+    const spaceRight = 1 - (safeSliceRect.x + safeSliceRect.width);
+    return {
+      vertical: spaceAbove >= thresholdY || spaceAbove >= spaceBelow ? ("above" as const) : ("below" as const),
+      horizontal: spaceRight >= thresholdX || spaceRight >= spaceLeft ? ("right" as const) : ("left" as const),
+    };
+  })();
+
+  // Squash the button along whichever axis it just slid across — a brief liquid-drop
+  // "compress then relax" (see the squash-x/squash-y keyframes in tailwind.config.js) on
+  // top of the position glide above, so a flip reads as a bit of squeezed momentum
+  // instead of a rigid badge sliding around. Comparing against a ref (rather than an
+  // effect) applies immediately, in the same render the flip is first seen, and bumping
+  // `key` forces the button to remount so its CSS animation actually restarts — same
+  // class name re-applied twice in a row wouldn't replay it.
+  const prevCutOutPlacementRef = useRef(cutOutPlacement);
+  const [squash, setSquash] = useState<{ axis: "x" | "y"; key: number }>({ axis: "x", key: 0 });
+  if (
+    prevCutOutPlacementRef.current.horizontal !== cutOutPlacement.horizontal ||
+    prevCutOutPlacementRef.current.vertical !== cutOutPlacement.vertical
+  ) {
+    const axis = prevCutOutPlacementRef.current.horizontal !== cutOutPlacement.horizontal ? "x" : "y";
+    prevCutOutPlacementRef.current = cutOutPlacement;
+    setSquash((s) => ({ axis, key: s.key + 1 }));
+  }
+  // Expressed with ONLY `left`/`top` (never `right`/`bottom`) so a flip is a change in
+  // the *value* of the same property (0% → 100%), not a swap between two different
+  // properties — the latter can't be interpolated by a CSS transition (one property
+  // disappearing and another appearing is a hard cut, not a slide), which is exactly
+  // what made the corner flip feel like a jump instead of a glide. `left`/`top` anchor
+  // to the rect's corresponding edge; the translate then either pushes the button fully
+  // to the other side of that edge (the flipped case) or just adds the small gap (the
+  // "natural" outside case) — both are plain numeric translate() values, so they
+  // interpolate smoothly too. See the button's transition-* classes for the timing.
+  const CUT_OUT_GAP = "8px";
+  const cutOutStyle: React.CSSProperties = {
+    left: cutOutPlacement.horizontal === "right" ? "100%" : "0%",
+    top: cutOutPlacement.vertical === "below" ? "100%" : "0%",
+    transform: `translate(${cutOutPlacement.horizontal === "right" ? CUT_OUT_GAP : `calc(-100% - ${CUT_OUT_GAP})`}, ${
+      cutOutPlacement.vertical === "below" ? CUT_OUT_GAP : `calc(-100% - ${CUT_OUT_GAP})`
+    })`,
+    // Explicit rather than a `transition-*` className: this element's own transform is
+    // the position (see above), so its hover/press feedback lives on the nested
+    // <button> instead, whose independent `transform` (Tailwind's scale-95) would
+    // otherwise be clobbered by this one.
+    transitionProperty: "left, top, transform",
+    transitionDuration: "380ms",
+    transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
+  };
+
   return (
     <div className='flex flex-col items-center w-full'>
       {/* The zoom badge below is a sibling of this scrolling element, not a child of
@@ -530,6 +671,19 @@ export default function EditorStage({
             className='block max-w-full max-h-[52vh] rounded-lg touch-none'
             style={{ cursor: isCropTool ? "default" : "crosshair", ...CHECKERBOARD_STYLE }}
           />
+
+        {loadError && (
+          <div className='absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-lg bg-slate-950/85 p-6 text-center'>
+            <p className='text-sm font-semibold text-white'>Couldn't load this image</p>
+            <p className='max-w-[220px] text-xs text-slate-300'>This can happen right after your computer wakes from sleep.</p>
+            <button
+              onClick={() => setRetryToken((t) => t + 1)}
+              className='rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-all hover:brightness-110 active:scale-95'
+            >
+              Try again
+            </button>
+          </div>
+        )}
 
         {isCropTool ? (
           <>
@@ -602,22 +756,28 @@ export default function EditorStage({
                 <ResizeHandle key={handle} handle={handle} left={left} top={top} cursor={cursor} rect={safeSliceRect} onChange={onSliceRectChange} boxRef={containerRef} />
               ))}
 
-              {/* Same corner-anchored placement (not floating above the rect) as the
-               * removed crop-rect version used to have, for the same clipping reason:
-               * it stays inside the canvas's bounds no matter where this rect sits,
-               * so the viewport's overflow-auto (needed for zoom/pan) never clips it. */}
+              {/* Hangs off whichever corner of the rect has room outside it (see
+               * cutOutPlacement above), sliding to the opposite side as the rect
+               * approaches that edge of the canvas instead of jumping there — see
+               * cutOutStyle's comment for why position (this wrapper) and press/hover
+               * feedback (the button inside) are split across two elements. */}
               {onCutOut && (
-                <button
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onCutOut();
-                  }}
-                  title='Cut out as new image'
-                  className='absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:brightness-110 active:scale-95 transition-all touch-none'
-                >
-                  <Scissors size={14} />
-                </button>
+                <div className='absolute w-9 h-9' style={cutOutStyle}>
+                  <button
+                    key={squash.key}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCutOut();
+                    }}
+                    title='Cut out as new image'
+                    className={`w-9 h-9 flex items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:brightness-110 active:scale-95 transition-transform touch-none ${
+                      squash.axis === "x" ? "animate-squash-x" : "animate-squash-y"
+                    }`}
+                  >
+                    <Scissors size={15} />
+                  </button>
+                </div>
               )}
             </div>
           </div>
