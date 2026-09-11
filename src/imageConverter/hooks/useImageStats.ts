@@ -21,7 +21,7 @@ export function useImageStats(files: ImageFile[]): ImageStats {
     const processing = files.filter((f) => f.status === "processing").length;
     const originalTotalSize = files.reduce((sum, f) => sum + f.originalSize, 0);
     const convertedTotalSize = files.reduce((sum, f) => sum + (f.convertedSize || 0), 0);
-    const savedSize = originalTotalSize - convertedTotalSize;
+    const savedSize = Math.max(0, originalTotalSize - convertedTotalSize);
     const savedPercent =
       originalTotalSize > 0 ? Math.round((savedSize / originalTotalSize) * 100) : 0;
 

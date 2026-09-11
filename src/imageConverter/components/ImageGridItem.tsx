@@ -189,6 +189,7 @@ export default function ImageGridItem({
                  )}
                  <button
                    onClick={() => setShowEditor(true)}
+                   disabled={isProcessing}
                    className='w-7 h-7 flex items-center justify-center text-muted-foreground enabled:hover:bg-primary/10 enabled:hover:text-primary rounded-lg transition-all disabled:opacity-30'
                    title='Edit'
                  >

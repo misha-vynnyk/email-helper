@@ -55,7 +55,7 @@ export default function BulkActions({
             title='Convert Selected'
           >
             <Play size={14} fill="currentColor" strokeWidth={0} />
-            PROCESS
+            CONVERT
           </button>
           
           <button
