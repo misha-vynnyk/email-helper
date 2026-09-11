@@ -32,6 +32,40 @@ describe("htmlConverter utils", () => {
       expect(cleanEmptyHtmlTags(input)).toBe("Line 1\n<br><br>\nLine 2");
     });
 
+    // Regression: a Google-Docs empty spacer paragraph (<p><br><br></p>) sitting between
+    // two real paragraphs, once addBrAfterClosingP has already inserted its own "\n<br><br>\n"
+    // after each </p>, leaves a 3+ <br> run with a "\n" already in front of it. The collapse
+    // regex's own leading "\n" in its replacement used to stack on top of that pre-existing
+    // one, producing a blank line right after the preceding link/text.
+    it("does not produce a blank line when a pre-existing newline already precedes the 3+ br run", () => {
+      const input = "</a>\n<br><br>\n<br><br>\n<br><br>\nThis ad is sent on behalf of...";
+      expect(cleanEmptyHtmlTags(input)).toBe("</a>\n<br><br>\nThis ad is sent on behalf of...");
+    });
+
+    // Regression: addBrAfterClosingP only adds a newline around a <br><br> IT synthesizes
+    // at a </p> boundary — a <br><br> the source document already had literally typed
+    // mid-paragraph (e.g. Google Docs manual line breaks within one big <p>) never got one,
+    // so some paragraph breaks in the raw output were spaced and others were glued straight
+    // to the surrounding sentences depending purely on where they came from.
+    it("adds a newline around a <br><br> that was already there mid-paragraph, not just synthesized ones", () => {
+      const input = "First sentence.<br><br>Second sentence.<br><br>Third sentence.";
+      expect(cleanEmptyHtmlTags(input)).toBe("First sentence.\n<br><br>\nSecond sentence.\n<br><br>\nThird sentence.");
+    });
+
+    // A single <br> follows a different convention than <br><br>: it stays a
+    // trailing suffix on the text it ends (flush, no newline before it), while
+    // the following text starts fresh on the next line — matching signature-
+    // block-style content (name<br>, title<br>, company, one item per line).
+    it("keeps a single <br> flush with its preceding text, but starts the next line fresh", () => {
+      const input = "Name<br>Title<br>Company";
+      expect(cleanEmptyHtmlTags(input)).toBe("Name<br>\nTitle<br>\nCompany");
+    });
+
+    it("does not add a newline before/after a single <br> that's part of an already-handled <br><br> pair", () => {
+      const input = "text1<br>text2<br><br>text3";
+      expect(cleanEmptyHtmlTags(input)).toBe("text1<br>\ntext2\n<br><br>\ntext3");
+    });
+
     it("should remove empty list items", () => {
       const input = "<ul><li>Item 1</li><li>  </li></ul>";
       expect(cleanEmptyHtmlTags(input)).toBe("<ul><li>Item 1</li></ul>");
