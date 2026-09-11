@@ -1,25 +1,18 @@
 /**
- * Baseline snapshot suite — captured BEFORE the token-based dedup refactor
- * (see CONVERSION_SETTINGS_PLAN.md §6 Stage 8 and the plan at
- * /Users/mykhailovynnyk/.claude/plans/tidy-bubbling-oasis.md).
+ * Regression snapshot suite for `simple/formatter.ts` across profiles.
  *
- * Purpose: this is the ONLY safety net for `ttt`/`alphaone` formatter output
- * and for the MJML branch of all three profiles — none of it had any test
- * coverage before this file. Every snapshot here must stay byte-identical
- * across Stages 1-3 of the refactor, with ONE deliberate exception: the TTT
- * `wrapImg`/`rightSideImg`/`leftSideImg`/`signatureImg` snapshots currently
- * bake in a real bug (`TTT_STORAGE_URL` resolves to the literal string
- * "undefined/" because `ttt/templates.ts` reads
- * `STORAGE_PROVIDERS_CONFIG.providers.publicBaseUrl` instead of
- * `.providers.ttt.publicBaseUrl`). That bug is fixed in Stage 1 as an
- * explicitly-approved behavior change, so the TTT snapshots are expected to
- * update then — everything else in this file must not.
+ * Originally captured the pre-refactor legacy per-profile forks (root
+ * `formatter.ts`, `ttt/formatter.ts`, `alphaone/formatter.ts`) to verify the
+ * token-based `simple/` rewrite (CONVERSION_SETTINGS_PLAN.md §6 Stage 8,
+ * plan at ~/.claude/plans/tidy-bubbling-oasis.md) didn't change behavior.
+ * That verification is long done and the legacy forks have since been
+ * deleted (dead code, superseded by `simple/`) — this file now snapshots
+ * `simple/`'s own output directly, so it still catches accidental output
+ * changes in the live converter across profiles.
  */
-import { formatHtmlAlphaone, formatMjmlAlphaone } from "../alphaone/formatter";
-import { formatHtml, formatMjml } from "../formatter";
-import { formatHtmlTTT, formatMjmlTTT } from "../ttt/formatter";
+import { formatHtmlAlphaone, formatHtmlDefault, formatHtmlRed, formatHtmlTTT, formatMjmlAlphaone, formatMjmlDefault, formatMjmlRed, formatMjmlTTT } from "../testHelpers/simpleFormatHtml";
 
-// Exercises every one of the 15 template keys shared by all three forks
+// Exercises every one of the 15 template keys shared by all profiles
 // (headline/centerHeadline, quote/centerQuote, button, smallText/smallCenterText,
 // centerText, rightSideImg, leftSideImg, footerBlock/footerCenterBlock,
 // signatureImg, wrapImg, fullStructure), plus the native-italic-link case
@@ -45,12 +38,13 @@ ftr-cCentered footer contentftr-c-e
 `;
 
 const PROFILES = [
-  { name: "default", formatHtml, formatMjml },
+  { name: "default", formatHtml: formatHtmlDefault, formatMjml: formatMjmlDefault },
   { name: "ttt", formatHtml: formatHtmlTTT, formatMjml: formatMjmlTTT },
   { name: "alphaone", formatHtml: formatHtmlAlphaone, formatMjml: formatMjmlAlphaone },
+  { name: "red", formatHtml: formatHtmlRed, formatMjml: formatMjmlRed },
 ];
 
-describe("simple converter baseline (pre-refactor snapshots)", () => {
+describe("simple converter output snapshots", () => {
   describe.each(PROFILES)("$name profile", ({ formatHtml: fmtHtml, formatMjml: fmtMjml }) => {
     it("formatHtml output", () => {
       expect(fmtHtml(FIXTURE)).toMatchSnapshot();

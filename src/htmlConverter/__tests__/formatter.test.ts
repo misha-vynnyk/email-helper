@@ -1,4 +1,4 @@
-import { formatHtml } from "../formatter";
+import { formatHtmlDefault as formatHtml } from "../testHelpers/simpleFormatHtml";
 
 describe("htmlConverter formatter", () => {
   describe("formatHtml", () => {

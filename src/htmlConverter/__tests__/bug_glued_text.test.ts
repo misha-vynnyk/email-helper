@@ -1,4 +1,4 @@
-import { formatHtml } from "../formatter";
+import { formatHtmlDefault as formatHtml } from "../testHelpers/simpleFormatHtml";
 
 describe("formatter text gluing bug test", () => {
   it("should preserve spaces between table cells and newlines between rows", () => {
