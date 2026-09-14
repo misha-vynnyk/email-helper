@@ -26,7 +26,7 @@ jest.mock("../render/renderNode", () => {
   return { ...actual, renderDocumentContent: jest.fn(actual.renderDocumentContent) };
 });
 
-import { buildDocuments, buildFromSingleTree, deriveTemplateTitle, slugifyFileName } from "../FigmaImportPanel";
+import { buildDocuments, buildFromSingleTree, deriveTemplateTitle, slugifyFileName } from "../buildDocuments";
 import { renderDocumentContent } from "../render/renderNode";
 import type { DesignNode } from "../types";
 

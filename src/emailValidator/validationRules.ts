@@ -11,7 +11,6 @@
 // regex rewriting, so results are deterministic and fixes cannot corrupt
 // attribute values or text content.
 
-import { COMMON_PATTERNS, EMAIL_DEFAULTS } from "./EMAIL_CONSTANTS";
 import {
   addStylePropIfMissing,
   allElements,
@@ -22,6 +21,7 @@ import {
   sourceTagPosition,
   styleHasProp,
 } from "./domUtils";
+import { COMMON_PATTERNS, EMAIL_DEFAULTS } from "./EMAIL_CONSTANTS";
 import { FORBIDDEN_TAGS, RuleContext, ValidationResult, ValidationRule } from "./types";
 
 // ---------------------------------------------------------------------------

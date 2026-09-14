@@ -1,5 +1,5 @@
-import { bgcolorAttr, borderToCss, cornerRadiusToCss, escapeAttr, escapeHtml, fillToCss, shadowToCss } from "../cssUtils";
 import type { Fill, FrameBorder, FrameShadow } from "../../types";
+import { bgcolorAttr, borderToCss, cornerRadiusToCss, escapeAttr, escapeHtml, fillToCss, shadowToCss } from "../cssUtils";
 
 describe("escapeHtml", () => {
   it("escapes & < > \" ' each individually", () => {

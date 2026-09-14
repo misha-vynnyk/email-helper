@@ -321,7 +321,7 @@ export default function EditorStage({
       cancelled = true;
       window.clearTimeout(timeoutId);
     };
-  }, [imageUrl, retryToken]);
+  }, [imageUrl, retryToken, onPendingPickChange]);
 
   // Defense-in-depth against the 2D canvas's backing surface being dropped out
   // from under us (some Chromium versions fire contextlost/contextrestored on a

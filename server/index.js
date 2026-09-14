@@ -1,4 +1,5 @@
 require("dotenv").config();
+const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -94,6 +95,10 @@ app.use(require("./routes/imageProxy"));
 app.use(require("./routes/storageUpload"));
 app.use("/api", require("./routes/email"));
 app.use("/ai-api", require("./routes/aiProxy"));
+
+// Easter eggs — vendored third-party games, local-only (see .gitignore for server/easter-eggs/)
+app.use("/easter-eggs/mario", express.static(path.join(__dirname, "easter-eggs/mario")));
+app.use("/easter-eggs/mario-complete", express.static(path.join(__dirname, "easter-eggs/mario-complete")));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

@@ -16,9 +16,9 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
+import ImageEditorModal from "../editor/ImageEditorModal";
 import { ImageEditState, ImageFile } from "../types";
 import { formatFileSize } from "../utils/clientConverter";
-import ImageEditorModal from "../editor/ImageEditorModal";
 
 // md:opacity-0 + md:group-hover:opacity-100 hides these controls until hover ONLY at
 // the md breakpoint and up (real mouse territory) — below md they stay opacity-100 from

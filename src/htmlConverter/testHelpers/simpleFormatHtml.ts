@@ -8,8 +8,8 @@
  * only an import change.
  */
 import { buildSimpleTemplates } from "../simple/config/templates";
-import { mergeSimpleTokens, tokens as simpleTokens } from "../simple/config/tokens";
 import type { SimpleTokensOverride } from "../simple/config/tokens";
+import { mergeSimpleTokens, tokens as simpleTokens } from "../simple/config/tokens";
 import { formatHtml as formatHtmlSimple, formatMjml as formatMjmlSimple } from "../simple/formatter";
 import { profile as alphaoneProfile } from "../simple/profiles/alphaone";
 import { profile as defaultProfile } from "../simple/profiles/default";

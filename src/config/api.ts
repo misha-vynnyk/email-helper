@@ -23,6 +23,13 @@ export const getApiBase = (): string => {
   return "";
 };
 
+// True only in a packaged (built/distributed) Electron app — false in dev/Electron-dev
+// and in the browser. Used to hide local-only, gitignored dev extras (like the easter
+// egg icons) so they never show up in a build someone else might receive.
+export const isPackagedElectron = (): boolean => {
+  return typeof window !== "undefined" && !!window.electronAPI?.isElectron && !!window.electronAPI?.isPackaged;
+};
+
 // Check if API is available
 export const isApiAvailable = () => {
   // Always available in development (via proxy)

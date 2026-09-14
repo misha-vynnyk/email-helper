@@ -1,5 +1,5 @@
-import { childIdsOf, cloneSubtree, collectDescendantIds, insertNode, isDescendantOrSelf, moveNodeInTree, removeNodeFromTree, type CanvasTree } from "../state/canvasTree";
-import { createDefaultRowBlock, createDefaultRowColumnBlock, createDefaultSectionBlock, createDefaultTextBlock, type BuilderNode, type RowBlock } from "../types";
+import { type CanvasTree,childIdsOf, cloneSubtree, collectDescendantIds, insertNode, isDescendantOrSelf, moveNodeInTree, removeNodeFromTree } from "../state/canvasTree";
+import { type BuilderNode, createDefaultRowBlock, createDefaultRowColumnBlock, createDefaultSectionBlock, createDefaultTextBlock, type RowBlock } from "../types";
 
 /** sA (root section) -> rB (row) -> colC (row-column) -> sE (nested section) -> tF (text) */
 function buildFixture(): CanvasTree {

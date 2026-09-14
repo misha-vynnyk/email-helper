@@ -372,7 +372,7 @@ function toWidthPercents(colWidths: number[] | undefined, ncells: number): numbe
     ? colWidths.map(() => 100 / ncells)
     : colWidths.map(w => (w / total) * 100);
   const pcts = shares.map(s => Math.floor(s));
-  let remainder = 100 - pcts.reduce((s, p) => s + p, 0);
+  const remainder = 100 - pcts.reduce((s, p) => s + p, 0);
   const order = shares
     .map((s, i) => ({ i, frac: s - Math.floor(s) }))
     .sort((a, b) => b.frac - a.frac);

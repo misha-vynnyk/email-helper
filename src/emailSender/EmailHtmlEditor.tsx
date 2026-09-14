@@ -7,9 +7,9 @@ import { cardClass, inputClass, Note, SectionHeader } from "../components/ui/pri
 import { EMAIL_VALIDATOR_ENABLED } from "../config/featureFlags";
 import EmailValidationPanel from "../emailValidator/EmailValidationPanel";
 import { cn } from "../lib/utils";
-import { useThemeMode } from "../theme/ThemeContext";
+import { useThemeMode } from "../theme/useThemeMode";
 import { createCodeMirrorTheme } from "../utils/codemirrorTheme";
-import { useEmailSender } from "./EmailSenderContext";
+import { useEmailSender } from "./useEmailSender";
 
 const EmailHtmlEditor: React.FC = () => {
   const { mode } = useThemeMode();

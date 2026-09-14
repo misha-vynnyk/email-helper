@@ -54,8 +54,8 @@ function italicLinks(htmlContent: string, tok: SimpleTokens): string {
     const text = inner.replace(/<[^>]+>/g, "");
 
     // Extract leading/trailing spaces to correctly place them OUTSIDE the link tag
-    const leadingSpaceMatch = text.match(/^([\s ]*)/);
-    const trailingSpaceMatch = text.match(/([\s ]*)$/);
+    const leadingSpaceMatch = text.match(/^(\s*)/);
+    const trailingSpaceMatch = text.match(/(\s*)$/);
 
     const leadingSpaces = leadingSpaceMatch ? leadingSpaceMatch[1] : "";
     const trailingSpaces = trailingSpaceMatch ? trailingSpaceMatch[1] : "";
@@ -96,8 +96,8 @@ function italicLinks(htmlContent: string, tok: SimpleTokens): string {
     }
 
     if (colorUtils.isLinkColor(color)) {
-      const leadingSpaceMatch = innerText.match(/^([\s ]*)/);
-      const trailingSpaceMatch = innerText.match(/([\s ]*)$/);
+      const leadingSpaceMatch = innerText.match(/^(\s*)/);
+      const trailingSpaceMatch = innerText.match(/(\s*)$/);
 
       const leadingSpaces = leadingSpaceMatch ? leadingSpaceMatch[1] : "";
       const trailingSpaces = trailingSpaceMatch ? trailingSpaceMatch[1] : "";
@@ -124,8 +124,8 @@ function linksStyles(htmlContent: string, tok: SimpleTokens): string {
     if (!color) return match;
 
     if (colorUtils.isLinkColor(color)) {
-      const leadingSpaceMatch = innerText.match(/^([\s ]*)/);
-      const trailingSpaceMatch = innerText.match(/([\s ]*)$/);
+      const leadingSpaceMatch = innerText.match(/^(\s*)/);
+      const trailingSpaceMatch = innerText.match(/(\s*)$/);
 
       const leadingSpaces = leadingSpaceMatch ? leadingSpaceMatch[1] : "";
       const trailingSpaces = trailingSpaceMatch ? trailingSpaceMatch[1] : "";

@@ -1,10 +1,10 @@
+import { buildSimpleTemplates } from "../config/templates";
+import { mergeSimpleTokens, tokens } from "../config/tokens";
+import { formatHtml, formatMjml } from "../formatter";
 import { profile as alphaoneProfile } from "../profiles/alphaone";
 import { profile as defaultProfile } from "../profiles/default";
 import { profile as redProfile } from "../profiles/red";
 import { profile as tttProfile } from "../profiles/ttt";
-import { buildSimpleTemplates } from "../config/templates";
-import { mergeSimpleTokens, tokens } from "../config/tokens";
-import { formatHtml, formatMjml } from "../formatter";
 
 const PROFILES = [
   { name: "default", tok: mergeSimpleTokens(tokens, defaultProfile) },

@@ -9,15 +9,15 @@ import { Copy as CopyIcon,X as CloseIcon } from "lucide-react";
 import React, { useContext, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
-import { EmailSenderContext } from "../../emailSender/EmailSenderContext";
-import { useThemeMode } from "../../theme/ThemeContext";
+import { EmailSenderContext } from "../../emailSender/useEmailSender";
+import { useThemeMode } from "../../theme/useThemeMode";
 import { EmailTemplate, TEMPLATE_CATEGORIES, TemplateCategory } from "../../types/template";
 import { createCodeMirrorTheme } from "../../utils/codemirrorTheme";
 import { preloadImages } from "../../utils/imageUrlReplacer";
 import { getTemplateContent, removeTemplate, syncTemplate, updateTemplate } from "../utils/templateApi";
 import { templateContentCache } from "../utils/templateContentCache";
 import Modal from "./Modal";
-import { PreviewConfig } from "./PreviewSettings";
+import { PreviewConfig } from "./previewConfig";
 import TemplateCard from "./TemplateCard";
 import TemplatePreviewDialog from "./TemplatePreviewDialog";
 

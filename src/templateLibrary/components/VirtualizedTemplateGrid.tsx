@@ -10,7 +10,7 @@ import { useMemo } from "react";
 import { VirtualList } from "../../components/VirtualList";
 import { useContainerDimensions } from "../../hooks";
 import { EmailTemplate } from "../../types/template";
-import { PreviewConfig } from "./PreviewSettings";
+import { PreviewConfig } from "./previewConfig";
 import TemplateItem from "./TemplateItem";
 
 interface VirtualizedTemplateGridProps {

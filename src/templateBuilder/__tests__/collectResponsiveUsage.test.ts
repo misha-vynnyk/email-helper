@@ -1,6 +1,6 @@
 import { collectResponsiveUsage } from "../render/collectResponsiveUsage";
-import { createDefaultSectionBlock, createDefaultTextBlock, type BuilderNode } from "../types";
 import { nodeMap } from "../testSupport/nodeMap";
+import { type BuilderNode,createDefaultSectionBlock, createDefaultTextBlock } from "../types";
 
 describe("collectResponsiveUsage", () => {
   it("returns empty sets when nothing on the canvas opts into anything", () => {

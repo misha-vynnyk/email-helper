@@ -1,7 +1,8 @@
 import { Loader2, Mail } from "lucide-react";
 import React, { lazy, Suspense } from "react";
 
-import { EmailSenderProvider, useEmailSender } from "../../emailSender/EmailSenderContext";
+import { EmailSenderProvider } from "../../emailSender/EmailSenderContext";
+import { useEmailSender } from "../../emailSender/useEmailSender";
 
 // Lazy load email components for better performance
 const EmailCredentialsForm = lazy(() => import("../../emailSender/EmailCredentialsForm"));

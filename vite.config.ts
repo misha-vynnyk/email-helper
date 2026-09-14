@@ -28,6 +28,10 @@ export default defineConfig(() => {
             proxy.on("error", () => {});
           },
         },
+        "/easter-eggs": {
+          target: `http://127.0.0.1:${backendPort}`,
+          changeOrigin: true,
+        },
       },
     },
     resolve: {

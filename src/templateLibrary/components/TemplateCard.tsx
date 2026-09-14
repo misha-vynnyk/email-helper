@@ -4,7 +4,7 @@ import React from "react";
 import { EmailTemplate } from "../../types/template";
 import { filterMarkedSections, keepOnlyMarkedSections } from "../utils/htmlSectionFilter";
 import { getCategoryIcon } from "../utils/templateCategoryIcons";
-import { PreviewConfig } from "./PreviewSettings";
+import { PreviewConfig } from "./previewConfig";
 
 /**
  * Props for the TemplateCard component.

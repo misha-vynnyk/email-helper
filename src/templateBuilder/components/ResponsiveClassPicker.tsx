@@ -1,7 +1,7 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 
-import { RESPONSIVE_BREAKPOINT_PX, RESPONSIVE_TIER_ORDER, UTILITY_CLASS_CATALOG, type ResponsiveTier, type UtilityClassEntry } from "../responsiveUtilityCatalog";
+import { RESPONSIVE_BREAKPOINT_PX, RESPONSIVE_TIER_ORDER, type ResponsiveTier, UTILITY_CLASS_CATALOG, type UtilityClassEntry } from "../responsiveUtilityCatalog";
 import { updateResponsiveClassNames, useBuilderNode } from "../state/builderStore";
 
 const TIER_LABEL: Record<ResponsiveTier, string> = { base: "Up to", sm: "Small — up to", xs: "Extra small — up to" };

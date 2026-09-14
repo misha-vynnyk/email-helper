@@ -23,6 +23,10 @@ files:
   - automation/**
   - "!automation/README.md"
   - "!automation/upload.bat"
+  # Local-only easter egg (vendored third-party game assets, gitignored) — must
+  # never ship inside the packaged desktop app, only ever served from a local dev/
+  # source checkout via server/index.js.
+  - "!server/easter-eggs/**"
   - "!**/*.map"
   - "!**/*.md"
   - "!server/node_modules/.cache/**"

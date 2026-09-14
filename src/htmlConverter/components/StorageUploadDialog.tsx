@@ -10,7 +10,8 @@ import { copyToClipboard } from "../utils/clipboard";
 import type { OcrAnalyzeResult } from "../utils/imageAnalysis";
 import type { ImageAiAnalysis } from "../utils/ocrUiTypes";
 import FileListItem from "./FileListItem";
-import { toShortPath,UploadResults } from "./UploadResults";
+import { toShortPath } from "./toShortPath";
+import { UploadResults } from "./UploadResults";
 
 interface StorageUploadDialogProps {
   open: boolean;

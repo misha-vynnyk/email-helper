@@ -1,8 +1,8 @@
 import { Check, ChevronDown, ChevronUp, Copy } from "lucide-react";
 import { useState } from "react";
 
-import { buildMarkers } from "../markers";
 import { DEFAULT_UI_SETTINGS } from "../hooks/useHtmlConverterSettings";
+import { buildMarkers } from "../markers";
 
 function CopyChip({ text, display }: { text: string; display?: string }) {
   const [copied, setCopied] = useState(false);

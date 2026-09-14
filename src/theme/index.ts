@@ -1,6 +1,7 @@
 /**
  * Theme exports
  */
-export { ThemeProvider, useThemeMode } from './ThemeContext';
-export type { ThemeMode } from './ThemeContext';
+export { ThemeProvider } from './ThemeContext';
 export { ThemeToggle } from './ThemeToggle';
+export type { ThemeMode } from './useThemeMode';
+export { useThemeMode } from './useThemeMode';

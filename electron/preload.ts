@@ -3,6 +3,7 @@ import { contextBridge, ipcRenderer } from "electron";
 contextBridge.exposeInMainWorld("electronAPI", {
   isElectron: true,
   serverPort: parseInt(process.env.ELECTRON_SERVER_PORT || "3001", 10),
+  isPackaged: process.env.ELECTRON_IS_PACKAGED === "true",
 
   getAppVersion: (): Promise<string> =>
     ipcRenderer.invoke("app:getVersion"),

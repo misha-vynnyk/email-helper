@@ -1,4 +1,4 @@
-import { formatLinearGradientCss, type ComputedBoxStyle } from "../styling/boxStyle";
+import { type ComputedBoxStyle,formatLinearGradientCss } from "../styling/boxStyle";
 import type { ContainerFill } from "../types";
 import { escapeHtml } from "./escape";
 

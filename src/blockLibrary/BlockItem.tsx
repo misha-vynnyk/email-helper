@@ -7,9 +7,9 @@ import { Code as CodeIcon, Copy as CopyIcon, Eye, Folder as FolderIcon, Minus, P
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 
+import { cn } from "../lib/utils";
 import Modal from "../templateLibrary/components/Modal";
 import { EmailBlock } from "../types/block";
-import { cn } from "../lib/utils";
 import { logger } from "../utils/logger";
 import { blockFileApi } from "./blockFileApi";
 import { updateCustomBlock } from "./blockLoader";

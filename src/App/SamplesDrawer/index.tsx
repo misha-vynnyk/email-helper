@@ -1,6 +1,7 @@
-import { Mail, Settings } from "lucide-react";
+import { Gamepad2, Mail, Settings, Star } from "lucide-react";
 import React from "react";
 
+import { getApiBase, isApiAvailable, isPackagedElectron } from "../../config/api";
 import { useSamplesDrawerOpen } from "../../contexts/AppState";
 import { useRegistrationStatus } from "../../hooks/useRegistrationStatus";
 import { cn } from "../../lib/utils";
@@ -16,6 +17,7 @@ export default function SamplesDrawer({ onSettingsOpen, onRegistrationOpen }: Sa
   const samplesDrawerOpen = useSamplesDrawerOpen();
   const { isRegistered, hasValidCredentials } = useRegistrationStatus();
   const credentialsBroken = !hasValidCredentials && isRegistered;
+  const showEasterEggs = isApiAvailable() && !isPackagedElectron();
 
   const handleFixedWheel = React.useCallback((event: React.WheelEvent) => {
     const scrollTarget = document.querySelector("[data-app-scroll='true']") as HTMLElement | null;
@@ -75,6 +77,26 @@ export default function SamplesDrawer({ onSettingsOpen, onRegistrationOpen }: Sa
             )}>
             {isRegistered ? <Settings className='w-4 h-4' /> : <Mail className='w-4 h-4' />}
           </button>
+          {showEasterEggs && (
+            <a
+              href={`${getApiBase()}/easter-eggs/mario`}
+              target='_blank'
+              rel='noopener noreferrer'
+              title='???'
+              className='flex items-center justify-center w-11 h-11 rounded-xl border border-border/50 shadow-soft transition-all duration-300 hover:-translate-y-0.5 hover:shadow-soft-lg text-primary bg-primary/10 hover:bg-primary/15'>
+              <Gamepad2 className='w-4 h-4' />
+            </a>
+          )}
+          {showEasterEggs && (
+            <a
+              href={`${getApiBase()}/easter-eggs/mario-complete`}
+              target='_blank'
+              rel='noopener noreferrer'
+              title='???'
+              className='flex items-center justify-center w-11 h-11 rounded-xl border border-border/50 shadow-soft transition-all duration-300 hover:-translate-y-0.5 hover:shadow-soft-lg text-primary bg-primary/10 hover:bg-primary/15'>
+              <Star className='w-4 h-4' />
+            </a>
+          )}
         </div>
       </div>
     </aside>

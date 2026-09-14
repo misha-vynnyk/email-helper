@@ -2,8 +2,8 @@ import { CheckSquare, Minus, Plus, Square } from "lucide-react";
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 
-import { supportsMjml } from "../hooks/useHtmlConverterLogic";
 import type { ConverterMode, StorageProfile } from "../hooks/useHtmlConverterLogic";
+import { supportsMjml } from "../hooks/useHtmlConverterLogic";
 import { BetaBadge, type BetaBadgeHandle } from "./BetaBadge";
 
 interface FileNamingBarProps {

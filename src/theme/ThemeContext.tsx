@@ -3,28 +3,11 @@
  * Manages theme mode (light/dark) state and provides it to the app
  */
 
-import React, { createContext, useContext, useEffect, useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { STORAGE_KEYS } from "../utils/storageKeys";
-
-export type ThemeMode = "light" | "dark";
-
-interface ThemeContextValue {
-  mode: ThemeMode;
-  toggleMode: () => void;
-  setMode: (mode: ThemeMode) => void;
-}
-
-const ThemeContext = createContext<ThemeContextValue | null>(null);
-
-export function useThemeMode() {
-  const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error("useThemeMode must be used within a ThemeProvider");
-  }
-  return context;
-}
+import { ThemeContext, ThemeContextValue, ThemeMode } from "./useThemeMode";
 
 interface ThemeProviderProps {
   children: React.ReactNode;

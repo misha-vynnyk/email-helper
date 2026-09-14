@@ -1,6 +1,6 @@
-import { decompressFrames, parseGIF, ParsedFrame } from "gifuct-js";
+import { decompressFrames, ParsedFrame,parseGIF } from "gifuct-js";
 
-import { composeGifFrames, DisposableFrame, ComposedGifFrame } from "./gifCompositor";
+import { ComposedGifFrame,composeGifFrames, DisposableFrame } from "./gifCompositor";
 
 export interface DecodedGif {
   width: number;

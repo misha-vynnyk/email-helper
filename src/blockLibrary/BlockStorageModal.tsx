@@ -3,7 +3,7 @@
  * Manage storage locations for new blocks with add/remove capabilities
  */
 
-import { FolderOpen, Plus as AddIcon, Star as StarIcon, Trash2 as DeleteIcon, Eye as VisibilityIcon, EyeOff as VisibilityOffIcon } from "lucide-react";
+import { Eye as VisibilityIcon, EyeOff as VisibilityOffIcon,FolderOpen, Plus as AddIcon, Star as StarIcon, Trash2 as DeleteIcon } from "lucide-react";
 import { useState } from "react";
 
 import { Note } from "../components/ui/primitives";

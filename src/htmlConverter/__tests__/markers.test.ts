@@ -1,5 +1,5 @@
-import { formatHtmlDefault as formatHtml } from "../testHelpers/simpleFormatHtml";
 import { buildMarkers, getHighlightTokens } from "../markers";
+import { formatHtmlDefault as formatHtml } from "../testHelpers/simpleFormatHtml";
 
 describe("markers registry", () => {
   it("будує повний список маркерів", () => {

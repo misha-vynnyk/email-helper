@@ -4,8 +4,8 @@
  * re-encodes it to the user's target format/quality afterward.
  */
 
-import { rectToPixels } from "./cropMath";
 import { CropRect } from "../types";
+import { rectToPixels } from "./cropMath";
 
 export async function applyCropToImage(file: File, crop: CropRect): Promise<File> {
   const bitmap = await createImageBitmap(file);

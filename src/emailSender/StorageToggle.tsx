@@ -3,7 +3,7 @@ import React from "react";
 
 import { cardClass, Note, NoteTone, SectionHeader } from "../components/ui/primitives";
 import { cn } from "../lib/utils";
-import { useEmailSender } from "./EmailSenderContext";
+import { useEmailSender } from "./useEmailSender";
 
 type StorageMode = "localStorage" | "env" | "state";
 

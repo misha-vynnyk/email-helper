@@ -68,6 +68,11 @@ figma-to-html/
 # (own nested git repo, not project source — see AGENTS.md inside it)
 claude-memory-compiler/
 
+# Easter egg: vendored third-party game assets (original NES sprites/soundtrack) —
+# kept out of git deliberately, served locally only via server/index.js, never built
+# into the Vite public/ output or the GitHub Pages demo
+server/easter-eggs/
+
 # Hooks config wiring Claude Code to the personal memory-compiler above —
 # paths only resolve on machines that have claude-memory-compiler/ cloned locally
 .claude/settings.json

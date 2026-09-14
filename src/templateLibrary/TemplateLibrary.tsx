@@ -8,7 +8,8 @@ import React, { useEffect, useState } from "react";
 
 import { LocalOnlyBadge } from "../components/LocalOnlyBadge";
 import { TemplateCategory } from "../types/template";
-import PreviewSettings, { loadPreviewConfig, PreviewConfig } from "./components/PreviewSettings";
+import { loadPreviewConfig, PreviewConfig } from "./components/previewConfig";
+import PreviewSettings from "./components/PreviewSettings";
 import TemplateStorageModal from "./components/TemplateStorageModal";
 import VirtualizedTemplateGrid from "./components/VirtualizedTemplateGrid";
 import { getTemplateContent } from "./utils/templateApi";

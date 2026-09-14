@@ -20,7 +20,8 @@ jest.mock("../useFigmaImportFolder", () => ({
   }),
 }));
 
-import FigmaImportPanel, { slugifyFileName } from "../FigmaImportPanel";
+import { slugifyFileName } from "../buildDocuments";
+import FigmaImportPanel from "../FigmaImportPanel";
 
 // jsdom's File has no .text() (unlike every real browser) — polyfill via FileReader, same as
 // FigmaImportDropzone.test.tsx.

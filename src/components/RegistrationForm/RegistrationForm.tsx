@@ -2,9 +2,9 @@ import { CheckCircle2, Eye, EyeOff, KeyRound, Mail, Save, ShieldCheck, SquareArr
 import React, { useState } from "react";
 import { toast } from "react-toastify";
 
-import Modal from "../../templateLibrary/components/Modal";
 import { triggerRegistrationStatusUpdate } from "../../hooks/useRegistrationStatus";
 import { cn } from "../../lib/utils";
+import Modal from "../../templateLibrary/components/Modal";
 import { logger } from "../../utils/logger";
 
 interface RegistrationFormProps {

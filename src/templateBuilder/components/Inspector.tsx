@@ -1,6 +1,6 @@
 import { useBuilderNode } from "../state/builderStore";
 import { useSelectedId } from "../state/selectionStore";
-import { isContainerNode, type BuilderLeafBlock, type BuilderNode } from "../types";
+import { type BuilderLeafBlock, type BuilderNode,isContainerNode } from "../types";
 import { ButtonBlockEditor } from "./ButtonBlockEditor";
 import { DividerBlockEditor } from "./DividerBlockEditor";
 import { ImageBlockEditor } from "./ImageBlockEditor";

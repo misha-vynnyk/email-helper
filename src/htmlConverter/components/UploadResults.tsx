@@ -3,15 +3,6 @@ import React from "react";
 
 import type { UploadResult } from "../types";
 
-function toShortPath(url: string): string {
-  try {
-    const u = new URL(url);
-    return u.pathname.startsWith("/") ? u.pathname.slice(1) : u.pathname;
-  } catch {
-    return url;
-  }
-}
-
 interface UploadResultsProps {
   results: UploadResult[];
   copiedUrl: string | null;
@@ -74,5 +65,3 @@ export const UploadResults: React.FC<UploadResultsProps> = ({ results, copiedUrl
     </div>
   );
 };
-
-export { toShortPath };

@@ -1,6 +1,6 @@
 import { buildDocumentHtml } from "../render/buildDocumentHtml";
-import { createDefaultImageBlock, createDefaultRowBlock, createDefaultRowColumnBlock, createDefaultSectionBlock, createDefaultShellConfig, createDefaultTextBlock, type ReadyMadeBlock } from "../types";
 import { nodeMap } from "../testSupport/nodeMap";
+import { createDefaultImageBlock, createDefaultRowBlock, createDefaultRowColumnBlock, createDefaultSectionBlock, createDefaultShellConfig, createDefaultTextBlock, type ReadyMadeBlock } from "../types";
 
 describe("buildDocumentHtml", () => {
   it("applies gapPx as padding-bottom on every section child except the last", () => {

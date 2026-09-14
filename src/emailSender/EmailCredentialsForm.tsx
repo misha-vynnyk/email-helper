@@ -3,8 +3,8 @@ import React from "react";
 
 import { cardClass, inputClass, Note, SectionHeader } from "../components/ui/primitives";
 import { cn } from "../lib/utils";
-import { useEmailSender } from "./EmailSenderContext";
 import { StorageToggle } from "./StorageToggle";
+import { useEmailSender } from "./useEmailSender";
 
 function Field({
   label,

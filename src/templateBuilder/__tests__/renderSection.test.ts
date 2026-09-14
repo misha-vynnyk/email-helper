@@ -1,6 +1,6 @@
 import { renderSection } from "../render/renderSection";
-import { createDefaultRowBlock, createDefaultRowColumnBlock, createDefaultSectionBlock, createDefaultShellConfig, createDefaultTextBlock } from "../types";
 import { nodeMap } from "../testSupport/nodeMap";
+import { createDefaultRowBlock, createDefaultRowColumnBlock, createDefaultSectionBlock, createDefaultShellConfig, createDefaultTextBlock } from "../types";
 
 const shell = createDefaultShellConfig();
 

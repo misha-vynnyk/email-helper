@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { EmailTemplate } from "../../types/template";
 import { filterMarkedSections, keepOnlyMarkedSections } from "../utils/htmlSectionFilter";
 import Modal from "./Modal";
-import { PreviewConfig } from "./PreviewSettings";
+import { PreviewConfig } from "./previewConfig";
 import ResizablePreview from "./ResizablePreview";
 import ResponsiveToolbar from "./ResponsiveToolbar";
 

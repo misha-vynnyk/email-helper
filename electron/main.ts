@@ -239,8 +239,9 @@ app.whenReady().then(async () => {
     console.error("❌ Embedded server failed to start:", err.message);
     return 3001; // fallback — renderer will show an error when API calls fail
   });
-  // Make the actual port available to the preload script before the window loads
+  // Make the actual port (and packaged/dev status) available to the preload script before the window loads
   process.env.ELECTRON_SERVER_PORT = String(serverPort);
+  process.env.ELECTRON_IS_PACKAGED = String(app.isPackaged);
   createWindow();
 
   app.on("activate", () => {

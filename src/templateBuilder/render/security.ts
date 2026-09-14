@@ -17,6 +17,7 @@ export function sanitizeFontFamily(fontFamily: string): string {
 // strip ASCII tab/LF/CR from anywhere in a URL before parsing it (WHATWG URL spec), so
 // "java\tscript:alert(1)" is executed as javascript: by the browser even though the scheme word
 // itself is split by a control character. A leading-only strip doesn't catch that.
+// eslint-disable-next-line no-control-regex -- \x00-\x1f deliberately strips ASCII control chars from hrefs, see comment above
 const HREF_WHITESPACE_AND_CONTROL_CHARS = /[\s\x00-\x1f]/g;
 const DANGEROUS_HREF_SCHEME = /^(javascript|data|vbscript|file):/i;
 
