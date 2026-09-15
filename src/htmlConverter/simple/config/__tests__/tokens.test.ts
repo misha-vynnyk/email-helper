@@ -169,6 +169,7 @@ describe("red profile", () => {
         "blockWrapTag",
         "headlineWrapTag",
         "headlineFontSize",
+        "italicTag",
         "button",
         "footerPaddingTopHtml",
         "footerPaddingBottomHtml",

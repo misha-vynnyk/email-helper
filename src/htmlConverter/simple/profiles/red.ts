@@ -42,6 +42,9 @@ export const profile: SimpleTokensOverride = {
   blockWrapTag: "span",
   headlineWrapTag: "strong",
   headlineFontSize: "24px",
+  // Confirmed with the user: the original standalone script (not present in this repo)
+  // used <i> for italic, unlike default/ttt/alphaone which all confirmed use <em>.
+  italicTag: "i",
   button: { height: "53", outerPadding: "3px 4px", innerPadding: "10px 20px", className: "base-button", radius: "12px" },
   footerPaddingTopHtml: "25px",
   // Explicit in the original (not tied to blockPaddingV=16px), same shape as the rightSideImg quirk above.

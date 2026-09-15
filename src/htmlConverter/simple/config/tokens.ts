@@ -41,6 +41,13 @@ export interface SimpleTokens {
   blockWrapTag: "span" | "div";
   headlineWrapTag: "strong" | "b";
   headlineFontSize: string;
+  /**
+   * Tag used for italic inline text. "em" everywhere except Red — confirmed against
+   * git history of the three original pre-unification forks (commits 8aa8714, 3314470):
+   * default/ttt always used <em>, never <i>. Red is ported from a standalone script not
+   * present in this repo; the user confirmed it needs <i> specifically.
+   */
+  italicTag: "em" | "i";
 
   button: {
     height: string;
@@ -129,6 +136,7 @@ export type SimpleTokensOverride = {
   blockWrapTag?: SimpleTokens["blockWrapTag"];
   headlineWrapTag?: SimpleTokens["headlineWrapTag"];
   headlineFontSize?: string;
+  italicTag?: SimpleTokens["italicTag"];
   button?: Partial<SimpleTokens["button"]>;
   footerPaddingTopHtml?: string;
   footerPaddingBottomHtml?: string;
@@ -151,6 +159,7 @@ export function mergeSimpleTokens(base: SimpleTokens, override: SimpleTokensOver
     blockWrapTag: override.blockWrapTag ?? base.blockWrapTag,
     headlineWrapTag: override.headlineWrapTag ?? base.headlineWrapTag,
     headlineFontSize: override.headlineFontSize ?? base.headlineFontSize,
+    italicTag: override.italicTag ?? base.italicTag,
     button: { ...base.button, ...override.button },
     footerPaddingTopHtml: override.footerPaddingTopHtml ?? base.footerPaddingTopHtml,
     footerPaddingBottomHtml: override.footerPaddingBottomHtml ?? base.footerPaddingBottomHtml,
@@ -176,6 +185,7 @@ export const tokens: SimpleTokens = {
   blockWrapTag: "span",
   headlineWrapTag: "strong",
   headlineFontSize: "22px",
+  italicTag: "em",
   button: { height: "51", outerPadding: "3px 5px", innerPadding: "9px 15px", className: "btn-edit-p", radius: "10px" },
   footerPaddingTopHtml: "34px",
   footerPaddingBottomHtml: "14px",
