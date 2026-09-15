@@ -191,6 +191,23 @@
     color: #1d4ed8;
   }
 
+  /* Greeting-phrase highlighting ("Dear Reader," etc. — useGreetingHighlighter). Red,
+     distinct from the amber marker highlight above so the two never look alike. */
+  ::highlight(hc-greeting) {
+    background-color: rgba(220, 38, 38, 0.28);
+    color: #991b1b;
+  }
+
+  /* Same invert(1) hue-rotate(180deg) subtlety as hc-marker above — this raw value is
+     chosen to look red-on-dark AFTER that filter, not to be red on its own. Verified
+     empirically against real Chromium rendering (swatch comparison), not computed —
+     the filter matrix isn't a simple hue rotation, so guessing from theory alone
+     produced a visibly cyan result on the first pass. */
+  .dark ::highlight(hc-greeting) {
+    background-color: rgba(242, 20, 12, 0.35);
+    color: #8c0a06;
+  }
+
   /* Visual structure for heading markers when "Підсвічування позначок" is on.
      Typography + border only for the heading itself: no color/background-color,
      so the dark-mode invert and the transparent-background rule stay unaffected

@@ -19,6 +19,7 @@ export type UiSettings = {
   oneBrSymbol: string;
   editorSelectionToolbar: boolean;
   editorMarkerHighlight: boolean;
+  editorGreetingHighlight: boolean;
   editorHotkeys: boolean;
   browserExecutablePath: string;
   formatHtmlOnDownload: boolean;
@@ -38,6 +39,7 @@ export const DEFAULT_UI_SETTINGS: UiSettings = {
   oneBrSymbol: SYMBOLS.ONE_BR,
   editorSelectionToolbar: false,
   editorMarkerHighlight: false,
+  editorGreetingHighlight: false,
   editorHotkeys: false,
   browserExecutablePath: "",
   formatHtmlOnDownload: true,

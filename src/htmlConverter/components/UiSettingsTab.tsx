@@ -103,6 +103,7 @@ export const UiSettingsTab: React.FC<UiSettingsTabProps> = ({ ui, setUi, uploadM
         <div className='space-y-3'>
           <Row id='editorSelectionToolbar' label='Тулбар при виділенні'   badge hint='Плаваюча панель маркерів над виділеним текстом'                          checked={ui.editorSelectionToolbar} onCheckedChange={(v) => set("editorSelectionToolbar", v)} />
           <Row id='editorMarkerHighlight'  label='Підсвічування позначок' badge hint='Маркери (i-r-s, ftr-s, § …) виділяються кольором у редакторі'            checked={ui.editorMarkerHighlight}  onCheckedChange={(v) => set("editorMarkerHighlight", v)} />
+          <Row id='editorGreetingHighlight' label='Підсвічування привітань' badge hint='Знайдені привітання ("Dear Reader," тощо) виділяються червоним у редакторі — текст не змінюється' checked={ui.editorGreetingHighlight} onCheckedChange={(v) => set("editorGreetingHighlight", v)} />
           <Row id='editorHotkeys'          label='Гарячі клавіші'         badge hint='⌘/Ctrl+⌥+1/4/5/6 — заголовки, ⌘/Ctrl+⌥+0 — звичайний текст, ⌘/Ctrl+⇧+Enter — перенос' checked={ui.editorHotkeys}          onCheckedChange={(v) => set("editorHotkeys", v)} />
         </div>
       </section>

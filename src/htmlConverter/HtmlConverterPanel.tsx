@@ -12,6 +12,7 @@ import { Header } from "./components/Header";
 import UploadHistory from "./components/UploadHistory";
 import { useEditorHotkeys } from "./hooks/internal/useEditorHotkeys";
 import { useEditorImageDrop } from "./hooks/internal/useEditorImageDrop";
+import { useGreetingHighlighter } from "./hooks/internal/useGreetingHighlighter";
 import { useMarkerHighlighter } from "./hooks/internal/useMarkerHighlighter";
 import { useHtmlConverterLogic } from "./hooks/useHtmlConverterLogic";
 import { useIsDesktop } from "./hooks/useIsDesktop";
@@ -36,6 +37,7 @@ export default function HtmlConverterPanel() {
 
   // Editor enhancements (opt-in via settings)
   useMarkerHighlighter({ editorRef, enabled: ui.editorMarkerHighlight, oneBrSymbol: ui.oneBrSymbol });
+  useGreetingHighlighter({ editorRef, enabled: ui.editorGreetingHighlight });
   useEditorHotkeys({ editorRef, enabled: ui.editorHotkeys, oneBrSymbol: ui.oneBrSymbol });
 
   // Image drag-and-drop — always on, not an opt-in beta toggle (base capability like paste)
