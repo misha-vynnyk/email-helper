@@ -82,6 +82,39 @@ describe("prettyPrintHtml", () => {
     expect(output).toMatch(/Line two after single break\s*\n\s*<br><br>\s*\n\s*New paragraph after double break/);
   });
 
+  // Regression (real-world report): Prettier's html printer reflows the content of ANY
+  // element that doesn't fit printWidth onto its own indented lines — correct for
+  // structural markup, but a long bold/italic/underlined sentence (<b>/<strong>/<em>/<i>/
+  // <u>) got split across 3 lines (open tag, text, close tag) even though it should stay
+  // a single, un-reflowed run since its content isn't whitespace-normalized elsewhere in
+  // the pipeline the way <a> content is (an edge space here can be meaningful).
+  describe("keeps decorative inline tags (<b>/<strong>/<em>/<i>/<u>) on one line, unlike structural tags", () => {
+    it("does not split a long <b> across multiple lines, and introduces no extra whitespace", async () => {
+      const longBold =
+        "<b>“Steam, electricity, and computers each gave societies decades to adapt; AI may give us a few years to catch up this time.”</b>";
+      const input = `<div style="max-width:600px;">${longBold}</div>`;
+      const output = await prettyPrintHtml(input);
+      expect(output).toContain(longBold);
+    });
+
+    it("preserves a meaningful trailing space inside <b> right before an adjacent <em>, byte for byte", async () => {
+      const input =
+        '<div style="max-width:600px;"><b>“Steam, electricity, and computers each gave societies decades to adapt; AI may give us </b>' +
+        "<em>only a few years.</em></div>";
+      const output = await prettyPrintHtml(input);
+      expect(output).toContain(
+        '<b>“Steam, electricity, and computers each gave societies decades to adapt; AI may give us </b><em>only a few years.</em>',
+      );
+    });
+
+    it("still lets a long structural <div>/<td> wrap normally (regression guard)", async () => {
+      const input =
+        '<div style="max-width:600px;"><div style="font-family:Arial;font-size:16px;line-height:1.5;padding:20px 30px;color:#000000;background-color:#ffffff;">Body text</div></div>';
+      const output = await prettyPrintHtml(input);
+      expect(output).toContain("\n");
+    });
+  });
+
   it("falls back to the original string if Prettier throws", async () => {
     const input = "<div><p>unclosed";
     const output = await prettyPrintHtml(input);

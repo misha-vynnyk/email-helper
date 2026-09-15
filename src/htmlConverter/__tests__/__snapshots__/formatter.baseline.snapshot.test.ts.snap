@@ -272,7 +272,7 @@ Line after break
                              <tr>
                                <td style=\\"width:562px;\\">
                                  <a href=\\"urlhere\\" target=\\"_blank\\">
-                                   <img alt=\\"Video preview\\" src=\\"https://alphaonest.com/\\" style=\\"border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;font-size:13px;\\" width=\\"562\\" height=\\"auto\\" />
+                                   <img alt=\\"Video preview\\" src=\\"https://alphaonest.com/\\" style=\\"border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;max-width: 562px;font-size:13px;\\" width=\\"562\\" height=\\"auto\\" />
                                  </a>
                                </td>
                              </tr>
@@ -644,7 +644,7 @@ Line after break
                              <tr>
                                <td style=\\"width:550px;\\">
                                  <a href=\\"urlhere\\" target=\\"_blank\\">
-                                   <img alt=\\"Video preview\\" src=\\"https://storage.5th-elementagency.com/\\" style=\\"border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;font-size:13px;\\" width=\\"550\\" height=\\"auto\\" />
+                                   <img alt=\\"Video preview\\" src=\\"https://storage.5th-elementagency.com/\\" style=\\"border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;max-width: 550px;font-size:13px;\\" width=\\"550\\" height=\\"auto\\" />
                                  </a>
                                </td>
                              </tr>
@@ -1016,7 +1016,7 @@ Line after break
                              <tr>
                                <td style=\\"width:564px;\\">
                                  <a href=\\"urlhere\\" target=\\"_blank\\">
-                                   <img alt=\\"Video preview\\" src=\\"https://reagstr.com/\\" style=\\"border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;font-size:13px;\\" width=\\"564\\" height=\\"auto\\" />
+                                   <img alt=\\"Video preview\\" src=\\"https://reagstr.com/\\" style=\\"border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;max-width: 564px;font-size:13px;\\" width=\\"564\\" height=\\"auto\\" />
                                  </a>
                                </td>
                              </tr>
@@ -1389,7 +1389,7 @@ Line after break
                              <tr>
                                <td style=\\"width:550px;\\">
                                  <a href=\\"urlhere\\" target=\\"_blank\\">
-                                   <img alt=\\"Video preview\\" src=\\"https://ogfinstorage.com/\\" style=\\"border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;font-size:13px;\\" width=\\"550\\" height=\\"auto\\" />
+                                   <img alt=\\"Video preview\\" src=\\"https://ogfinstorage.com/\\" style=\\"border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;max-width: 550px;font-size:13px;\\" width=\\"550\\" height=\\"auto\\" />
                                  </a>
                                </td>
                              </tr>

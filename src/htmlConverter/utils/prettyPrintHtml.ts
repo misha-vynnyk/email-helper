@@ -20,7 +20,29 @@ function loadPrettier() {
 export async function prettyPrintHtml(html: string): Promise<string> {
   try {
     const { format, htmlPlugin } = await loadPrettier();
-    let formatted = await format(html, {
+
+    // Prettier's html printer reflows the content of ANY element that doesn't fit
+    // printWidth onto its own indented lines — fine for structural markup (<table>/<tr>/
+    // <td>/<div>/<p>, which is what makes deeply nested email markup readable), but wrong
+    // for a decorative inline run (<b>/<strong>/<em>/<i>/<u>, e.g. a long bold/italic
+    // sentence): that content isn't whitespace-normalized elsewhere in the pipeline the
+    // way <a> content is (see the <a>-specific cleanup below) and can legitimately end
+    // with a real trailing space before the next inline element (e.g. "give us "
+    // immediately followed by "<em>only a few years.</em>") — there is no way to tell,
+    // from Prettier's output alone, which of its reflow newlines represent that real
+    // space and which are pure reflow padding it inserted where there was none at all.
+    // Swap each decorative element for a single whitespace-free placeholder token BEFORE
+    // Prettier ever sees it, so it physically cannot split one internally, then restore
+    // the exact original markup byte-for-byte afterward.
+    const decorativeTagPattern = /<(b|strong|em|i|u)\b[^>]*>[\s\S]*?<\/\1>/gi;
+    const savedDecorative: string[] = [];
+    const withPlaceholders = html.replace(decorativeTagPattern, (match) => {
+      const token = `\x02DECOR${savedDecorative.length}\x03`;
+      savedDecorative.push(match);
+      return token;
+    });
+
+    let formatted = await format(withPlaceholders, {
       parser: "html",
       plugins: [htmlPlugin],
       printWidth: 120,
@@ -59,6 +81,9 @@ export async function prettyPrintHtml(html: string): Promise<string> {
       const cleanContent = content.replace(/\s+/g, " ").trim();
       return `${startTag}${cleanContent}${endTag}`;
     });
+
+    // eslint-disable-next-line no-control-regex -- \x02/\x03 are deliberate sentinel bytes marking saved decorative-tag placeholders
+    formatted = formatted.replace(/\x02DECOR(\d+)\x03/g, (_m, i) => savedDecorative[+i] ?? "");
 
     return formatted;
   } catch (error) {

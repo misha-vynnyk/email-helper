@@ -426,7 +426,7 @@ export function buildSimpleTemplates(tok: SimpleTokens): { htmlTemplates: Simple
                              <tr>
                                <td style="width:${w}px;">
                                  <a href="${tok.placeholderHref}" target="_blank">
-                                   <img alt="Video preview" src="${tok.storageUrl}" style="border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;font-size:13px;" width="${w}" height="auto" />
+                                   <img alt="Video preview" src="${tok.storageUrl}" style="border:0;display:block;outline:none;text-decoration:none;height:auto;width:100%;max-width: ${w}px;font-size:13px;" width="${w}" height="auto" />
                                  </a>
                                </td>
                              </tr>

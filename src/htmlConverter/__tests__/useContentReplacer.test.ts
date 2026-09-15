@@ -1,3 +1,6 @@
+import { buildSimpleTemplates } from "../simple/config/templates";
+import { mergeSimpleTokens, tokens } from "../simple/config/tokens";
+import { profile as defaultProfile } from "../simple/profiles/default";
 import { capImageWidthsInContent, replaceAltsInContent } from "../utils/contentReplacer";
 
 const HTML_IMG_PATTERN = /(<img[^>]+src=["'])([^"']+)(["'][^>]*>)/gi;
@@ -120,5 +123,66 @@ describe("capImageWidthsInContent", () => {
     const widthAttrs = [...result.replaced.matchAll(/width="(\d+)"/g)].map((m) => m[1]);
     expect(widthAttrs).toEqual(["230", "600", "600"]);
     expect(result.count).toBe(1);
+  });
+
+  // Regression (real-world report): the Simple converter's MJML wrapImg template's own
+  // <img style="..."> never declared a max-width at all (only the HTML template did) — so
+  // this function's SECOND replacement (the one that caps `max-width:Npx` in the style)
+  // silently found nothing to touch for MJML output. Only the HTML `width` attribute got
+  // capped, which most CSS-aware email clients ignore in favor of the style's own width —
+  // so the real-width cap effectively never constrained the MJML output's actual rendered
+  // size, even though `capped.count` still reported success.
+  it("regression: MJML wrapImg's own style carries max-width, so real-width capping actually constrains it (not just the width attribute)", () => {
+    const tok = mergeSimpleTokens(tokens, defaultProfile);
+    const tmpl = buildSimpleTemplates(tok);
+    const mjmlBlock = tmpl.mjmlTemplates.wrapImg("");
+
+    expect(mjmlBlock).toContain(`max-width: ${tok.wrapImg.widthMjml}px;`);
+
+    const result = capImageWidthsInContent(mjmlBlock, MJML_PATTERN, [200]);
+    expect(result.count).toBe(1);
+    expect(result.replaced).toContain('width="200"');
+    expect(result.replaced).toContain("max-width: 200px;");
+  });
+
+  // Regression (real-world report, follow-up): the MJML wrapImg template also wraps the
+  // <img> in its OWN `<td style="width:Npx;">` cell (matching genuine MJML-compiler output
+  // conventions) — a width value that lives entirely OUTSIDE the matched <img> tag, so the
+  // img-scoped capping above never touched it even after the style/attribute fix. Without
+  // this, real-width capping would shrink the image itself while its containing table cell
+  // stayed at the original, larger width — image and container out of sync.
+  it("regression: also syncs the MJML wrapImg's wrapping <td style=\"width:Npx;\"> to the capped width", () => {
+    const tok = mergeSimpleTokens(tokens, defaultProfile);
+    const tmpl = buildSimpleTemplates(tok);
+    const mjmlBlock = tmpl.mjmlTemplates.wrapImg("");
+
+    const result = capImageWidthsInContent(mjmlBlock, MJML_PATTERN, [200]);
+    expect(result.replaced).toContain('<td style="width:200px;">');
+    expect(result.replaced).not.toContain(`<td style="width:${tok.wrapImg.widthMjml}px;">`);
+  });
+
+  it("does not touch a wrapping <td> when nothing needed capping (no upscale, e.g. real width unknown)", () => {
+    const tok = mergeSimpleTokens(tokens, defaultProfile);
+    const tmpl = buildSimpleTemplates(tok);
+    const mjmlBlock = tmpl.mjmlTemplates.wrapImg("");
+
+    const result = capImageWidthsInContent(mjmlBlock, MJML_PATTERN, [undefined]);
+    expect(result.count).toBe(0);
+    expect(result.replaced).toBe(mjmlBlock);
+    expect(result.replaced).toContain(`<td style="width:${tok.wrapImg.widthMjml}px;">`);
+  });
+
+  it("matches multiple images' wrapping <td> widths positionally, even when they share the same original value", () => {
+    // Two MJML wrapImg blocks back to back, both starting at the same declared width —
+    // guards the cursor-advancing lookup against patching the SAME (first) <td> twice
+    // instead of each image's own cell in document order.
+    const tok = mergeSimpleTokens(tokens, defaultProfile);
+    const tmpl = buildSimpleTemplates(tok);
+    const content = tmpl.mjmlTemplates.wrapImg("") + tmpl.mjmlTemplates.wrapImg("");
+
+    const result = capImageWidthsInContent(content, MJML_PATTERN, [200, 300]);
+    expect(result.count).toBe(2);
+    const tdWidths = [...result.replaced.matchAll(/<td style="width:(\d+)px;">/g)].map((m) => m[1]);
+    expect(tdWidths).toEqual(["200", "300"]);
   });
 });
