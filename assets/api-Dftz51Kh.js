@@ -1,0 +1,1 @@
+import"./logger-BJWAVfa2.js";var e=()=>typeof window<`u`&&window.electronAPI?.isElectron?`http://localhost:${window.electronAPI?.serverPort??3001}`:``,t=()=>typeof window<`u`&&!!window.electronAPI?.isElectron&&!!window.electronAPI?.isPackaged,n=()=>!!(typeof window<`u`&&window.electronAPI?.isElectron);export{n,t as r,e as t};
