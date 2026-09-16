@@ -62,7 +62,9 @@ describe("classifyTable — single-cell", () => {
     const table = makeTable([[cell]]);
     const result = classifyTable(table);
     expect(result?.kind).toBe("buttonBand");
-    expect((result?.props as Record<string, unknown>)["href"]).toBe("https://example.com");
+    // The real source href is used only to detect that this cell IS a button — the
+    // rendered href is always the placeholder, never the source doc's real URL.
+    expect((result?.props as Record<string, unknown>)["href"]).toBe(tokens.placeholderHref);
   });
 
   // No border declared in the source → don't invent one; a light-bg cell with no
@@ -1306,6 +1308,7 @@ describe("classifyTable — button fullWidth ratio", () => {
     const result = classifyTable(table, undefined, undefined, undefined, 624);
     expect(result?.kind).toBe("buttonBand");
     expect((result?.props as Record<string, unknown>)["fullWidth"]).toBe(false);
+    expect((result?.props as Record<string, unknown>)["href"]).toBe(tokens.placeholderHref);
   });
 
   it("dark-cell findHref-promoted button: full-width ratio renders full-width", () => {
@@ -1315,6 +1318,19 @@ describe("classifyTable — button fullWidth ratio", () => {
     const result = classifyTable(table, undefined, undefined, undefined, 624);
     expect(result?.kind).toBe("buttonBand");
     expect((result?.props as Record<string, unknown>)["fullWidth"]).toBe(true);
+    expect((result?.props as Record<string, unknown>)["href"]).toBe(tokens.placeholderHref);
+  });
+
+  // Regression: a real Google Docs "button" (dark <td> with a centered <a href="real-url">
+  // wrapping bold white text, no <h5> marker) must never leak the source doc's real URL —
+  // the findHref-promoted branch used to pass the real href straight into buttonBand.props.
+  it("dark-cell findHref-promoted button: real source href is replaced with the placeholder, never leaked", () => {
+    const cell = makeCell({ bg: "#0f172a", children: [makePara("Learn How to Apply Now →", "https://financebuzz.com")] });
+    const table = makeTable([[cell]]);
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("buttonBand");
+    expect((result?.props as Record<string, unknown>)["href"]).toBe(tokens.placeholderHref);
+    expect((result?.props as Record<string, unknown>)["href"]).not.toBe("https://financebuzz.com");
   });
 
   // [spacer][button][spacer]: self-contained — ratio is against the ROW's own total width,

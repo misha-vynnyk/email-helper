@@ -201,6 +201,17 @@ describe("fromDom — UL list", () => {
     const lineText = p.lines[0].map((r) => r.text).join("");
     expect(lineText).toBe("Apple");
   });
+
+  // Regression: <p> can't nest inside <p>, so multiple <p> inside one <li> is GDocs'
+  // way of encoding a multi-line list item — collectRuns used to concatenate them
+  // directly with no separator ("AБ") since there's no literal <br> between them.
+  it("multiple <p> inside one <li> become separate lines, not glued together", () => {
+    const result = nodes("<ul><li><p>A</p><p>Б</p></li></ul>");
+    const p = result[0] as Paragraph;
+    expect(p.lines).toHaveLength(2);
+    expect(p.lines[0].map((r) => r.text).join("")).toBe("A");
+    expect(p.lines[1].map((r) => r.text).join("")).toBe("Б");
+  });
 });
 
 describe("fromDom — OL list", () => {

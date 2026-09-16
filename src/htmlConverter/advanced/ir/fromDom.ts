@@ -23,6 +23,10 @@ interface Ctx {
 
 const LINE_BREAK = "\n";
 
+// Tags whose presence as a collectRuns child implies a line boundary (see call site below) —
+// in practice only reachable via <p>/<h*> siblings nested inside one <li>.
+const BLOCK_BOUNDARY_TAGS = new Set(["P", "H1", "H2", "H3", "H4", "H5", "H6", "DIV"]);
+
 // Size role comes ONLY from the tag — inline font-size on spans is document noise
 // (GDocs serializes the full computed style on every run) and is deliberately never
 // read: px values are always the size tokens (body/small/headline/cell in tokens.ts).
@@ -119,6 +123,17 @@ function collectRuns(el: Element | Node, ctx: Ctx, tok: Tokens): Run[] {
     }
     // Skip block-level elements that shouldn't appear inside inline context
     if (tag === "TABLE") continue;
+
+    // A block-level tag (most commonly multiple <p> siblings inside one <li> — <p> can't
+    // nest inside <p>/<h*>, so this only ever fires for that case) implies a line boundary
+    // even with no literal <br> between them — without this, collectRuns just concatenates
+    // their text directly (e.g. "A"+"Б" → "AБ"). Emitting a LINE_BREAK here reuses the
+    // existing splitIntoLines/joinLinesWithSpace pipeline (the same one a real <br> already
+    // goes through), so downstream (e.g. a list item) joins the lines back with a space
+    // instead of gluing them — no new merge mechanism needed.
+    if (BLOCK_BOUNDARY_TAGS.has(tag) && runs.length > 0 && runs[runs.length - 1].text !== LINE_BREAK) {
+      runs.push({ text: LINE_BREAK });
+    }
 
     const style = parseStyle(child.getAttribute("style") ?? "");
     const childCtx: Ctx = { ...ctx };

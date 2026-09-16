@@ -447,6 +447,35 @@ describe("buildTemplates — statsGrid gridBorder", () => {
   });
 });
 
+// gridInlineBlockThreshold (commit 199736e) previously had only incidental coverage via
+// one e2e snapshot — dedicated tests on the boundary itself, added per TODO #10 in the
+// advanced-converter-status wiki page.
+describe("buildTemplates — statsGrid gridInlineBlockThreshold", () => {
+  const cellsOf = (n: number) => Array.from({ length: n }, (_, i) => ({ innerHtml: `cell ${i}` }));
+
+  it("n at or below the threshold (default 3) stays fixed side-by-side — no inline-block, no class", () => {
+    const html = tmpl.statsGrid(cellsOf(3), { n: 3 });
+    expect(html).not.toContain("display:inline-block");
+    expect(html).not.toContain(`class="${tokens.classes.inlineCell}"`);
+  });
+
+  it("n above the threshold (default 3) wraps — inline-block + class on every cell", () => {
+    const html = tmpl.statsGrid(cellsOf(4), { n: 4 });
+    const cellCount = (html.match(/display:inline-block/g) ?? []).length;
+    expect(cellCount).toBe(4);
+    expect((html.match(new RegExp(`class="${tokens.classes.inlineCell}"`, "g")) ?? []).length).toBe(4);
+  });
+
+  it("the boundary itself is driven by the token, not a hardcoded 3", () => {
+    const tok = mergeTokens(tokens, { layout: { gridInlineBlockThreshold: 5 } });
+    const tmplTuned = buildTemplates(tok);
+    // 4 columns: wraps under the default threshold (3) but must NOT wrap under this
+    // profile's raised threshold (5) — proves the check reads tok.layout, not a literal.
+    const html = tmplTuned.statsGrid(cellsOf(4), { n: 4 });
+    expect(html).not.toContain("display:inline-block");
+  });
+});
+
 // ── Horizontal inset when nested inside an alertBand/calloutLeft container (see
 // AlertBandProps.tables / render/toEmailHtml.ts's buildImageOnlyRows) — shared by every
 // grid/row template that can be embedded this way.

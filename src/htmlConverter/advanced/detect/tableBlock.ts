@@ -441,7 +441,10 @@ export function classifySingleCell(
     const href = lines.length <= 1 && buttons.length === 0 && bands.length === 0 && images.length === 0 && tables.length === 0
       ? findHref(cell, tok) : null;
     if (href) {
-      return { kind: "buttonBand", props: { runs: joinLinesWithSpace(lines), href, bg, border: cell.border, fullWidth: isFullWidthButton(ownWidthPx, ambientWidthPx, tok) } };
+      // href here is only the detection signal ("is there exactly one real link in this
+      // cell") — the rendered button always gets the placeholder, same as the two sibling
+      // buttonBand branches above; the source doc's real URL must never leak into output.
+      return { kind: "buttonBand", props: { runs: joinLinesWithSpace(lines), href: tok.placeholderHref, bg, border: cell.border, fullWidth: isFullWidthButton(ownWidthPx, ambientWidthPx, tok) } };
     }
     return {
       kind: "alertBand",

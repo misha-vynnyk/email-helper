@@ -235,6 +235,15 @@ describe("convertAdvanced — paragraph gaps and the pairwise zero-margin signal
     expect(list).not.toContain("<br><br>");
     expect(list.match(/<br>/g)).toHaveLength(2);
   });
+
+  // Regression: <p> can't legally nest inside <p>, so a real <ul><li> whose item spans
+  // multiple <p> is GDocs' way of encoding a multi-line list item. collectRuns used to
+  // concatenate the <p>s' text directly with no separator, producing "AБ" instead of "A Б".
+  it("joins multiple <p> inside one real <li> with a space, not glued together", () => {
+    const { html } = convertAdvancedDetailed("<ul><li><p>A</p><p>Б</p></li></ul>");
+    expect(html).toContain("A Б");
+    expect(html).not.toContain("AБ");
+  });
 });
 
 // ── tables.html fixture ───────────────────────────────────────────────────────
@@ -326,8 +335,9 @@ describe("convertAdvanced — button-dark fixture", () => {
     html = convertAdvanced(loadFixture("button-dark.html"));
   });
 
-  it("renders a buttonBand with the signup link", () => {
-    expect(html).toContain("https://example.com/signup");
+  it("renders a buttonBand with the placeholder href, never the source doc's real link", () => {
+    expect(html).not.toContain("https://example.com/signup");
+    expect(html).toContain('href="urlhere"');
     expect(html).toContain("Create your account");
   });
 

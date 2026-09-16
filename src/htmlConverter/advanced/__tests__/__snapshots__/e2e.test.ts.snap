@@ -87,7 +87,7 @@ exports[`convertAdvanced — button-dark fixture snapshot — default profile 1`
                     <tr>
                       <td class=\\"btn-edit-p\\" height=\\"51\\" align=\\"center\\" bgcolor=\\"#28b628\\"
                         style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:bold;line-height:1.5;text-align:center;color:#ffffff; padding:3px 5px;background-color:#28b628;border-radius:10px;\\">
-                        <a href=\\"https://example.com/signup\\" target=\\"_blank\\"
+                        <a href=\\"urlhere\\" target=\\"_blank\\"
                           style=\\"text-decoration:none;padding:9px 15px;display:block;font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:bold;line-height:1.5;text-align:center;color:#ffffff;background-color:#28b628;border-radius:10px;\\">
                           <b>Create your account</b>
                         </a>
