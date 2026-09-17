@@ -218,64 +218,64 @@ export function replaceAllEmojisAndSymbolsExcludingHTML(htmlContent: string): st
 }
 
 export function mergeSimilarTags(htmlContent: string): string {
-  let prevLen = 0;
-  while (htmlContent.length !== prevLen) {
-    prevLen = htmlContent.length;
-    // Merge IDENTICAL adjacent blocks (same exact opening tag) for p and h1-h6
-    // This perfectly joins equivalently styled blocks (e.g. <p text-align: center>) across multiple lines.
-    // Skips merging when the leading block contains an <img>: wrapTextInSpan's image
-    // substitution (htmlTemplates.wrapImg) splices in its own "close current row / open a
-    // new one" markup at the <img>'s position, assuming the image sits alone in its own
-    // block. If trailing content (e.g. a link paragraph) got merged onto the same block,
-    // that trailing content ends up stranded after the splice, outside the block's own
-    // align/style wrapper — e.g. a centered link paragraph silently rendering left-aligned
-    // when Google Docs happens to give it the exact same <p style="..."> as the image above it.
-    const exactMatchRegex = /(<(p|h[1-6])(?:\s+[^>]*|)>)((?:(?!<\/\2>)[\s\S])*?)<\/\2>\s*(?:<br\s*\/?>\s*)*\1/gi;
-    htmlContent = htmlContent.replace(exactMatchRegex, (match, openTag, _tagName, innerContent) => {
-      if (/<img\b/i.test(innerContent)) return match;
-      return `${openTag}${innerContent}[[BR_SEP]]`;
-    });
-  }
-
-  // Merge adjacent h6 tags that share the same text-align value (or both have none).
-  // This handles footer text from Google Docs where tags are split but differ only in minor
-  // style attributes like margin-bottom. Skips pairs with mismatched text-align (e.g. center
-  // vs left) to avoid the layout bug the deprecated generic merge caused.
+  // Merge adjacent p/h1-h6 blocks that share the same text-align value (or both have none).
+  // Google Docs routinely splits what's visually one paragraph/heading into multiple blocks
+  // that differ only in incidental style (margin-top/bottom, padding, declaration order) while
+  // sharing the same alignment — e.g. a link-wrapped headline paragraph followed by a plain-text
+  // paragraph with the same centering but a different margin-bottom/padding. Comparing only
+  // text-align (rather than requiring byte-identical opening tags) is what lets those merge.
+  // Mismatched text-align (e.g. center vs left) still blocks the merge — a fully generic
+  // same-tag merge previously shipped and broke footer layout by merging h6 lines with
+  // different alignment.
+  //
+  // Skips merging when the leading block contains an <img>: wrapTextInSpan's image
+  // substitution (htmlTemplates.wrapImg) splices in its own "close current row / open a
+  // new one" markup at the <img>'s position, assuming the image sits alone in its own
+  // block. If trailing content (e.g. a link paragraph) got merged onto the same block,
+  // that trailing content ends up stranded after the splice, outside the block's own
+  // align/style wrapper.
   //
   // GDocs also frequently puts every footer line in its own <tr><td>...</td></tr> row, so the
-  // gap between </h6> and the next <h6> is table-row plumbing rather than bare whitespace/<br>.
-  // This pass runs before processStyles() strips table tags (see formatter.ts), so the gap has
-  // to be tolerated here. ROW_BOUNDARY matches "close this row / open the next" with permissive
-  // attributes (same tolerance style as attrs1/attrs2 above); TABLE_GAP additionally allows
-  // hopping over exactly one spacer row (e.g. a lone <br>) that contains no <h6>, so a blank
-  // row between two footer lines doesn't break the merge.
-  {
-    const getAlign = (attrs: string) =>
-      (attrs.match(/text-align:\s*(\w+)/i) || [])[1]?.toLowerCase() ?? "";
-    const ROW_BOUNDARY = "<\\/td>\\s*<\\/tr>\\s*<tr(?:\\s+[^>]*)?>\\s*<td(?:\\s+[^>]*)?>";
-    // A "spacer row" we tolerate hopping over must be genuinely blank content only
-    // (whitespace/<br>/&nbsp;) — anything else (e.g. a stray <p>) is real content and must
-    // still break the merge, so this can't be a generic "no <h6>" wildcard.
-    const SPACER_ROW_CONTENT = "(?:\\s|<br\\s*\\/?>|&nbsp;)*";
-    const TABLE_GAP = `\\s*${ROW_BOUNDARY}\\s*(?:${SPACER_ROW_CONTENT}${ROW_BOUNDARY}\\s*)?`;
-    const GAP = `(?:\\s*(?:<br\\s*\\/?>\\s*)*|${TABLE_GAP})`;
-    const h6MergeRegex = new RegExp(`<h6([^>]*)>([\\s\\S]*?)<\\/h6>${GAP}<h6([^>]*)>`, "gi");
-    let matchFound = true;
-    let iterations = 0;
-    while (matchFound && iterations < 50) {
-      matchFound = false;
-      htmlContent = htmlContent.replace(
-        h6MergeRegex,
-        (_match, attrs1, innerContent, attrs2) => {
-          if (getAlign(attrs1) === getAlign(attrs2)) {
-            matchFound = true;
-            return `<h6${attrs1}>${innerContent}[[BR_SEP]]`;
-          }
-          return _match;
-        }
-      );
-      iterations++;
-    }
+  // gap between a closing tag and the next opening tag is sometimes table-row plumbing rather
+  // than bare whitespace/<br>. This pass runs before processStyles() strips table tags (see
+  // formatter.ts), so the gap has to be tolerated here. ROW_BOUNDARY matches "close this row /
+  // open the next" with permissive attributes; TABLE_GAP additionally allows hopping over
+  // exactly one spacer row (e.g. a lone <br>) that contains no matching tag, so a blank row
+  // between two lines doesn't break the merge.
+  // A style text-align always wins, but Mail.app/Safari-style paste sometimes marks a
+  // centered block with the legacy HTML `align="center"` attribute instead (see
+  // normalizeAlignAttribute in formatter.ts, which folds it into a style — but only in
+  // processStyles(), which runs AFTER this pass). Recognizing the bare attribute here too
+  // means a `<p align="center">` and a `<p style="text-align:center;">` still compare equal.
+  const getAlign = (attrs: string) => {
+    const styleAlign = attrs.match(/text-align:\s*(\w+)/i);
+    if (styleAlign) return styleAlign[1].toLowerCase();
+    const alignAttr = attrs.match(/\balign\s*=\s*["']?(\w+)["']?/i);
+    return alignAttr?.[1]?.toLowerCase() ?? "";
+  };
+  const ROW_BOUNDARY = "<\\/td>\\s*<\\/tr>\\s*<tr(?:\\s+[^>]*)?>\\s*<td(?:\\s+[^>]*)?>";
+  // A "spacer row" we tolerate hopping over must be genuinely blank content only
+  // (whitespace/<br>/&nbsp;) — anything else (e.g. a stray <p>) is real content and must
+  // still break the merge, so this can't be a generic "no matching tag" wildcard.
+  const SPACER_ROW_CONTENT = "(?:\\s|<br\\s*\\/?>|&nbsp;)*";
+  const TABLE_GAP = `\\s*${ROW_BOUNDARY}\\s*(?:${SPACER_ROW_CONTENT}${ROW_BOUNDARY}\\s*)?`;
+  const GAP = `(?:\\s*(?:<br\\s*\\/?>\\s*)*|${TABLE_GAP})`;
+  const mergeRegex = new RegExp(`<(p|h[1-6])([^>]*)>([\\s\\S]*?)<\\/\\1>${GAP}<\\1([^>]*)>`, "gi");
+
+  let matchFound = true;
+  let iterations = 0;
+  while (matchFound && iterations < 100) {
+    matchFound = false;
+    htmlContent = htmlContent.replace(
+      mergeRegex,
+      (match, tagName, attrs1, innerContent, attrs2) => {
+        if (/<img\b/i.test(innerContent)) return match;
+        if (getAlign(attrs1) !== getAlign(attrs2)) return match;
+        matchFound = true;
+        return `<${tagName}${attrs1}>${innerContent}[[BR_SEP]]`;
+      }
+    );
+    iterations++;
   }
 
   return htmlContent;

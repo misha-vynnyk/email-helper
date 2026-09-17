@@ -293,6 +293,50 @@ describe("htmlConverter utils", () => {
       expect(result).not.toContain("[[BR_SEP]]");
       expect(result).toBe(input);
     });
+
+    // Regression: GDocs gives consecutive same-alignment p/h1 blocks slightly different
+    // margin/padding (its "space before/after" model), which previously required a
+    // byte-identical opening tag to merge and so never matched real Docs paste.
+    it("should merge a link paragraph with the next plain-text paragraph despite differing margin/padding", () => {
+      const input =
+        '<p style="text-align: center;margin-top:0pt;margin-bottom:0pt;padding:0pt 0pt 6pt 0pt;">' +
+        '<a href="https://example.com"><span>Request Your FREE Guide</span></a></p>' +
+        '<p style="text-align: center;margin-top:0pt;margin-bottom:12pt;">' +
+        "<span>Free, with no obligation attached.</span></p>";
+      const result = mergeSimilarTags(input);
+      expect((result.match(/\[\[BR_SEP\]\]/g) || []).length).toBe(1);
+      expect((result.match(/<p/gi) || []).length).toBe(1);
+    });
+
+    it("should merge adjacent h1 headline lines despite differing margin-top", () => {
+      const input =
+        '<h1 style="margin-top:0pt;margin-bottom:0pt;"><span>America Just Crossed $40 Trillion in Debt</span></h1>' +
+        '<h1 style="margin-top:3pt;margin-bottom:0pt;"><span>(And the Interest Bill Just Passed Medicare)</span></h1>';
+      const result = mergeSimilarTags(input);
+      expect((result.match(/\[\[BR_SEP\]\]/g) || []).length).toBe(1);
+      expect((result.match(/<h1/gi) || []).length).toBe(1);
+    });
+
+    // Regression: Mail.app/Safari-style paste sometimes centers a block with the legacy
+    // `align="center"` HTML attribute instead of a `text-align:center` style. normalizeAlignAttribute
+    // (formatter.ts) folds that into a style, but only inside processStyles(), which runs AFTER
+    // mergeSimilarTags — so without recognizing the bare attribute here too, a `align="center"`
+    // paragraph and a `style="text-align:center"` paragraph would look mismatched and fail to merge.
+    it("should merge a legacy align=\"center\" attribute paragraph with a text-align:center style paragraph", () => {
+      const input =
+        '<p align="center"><a href="https://example.com">Link text</a></p>' +
+        '<p style="text-align:center;">Plain text</p>';
+      const result = mergeSimilarTags(input);
+      expect((result.match(/\[\[BR_SEP\]\]/g) || []).length).toBe(1);
+      expect((result.match(/<p/gi) || []).length).toBe(1);
+    });
+
+    it("should NOT merge an align=\"left\" paragraph with a text-align:right paragraph", () => {
+      const input = '<p align="left">Left text</p><p style="text-align:right;">Right text</p>';
+      const result = mergeSimilarTags(input);
+      expect(result).not.toContain("[[BR_SEP]]");
+      expect(result).toBe(input);
+    });
   });
 
   describe("replaceAllEmojisAndSymbolsExcludingHTML", () => {
