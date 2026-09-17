@@ -35,6 +35,16 @@ describe("mergeSimpleTokens", () => {
     expect(merged.color.button).toBe(tokens.color.button);
   });
 
+  it("has fixed red/green text-color tokens, inherited as-is since no profile overrides them yet", () => {
+    expect(tokens.color.red).toBe("#CC0000");
+    expect(tokens.color.green).toBe("#008000");
+    for (const profile of [defaultProfile, tttProfile, alphaoneProfile, redProfile]) {
+      const merged = mergeSimpleTokens(tokens, profile);
+      expect(merged.color.red).toBe(tokens.color.red);
+      expect(merged.color.green).toBe(tokens.color.green);
+    }
+  });
+
   it("replaces the fullStructure.spacer union wholesale when overridden (no partial merge across the two shapes)", () => {
     const merged = mergeSimpleTokens(tokens, {
       fullStructure: { spacer: { hasRows: false, verticalPaddingV: "1px" } },

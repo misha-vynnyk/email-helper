@@ -95,6 +95,56 @@ describe("simple converter unified formatter", () => {
         expect(result).not.toContain(`href="${tok.placeholderHref}"`);
       });
 
+      describe("preserveTextColors (experimental)", () => {
+        it("maps a bright red span to the fixed red token when the flag is on", () => {
+          const result = formatHtml('<p><span style="color: #FF0000;">Red Text</span></p>', tok, tmpl, undefined, true);
+          expect(result).toContain("Red Text");
+          expect(result).toContain(`color:${tok.color.red}`);
+          expect(result).not.toContain("#FF0000");
+        });
+
+        it("maps a muted/dark green span to the fixed green token when the flag is on", () => {
+          const result = formatHtml('<p><span style="color: #2F4F2F;">Green Text</span></p>', tok, tmpl, undefined, true);
+          expect(result).toContain("Green Text");
+          expect(result).toContain(`color:${tok.color.green}`);
+          expect(result).not.toContain("#2F4F2F");
+        });
+
+        it("carries the bucket color onto bold/italic/underline spans too", () => {
+          const result = formatHtml('<p><span style="color: #CC0000; font-weight: 700;">Bold Red</span></p>', tok, tmpl, undefined, true);
+          expect(result).toContain("Bold Red");
+          expect(result).toContain("<b");
+          expect(result).toContain(`color:${tok.color.red}`);
+        });
+
+        it("leaves grayscale/black text untouched even when the flag is on", () => {
+          const withFlag = formatHtml('<p><span style="color: #333333;">Gray Text</span></p>', tok, tmpl, undefined, true);
+          const withoutFlag = formatHtml('<p><span style="color: #333333;">Gray Text</span></p>', tok, tmpl);
+          expect(withFlag).toBe(withoutFlag);
+        });
+
+        it("leaves colors outside the red/green buckets untouched even when the flag is on", () => {
+          const withFlag = formatHtml('<p><span style="color: #FFA500;">Orange Text</span></p>', tok, tmpl, undefined, true);
+          const withoutFlag = formatHtml('<p><span style="color: #FFA500;">Orange Text</span></p>', tok, tmpl);
+          expect(withFlag).toBe(withoutFlag);
+        });
+
+        it("still converts blue text to a link (not a colored span) when the flag is on", () => {
+          const result = formatHtml('<p><span style="color: rgb(17,85,204);">Blue Link Text</span></p>', tok, tmpl, undefined, true);
+          expect(result).toContain("Blue Link Text");
+          expect(result).toContain(`href="${tok.placeholderHref}"`);
+          expect(result).not.toContain(`color:${tok.color.red}`);
+          expect(result).not.toContain(`color:${tok.color.green}`);
+        });
+
+        it("is a no-op (identical to today's output) when the flag is left off", () => {
+          const withoutArg = formatHtml('<p><span style="color: #FF0000;">Red Text</span></p>', tok, tmpl);
+          const explicitlyOff = formatHtml('<p><span style="color: #FF0000;">Red Text</span></p>', tok, tmpl, undefined, false);
+          expect(withoutArg).toBe(explicitlyOff);
+          expect(withoutArg).not.toContain(tok.color.red);
+        });
+      });
+
       // Regression (real-world report): the native-link regex used to require an
       // http(s):// href specifically. The captured href VALUE is never actually used
       // below — every link's real destination is discarded in favor of

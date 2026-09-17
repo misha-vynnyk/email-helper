@@ -119,3 +119,67 @@ export function isBlueish(color: string): boolean {
 export function isLinkColor(color: string): boolean {
   return isBlueish(color);
 }
+
+// Minimum channel spread (max-min, 0-255 scale) for a color to be considered "not gray/black/
+// white" at all — lower than isBlueish's own 30, since this classifier's job is to catch even
+// muted/dark reds and greens (e.g. #8B0000, #2F4F2F), not to conservatively rule out uncertainty.
+const CHROMA_THRESHOLD = 15;
+// Hue tolerance (degrees) around the two bucket centers. Green gets a wider window than red
+// because "green" covers a visually broader range (yellow-green to teal-adjacent) in casual use.
+const RED_HUE_TOLERANCE = 18;
+const GREEN_HUE_TOLERANCE = 30;
+const RED_HUE_CENTER = 0;
+const GREEN_HUE_CENTER = 120;
+// Above this normalized HSL lightness, a color reads as a pastel tint (e.g. pink, mint) rather
+// than "red"/"green" even when its hue sits right on the red/green center — without this, a
+// light pink (~hue 350°, very close to red's 0°) would misclassify as red.
+const MAX_LIGHTNESS_FOR_BUCKET = 0.75;
+
+function computeHueDegrees(r: number, g: number, b: number): number {
+  const rn = r / 255;
+  const gn = g / 255;
+  const bn = b / 255;
+  const max = Math.max(rn, gn, bn);
+  const min = Math.min(rn, gn, bn);
+  const delta = max - min;
+  if (delta === 0) return 0;
+
+  let hue: number;
+  if (max === rn) hue = ((gn - bn) / delta) % 6;
+  else if (max === gn) hue = (bn - rn) / delta + 2;
+  else hue = (rn - gn) / delta + 4;
+
+  hue *= 60;
+  if (hue < 0) hue += 360;
+  return hue;
+}
+
+function hueDistance(hue: number, center: number): number {
+  const diff = Math.abs(hue - center);
+  return Math.min(diff, 360 - diff);
+}
+
+/**
+ * Classifies a color as a "red" or "green" bucket for the simple converter's experimental
+ * text-color passthrough — matches by hue (not raw channel dominance) so a red-dominant color
+ * like orange (#FFA500) doesn't get mistaken for red. Grays/blacks/whites (low chroma) and
+ * pastel tints (high lightness, e.g. pink/mint) are excluded — they fall through to `null`
+ * exactly like any other unrecognized color (blue/purple/orange/teal/yellow/etc.).
+ */
+export function classifyColorBucket(color: string): "red" | "green" | null {
+  const rgb = parseColor(color);
+  if (!rgb) return null;
+
+  const { r, g, b } = rgb;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  if (max - min < CHROMA_THRESHOLD) return null;
+
+  const lightness = (max + min) / 2 / 255;
+  if (lightness > MAX_LIGHTNESS_FOR_BUCKET) return null;
+
+  const hue = computeHueDegrees(r, g, b);
+  if (hueDistance(hue, RED_HUE_CENTER) <= RED_HUE_TOLERANCE) return "red";
+  if (hueDistance(hue, GREEN_HUE_CENTER) <= GREEN_HUE_TOLERANCE) return "green";
+  return null;
+}

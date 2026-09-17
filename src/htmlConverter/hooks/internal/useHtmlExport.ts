@@ -35,6 +35,7 @@ interface UseHtmlExportProps {
   setDownloadFolder?: (folder: string) => void;
   oneBrSymbol?: string;
   formatHtmlOnDownload?: boolean;
+  preserveTextColors?: boolean;
 }
 
 export function useHtmlExport({
@@ -53,6 +54,7 @@ export function useHtmlExport({
   setDownloadFolder,
   oneBrSymbol,
   formatHtmlOnDownload = false,
+  preserveTextColors = false,
 }: UseHtmlExportProps) {
   const [previewHtml, setPreviewHtml] = useState("");
   const clearPreviewHtml = useCallback(() => setPreviewHtml(""), []);
@@ -172,7 +174,7 @@ export function useHtmlExport({
         simpleDefaultProfile;
       const simpleTok = mergeSimpleTokens(simpleTokens, simpleProfileOverride);
       const simpleTmpl = buildSimpleTemplates(simpleTok);
-      let formattedContent = formatHtml(editorContent, simpleTok, simpleTmpl, oneBrSymbol);
+      let formattedContent = formatHtml(editorContent, simpleTok, simpleTmpl, oneBrSymbol, preserveTextColors);
 
       if (Object.keys(uploadedUrlMap).length > 0) {
         const storageUrls = Object.values(uploadedUrlMap);
@@ -198,7 +200,7 @@ export function useHtmlExport({
       const message = error instanceof Error ? error.message : "Невідома помилка";
       addLog(`❌ Помилка експорту HTML: ${message}`);
     }
-  }, [addLog, editorRef, outputHtmlRef, outputMjmlRef, uploadedUrlMap, uploadedAltMap, uploadedWidthMap, setHasOutput, triggerResetReplacement, storageProfile, converterMode, rawPastedHtmlRef, oneBrSymbol]);
+  }, [addLog, editorRef, outputHtmlRef, outputMjmlRef, uploadedUrlMap, uploadedAltMap, uploadedWidthMap, setHasOutput, triggerResetReplacement, storageProfile, converterMode, rawPastedHtmlRef, oneBrSymbol, preserveTextColors]);
 
   const handleExportMJML = useCallback(() => {
     if (converterMode === "advanced") {
@@ -227,7 +229,7 @@ export function useHtmlExport({
         simpleDefaultProfile;
       const simpleTok = mergeSimpleTokens(simpleTokens, simpleProfileOverride);
       const simpleTmpl = buildSimpleTemplates(simpleTok);
-      let formattedContent = formatMjml(editorContent, simpleTok, simpleTmpl, oneBrSymbol);
+      let formattedContent = formatMjml(editorContent, simpleTok, simpleTmpl, oneBrSymbol, preserveTextColors);
 
       if (Object.keys(uploadedUrlMap).length > 0) {
         const storageUrls = Object.values(uploadedUrlMap);
@@ -252,7 +254,7 @@ export function useHtmlExport({
       const message = error instanceof Error ? error.message : "Невідома помилка";
       addLog(`❌ Помилка експорту MJML: ${message}`);
     }
-  }, [addLog, editorRef, outputMjmlRef, uploadedUrlMap, uploadedAltMap, uploadedWidthMap, setHasOutput, triggerResetReplacement, storageProfile, converterMode, oneBrSymbol]);
+  }, [addLog, editorRef, outputMjmlRef, uploadedUrlMap, uploadedAltMap, uploadedWidthMap, setHasOutput, triggerResetReplacement, storageProfile, converterMode, oneBrSymbol, preserveTextColors]);
 
   const downloadFile = useCallback(
     async (content: string, extension: string, fileName: string, approveNeeded: boolean) => {

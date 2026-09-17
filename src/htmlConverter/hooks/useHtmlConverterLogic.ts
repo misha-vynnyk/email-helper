@@ -192,6 +192,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
     setDownloadFolder: (folder) => settings.setUi((prev) => ({ ...prev, downloadFolder: folder })),
     oneBrSymbol: ui.oneBrSymbol,
     formatHtmlOnDownload: ui.formatHtmlOnDownload,
+    preserveTextColors: ui.preserveTextColors,
   });
 
   const handleDownloadHTML = useCallback(async () => {

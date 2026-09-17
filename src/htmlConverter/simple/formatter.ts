@@ -384,7 +384,19 @@ function normalizeAlignAttribute(htmlContent: string): string {
   });
 }
 
-function processStyles(htmlContent: string): string {
+// Experimental text-color passthrough (opt-in, off by default — see `preserveTextColors` on
+// formatHtml/formatMjml): resolves an input span's `color` to one of `tok.color.red`/`green`
+// when it classifies into one of those two buckets, or `null` for everything else (grayscale,
+// blue/link colors already handled by italicLinks/linksStyles above, or any other hue).
+function resolveBucketColor(style: string, tok: SimpleTokens, preserveTextColors: boolean): string | null {
+  if (!preserveTextColors) return null;
+  const color = getInlineStyleValue(style, "color");
+  if (!color || colorUtils.isLinkColor(color)) return null;
+  const bucket = colorUtils.classifyColorBucket(color);
+  return bucket ? tok.color[bucket] : null;
+}
+
+function processStyles(htmlContent: string, tok: SimpleTokens, preserveTextColors: boolean): string {
   htmlContent = normalizeAlignAttribute(htmlContent);
 
   // A raw <b> reaching here (flattenNestedFormatting only touches genuinely NESTED
@@ -409,6 +421,12 @@ function processStyles(htmlContent: string): string {
     return `<b>${inner}</b>`;
   });
 
+  // Sentinel-protected storage for color-only spans (no bold/italic/underline) produced below —
+  // mirrors the `savedLinks`/`\x02LINK\x03` placeholder technique in `italicLinks` above, since
+  // a bare `<span style="color:...">` would otherwise be destroyed by this function's own later
+  // catch-all span-strip (a few lines down from here).
+  const savedColorSpans: string[] = [];
+
   // Single-pass style detection: parse style once, emit correct semantic tag
   htmlContent = htmlContent.replace(/<span[^>]*style=["']([^"']*)["'][^>]*>(.*?)<\/span>/gi, (_match: string, style: string, inner: string) => {
     // An image never wants inline text formatting (bold/italic/underline) — wrapping it
@@ -420,15 +438,26 @@ function processStyles(htmlContent: string): string {
     const italic = /font-style:\s*italic/i.test(style);
     const underline = /text-decoration(?:-line)?\s*:[^;]*\bunderline\b/i.test(style);
 
-    if (bold && italic && underline) return `<em style="text-decoration: underline;font-weight: bold;">${inner}</em>`;
-    if (italic && underline) return `<em style="text-decoration: underline;">${inner}</em>`;
-    if (bold && italic) return `<b style="font-style: italic;">${inner}</b>`;
-    if (bold && underline) return `<b style="text-decoration: underline;">${inner}</b>`;
-    if (underline) return `<u>${inner}</u>`;
-    if (bold) return `<b>${inner}</b>`;
-    if (italic) return `<em>${inner}</em>`;
+    const resolvedColor = resolveBucketColor(style, tok, preserveTextColors);
+    const withColor = (tagStyle: string) => (resolvedColor ? (tagStyle ? `${tagStyle};color:${resolvedColor}` : `color:${resolvedColor}`) : tagStyle);
+    const styleAttr = (tagStyle: string) => (tagStyle ? ` style="${tagStyle}"` : "");
 
-    return inner; // No formatting — strip the span
+    if (bold && italic && underline) return `<em${styleAttr(withColor("text-decoration: underline;font-weight: bold;"))}>${inner}</em>`;
+    if (italic && underline) return `<em${styleAttr(withColor("text-decoration: underline;"))}>${inner}</em>`;
+    if (bold && italic) return `<b${styleAttr(withColor("font-style: italic;"))}>${inner}</b>`;
+    if (bold && underline) return `<b${styleAttr(withColor("text-decoration: underline;"))}>${inner}</b>`;
+    if (underline) return `<u${styleAttr(withColor(""))}>${inner}</u>`;
+    if (bold) return `<b${styleAttr(withColor(""))}>${inner}</b>`;
+    if (italic) return `<em${styleAttr(withColor(""))}>${inner}</em>`;
+
+    if (resolvedColor) {
+      // eslint-disable-next-line no-control-regex -- \x04/\x05 are deliberate sentinel bytes, matching the \x02/\x03 LINK convention above
+      const placeholder = `\x04COLOR${savedColorSpans.length}\x05`;
+      savedColorSpans.push(`<span style="color:${resolvedColor}">${inner}</span>`);
+      return placeholder;
+    }
+
+    return inner; // No formatting, no color — strip the span
   });
 
   // Normalize raw semantic tags from non-GDocs sources (plain web/Mail-app paste uses
@@ -510,6 +539,11 @@ function processStyles(htmlContent: string): string {
   htmlContent = htmlContent.replace(/<span[^>]*>/gi, "").replace(/<\/span>/gi, "");
   htmlContent = htmlContent.replace(/<b>\s*<\/b>/g, " ");
 
+  // Restore color-only spans saved above — must happen after the catch-all span-strip since
+  // that regex would otherwise destroy the very span this placeholder stands in for.
+  // eslint-disable-next-line no-control-regex -- \x04/\x05 sentinel bytes, see savedColorSpans above
+  htmlContent = htmlContent.replace(/\x04COLOR(\d+)\x05/g, (_, i) => savedColorSpans[+i] ?? "");
+
   return htmlContent;
 }
 
@@ -579,7 +613,7 @@ function wrapTextInBlock(htmlContent: string, templateFn: (content: string, decl
   return htmlContent;
 }
 
-export function formatHtml(editorContent: string, tok: SimpleTokens, tmpl: SimpleTemplates, oneBrSymbol?: string): string {
+export function formatHtml(editorContent: string, tok: SimpleTokens, tmpl: SimpleTemplates, oneBrSymbol?: string, preserveTextColors = false): string {
   let content = editorContent;
   content = content.replace(/<meta[^>]*>/gi, "");
   content = content.replace(/<br\b[^>]*>/gi, "<br>");
@@ -588,7 +622,7 @@ export function formatHtml(editorContent: string, tok: SimpleTokens, tmpl: Simpl
   content = italicLinks(content, tok);
   content = linksStyles(content, tok);
   content = htmlUtils.replaceAllEmojisAndSymbolsExcludingHTML(content);
-  content = processStyles(content);
+  content = processStyles(content, tok, preserveTextColors);
 
   // Block Wrappers
   content = applyTemplate(content, /<p[^>]*style="[^"]*text-align:\s*center[^"]*"[^>]*>([\s\S]*?)<\/p>/gi, tmpl.htmlTemplates.centerText);
@@ -623,7 +657,7 @@ export function formatHtml(editorContent: string, tok: SimpleTokens, tmpl: Simpl
   return content;
 }
 
-export function formatMjml(editorContent: string, tok: SimpleTokens, tmpl: SimpleTemplates, oneBrSymbol?: string): string {
+export function formatMjml(editorContent: string, tok: SimpleTokens, tmpl: SimpleTemplates, oneBrSymbol?: string, preserveTextColors = false): string {
   let content = editorContent;
   content = content.replace(/<meta[^>]*>/gi, "");
   content = content.replace(/<br\b[^>]*>/gi, "<br>");
@@ -632,7 +666,7 @@ export function formatMjml(editorContent: string, tok: SimpleTokens, tmpl: Simpl
   content = italicLinks(content, tok);
   content = linksStyles(content, tok);
   content = htmlUtils.replaceAllEmojisAndSymbolsExcludingHTML(content);
-  content = processStyles(content);
+  content = processStyles(content, tok, preserveTextColors);
 
   // Block Wrappers
   content = applyTemplate(content, /<p[^>]*style="[^"]*text-align:\s*center[^"]*"[^>]*>([\s\S]*?)<\/p>/gi, tmpl.mjmlTemplates.centerText);

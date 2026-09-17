@@ -1,4 +1,4 @@
-import { isBlueish, isLinkColor, parseColor } from "../utils/colorUtils";
+import { classifyColorBucket, isBlueish, isLinkColor, parseColor } from "../utils/colorUtils";
 
 describe("Smart Link Detection", () => {
   describe("parseColor", () => {
@@ -85,6 +85,44 @@ describe("Smart Link Detection", () => {
 
     it("should support !important without false negatives", () => {
       expect(isLinkColor("rgb(17, 85, 204) !important")).toBe(true);
+    });
+  });
+
+  describe("classifyColorBucket", () => {
+    it("identifies bright red and green", () => {
+      expect(classifyColorBucket("#FF0000")).toBe("red");
+      expect(classifyColorBucket("#00FF00")).toBe("green");
+    });
+
+    it("identifies muted/dark red and green", () => {
+      expect(classifyColorBucket("#8B0000")).toBe("red"); // dark red
+      expect(classifyColorBucket("#2F4F2F")).toBe("green"); // dark slate green
+    });
+
+    it("rejects grayscale and near-black/near-white", () => {
+      expect(classifyColorBucket("#000000")).toBeNull();
+      expect(classifyColorBucket("#FFFFFF")).toBeNull();
+      expect(classifyColorBucket("#808080")).toBeNull();
+      expect(classifyColorBucket("#1A1A1A")).toBeNull(); // GDocs near-black artifact
+    });
+
+    it("rejects blue/purple (handled separately as link colors)", () => {
+      expect(classifyColorBucket("#1155CC")).toBeNull();
+      expect(classifyColorBucket("#551A8B")).toBeNull();
+    });
+
+    it("rejects hues outside the red/green buckets", () => {
+      expect(classifyColorBucket("#FFA500")).toBeNull(); // orange
+      expect(classifyColorBucket("#FFFF00")).toBeNull(); // yellow
+      expect(classifyColorBucket("#008080")).toBeNull(); // teal
+    });
+
+    it("rejects pastel tints even when hue is near a bucket center", () => {
+      expect(classifyColorBucket("#FFC0CB")).toBeNull(); // pink — hue near red, but too light
+    });
+
+    it("returns null for unparseable colors", () => {
+      expect(classifyColorBucket("invalid")).toBeNull();
     });
   });
 });

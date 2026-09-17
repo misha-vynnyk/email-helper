@@ -71,6 +71,7 @@ export const UiSettingsTab: React.FC<UiSettingsTabProps> = ({ ui, setUi, uploadM
           <Row id='autoCloseUploadDialog' label='Авто-закриття після завантаження' checked={ui.autoCloseUploadDialog} onCheckedChange={(v) => set("autoCloseUploadDialog", v)} />
           <Row id='showApproveNeeded'     label='Показувати "Approve Needed"'      checked={ui.showApproveNeeded}     onCheckedChange={(v) => set("showApproveNeeded", v)} />
           <Row id='formatHtmlOnDownload'  label='Форматувати HTML при завантаженні' hint='Prettier-відступи у скачаному файлі — лише для читабельності коду, на рендер не впливає' checked={ui.formatHtmlOnDownload} onCheckedChange={(v) => set("formatHtmlOnDownload", v)} />
+          <Row id='preserveTextColors'    label='Перенесення кольору тексту'        badge hint='Експериментально: червоний і зелений текст переноситься у фіксований колір профілю в HTML/MJML; інші кольори (крім посилань) ігноруються, як і зараз' checked={ui.preserveTextColors} onCheckedChange={(v) => set("preserveTextColors", v)} />
         </div>
       </section>
 

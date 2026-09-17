@@ -18,6 +18,15 @@ export interface SimpleTokens {
   color: {
     link: string;
     button: string;
+    /**
+     * Fixed output colors for the experimental `preserveTextColors` text-color passthrough
+     * (see formatter.ts's `processStyles`) — a detected red/green input color always maps to
+     * one of these two values, never the raw source hex. No profile currently overrides these;
+     * they're new (not ported from a per-brand script), so the base values are the only ones
+     * that exist.
+     */
+    red: string;
+    green: string;
   };
   storageUrl: string;
   placeholderHref: string;
@@ -177,7 +186,7 @@ export function mergeSimpleTokens(base: SimpleTokens, override: SimpleTokensOver
 /** Base tokens — equal to the current default-fork values (default profile's override is `{}`). */
 export const tokens: SimpleTokens = {
   fontFamily: config.fontFamily,
-  color: { link: config.colors.link, button: config.colors.button },
+  color: { link: config.colors.link, button: config.colors.button, red: "#CC0000", green: "#008000" },
   storageUrl: config.storageUrl,
   placeholderHref: PLACEHOLDER_URL,
   blockPaddingV: "14px",
