@@ -4,7 +4,6 @@ import { getApiBase, isApiAvailable } from "../../config/api";
 import { getElectronAPI } from "../../hooks/useElectronAPI";
 import { STORAGE_PROVIDERS_CONFIG, STORAGE_URL_PREFIX, UPLOAD_CONFIG } from "../constants";
 import { ImageFormat, ProcessedImage, UploadResult, UploadSession } from "../types";
-import { copyToClipboard } from "../utils/clipboard";
 import { getFileExtension, getImageFormat, isCrossOrigin } from "../utils/imageUtils";
 import type { UploadMode } from "./useHtmlConverterLogic";
 
@@ -307,9 +306,6 @@ export function useImageUploader({ images, imagesSessionId, storageProvider, for
           });
 
           onUploadedAltsChange?.(altMap);
-
-          const urlsList = Object.values(uploadedUrls).join("\n");
-          copyToClipboard(urlsList);
         }
 
         const errorCount = results.filter((r) => !r.success).length;
@@ -433,9 +429,6 @@ export function useImageUploader({ images, imagesSessionId, storageProvider, for
           onReplaceUrls(uploadedUrls, imageWidths);
           setReplacementDone(true);
         }
-
-        const urlsList = Object.values(uploadedUrls).join("\n");
-        copyToClipboard(urlsList);
       }
 
       if (successCount === completed.length) {
