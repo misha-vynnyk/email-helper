@@ -5,7 +5,7 @@
 import { capImageWidth } from "../../utils/imageUtils";
 import { escapeHtml } from "../escape";
 import { isDarkBg } from "../ir/color";
-import type { Align, BorderSpec, Run } from "../ir/types";
+import type { Align, BorderSpec, Run, SizeRole } from "../ir/types";
 import type { Tokens } from "./tokens";
 import { tokens as defaultTokens } from "./tokens";
 
@@ -36,6 +36,13 @@ export interface AlertBandOpts {
   align?: "left" | "center" | "right";
   /** Plain flowing content (no nested buttons) — rendered as a single <td>. */
   innerHtml?: string;
+  /**
+   * Size role for `innerHtml` only (default "body" when absent, preserving every
+   * existing caller's behavior) — a lone same-bg paragraph (see AlertBandProps.textRows,
+   * the N=1 case) keeps its own headline/small role instead of always rendering at body
+   * size, same "one child needs no shared wrapper" principle as CalloutBoxOpts.innerHtml.
+   */
+  size?: SizeRole;
   /**
    * Present when the source cell has nested h5-button(s) (see AlertBandProps.buttons):
    * each segment becomes its own stacked <tr> instead of interleaving a bare button
@@ -544,7 +551,7 @@ ${indentHtml(itemsHtml, 6)}
     },
 
     alertBand(opts: AlertBandOpts): string {
-      const { innerHtml, segments, rows, bg, border, align = "left" } = opts;
+      const { innerHtml, segments, rows, bg, border, align = "left", size } = opts;
       const textColor = isDarkBg(bg, tok) ? tok.color.white : tok.color.black;
       const p = pad();
       const borderStyle = borderSpecToStyle(dropBgMatchingSides(border, bg), tok);
@@ -582,7 +589,10 @@ ${indentHtml(rowsHtml, 12)}
 </tr>`;
       }
 
-      const style = baseStyle({ align, color: textColor }, tok);
+      const fontSize = size === "headline" ? tok.font.headlinePx : size === "small" ? tok.font.smallPx : tok.font.bodyPx;
+      const fontWeight = size === "headline" ? "bold" : "normal";
+      const style = baseStyle({ align, color: textColor, fontSize, fontWeight }, tok);
+      const wrapTag = fontWeight === "bold" ? tok.tags.headlineWrap : tok.tags.blockWrap;
       const ph = tok.layout.alertBandPadH;
       const pv = tok.layout.alertBandPadV;
       return `<tr>
@@ -590,7 +600,9 @@ ${indentHtml(rowsHtml, 12)}
     <table align="center" border="0" bgcolor="${bg}" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;${borderStyle}" role="presentation">
       <tr>
         <td style="${style} padding-left:${ph}px;padding-right:${ph}px;padding-top:${pv}px;padding-bottom:${pv}px;">
-${indentHtml(wrapBlockStyle(innerHtml!, style, tok), 10)}
+          <${wrapTag} style="${style}">
+${indentHtml(innerHtml!, 12)}
+          </${wrapTag}>
         </td>
       </tr>
     </table>

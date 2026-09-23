@@ -551,5 +551,21 @@ export function fromDom(
     nodes.push(...after);
   }
 
+  if (nodes.length === 0) {
+    // No recognized child element yielded anything, and `root` itself was never tried —
+    // the loop above only recognizes specific ELEMENT tags among root's direct children
+    // and always skips bare TEXT_NODE children outright. A leaf container whose entire
+    // content is unwrapped text (no <p>/<span> at all) therefore vanishes silently: most
+    // commonly a `<td>text</td>` table cell or a `<div>text</div>` block. GDocs never
+    // emits this shape (cell/block text is always wrapped in <p>), but hand-authored HTML
+    // commonly does (e.g. a stat-tile "<td>Grow</td>", or a `<div>` used as a lightweight
+    // label). Recover it via the same per-child fallback used above, applied to `root`
+    // itself — parseParagraph returns null for a genuinely empty/decorative container
+    // (e.g. a spacer <td> or a marker-only <div>), so this is purely additive: it only
+    // recovers content nothing above already claimed, never duplicates it.
+    const p = parseParagraph(root, bg, tok);
+    if (p) nodes.push(p);
+  }
+
   return nodes;
 }

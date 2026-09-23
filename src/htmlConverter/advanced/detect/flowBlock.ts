@@ -113,6 +113,16 @@ export function classifyFlow(nodes: StructuralNode[], tok: Tokens = defaultToken
       }
     }
 
+    // A <p>/<h*> with its own background-color (not a wrapping colored <td> — GDocs'
+    // "select N paragraphs, apply paragraph shading" idiom) becomes a 1-row alertBand
+    // instead of a plain paragraph, which has no bg concept at render time at all (see
+    // AlertBandProps.textRows). pushMerged (classify.ts) merges consecutive same-bg
+    // rows into one shared band, same convention as bandStack for the table-cell case.
+    if (bg) {
+      result.push({ kind: "alertBand", props: { bg, align, lines: [], textRows: [{ size, align, lines, paraBreaks }] } });
+      continue;
+    }
+
     result.push({ kind: "paragraph", props: { lines, align, size, paraBreaks, tightNext, tightBefore, marginTopPt, marginBottomPt, gapBefore } });
   }
   return result;

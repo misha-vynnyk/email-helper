@@ -871,9 +871,9 @@ describe("classify — nbsp-padded pseudo-column paragraph → recordRow", () =>
     expect(result[0].kind).toBe("paragraph");
   });
 
-  it("does not fire when the paragraph has its own bg", () => {
+  it("does not fire when the paragraph has its own bg — routes to alertBand instead (see AlertBandProps.textRows)", () => {
     const withBg = classify([splitPara({ bg: "#000000" })]);
-    expect(withBg[0].kind).toBe("paragraph");
+    expect(withBg[0].kind).toBe("alertBand");
   });
 
   it("does not fire when the paragraph has a border — routes to the existing border handling instead", () => {

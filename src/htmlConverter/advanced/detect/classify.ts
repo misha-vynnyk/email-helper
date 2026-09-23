@@ -243,6 +243,26 @@ function pushMerged(result: ComponentNode[], comp: ComponentNode, tok: Tokens, w
     }
   }
 
+  // Consecutive flow-level paragraphs that each declared the SAME background-color
+  // directly on themselves (see AlertBandProps.textRows, classifyFlow) — GDocs' "select
+  // N paragraphs, apply paragraph shading" idiom. Unconditional merge (no isGapBoundary/§
+  // check, unlike the plain-paragraph merge above): a matching bg is already the author's
+  // "these belong in one band" signal, mirroring the same unconditional-merge convention
+  // already used for bandStack's table-cell-derived same-bg rows. Scoped tightly to
+  // textRows-only bands (never buttons/bands/images/tables/lines) so this never
+  // accidentally fuses with an unrelated table-cell-derived alertBand of the same color.
+  if (comp.kind === "alertBand" && last?.kind === "alertBand" &&
+      last.props.bg === comp.props.bg &&
+      last.props.textRows?.length && comp.props.textRows?.length &&
+      !last.props.buttons?.length && !last.props.bands?.length && !last.props.images?.length && !last.props.tables?.length &&
+      !comp.props.buttons?.length && !comp.props.bands?.length && !comp.props.images?.length && !comp.props.tables?.length) {
+    result[result.length - 1] = {
+      kind: "alertBand",
+      props: { ...last.props, textRows: [...last.props.textRows, ...comp.props.textRows] },
+    };
+    return;
+  }
+
   result.push(comp);
 }
 

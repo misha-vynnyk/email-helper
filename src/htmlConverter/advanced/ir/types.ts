@@ -235,6 +235,18 @@ export interface AlertBandProps {
    * which would lose the grid structure. Same `atLine` convention as `buttons`/`bands`.
    */
   tables?: { atLine: number; node: ComponentNode }[];
+  /**
+   * Consecutive flow-level paragraphs/headings that each declared the SAME
+   * background-color directly on themselves (GDocs' "select N paragraphs, apply
+   * paragraph shading" idiom — not a wrapping colored <td>, so classifySingleCell's
+   * table-cell path never sees this shape at all). Each keeps its own size role
+   * (body/headline/small) and alignment, rendered as its own row stacked flush inside
+   * the shared bg wrapper — the multi-role counterpart to `lines`, which assumes one
+   * uniform body-size block. Mutually exclusive with `lines`/`buttons`/`bands`/
+   * `images`/`tables`: those are all built from a single table cell's content; this is
+   * built by merging several already-classified paragraphs (see pushMerged, classify.ts).
+   */
+  textRows?: { size: SizeRole; align?: Align; lines: Run[][]; paraBreaks?: Set<number> }[];
   /** Text alignment from the source cell's paragraphs — defaults to left. */
   align?: Align;
 }

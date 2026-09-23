@@ -14,6 +14,7 @@ import {
   type GridOpts,
   type ImageOpts,
   imageRowHtml,
+  indentHtml,
   type ListOpts,
   type ParagraphOpts,
   type ProgressBarOpts,
@@ -329,6 +330,45 @@ export function renderNode(
       } else if (p.images?.length || p.tables?.length) {
         const rows = buildImageOnlyRows(p, tmpl, tok, textColor, p.align ?? "left", tok.layout.alertBandPadH);
         opts = { rows, bg: p.bg, border: p.border, align: p.align };
+      } else if (p.textRows?.length === 1) {
+        // A single same-bg row needs no shared wrapper — same "one child, skip the
+        // wrapper table" principle as CalloutBoxOpts.innerHtml's own single-paragraph
+        // fast path. The padding lives directly on this one row's <td> (tmpl.alertBand's
+        // plain-innerHtml branch already does exactly that); only its own size role rides
+        // along via AlertBandOpts.size so it doesn't default to body.
+        const row = p.textRows[0];
+        opts = { innerHtml: renderLines(row.lines, tok, textColor, row.paraBreaks), bg: p.bg, border: p.border, align: row.align ?? p.align, size: row.size };
+      } else if (p.textRows?.length) {
+        // 2+ consecutive same-bg paragraphs (see AlertBandProps.textRows) — each keeps
+        // its own size role, stacked flush (block padding only at the group's own top/
+        // bottom edge, matching the source's own zero-margin "select N lines, shade them"
+        // intent). All rows share ONE horizontal inset, so — same reasoning as the
+        // `segments` branch's shared side-padding wrapper, unlike `images`/`tables`'
+        // per-row padX (those genuinely can differ row to row) — the inset lives ONCE on
+        // a wrapper <td>+nested <table>, not repeated on every row.
+        const padX = tok.layout.alertBandPadH;
+        const lastIdx = p.textRows.length - 1;
+        const innerRowsHtml = p.textRows.map((row, i) => {
+          const fontSize = row.size === "headline" ? tok.font.headlinePx : row.size === "small" ? tok.font.smallPx : tok.font.bodyPx;
+          const fontWeight = row.size === "headline" ? "bold" : "normal";
+          const html = renderLines(row.lines, tok, textColor, row.paraBreaks);
+          return blockRow(html, {
+            align: row.align ?? p.align ?? "left",
+            color: textColor,
+            fontSize,
+            fontWeight,
+            padTop: i === 0 ? undefined : 0,
+            padBottom: i === lastIdx ? undefined : 0,
+          }, tok);
+        }).join("\n");
+        const wrapped = `<tr>
+  <td align="center" style="padding-left:${padX}px;padding-right:${padX}px;">
+    <table align="center" border="0" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;" role="presentation">
+${indentHtml(innerRowsHtml, 6)}
+    </table>
+  </td>
+</tr>`;
+        opts = { rows: [wrapped], bg: p.bg, border: p.border, align: p.align };
       } else {
         opts = { innerHtml: renderLines(p.lines, tok, textColor, p.paraBreaks), bg: p.bg, border: p.border, align: p.align };
       }
