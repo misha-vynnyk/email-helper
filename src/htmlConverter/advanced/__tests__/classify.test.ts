@@ -756,6 +756,18 @@ describe("classify — margin-sum boundary rule", () => {
     expect(breaks.has(1)).toBe(true);
   });
 
+  it("merges with a single <br> when the boundary SUM lands exactly on gapMarginThresholdPt (GDocs default 0/6pt paragraph style)", () => {
+    // Regression: GDocs' default paragraph style is margin-top:0/margin-bottom:6pt, which
+    // sums to exactly the current threshold. Plain multi-line prose pasted with that default
+    // style must still merge into a single <br>, not split into a <br><br> paragraph gap.
+    const result = classify([
+      marginPara("one", { marginTopPt: 0, marginBottomPt: T }),
+      marginPara("two", { marginTopPt: 0, marginBottomPt: T }),
+    ]);
+    expect(result).toHaveLength(1);
+    expect((result[0].props as Record<string, unknown>)["paraBreaks"]).toBeUndefined();
+  });
+
   it("undeclared margins on either side → conservative <br><br> gap", () => {
     const result = classify([
       marginPara("one", { marginBottomPt: 0 }),

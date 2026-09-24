@@ -22,9 +22,13 @@ export interface BoundaryCur {
  *   2. An author-typed blank line on the boundary (gapBefore: top-level <br> or an
  *      empty <p>) → GAP.
  *   3. Margin sum: prev margin-bottom + cur margin-top (both explicitly declared,
- *      pt) < tok.layout.gapMarginThresholdPt → LINE BREAK; at/above → GAP. GDocs
+ *      pt) <= tok.layout.gapMarginThresholdPt → LINE BREAK; above → GAP. GDocs
  *      "paragraph style" spacing (0–4pt per side) reads as adjacent lines in the
- *      document; deliberate section spacing (14pt+) reads as a gap.
+ *      document; deliberate section spacing (14pt+) reads as a gap. Note this is
+ *      inclusive of the threshold itself — GDocs' default paragraph style is
+ *      margin-top:0/margin-bottom:6pt, which sums to exactly the current 6pt
+ *      threshold, and that ordinary multi-line prose must still read as a line
+ *      break, not a gap.
  *   4. Margins not declared on either side (non-GDocs input) → GAP — the
  *      conservative default; a missing declaration is unknown, not zero.
  *
@@ -34,7 +38,7 @@ export function isGapBoundary(prev: BoundaryPrev, cur: BoundaryCur, tok: Tokens)
   if (prev.tightNext === true || cur.tightBefore === true) return false;
   if (cur.gapBefore === true) return true;
   if (prev.marginBottomPt !== undefined && cur.marginTopPt !== undefined) {
-    return prev.marginBottomPt + cur.marginTopPt >= tok.layout.gapMarginThresholdPt;
+    return prev.marginBottomPt + cur.marginTopPt > tok.layout.gapMarginThresholdPt;
   }
   return true;
 }
