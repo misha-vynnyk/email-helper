@@ -18,6 +18,12 @@ export const profile: SimpleTokensOverride = {
   rightSideImgHtmlPaddingV: "15px",
   blockWrapTag: "div",
   headlineWrapTag: "b",
+  // Verified 2026-09-24 against a real TTT source repo (promo-project-v17-0-unique):
+  // processStyles' italic branches consistently emit <i>, never <em> — contradicts the
+  // previous "default/ttt always used <em>" git-history finding (either that check missed
+  // this script, or it's a later update to the TTT source). Same shape as Red's italicTag
+  // override.
+  italicTag: "i",
   button: { className: "creative-button" },
   footerPaddingTopHtml: "25px",
   footerPaddingBottomHtml: "15px",

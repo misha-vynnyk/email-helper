@@ -70,6 +70,7 @@ describe("ttt profile", () => {
         "rightSideImgHtmlPaddingV",
         "blockWrapTag",
         "headlineWrapTag",
+        "italicTag",
         "button",
         "footerPaddingTopHtml",
         "footerPaddingBottomHtml",

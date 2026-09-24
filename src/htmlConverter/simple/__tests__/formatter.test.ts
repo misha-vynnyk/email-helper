@@ -247,9 +247,9 @@ describe("simple converter unified formatter", () => {
       });
     });
 
-    // italicTag — "em" everywhere except Red ("i"), confirmed against the original
-    // pre-unification forks' git history (default/ttt always used <em>) and the user
-    // confirming Red's ported standalone script needs <i> specifically.
+    // italicTag — "em" for default/alphaone, "i" for Red and TTT (see SimpleTokens.italicTag
+    // for how each was confirmed — original fork git history for default/alphaone/Red,
+    // a real TTT source repo cross-check for TTT).
     it("wraps italic content in this profile's italicTag", () => {
       const result = formatHtml('<span style="font-style: italic;">italic text</span>', tok, tmpl);
       expect(result).toContain(`<${tok.italicTag}>italic text</${tok.italicTag}>`);

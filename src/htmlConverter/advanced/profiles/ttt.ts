@@ -21,6 +21,12 @@ export const profile: TokensOverride = {
     // converter's is "span" (templates.ts:29). Every non-headline text block (body/small/
     // centerText/quote/…) gets this wrapper via blockRow/wrapBlockStyle.
     blockWrap: "div",
+    // By analogy with the Simple converter's ttt.ts (verified 2026-09-24 against a real TTT
+    // source repo, promo-project-v17-0-unique: processStyles emits <i>, never <em>) — no
+    // direct Advanced-pipeline source confirms this independently (that repo is Simple-shaped,
+    // not GDocs-table-shaped), but the same client's output convention presumably holds across
+    // both converters. Same override shape as the Red profile's own italic tag.
+    italic: "i",
   },
   // CSS class names TTT's own fullStructure/buttonTableHtml use in place of the default
   // Simple converter's names (templates.ts) — imgBg stays "img-bg-block", same as default.
