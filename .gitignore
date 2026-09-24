@@ -87,4 +87,4 @@ release/
 
 # Local raw/ready HTML example pairs for the advanced converter (personal test fixtures,
 # not part of the app or its test suite)
-src/htmlConverter/advanced/raw/
+src/htmlConverter/raw/
