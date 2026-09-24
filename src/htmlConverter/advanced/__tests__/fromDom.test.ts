@@ -370,6 +370,53 @@ describe("fromDom — TABLE", () => {
     expect(table.rows[0].cells[1].isHeader).toBe(false);
   });
 
+  // padTopPt/padBottomPt — signal-only fields classify.ts uses to restore the real
+  // spacing GDocs encodes on a <td> when its <tr> boundary gets discarded (see
+  // classify.ts's transparent-cell-unwrap path and ir/spacing.ts's isGapBoundary).
+  describe("CellNode.padTopPt / padBottomPt", () => {
+    it("reads padding-top/padding-bottom (longhand)", () => {
+      const result = nodes('<table><tr><td style="padding-top:12pt;padding-bottom:8pt;">Cell</td></tr></table>');
+      const table = result[0] as TableNode;
+      expect(table.rows[0].cells[0].padTopPt).toBe(12);
+      expect(table.rows[0].cells[0].padBottomPt).toBe(8);
+    });
+
+    it("reads top/bottom out of the `padding` shorthand (4 values: T R B L)", () => {
+      const result = nodes('<table><tr><td style="padding:21pt 15pt 0pt 15pt;">Cell</td></tr></table>');
+      const table = result[0] as TableNode;
+      expect(table.rows[0].cells[0].padTopPt).toBe(21);
+      expect(table.rows[0].cells[0].padBottomPt).toBe(0);
+    });
+
+    it("reads top/bottom out of the `padding` shorthand (2 values: vert horiz)", () => {
+      const result = nodes('<table><tr><td style="padding:9pt 15pt;">Cell</td></tr></table>');
+      const table = result[0] as TableNode;
+      expect(table.rows[0].cells[0].padTopPt).toBe(9);
+      expect(table.rows[0].cells[0].padBottomPt).toBe(9);
+    });
+
+    it("reads top/bottom out of the `padding` shorthand (1 value: all sides)", () => {
+      const result = nodes('<table><tr><td style="padding:5pt;">Cell</td></tr></table>');
+      const table = result[0] as TableNode;
+      expect(table.rows[0].cells[0].padTopPt).toBe(5);
+      expect(table.rows[0].cells[0].padBottomPt).toBe(5);
+    });
+
+    it("prefers padding-top/padding-bottom longhand over the `padding` shorthand", () => {
+      const result = nodes('<table><tr><td style="padding:1pt 1pt 1pt 1pt;padding-top:30pt;padding-bottom:0pt;">Cell</td></tr></table>');
+      const table = result[0] as TableNode;
+      expect(table.rows[0].cells[0].padTopPt).toBe(30);
+      expect(table.rows[0].cells[0].padBottomPt).toBe(0);
+    });
+
+    it("leaves padTopPt/padBottomPt undefined when neither is declared", () => {
+      const result = nodes("<table><tr><td>Cell</td></tr></table>");
+      const table = result[0] as TableNode;
+      expect(table.rows[0].cells[0].padTopPt).toBeUndefined();
+      expect(table.rows[0].cells[0].padBottomPt).toBeUndefined();
+    });
+  });
+
   // Bug repro: two tables separated by an author-typed blank line (top-level <br>) were
   // silently merged into one recordRow because the gap signal never reached the second
   // TableNode — see TableNode.gapBefore and classify.ts's recordRow merge guard.

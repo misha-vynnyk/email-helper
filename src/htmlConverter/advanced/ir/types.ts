@@ -96,6 +96,15 @@ export interface CellNode {
    *  fallback (detect/tableBlock.ts's cellAlign) only when neither the cell nor its first
    *  paragraph declares an explicit align — an explicit declaration always wins. */
   isHeader?: boolean;
+  /**
+   * The <td>'s own padding-top/padding-bottom, pt — signal-only, never used for layout or
+   * rendering. GDocs encodes real inter-row spacing here (paragraph CSS margin is always
+   * 0pt in its output); consumed by classify.ts's transparent-cell-unwrap path to restore
+   * a gap signal that would otherwise be silently discarded along with the <tr>/<td>
+   * boundary. See ir/spacing.ts's isGapBoundary for the mechanism this feeds.
+   */
+  padTopPt?: number;
+  padBottomPt?: number;
   children: StructuralNode[];
 }
 

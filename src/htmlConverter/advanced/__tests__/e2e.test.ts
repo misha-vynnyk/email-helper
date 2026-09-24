@@ -244,6 +244,57 @@ describe("convertAdvanced — paragraph gaps and the pairwise zero-margin signal
     expect(html).toContain("A Б");
     expect(html).not.toContain("AБ");
   });
+
+  // Regression: a multi-row single-col table whose rows are transparent (bg matching
+  // tok.color.rootBackground, no border) gets unwrapped by classifySingleCell — the
+  // <tr>/<td> boundary and its OWN padding-top/padding-bottom are discarded, and
+  // isGapBoundary falls back to CSS margin alone. GDocs always declares margin:0 on these
+  // paragraphs (real spacing lives in the td's own padding instead), so every such
+  // boundary used to read as a plain line break, regardless of how much padding the
+  // source actually had — e.g. a heading-like paragraph fusing into the following body
+  // paragraph with no visual break at all. classify.ts now folds the row's own padding
+  // into the leading paragraph's marginTopPt before the gap decision runs.
+  describe("GDocs <td> padding as the real spacing signal (transparent-cell row unwrap)", () => {
+    const row = (paddingTopPt: number, text: string) =>
+      `<tr><td style="background-color:#ffffff;padding:${paddingTopPt}pt 15pt 0pt 15pt;">` +
+      `<p style="margin-top:0pt;margin-bottom:0pt;">${text}</p></td></tr>`;
+
+    it("restores a <br><br> gap when the row's own padding-top is well above threshold", () => {
+      const input = `<table>${row(0, "Heading text.")}${row(generous * 2, "Body text.")}</table>`;
+      const { html } = convertAdvancedDetailed(input);
+      const gap = html.slice(html.indexOf("Heading text."), html.indexOf("Body text."));
+      expect(gap).toContain("<br><br>");
+    });
+
+    it("stays a single <br> when the row's own padding-top is well below threshold", () => {
+      const input = `<table>${row(0, "First line.")}${row(tight, "Second line.")}</table>`;
+      const { html } = convertAdvancedDetailed(input);
+      const gap = html.slice(html.indexOf("First line."), html.indexOf("Second line."));
+      expect(gap).toContain("<br>");
+      expect(gap).not.toContain("<br><br>");
+    });
+
+    it("sums the previous row's padding-bottom with this row's padding-top to decide the gap", () => {
+      const halfEach = generous; // sums to 2*generous — well above threshold, split across both sides
+      const input =
+        `<table><tr><td style="background-color:#ffffff;padding:0pt 15pt ${halfEach}pt 15pt;">` +
+        `<p style="margin-top:0pt;margin-bottom:0pt;">Heading text.</p></td></tr>` +
+        `<tr><td style="background-color:#ffffff;padding:${halfEach}pt 15pt 0pt 15pt;">` +
+        `<p style="margin-top:0pt;margin-bottom:0pt;">Body text.</p></td></tr></table>`;
+      const { html } = convertAdvancedDetailed(input);
+      const gap = html.slice(html.indexOf("Heading text."), html.indexOf("Body text."));
+      expect(gap).toContain("<br><br>");
+    });
+
+    it("end-to-end on a real GDocs-shaped fixture: a large-pt heading row directly followed by a body-paragraph row", () => {
+      const html = convertAdvanced(loadFixture("gdocs-heading-row.html"));
+      const gap = html.slice(
+        html.indexOf("A Heading That Should Stay Distinct."),
+        html.indexOf("First body sentence"),
+      );
+      expect(gap).toContain("<br><br>");
+    });
+  });
 });
 
 // ── tables.html fixture ───────────────────────────────────────────────────────
@@ -461,6 +512,14 @@ describe("convertAdvanced — profile overrides", () => {
   it("AlfaOne profile: sidePadding is 19px", () => {
     const html = convertAdvanced(raw, alphaoneProfile);
     expect(html).toContain("padding-left:19px");
+  });
+
+  it("TTT profile: italic runs use <i>, not <em> like the default profile", () => {
+    const tttHtml = convertAdvanced(raw, tttProfile);
+    const defaultHtml = convertAdvanced(raw);
+    expect(tttHtml).toContain("<i>Please review the attached documents carefully.</i>");
+    expect(tttHtml).not.toContain("<em>Please review the attached documents carefully.</em>");
+    expect(defaultHtml).toContain("<em>Please review the attached documents carefully.</em>");
   });
 
   it("default and TTT outputs differ in padding", () => {

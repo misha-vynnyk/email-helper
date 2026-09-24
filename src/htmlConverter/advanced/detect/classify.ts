@@ -283,14 +283,16 @@ export function classify(nodes: StructuralNode[], tok: Tokens = defaultTokens, w
         // alone would silently drop the cell's bg/border (e.g. a stacked dark header +
         // red sub-band renders as plain uncolored text). When the cell is transparent and
         // borderless, classifySingleCell returns null and we fall back to its children.
-        // Classify each row's single cell once. When EVERY row is a plain colored fill
-        // (an alertBand with no nested button/band/image), the table is a stack of flush
-        // colored bands — merge them into ONE bandStack so they render inside a single
-        // shared wrapper with no gap between rows, matching the source table's zero
-        // inter-row margin (a dark headline band directly over a red sub-band). A
-        // heterogeneous stack (a transparent or bordered row mixed in) falls back to
-        // emitting each cell's component individually — bg still preserved via
-        // classifySingleCell; transparent/borderless cells unwrap to their children.
+        // Classify each row's single cell once. Any maximal run of 2+ consecutive rows
+        // that are all plain colored fills (an alertBand with no nested button/band/image)
+        // is a stack of flush colored bands — merge each such run into ONE bandStack so
+        // those rows render inside a single shared wrapper with no gap between them,
+        // matching the source table's zero inter-row margin (e.g. a dark headline band
+        // directly over a red sub-band, or a cream hero title+paragraph+timeline). Rows
+        // outside a qualifying run (a transparent/bordered row, or an isolated single-row
+        // band with no plain-band neighbor) fall back to emitting individually — bg still
+        // preserved via classifySingleCell; transparent/borderless cells unwrap to their
+        // children.
         const tableRows = (node as TableNode).rows;
         const tableColWidths = (node as TableNode).colWidths;
         const tableOwnWidthPx = tableColWidths?.length === 1 ? tableColWidths[0] : undefined;
@@ -298,32 +300,71 @@ export function classify(nodes: StructuralNode[], tok: Tokens = defaultTokens, w
           r.cells.length === 1 ? classifySingleCell(r.cells[0], tok, warn, classifyChildren, tableOwnWidthPx, ambientWidthPx) : null);
         const isPlainBand = (c: ComponentNode | null): c is Extract<ComponentNode, { kind: "alertBand" }> =>
           c?.kind === "alertBand" && !c.props.buttons?.length && !c.props.bands?.length && !c.props.images?.length && !c.props.tables?.length;
-        if (tableRows.length >= 2 && cellComps.every(isPlainBand)) {
-          pushMerged(result, {
-            kind: "bandStack",
-            props: {
-              rows: cellComps.map(c => ({
-                bg: c.props.bg,
-                lines: c.props.lines,
-                paraBreaks: c.props.paraBreaks,
-                align: c.props.align,
-                border: c.props.border,
-              })),
-            },
-          }, tok, warn);
-        } else {
-          tableRows.forEach((row, i) => {
-            const cellComp = cellComps[i];
-            if (cellComp) {
-              pushMerged(result, cellComp, tok, warn);
-            } else {
-              for (const cell of row.cells) {
-                for (const comp of classify(cell.children, tok, warn, tableOwnWidthPx ?? ambientWidthPx)) {
-                  pushMerged(result, comp, tok, warn);
-                }
-              }
+        const bandStackFrom = (comps: Extract<ComponentNode, { kind: "alertBand" }>[]): ComponentNode => ({
+          kind: "bandStack",
+          props: {
+            rows: comps.map(c => ({
+              bg: c.props.bg,
+              lines: c.props.lines,
+              paraBreaks: c.props.paraBreaks,
+              align: c.props.align,
+              border: c.props.border,
+            })),
+          },
+        });
+        // Scan for maximal runs of 2+ consecutive plain-band rows and merge each run into
+        // one bandStack — a flush stack of colored bands with zero inter-row margin,
+        // matching the source table's zero margin between those <tr>s (e.g. a cream hero
+        // title + body paragraph + timeline, all bg:#f7f5ef, rendering as one seamless
+        // card instead of 3 separate boxed tables with gaps between). No bg-matching
+        // requirement between rows in a run — bandStack already renders each row with its
+        // own bg, so a flush stack of differently-colored bands is equally valid; the
+        // grouping signal is purely "these were literally consecutive sibling <tr>s in
+        // this source table with implicit zero margin between them" — the same adjacency
+        // guarantee a whole-table bandStack always relied on, just no longer required to
+        // span every row. Rows outside a qualifying run (non-band rows, or an isolated
+        // single-row band with no plain-band neighbor) keep today's per-row handling.
+        let i = 0;
+        while (i < tableRows.length) {
+          if (isPlainBand(cellComps[i])) {
+            let j = i + 1;
+            while (j < tableRows.length && isPlainBand(cellComps[j])) j++;
+            if (j - i >= 2) {
+              pushMerged(result, bandStackFrom(cellComps.slice(i, j).filter(isPlainBand)), tok, warn);
+              i = j;
+              continue;
             }
-          });
+          }
+          const row = tableRows[i];
+          const cellComp = cellComps[i];
+          if (cellComp) {
+            pushMerged(result, cellComp, tok, warn);
+          } else {
+            // classifySingleCell returned null for this row (transparent, borderless
+            // cell) — its <tr>/<td> boundary is being discarded and its children
+            // unwrapped straight into the flow. GDocs always declares margin:0 on these
+            // paragraphs (real spacing lives in the td's own padding instead), so restore
+            // that lost signal onto the row's leading paragraph, additively with any real
+            // CSS margin it already has — both genuinely stack in the source document.
+            // Feeds the SAME threshold isGapBoundary already uses (ir/spacing.ts); never
+            // invents a new one. Only the row's first cell borders the previous row.
+            const prevRow = tableRows[i - 1];
+            const prevCell = prevRow?.cells.length === 1 ? prevRow.cells[0] : undefined;
+            const rowGapPt = (prevCell?.padBottomPt ?? 0) + (row.cells[0]?.padTopPt ?? 0);
+            let firstCellInRow = true;
+            for (const cell of row.cells) {
+              const comps = classify(cell.children, tok, warn, tableOwnWidthPx ?? ambientWidthPx);
+              if (firstCellInRow && rowGapPt > 0 && comps[0]?.kind === "paragraph") {
+                comps[0] = {
+                  ...comps[0],
+                  props: { ...comps[0].props, marginTopPt: (comps[0].props.marginTopPt ?? 0) + rowGapPt },
+                };
+              }
+              firstCellInRow = false;
+              for (const comp of comps) pushMerged(result, comp, tok, warn);
+            }
+          }
+          i++;
         }
       }
     } else if (node.type === "p") {

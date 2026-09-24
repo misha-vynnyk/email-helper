@@ -193,16 +193,29 @@ function ptToPx(pt: number): number {
   return Math.min(ACCENT_PAD_MAX_PX, Math.max(0, Math.round(pt * (96 / 72))));
 }
 
-// The left value out of a CSS box shorthand ("padding"/"margin": 1-4 space-separated
+// One side's value out of a CSS box shorthand ("padding"/"margin": 1-4 space-separated
 // lengths — 1=all sides, 2=[vert,horiz], 3=[top,horiz,bottom], 4=[top,right,bottom,left]).
 // GDocs' quote convention often declares `padding: 0pt 0pt 4pt 12pt;` as one shorthand
-// rather than a separate padding-left, so the longhand lookup alone would miss it.
-function shorthandLeftPt(value: string | undefined): number | undefined {
+// rather than separate longhand properties, so the longhand lookup alone would miss it.
+function shorthandSidePt(value: string | undefined, side: "top" | "right" | "bottom" | "left"): number | undefined {
   if (!value) return undefined;
   const parts = value.trim().split(/\s+/);
   if (parts.length === 0) return undefined;
-  const leftPart = parts.length >= 4 ? parts[3] : parts.length >= 2 ? parts[1] : parts[0];
-  return lengthToPt(leftPart);
+  let part: string;
+  if (parts.length === 1) {
+    part = parts[0];
+  } else if (parts.length === 2) {
+    part = side === "top" || side === "bottom" ? parts[0] : parts[1];
+  } else if (parts.length === 3) {
+    part = side === "top" ? parts[0] : side === "bottom" ? parts[2] : parts[1];
+  } else {
+    part = side === "top" ? parts[0] : side === "right" ? parts[1] : side === "bottom" ? parts[2] : parts[3];
+  }
+  return lengthToPt(part);
+}
+
+function shorthandLeftPt(value: string | undefined): number | undefined {
+  return shorthandSidePt(value, "left");
 }
 
 function parseParagraph(el: Element, bg: string, tok: Tokens): Paragraph | null {
@@ -382,6 +395,8 @@ function parseTable(el: Element, bg: string, tok: Tokens, warn?: WarnFn): TableN
         (cellEl.getAttribute("align") as "left" | "center" | "right" | undefined);
       const colspan = parseInt(cellEl.getAttribute("colspan") ?? "1");
       const border = parseBorderSpec(cellStyle, tok);
+      const padTopPt = lengthToPt(cellStyle["padding-top"]) ?? shorthandSidePt(cellStyle["padding"], "top");
+      const padBottomPt = lengthToPt(cellStyle["padding-bottom"]) ?? shorthandSidePt(cellStyle["padding"], "bottom");
       const children = fromDom(cellEl as Element, cellBg ?? bg, tok, warn);
       return {
         type: "cell" as const,
@@ -390,6 +405,8 @@ function parseTable(el: Element, bg: string, tok: Tokens, warn?: WarnFn): TableN
         align: cellAlign,
         isHeader: cellEl.tagName.toUpperCase() === "TH",
         colspan: colspan > 1 ? colspan : undefined,
+        padTopPt,
+        padBottomPt,
         children,
       };
     });

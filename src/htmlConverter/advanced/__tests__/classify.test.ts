@@ -285,6 +285,43 @@ describe("classify — paragraph merging", () => {
     expect(result).toHaveLength(1);
     expect(result[0].kind).toBe("paragraph");
   });
+
+  // A run of 3 consecutive plain-band rows collapses into one bandStack too, not just the
+  // 2-row case — the whole-table case above is the degenerate "one run spans every row" of
+  // the same general maximal-run algorithm, not a separate code path.
+  it("collapses a run of 3 consecutive plain-band rows into one bandStack", () => {
+    const stacked = makeTable([
+      [makeCell([makePara("one")], "#0f3530")],
+      [makeCell([makePara("two")], "#c8102e")],
+      [makeCell([makePara("three")], "#1a1a1a")],
+    ]);
+    const result = classify([stacked]);
+    expect(result).toHaveLength(1);
+    expect(result[0].kind).toBe("bandStack");
+    const rows = (result[0].props as Record<string, unknown>)["rows"] as { bg: string }[];
+    expect(rows.map(r => r.bg)).toEqual(["#0f3530", "#c8102e", "#1a1a1a"]);
+  });
+
+  // A maximal run of plain-band rows in the MIDDLE of a table (not spanning every row)
+  // still collapses into its own bandStack — the bug this generalizes away from required
+  // EVERY row in the table to be a plain band, so a 20-row table with only 2-3 cream-bg
+  // rows never got the flush-stack treatment at all. Non-band neighbors (here, bordered
+  // cells → calloutBox) and an isolated single-row band with no plain-band neighbor keep
+  // rendering individually, exactly as before.
+  it("collapses only the maximal run of plain-band rows, leaving non-band and isolated rows untouched", () => {
+    const bordered = () => ({ ...makeCell([makePara("bordered")]), border: { top: { color: "#ff0000" } } });
+    const table = makeTable([
+      [bordered()],
+      [makeCell([makePara("band a")], "#f7f5ef")],
+      [makeCell([makePara("band b")], "#f7f5ef")],
+      [bordered()],
+      [makeCell([makePara("isolated band")], "#f7f5ef")],
+    ]);
+    const result = classify([table]);
+    expect(result.map(c => c.kind)).toEqual(["calloutBox", "bandStack", "calloutBox", "alertBand"]);
+    const rows = (result[1].props as Record<string, unknown>)["rows"] as { bg: string }[];
+    expect(rows.map(r => r.bg)).toEqual(["#f7f5ef", "#f7f5ef"]);
+  });
 });
 
 // ── recordRow merging ─────────────────────────────────────────────────────────
