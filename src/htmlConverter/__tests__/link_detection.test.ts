@@ -43,6 +43,21 @@ describe("Smart Link Detection", () => {
       expect(parseColor("invalid")).toBeNull();
       expect(parseColor("#ZZTOP")).toBeNull();
     });
+
+    // Bug fix: hand-authored/Mail-app/Word-style paste sometimes uses a bare CSS keyword
+    // instead of hex/rgb() (Google Docs itself never does) — previously always fell
+    // through to null, silently disabling color-bucket classification for that content.
+    it("should parse common CSS named colors", () => {
+      expect(parseColor("red")).toEqual({ r: 255, g: 0, b: 0 });
+      expect(parseColor("green")).toEqual({ r: 0, g: 128, b: 0 });
+      expect(parseColor("Blue")).toEqual({ r: 0, g: 0, b: 255 }); // case-insensitive
+      expect(parseColor("darkred")).toEqual({ r: 139, g: 0, b: 0 });
+      expect(parseColor("grey")).toEqual({ r: 128, g: 128, b: 128 });
+    });
+
+    it("should still return null for an unrecognized keyword", () => {
+      expect(parseColor("notacolor")).toBeNull();
+    });
   });
 
   describe("isBlueish", () => {
@@ -123,6 +138,11 @@ describe("Smart Link Detection", () => {
 
     it("returns null for unparseable colors", () => {
       expect(classifyColorBucket("invalid")).toBeNull();
+    });
+
+    it("classifies a bare CSS named color the same as its hex equivalent", () => {
+      expect(classifyColorBucket("red")).toBe("red");
+      expect(classifyColorBucket("darkgreen")).toBe("green");
     });
   });
 });

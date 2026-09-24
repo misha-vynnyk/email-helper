@@ -189,7 +189,7 @@ function lengthToPt(value: string | undefined): number | undefined {
 // pt → px, quantized to a whole number and clamped to a sane indent range (guards against
 // a stray huge value blowing up the layout, same reasoning as BORDER_WIDTH_MAX_PX).
 const ACCENT_PAD_MAX_PX = 100;
-function ptToIndentPx(pt: number): number {
+function ptToPx(pt: number): number {
   return Math.min(ACCENT_PAD_MAX_PX, Math.max(0, Math.round(pt * (96 / 72))));
 }
 
@@ -251,7 +251,7 @@ function parseParagraph(el: Element, bg: string, tok: Tokens): Paragraph | null 
   // content); margin-left is the fallback for when only that was declared (GDocs' quote
   // convention often sets both identically anyway).
   const leftIndentPt = lengthToPt(style["padding-left"]) ?? shorthandLeftPt(style["padding"]) ?? lengthToPt(style["margin-left"]);
-  const accentPadX = leftIndentPt !== undefined ? ptToIndentPx(leftIndentPt) : undefined;
+  const accentPadX = leftIndentPt !== undefined ? ptToPx(leftIndentPt) : undefined;
   return {
     type: "p", align, size, headingLevel, bg: ownBg, border: ownBorder, accentPadX, lines,
     paraBreaks: paraBreaks.size ? paraBreaks : undefined,

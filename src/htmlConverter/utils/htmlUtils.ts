@@ -253,6 +253,17 @@ export function mergeSimilarTags(htmlContent: string): string {
     const alignAttr = attrs.match(/\balign\s*=\s*["']?(\w+)["']?/i);
     return alignAttr?.[1]?.toLowerCase() ?? "";
   };
+  // The merge keeps ONLY attrs1 — attrs2 is discarded outright (see the replacer below).
+  // That's fine for the "incidental" properties this function targets (margin/padding/
+  // line-height/declaration order), but color/font-size/etc are sometimes declared
+  // directly on the block tag itself, not on an inner <span> (e.g. Mail.app/Safari paste —
+  // see the bare `<b style="color:...">` case in simple/formatter.ts). Two blocks that
+  // share an alignment but declare CONFLICTING values for one of these is a real,
+  // meaningful style difference, not GDocs' margin-splitting noise — merging would
+  // silently repaint the second block's content in the first block's style.
+  const MEANINGFUL_STYLE_PROPS = ["color", "font-size", "font-family", "font-weight", "font-style", "text-decoration", "background-color"];
+  const getMeaningfulStyle = (attrs: string) =>
+    MEANINGFUL_STYLE_PROPS.map(prop => attrs.match(new RegExp(`${prop}:\\s*([^;"']+)`, "i"))?.[1]?.trim().toLowerCase() ?? "").join("|");
   const ROW_BOUNDARY = "<\\/td>\\s*<\\/tr>\\s*<tr(?:\\s+[^>]*)?>\\s*<td(?:\\s+[^>]*)?>";
   // A "spacer row" we tolerate hopping over must be genuinely blank content only
   // (whitespace/<br>/&nbsp;) — anything else (e.g. a stray <p>) is real content and must
@@ -271,6 +282,7 @@ export function mergeSimilarTags(htmlContent: string): string {
       (match, tagName, attrs1, innerContent, attrs2) => {
         if (/<img\b/i.test(innerContent)) return match;
         if (getAlign(attrs1) !== getAlign(attrs2)) return match;
+        if (getMeaningfulStyle(attrs1) !== getMeaningfulStyle(attrs2)) return match;
         matchFound = true;
         return `<${tagName}${attrs1}>${innerContent}[[BR_SEP]]`;
       }

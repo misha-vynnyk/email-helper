@@ -16,12 +16,57 @@ function isValidRgbChannel(value: number): boolean {
   return Number.isInteger(value) && value >= 0 && value <= 255;
 }
 
+// CSS named colors — hand-authored/Mail-app/Word-style paste (unlike Google Docs, which
+// always emits hex/rgb()) sometimes uses a bare keyword (`style="color: red"`). Not the
+// full ~150-entry CSS Color Module list, just the subset most likely to show up in real
+// pasted content; extending this table further (if a gap surfaces) is safe — it only
+// ever adds a recognized color, never changes an existing one.
+const NAMED_COLORS: Record<string, RGB> = {
+  black: { r: 0, g: 0, b: 0 },
+  silver: { r: 192, g: 192, b: 192 },
+  gray: { r: 128, g: 128, b: 128 },
+  grey: { r: 128, g: 128, b: 128 },
+  white: { r: 255, g: 255, b: 255 },
+  maroon: { r: 128, g: 0, b: 0 },
+  red: { r: 255, g: 0, b: 0 },
+  purple: { r: 128, g: 0, b: 128 },
+  fuchsia: { r: 255, g: 0, b: 255 },
+  magenta: { r: 255, g: 0, b: 255 },
+  green: { r: 0, g: 128, b: 0 },
+  lime: { r: 0, g: 255, b: 0 },
+  olive: { r: 128, g: 128, b: 0 },
+  yellow: { r: 255, g: 255, b: 0 },
+  navy: { r: 0, g: 0, b: 128 },
+  blue: { r: 0, g: 0, b: 255 },
+  teal: { r: 0, g: 128, b: 128 },
+  aqua: { r: 0, g: 255, b: 255 },
+  cyan: { r: 0, g: 255, b: 255 },
+  orange: { r: 255, g: 165, b: 0 },
+  pink: { r: 255, g: 192, b: 203 },
+  brown: { r: 165, g: 42, b: 42 },
+  darkred: { r: 139, g: 0, b: 0 },
+  darkgreen: { r: 0, g: 100, b: 0 },
+  lightgreen: { r: 144, g: 238, b: 144 },
+  crimson: { r: 220, g: 20, b: 60 },
+  gold: { r: 255, g: 215, b: 0 },
+  indigo: { r: 75, g: 0, b: 130 },
+  violet: { r: 238, g: 130, b: 238 },
+  lightgray: { r: 211, g: 211, b: 211 },
+  lightgrey: { r: 211, g: 211, b: 211 },
+  darkgray: { r: 169, g: 169, b: 169 },
+  darkgrey: { r: 169, g: 169, b: 169 },
+  dimgray: { r: 105, g: 105, b: 105 },
+  dimgrey: { r: 105, g: 105, b: 105 },
+};
+
 /**
- * Parses a color string (Hex or RGB) into an RGB object.
+ * Parses a color string (Hex, RGB, or a common CSS named color) into an RGB object.
  * Returns null if the color cannot be parsed.
  */
 export function parseColor(color: string): RGB | null {
   color = sanitizeColorInput(color);
+
+  if (color in NAMED_COLORS) return NAMED_COLORS[color];
 
   // Handle Hex (#RRGGBB, #RGB, #RRGGBBAA, #RGBA)
   if (color.startsWith("#")) {

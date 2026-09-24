@@ -7,7 +7,7 @@ import { tokens as defaultTokens } from "../config/tokens";
 import { isBgRedundant, isDarkBg } from "../ir/color";
 import { joinLinesWithSpace } from "../ir/runs";
 import { isGapBoundary } from "../ir/spacing";
-import type { AlertBandProps, BorderSide, BorderSpec, ButtonBandProps, CellNode, ComponentNode, ImageProps, Paragraph, Run, StructuralNode, TableNode, WarnFn } from "../ir/types";
+import type { AlertBandProps, BorderSide, BorderSpec, ButtonBandProps, CellNode, ComponentNode, ImageProps, Paragraph, RecordCellData, RowNode, Run, StructuralNode, TableNode, WarnFn } from "../ir/types";
 import { WARN } from "../warnings";
 import { detectTextSplit, textSplitToRecordRow } from "./flowBlock";
 
@@ -523,7 +523,7 @@ export function classifySingleCell(
 
 // ── Multi-row helper ──────────────────────────────────────────────────────────
 
-function rowCells(cells: CellNode[], tok: Tokens, warn?: WarnFn) {
+function rowCells(cells: CellNode[], tok: Tokens, warn?: WarnFn): RecordCellData[] {
   // Same convention as cellToChild/statsGrid: adjacent <p>s inside a record cell are a
   // label/sublabel or headline/body pair, not distinct paragraphs — join with a single
   // <br>, not the double break flattenLinesWithBreaks uses for alertBand/calloutLeft.
@@ -668,22 +668,80 @@ export function classifyTable(
     const bandRow = hasBand ? rows[0] : undefined;
     const gridRows = hasBand ? rows.slice(1) : rows;
 
-    const cellCounts = new Set(gridRows.map(r => r.cells.length));
-    const uniformCells = cellCounts.size === 1 ? gridRows[0].cells.length : 0;
+    // GDocs sometimes lays out a card grid as a real table where an interior column and/or
+    // whole interior rows carry no content at all — just a blank <col>/<tr> — purely to
+    // create breathing room between cards, the natural way to express "gap" inside a
+    // <table>-based document instead of CSS margin. A blank divider row carries nothing
+    // worth keeping in THAT case — but a blank row is also just a blank row in a perfectly
+    // ordinary recordRow table unrelated to this idiom (e.g. an intentional placeholder
+    // row), so it must not be dropped unconditionally. Filter it out only as a TENTATIVE
+    // probe for the spacer COLUMN below (a blank <tr> is often colspan=N, a different
+    // physical cell count than the real rows, which would otherwise break that column
+    // search's "every row has the same N cells" check) — if no spacer column turns up,
+    // this table isn't the card-grid idiom at all, and every original row is kept as-is.
+    const isSpacerRow = (r: RowNode) =>
+      r.cells.every(c => !hasMeaningfulContent(c, tok) && (!c.bg || isNearWhiteOrRoot(c.bg, tok)));
+    const candidateRows = gridRows.filter(r => !isSpacerRow(r));
+
+    // GDocs' other half of the same idiom: a single narrow interior column that's empty in
+    // EVERY surviving row (never the first/last — those are real edge columns, not a
+    // between-cards gutter) — expressed as a <col> instead of a <tr>. Only one such column
+    // is dropped — real multi-spacer layouts haven't come up, and guessing at more than one
+    // is more likely to misfire. Still requires a matching <colgroup> (used below for the
+    // real columns' own width ratio) — not to size anything, just to corroborate that this
+    // interior column is a genuine colgroup entry and not a same-shape coincidence.
+    // Finding one is also the signal for `cardStyle`: every cell renders as its own
+    // independent card (bg-less outer wrapper + nested colored table) instead of a flat
+    // <td bgcolor> — see recordRow() in config/templates.ts for why a flat cell can't be
+    // used here (bg/bgcolor would fill straight through into any padding meant to be gap).
+    const dataNcols = candidateRows[0]?.cells.length ?? 0;
+    const colWidths = node.colWidths;
+    let spacerColIdx = -1;
+    if (
+      dataNcols >= 3 &&
+      colWidths?.length === dataNcols &&
+      candidateRows.every(r => r.cells.length === dataNcols)
+    ) {
+      for (let i = 1; i < dataNcols - 1; i++) {
+        if (candidateRows.every(r => !hasMeaningfulContent(r.cells[i], tok) &&
+          (!r.cells[i].bg || isNearWhiteOrRoot(r.cells[i].bg!, tok)))) {
+          spacerColIdx = i;
+          break;
+        }
+      }
+    }
+
+    // Only commit to the tentative row-drop once the spacer COLUMN confirms this really
+    // is the card-grid idiom — otherwise fall back to every original row, blank ones
+    // included, matching plain recordRow's pre-existing (non-card-grid) behavior exactly.
+    const dataRows0 = spacerColIdx !== -1 ? candidateRows : gridRows;
+    const dataRows = spacerColIdx !== -1
+      ? dataRows0.map(r => r.cells.filter((_, i) => i !== spacerColIdx))
+      : dataRows0.map(r => r.cells);
+    const dataColWidths = spacerColIdx !== -1 && colWidths
+      ? colWidths.filter((_, i) => i !== spacerColIdx)
+      : colWidths;
+
+    const cellCounts = new Set(dataRows.map(c => c.length));
+    const uniformCells = cellCounts.size === 1 ? dataRows[0].length : 0;
     const borderColor = firstBorderColor(
-      gridRows.flatMap(r => r.cells).find(c => c.border)?.border,
+      dataRows.flat().find(c => c.border)?.border,
     );
     return {
       kind: "recordRow",
       props: {
-        widths: toWidthPercents(node.colWidths, uniformCells),
+        widths: toWidthPercents(dataColWidths, uniformCells),
         borderColor,
         gapBefore: node.gapBefore,
         band: bandRow ? rowCells(bandRow.cells, tok, warn)[0] : undefined,
-        rows: gridRows.map(r => ({
-          bg: r.cells.every(c => c.bg === r.cells[0].bg) ? r.cells[0].bg : undefined,
-          cells: rowCells(r.cells, tok, warn),
-        })),
+        cardStyle: spacerColIdx !== -1 ? true : undefined,
+        rows: dataRows.map((cells) => {
+          const recordCells = rowCells(cells, tok, warn);
+          return {
+            bg: cells.every(c => c.bg === cells[0]?.bg) ? cells[0]?.bg : undefined,
+            cells: recordCells,
+          };
+        }),
       },
     };
   }

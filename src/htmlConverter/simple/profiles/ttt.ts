@@ -24,7 +24,12 @@ export const profile: SimpleTokensOverride = {
   // className "image-block" (not the base "img-bg-block") matches the original
   // ttt/templates.ts's signatureImg/wrapImg byte-for-byte.
   signature: { className: "image-block", widthHtml: "220", widthMjml: "220", maxWidthHtml: "220px" },
-  wrapImg: { className: "image-block", widthHtml: "400" },
+  // No widthHtml override: renders at the shared 560 default, same as every other
+  // profile without one. The original ttt/templates.ts's FULL_IMAGE_WIDTH="400" was a
+  // stale value from that legacy script, not an intentional TTT-specific size — it also
+  // never matched this profile's own widthMjml, which was already inheriting the shared
+  // "550" default unchanged.
+  wrapImg: { className: "image-block" },
   fullStructure: {
     tableClassName: "main-table",
     contentClassName: "content-wrapper",

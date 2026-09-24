@@ -19,9 +19,6 @@ export const profile: SimpleTokensOverride = {
   footerPaddingTopHtml: "25px",
   footerPaddingBottomHtml: "16px",
   signature: { className: "image-block", widthHtml: "220", widthMjml: "220", maxWidthHtml: "220px" },
-  // MJML wrapImg width (562) matches its own HTML width here, unlike
-  // default/ttt which both share a fixed 550 in MJML regardless of their
-  // differing HTML widths (560/400).
   wrapImg: { className: "image-full-wrapper", widthHtml: "562", widthMjml: "562" },
   fullStructure: {
     tableClassName: "primary-table-wrapper",

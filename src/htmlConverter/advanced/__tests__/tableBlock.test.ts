@@ -647,6 +647,98 @@ describe("classifyTable — splitRow", () => {
   });
 });
 
+// ── recordRow spacer column/row dropping (cardStyle) ───────────────────────────
+// Real repro (OPPCI610): a 2×2 stat-card grid expressed as a 3-col/3-row GDocs table —
+// content/spacer/content columns and a dedicated blank spacer <tr> between the two card
+// rows. Both the spacer column and the spacer row are dropped outright (rather than
+// folded into asymmetric padding) — the gap they stood for comes back for free once
+// cardStyle renders every surviving cell as its own independent card (a bg-less outer
+// wrapper carrying the ordinary, uniform cell padding on every side).
+
+function makeSpacerCell(border?: CellNode["border"]): CellNode {
+  return { type: "cell", border, children: [] };
+}
+
+function makeStatCell(bg: string): CellNode {
+  return { type: "cell", bg, children: [makePara("stat")] };
+}
+
+describe("classifyTable — recordRow spacer column/row dropping (cardStyle)", () => {
+  it("drops a narrow interior empty column, recomputes widths from the real columns, and sets cardStyle", () => {
+    const table = makeTable([
+      [makeStatCell("#f1f8e9"), makeSpacerCell({ right: { color: "#1a472a" } }), makeStatCell("#f1f8e9")],
+      [makeStatCell("#f1f8e9"), makeSpacerCell({ right: { color: "#1a472a" } }), makeStatCell("#f1f8e9")],
+    ]);
+    // Deliberately NOT 50/50 in px (263/90/263ish) — proves the widths come from the two
+    // real columns only, ignoring the spacer column's own declared width entirely.
+    table.colWidths = [263, 90, 263];
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("recordRow");
+    const props = result?.props as Record<string, unknown>;
+    // Real columns only (263/263) — equal, so 50/50, not the noisy 3-column split.
+    expect(props["widths"]).toEqual([50, 50]);
+    expect(props["cardStyle"]).toBe(true);
+    const rows = props["rows"] as Array<{ cells: Array<Record<string, unknown>> }>;
+    expect(rows).toHaveLength(2);
+    for (const row of rows) {
+      expect(row.cells).toHaveLength(2); // the spacer column is gone, not a 3rd cell
+    }
+  });
+
+  it("drops a fully-empty spacer row, but only alongside a confirmed spacer column (real repro: 3 cols, blank divider row)", () => {
+    const table = makeTable([
+      [makeStatCell("#f1f8e9"), makeSpacerCell({ right: { color: "#1a472a" } }), makeStatCell("#f1f8e9")],
+      [makeSpacerCell(), makeSpacerCell(), makeSpacerCell()],
+      [makeStatCell("#f1f8e9"), makeSpacerCell({ right: { color: "#1a472a" } }), makeStatCell("#f1f8e9")],
+    ]);
+    table.colWidths = [263, 90, 263];
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("recordRow");
+    const props = result?.props as Record<string, unknown>;
+    expect(props["cardStyle"]).toBe(true);
+    const rows = props["rows"] as Array<{ cells: Array<Record<string, unknown>> }>;
+    expect(rows).toHaveLength(2); // the blank middle row is gone, not rendered as a 3rd row
+    for (const row of rows) {
+      expect(row.cells).toHaveLength(2); // the spacer column is gone too
+    }
+  });
+
+  // Bug fix: row-dropping must NOT be unconditional — a blank row is only meaningful as
+  // "gap" once the spacer COLUMN confirms this is the card-grid idiom. A 2-column table
+  // can never have a spacer column (that search requires >=3 columns), so a blank middle
+  // row here is just a blank row in an ordinary table — e.g. an intentional placeholder —
+  // and must survive unchanged, exactly like recordRow behaved before cardStyle existed.
+  it("does NOT drop a blank row in a plain 2-column table (no possible spacer column, so no card-grid signal)", () => {
+    const table = makeTable([
+      [makeStatCell("#f1f8e9"), makeStatCell("#f1f8e9")],
+      [makeSpacerCell(), makeSpacerCell()],
+      [makeStatCell("#f1f8e9"), makeStatCell("#f1f8e9")],
+    ]);
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("recordRow");
+    const props = result?.props as Record<string, unknown>;
+    expect(props["cardStyle"]).toBeUndefined();
+    const rows = (result?.props as Record<string, unknown>)["rows"] as Array<Record<string, unknown>>;
+    expect(rows).toHaveLength(3); // the blank middle row survives as a real (empty) row
+  });
+
+  it("a genuinely 2-column recordRow with no spacer column is unaffected (no cardStyle, real widths)", () => {
+    const table = makeTable([
+      [makeCell(), makeCell()],
+      [makeCell(), makeCell()],
+    ]);
+    table.colWidths = [251, 308];
+    const result = classifyTable(table);
+    const props = result?.props as Record<string, unknown>;
+    expect(props["cardStyle"]).toBeUndefined();
+    const rows = props["rows"] as Array<{ cells: Array<Record<string, unknown>> }>;
+    expect(rows).toHaveLength(2);
+    for (const row of rows) {
+      expect(row.cells).toHaveLength(2);
+    }
+  });
+});
+
 // ── Empty table ───────────────────────────────────────────────────────────────
 
 describe("classifyTable — edge cases", () => {

@@ -414,11 +414,18 @@ function processStyles(htmlContent: string, tok: SimpleTokens, preserveTextColor
     const style = styleMatch ? styleMatch[2] : "";
     const italic = /font-style:\s*italic/i.test(style);
     const underline = /text-decoration(?:-line)?\s*:[^;]*\bunderline\b/i.test(style);
+    // Case (b) above (Mail.app/Safari's bare <b>) is the ONLY carrier of its own style —
+    // there's no inner <span> for a color declared here to fall back on, so it must be
+    // resolved on this same pass or it's lost entirely, unlike the <span>-driven path
+    // below, which already does this via resolveBucketColor.
+    const resolvedColor = resolveBucketColor(style, tok, preserveTextColors);
+    const withColor = (tagStyle: string) => (resolvedColor ? (tagStyle ? `${tagStyle};color:${resolvedColor}` : `color:${resolvedColor}`) : tagStyle);
+    const styleAttr = (tagStyle: string) => (tagStyle ? ` style="${tagStyle}"` : "");
 
-    if (italic && underline) return `<em style="text-decoration: underline;font-weight: bold;">${inner}</em>`;
-    if (italic) return `<b style="font-style: italic;">${inner}</b>`;
-    if (underline) return `<b style="text-decoration: underline;">${inner}</b>`;
-    return `<b>${inner}</b>`;
+    if (italic && underline) return `<em${styleAttr(withColor("text-decoration: underline;font-weight: bold;"))}>${inner}</em>`;
+    if (italic) return `<b${styleAttr(withColor("font-style: italic;"))}>${inner}</b>`;
+    if (underline) return `<b${styleAttr(withColor("text-decoration: underline;"))}>${inner}</b>`;
+    return `<b${styleAttr(withColor(""))}>${inner}</b>`;
   });
 
   // Sentinel-protected storage for color-only spans (no bold/italic/underline) produced below —

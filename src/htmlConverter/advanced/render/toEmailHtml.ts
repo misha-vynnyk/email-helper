@@ -328,7 +328,7 @@ export function renderNode(
         // button/band ride along in the same segment list (buildAlertBandSegments).
         opts = { segments: buildAlertBandSegments(p, tok, textColor), bg: p.bg, border: p.border, align: p.align };
       } else if (p.images?.length || p.tables?.length) {
-        const rows = buildImageOnlyRows(p, tmpl, tok, textColor, p.align ?? "left", tok.layout.alertBandPadH);
+        const rows = buildImageOnlyRows(p, tmpl, tok, textColor, p.align ?? "left", tok.layout.alertBandPadX);
         opts = { rows, bg: p.bg, border: p.border, align: p.align };
       } else if (p.textRows?.length === 1) {
         // A single same-bg row needs no shared wrapper — same "one child, skip the
@@ -346,19 +346,29 @@ export function renderNode(
         // `segments` branch's shared side-padding wrapper, unlike `images`/`tables`'
         // per-row padX (those genuinely can differ row to row) — the inset lives ONCE on
         // a wrapper <td>+nested <table>, not repeated on every row.
-        const padX = tok.layout.alertBandPadH;
+        const padX = tok.layout.alertBandPadX;
         const lastIdx = p.textRows.length - 1;
         const innerRowsHtml = p.textRows.map((row, i) => {
           const fontSize = row.size === "headline" ? tok.font.headlinePx : row.size === "small" ? tok.font.smallPx : tok.font.bodyPx;
           const fontWeight = row.size === "headline" ? "bold" : "normal";
           const html = renderLines(row.lines, tok, textColor, row.paraBreaks);
           return blockRow(html, {
-            align: row.align ?? p.align ?? "left",
+            // p.align only ever equals textRows[0].align (pushMerged never rewrites it —
+            // see classify.ts) — falling back to it for i>0 would silently apply row 0's
+            // alignment to a later row that declared no align of its own, instead of that
+            // row's own true default ("left"). Only row 0's fallback to p.align is safe
+            // (and redundant, since they're the same value by construction).
+            align: row.align ?? (i === 0 ? p.align : undefined) ?? "left",
             color: textColor,
             fontSize,
             fontWeight,
-            padTop: i === 0 ? undefined : 0,
-            padBottom: i === lastIdx ? undefined : 0,
+            // The group's own top/bottom edge gets alertBand's vertical inset (alertBandPadY),
+            // matching the "1 row" branch just above — leaving these undefined would fall
+            // through blockRow's OWN default (tok.layout.blockPadY, a much larger generic
+            // block gap), making a 2-line stacked band visibly taller than the same content
+            // merged as a single row.
+            padTop: i === 0 ? tok.layout.alertBandPadY : 0,
+            padBottom: i === lastIdx ? tok.layout.alertBandPadY : 0,
           }, tok);
         }).join("\n");
         const wrapped = `<tr>
@@ -498,6 +508,7 @@ ${indentHtml(innerRowsHtml, 6)}
         borderColor: p.borderColor,
         band,
         padX: padX || undefined,
+        cardStyle: p.cardStyle,
         rows: p.rows.map(row => ({
           bg: row.bg,
           cells: row.cells.map(c => {

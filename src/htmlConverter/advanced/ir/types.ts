@@ -353,6 +353,13 @@ export interface RecordRowProps {
    *  instead of a full-width band). Rendered as its own <tr>, with `rows` wrapped in a
    *  nested table below it — see recordRow() in config/templates.ts. */
   band?: RecordCellData;
+  /** True when this table came from GDocs' "card grid via spacer column/row" idiom (see
+   *  detect/tableBlock.ts) — every cell renders as an independent card: a plain, bg-less
+   *  outer sizing cell carrying the ordinary cell padding on all four sides, wrapping a
+   *  nested table whose own cell carries the bg/border/content and that same padding
+   *  again. That's what keeps the gap between cards a real blank area instead of more of
+   *  a colored cell's own fill — see recordRow() in config/templates.ts. */
+  cardStyle?: boolean;
 }
 
 export interface SplitRowProps {

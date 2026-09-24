@@ -209,6 +209,13 @@ export interface RecordOpts {
   band?: { innerHtml: string; align?: string; bg?: string; border?: BorderSpec; borderColor?: string };
   /** Horizontal inset on the outer <td> — see GridOpts.padX. */
   padX?: number;
+  /** GDocs card-grid idiom (a spacer column/row instead of CSS margin between cards) — see
+   *  RecordRowProps.cardStyle (ir/types.ts). Every cell renders as its own independent card:
+   *  a bg-less outer sizing <td> carrying the ordinary cell padding on all four sides,
+   *  wrapping a nested table whose own <td> carries the bg/border/content and that same
+   *  padding again — so the gap between/around cards is real blank space, not more of a
+   *  colored cell's own fill. */
+  cardStyle?: boolean;
   rows: Array<{
     bg?: string;
     /**
@@ -465,8 +472,8 @@ ${indentHtml(btnTable, 4)}
       const bandColor = isDarkBg(seg.bg, tok) ? tok.color.white : tok.color.black;
       const bandStyle = baseStyle({ align: seg.align ?? "left", color: bandColor }, tok);
       const bandBorder = borderSpecToStyle(dropBgMatchingSides(seg.border, seg.bg), tok);
-      const bh = tok.layout.alertBandPadH;
-      const bv = tok.layout.alertBandPadV;
+      const bh = tok.layout.alertBandPadX;
+      const bv = tok.layout.alertBandPadY;
       return `<tr>
   <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
     <table align="center" border="0" bgcolor="${seg.bg}" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;${bandBorder}" role="presentation">
@@ -593,8 +600,8 @@ ${indentHtml(rowsHtml, 12)}
       const fontWeight = size === "headline" ? "bold" : "normal";
       const style = baseStyle({ align, color: textColor, fontSize, fontWeight }, tok);
       const wrapTag = fontWeight === "bold" ? tok.tags.headlineWrap : tok.tags.blockWrap;
-      const ph = tok.layout.alertBandPadH;
-      const pv = tok.layout.alertBandPadV;
+      const ph = tok.layout.alertBandPadX;
+      const pv = tok.layout.alertBandPadY;
       return `<tr>
   <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
     <table align="center" border="0" bgcolor="${bg}" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;${borderStyle}" role="presentation">
@@ -618,8 +625,8 @@ ${indentHtml(innerHtml!, 12)}
      */
     bandStack(opts: BandStackOpts): string {
       const p = pad();
-      const ph = tok.layout.alertBandPadH;
-      const pv = tok.layout.alertBandPadV;
+      const ph = tok.layout.alertBandPadX;
+      const pv = tok.layout.alertBandPadY;
       const rowsHtml = opts.rows.map(r => {
         const textColor = isDarkBg(r.bg, tok) ? tok.color.white : tok.color.black;
         const style = baseStyle({ align: r.align ?? "left", color: textColor }, tok);
@@ -915,14 +922,24 @@ ${indentHtml(innerHtml, 6)}
     },
 
     recordRow(opts: RecordOpts): string {
-      const { rows, widths, borderColor, band, padX } = opts;
+      const { rows, widths, borderColor, band, padX, cardStyle } = opts;
       if (!rows.length) return "";
       const p = pad();
       const padXCss = padX ? `padding-left:${padX}px;padding-right:${padX}px;` : "";
       const ry = tok.layout.recordCellPadY;
       const rx = tok.layout.recordCellPadX;
+      // cardStyle's gap around each card — a distinct pair of tokens from ry/rx (the
+      // card's OWN interior padding) so the gap can be tuned without resizing every
+      // card's content inset. See recordGutterPadY/X's doc comment (config/tokens.ts).
+      const gy = tok.layout.recordGutterPadY;
+      const gx = tok.layout.recordGutterPadX;
 
       const nrows = rows.length;
+      // A card grid wide enough that it should stack on narrow screens (same threshold
+      // statsGrid uses for its own inline-block cells) needs a THIRD nesting level — see
+      // the cardStyle branch below for why an inline-block sizing box can't also carry
+      // the gap padding the way a plain <td> sibling can.
+      const cardWraps = cardStyle && (rows[0]?.cells.length ?? 0) > tok.layout.gridInlineBlockThreshold;
       // Effective bg at a given (row, column) — same fallback convention as the cell-level
       // `bg` below (cell.bg ?? row.bg). Used to look up a neighbor's fill when deciding
       // whether a border side would visually blend into it.
@@ -964,8 +981,13 @@ ${indentHtml(innerHtml, 6)}
               // matching the split-border technique already used by statsGrid.
               // Neighbor fills, per side — left/right cell in the same row, row above/below at
               // the same column; the row above the first data row is the band (if any). A side
-              // whose color matches its neighbor's fill (not just its own) is just as invisible.
-              const neighborBg: NeighborBg = {
+              // whose color matches its neighbor's fill (not just its own) is just as invisible
+              // — PROVIDED the two cells actually touch. cardStyle inserts a real (gy/gx) gap
+              // between/around every card, so a side facing blank gutter space is never
+              // "blending into" a neighbor two rendering levels away, no matter what color it
+              // declares — only the "matches OWN bg" check (still on the same content <td> as
+              // its border, gap or not) stays meaningful under cardStyle.
+              const neighborBg: NeighborBg | undefined = cardStyle ? undefined : {
                 left: i > 0 ? cellBgAt(rowIdx, i - 1) : undefined,
                 right: i < ncols - 1 ? cellBgAt(rowIdx, i + 1) : undefined,
                 top: rowIdx > 0 ? cellBgAt(rowIdx - 1, i) : band?.bg,
@@ -974,7 +996,7 @@ ${indentHtml(innerHtml, 6)}
               const cellBorder = dropBgMatchingSides(cell.border, bg, neighborBg);
               const hasExplicitBorder = cellBorder && Object.values(cellBorder).some(Boolean);
               const rawBorderColor = cell.borderColor ?? borderColor;
-              const effectiveBorderColor = rawBorderColor && rawBorderColor !== bg && rawBorderColor !== neighborBg.bottom
+              const effectiveBorderColor = rawBorderColor && rawBorderColor !== bg && rawBorderColor !== neighborBg?.bottom
                 ? rawBorderColor
                 : undefined;
               const drawBottom = Boolean(cellBorder?.bottom) && (isLastRow || !cellBorder?.top);
@@ -993,6 +1015,49 @@ ${indentHtml(innerHtml, 6)}
                 : effectiveBorderColor
                   ? `border-bottom:${tok.layout.recordBorderPx}px solid ${effectiveBorderColor};`
                   : "";
+              // cardStyle (GDocs' spacer-column/-row card-grid idiom — see RecordRowProps
+              // in ir/types.ts): every cell is its own card, so bg/bgcolor can't live on the
+              // same <td> that also sizes/positions it — that would fill the whole padding
+              // box, and two same-colored cards side by side (or stacked row to row) would
+              // visually merge with no gap at all. A bg-less OUTER <td> carries the ordinary
+              // cell padding on all four sides (real, blank space, both toward its neighbor
+              // and toward the row above/below); a nested table's <td> carries the bg/
+              // border/content and that same padding again — same convention as the
+              // band-above-grid nesting below.
+              if (cardStyle) {
+                const contentTd = `<td align="${align}"${bgAttr}
+  style="${style} padding-top:${ry}px;padding-right:${rx}px;padding-bottom:${ry}px;padding-left:${rx}px;${borderStyle}">
+${indentHtml(wrapBlockStyle(cell.innerHtml, style, tok), 2)}
+</td>`;
+                const gapTd = `<td align="center"${cardWraps ? "" : widthAttr}
+  style="padding-top:${gy}px;padding-right:${gx}px;padding-bottom:${gy}px;padding-left:${gx}px;">
+  <table align="center" border="0" cellspacing="0" cellpadding="0" role="presentation" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;">
+    <tr>
+${indentHtml(contentTd, 6)}
+    </tr>
+  </table>
+</td>`;
+                if (!cardWraps) return gapTd;
+                // >gridInlineBlockThreshold columns need mobile-stacking cards, same
+                // convention as statsGrid's own inline-block cells — but an inline-block
+                // element's declared width EXCLUDES its own padding (unlike a plain <td>
+                // sibling, whose padding the table layout algorithm folds into the
+                // column's actual rendered width), so adding the gap padding straight to
+                // this sizing box would push its rendered width past its w% share and
+                // break the row's total width math in clients that honor it. The sizing
+                // box stays padding-less; the gap (and, nested one level deeper, the
+                // card's own bg/border/content) live in an ordinary width:100% table
+                // inside it, where padding is safe because that table isn't the thing
+                // declaring a percentage share of the row.
+                return `<td valign="top" align="center" width="${w}%" class="${tok.classes.inlineCell}"
+  style="display:inline-block;width:${w}%;max-width:100%;min-width:${tok.layout.gridMinWidth}px;">
+  <table align="center" border="0" cellspacing="0" cellpadding="0" role="presentation" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;">
+    <tr>
+${indentHtml(gapTd, 6)}
+    </tr>
+  </table>
+</td>`;
+              }
               return `<td align="${align}"${bgAttr}${widthAttr}
   style="${style} padding-top:${ry}px;padding-right:${rx}px;padding-bottom:${ry}px;padding-left:${rx}px;${borderStyle}">
 ${indentHtml(wrapBlockStyle(cell.innerHtml, style, tok), 2)}

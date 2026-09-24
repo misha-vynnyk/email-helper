@@ -80,13 +80,13 @@ export interface Tokens {
     calloutAccentPx: number;
     calloutBoxBorderPx: number;
     calloutPadX: number;
-    alertBandPadH: number;
-    alertBandPadV: number;
+    alertBandPadX: number;
+    alertBandPadY: number;
     /**
      * Horizontal inset for a nested grid/row table (statsGrid/recordRow/progressBar — see
      * AlertBandProps.tables) embedded inside an alertBand/calloutLeft container, applied to
      * its own outer <td> alongside its normal padding-top/bottom. Deliberately a separate
-     * token from alertBandPadH/calloutPadX (the container's own TEXT inset) — a nested table
+     * token from alertBandPadX/calloutPadX (the container's own TEXT inset) — a nested table
      * is a distinct visual unit from the surrounding prose and may need retuning
      * independently of it, even though both happen to default to the same value today.
      */
@@ -96,6 +96,15 @@ export interface Tokens {
     recordCellPadY: number;
     recordCellPadX: number;
     recordBorderPx: number;
+    /**
+     * Gap around each card in a recordRow's cardStyle grid (see detect/tableBlock.ts and
+     * RecordRowProps.cardStyle) — the bg-less spacing between/around cards, independent of
+     * recordCellPadY/X (the card's OWN interior padding, between its border and its
+     * content). Kept as its own pair of tokens, not reused from recordCellPadY/X, so the
+     * gap can be tuned without also resizing every card's interior padding.
+     */
+    recordGutterPadY: number;
+    recordGutterPadX: number;
     buttonSubtitlePadTop: number;
     gapMarginThresholdPt: number;
     /**
@@ -116,10 +125,10 @@ export interface Tokens {
     /**
      * Base width for the placeholder image (imageRowHtml) — a hand-picked constant per
      * provider, NOT derived from containerMaxWidth/sidePadding. Matches the Simple converter's
-     * own per-provider `wrapImg` width, which the three variants don't agree on either: 560
-     * (default, templates.ts), 562 (AlfaOne, alphaone/templates.ts), 400 (TTT's
-     * FULL_IMAGE_WIDTH, ttt/templates.ts — notably NOT close to containerMaxWidth −
-     * 2×sidePadding=558, so it must come from its own token, not a formula).
+     * own per-provider `wrapImg` width: 560 (default AND TTT — TTT has no override, see
+     * profiles/ttt.ts), 562 (AlfaOne, alphaone/templates.ts). TTT's legacy ttt/templates.ts
+     * hardcoded FULL_IMAGE_WIDTH="400" here, but that was a stale value from that script,
+     * not an intentional TTT-specific size — corrected to the shared 560 default.
      */
     placeholderImageWidth: number;
     /**
@@ -211,14 +220,16 @@ export const tokens: Tokens = {
     calloutAccentPx: 10,   // calloutLeft left-border width
     calloutBoxBorderPx: 1,   // calloutBox frame border width (all declared sides)
     calloutPadX: 10,   // callout left/right inner padding
-    alertBandPadH: 10,   // alertBand horizontal inner padding
-    alertBandPadV: 4,   // alertBand vertical inner padding
+    alertBandPadX: 10,   // alertBand horizontal inner padding
+    alertBandPadY: 4,   // alertBand vertical inner padding
     nestedBlockPadX: 10,   // horizontal inset for a nested grid/row table inside alertBand/calloutLeft
     gridCellPadY: 10,   // statsGrid card cell padding top/bottom
     gridCellPadX: 6,   // statsGrid card cell padding left/right
     recordCellPadY: 6,   // recordRow cell padding top/bottom
     recordCellPadX: 6,   // recordRow cell padding left/right
     recordBorderPx: 1,   // recordRow cell border width (all declared sides)
+    recordGutterPadY: 6,   // recordRow cardStyle: gap around each card (top/bottom), independent of its own interior padding
+    recordGutterPadX: 6,   // recordRow cardStyle: gap around each card (left/right), independent of its own interior padding
     buttonSubtitlePadTop: 8,   // gap above buttonBand subtitle line
     // Paragraph-boundary spacing rule: prev margin-bottom + cur margin-top (pt, from the
     // source doc) below this → the boundary is a line break (<br>); at/above → a real

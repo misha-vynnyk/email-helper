@@ -100,8 +100,10 @@ describe("buildSimpleTemplates — token substitution per key", () => {
   describe("wrapImg", () => {
     it("HTML uses wrapImg.widthHtml/className per profile; MJML width is shared (550) for default/ttt but AlfaOne matches its own HTML width (562)", () => {
       expect(defaultTemplates.htmlTemplates.wrapImg("")).toContain('width="560"');
+      // TTT has no widthHtml override — renders at the shared 560 default, same as
+      // default. Its legacy FULL_IMAGE_WIDTH="400" was a stale value, not intentional.
       const tttHtml = tttTemplates.htmlTemplates.wrapImg("");
-      expect(tttHtml).toContain('width="400"');
+      expect(tttHtml).toContain('width="560"');
       expect(tttHtml).toContain('class="image-block"');
       const alphaoneHtml = alphaoneTemplates.htmlTemplates.wrapImg("");
       expect(alphaoneHtml).toContain('width="562"');

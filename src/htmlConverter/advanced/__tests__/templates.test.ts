@@ -589,6 +589,153 @@ describe("buildTemplates — recordRow band", () => {
   });
 });
 
+// ── recordRow cardStyle (GDocs spacer-column/-row card-grid idiom) rendering ─
+// Bug this replaces: an earlier design folded the detected gap into extra padding on the
+// SAME <td> that also carried bgcolor — bgcolor fills the whole padding box, so the "gap"
+// was just more of the card's own fill color and two same-colored cards visually merged
+// with zero gap, both side by side and row to row. cardStyle instead nests every cell:
+// a bg-less outer <td> carries the ordinary (uniform, not padded-up) cell padding on all
+// four sides, wrapping a nested table whose own <td> carries the bg/border/content.
+describe("buildTemplates — recordRow cardStyle keeps every card's gap real (bg-less)", () => {
+  it("nests every cell in its own bg-less outer <td> + nested table", () => {
+    const html = tmpl.recordRow({
+      cardStyle: true,
+      rows: [{ cells: [
+        { innerHtml: "left card", bg: "#f1f8e9" },
+        { innerHtml: "right card", bg: "#f1f8e9" },
+      ] }],
+    });
+    // Three <table>s: the outer per-component table plus one nested table per card.
+    expect((html.match(/<table/g) ?? []).length).toBe(3);
+    // Every <td bgcolor=...> carries only the plain, uniform recordCellPadX/Y (6 by
+    // default token) — never a padded-up value from folding a neighbor's gutter in.
+    const bgTds = html.match(/<td[^>]*bgcolor="#f1f8e9"[^>]*style="[^"]*"/g) ?? [];
+    expect(bgTds.length).toBe(2);
+    for (const td of bgTds) {
+      expect(td).toMatch(/padding-top:6px;padding-right:6px;padding-bottom:6px;padding-left:6px;/);
+    }
+    // The outer (sizing) <td> for each card has no bgcolor of its own.
+    const outerTds = html.match(/<td align="center"[^>]*>/g) ?? [];
+    expect(outerTds.length).toBe(2);
+    for (const td of outerTds) {
+      expect(td).not.toMatch(/bgcolor/);
+    }
+  });
+
+  it("a row's cards still get real vertical padding on the bg-less outer wrapper, not folded onto the colored inner cell", () => {
+    const html = tmpl.recordRow({
+      cardStyle: true,
+      rows: [
+        { cells: [{ innerHtml: "top card", bg: "#f1f8e9" }] },
+        { cells: [{ innerHtml: "bottom card", bg: "#f1f8e9" }] },
+      ],
+    });
+    const bgTds = html.match(/<td[^>]*bgcolor="#f1f8e9"[^>]*style="[^"]*"/g) ?? [];
+    for (const td of bgTds) {
+      expect(td).toMatch(/padding-top:6px;padding-right:6px;padding-bottom:6px;padding-left:6px;/);
+    }
+  });
+
+  it("without cardStyle, a colored cell keeps the flat (non-nested) shape unchanged", () => {
+    const html = tmpl.recordRow({
+      rows: [{ cells: [
+        { innerHtml: "a", bg: "#f1f8e9" },
+        { innerHtml: "b", bg: "#f1f8e9" },
+      ] }],
+    });
+    expect((html.match(/<table/g) ?? []).length).toBe(1);
+  });
+
+  // Beyond gridInlineBlockThreshold columns (default 3), cards need to stack on narrow
+  // screens like statsGrid's own cells — but an inline-block element's declared width
+  // EXCLUDES its own padding (unlike a plain <td> sibling, where the padding is folded
+  // into the column's actual rendered width by the table layout algorithm), so the gap
+  // padding can't live on the same element that also declares the percentage width.
+  it("beyond the inline-block threshold, the sizing <td> is padding-less and inline-block; the gap padding moves one level deeper", () => {
+    const html = tmpl.recordRow({
+      cardStyle: true,
+      rows: [{ cells: [
+        { innerHtml: "a", bg: "#f1f8e9" },
+        { innerHtml: "b", bg: "#f1f8e9" },
+        { innerHtml: "c", bg: "#f1f8e9" },
+        { innerHtml: "d", bg: "#f1f8e9" },
+      ] }],
+    });
+    // 1 (outer per-component) + 2 per card (gap-layer table + content-layer table) × 4.
+    expect((html.match(/<table/g) ?? []).length).toBe(9);
+    const sizingTds = html.match(/<td valign="top" align="center" width="25%"[^>]*>/g) ?? [];
+    expect(sizingTds.length).toBe(4);
+    for (const td of sizingTds) {
+      expect(td).toContain("display:inline-block");
+      expect(td).not.toMatch(/padding-(top|right|bottom|left):\d/);
+      expect(td).not.toMatch(/bgcolor/);
+    }
+    // The gap padding still lands on a bg-less element, one level deeper than in the
+    // fixed (non-wrapping) case.
+    const bgTds = html.match(/<td[^>]*bgcolor="#f1f8e9"[^>]*style="[^"]*"/g) ?? [];
+    expect(bgTds.length).toBe(4);
+    for (const td of bgTds) {
+      expect(td).toMatch(/padding-top:6px;padding-right:6px;padding-bottom:6px;padding-left:6px;/);
+    }
+  });
+
+  it("at or below the inline-block threshold, cardStyle stays the fixed (non-wrapping) shape", () => {
+    const html = tmpl.recordRow({
+      cardStyle: true,
+      rows: [{ cells: [
+        { innerHtml: "a", bg: "#f1f8e9" },
+        { innerHtml: "b", bg: "#f1f8e9" },
+        { innerHtml: "c", bg: "#f1f8e9" },
+      ] }],
+    });
+    expect(html).not.toContain("display:inline-block");
+  });
+
+  // The gap around each card (recordGutterPadY/X) and a card's own interior padding
+  // (recordCellPadY/X) are separate token pairs — tuning any one of the four must not
+  // move the other three. In particular Y and X are independent of EACH OTHER too, not
+  // just one shared "gutter size" — matching the recordCellPadY/recordCellPadX split.
+  it("recordGutterPadY/X (the gap) are independent of each other and of recordCellPadY/X (the card's own interior padding)", () => {
+    const gutterTok = mergeTokens(tokens, { layout: { recordGutterPadY: 20, recordGutterPadX: 30 } });
+    const html = buildTemplates(gutterTok).recordRow({
+      cardStyle: true,
+      rows: [{ cells: [
+        { innerHtml: "a", bg: "#f1f8e9" },
+        { innerHtml: "b", bg: "#f1f8e9" },
+      ] }],
+    });
+    // The bg-less outer (gap) <td> picks up its own Y (20) and X (30) independently...
+    const outerTds = html.match(/<td align="center"[^>]*style="[^"]*"/g) ?? [];
+    expect(outerTds.length).toBe(2);
+    for (const td of outerTds) {
+      expect(td).toMatch(/padding-top:20px;padding-right:30px;padding-bottom:20px;padding-left:30px;/);
+    }
+    // ...while the colored inner card keeps the default recordCellPadY/X (6px), untouched.
+    const bgTds = html.match(/<td[^>]*bgcolor="#f1f8e9"[^>]*style="[^"]*"/g) ?? [];
+    for (const td of bgTds) {
+      expect(td).toMatch(/padding-top:6px;padding-right:6px;padding-bottom:6px;padding-left:6px;/);
+    }
+  });
+
+  // Bug fix: dropBgMatchingSides' neighbor-bg suppression ("this border would blend
+  // straight into the neighbor's fill, so drop it") only makes sense when the two cells
+  // actually touch. cardStyle inserts a real gap around every card, so a border facing
+  // that gap is never blending into anything, no matter what color it happens to share
+  // with a neighbor two rendering levels away — it must survive, unlike the flat
+  // (touching) case covered by "recordRow border color matching a neighbor's bg is
+  // dropped" below.
+  it("a border matching a neighbor's bg is NOT dropped under cardStyle — the cards no longer touch", () => {
+    const html = tmpl.recordRow({
+      cardStyle: true,
+      rows: [{ cells: [
+        { innerHtml: "a", bg: "#ffffff", border: { right: { color: "#0a2463" } } },
+        { innerHtml: "b", bg: "#0a2463" },
+      ] }],
+    });
+    expect(html).toContain("border-right");
+  });
+});
+
 // ── recordRow border suppressed when it matches the cell's own bg ────────────
 
 describe("buildTemplates — recordRow border color same as background is dropped", () => {
@@ -986,7 +1133,7 @@ describe("buildTemplates — image", () => {
   });
 
   // placeholderImageWidth is its own hand-picked constant per Simple-converter provider
-  // (560/562/400 — see Tokens.layout.placeholderImageWidth doc comment), NOT derived from
+  // (560/562 — see Tokens.layout.placeholderImageWidth doc comment), NOT derived from
   // containerMaxWidth/sidePadding — overriding sidePadding alone must not move it.
   it("profile override of sidePadding does NOT change the rendered image width", () => {
     const tok = mergeTokens(tokens, { layout: { sidePadding: 30 } });
@@ -1001,14 +1148,15 @@ describe("buildTemplates — image", () => {
     expect(html).toContain("max-width:400px");
   });
 
-  // Locks the real profiles to the Simple converter's own hardcoded per-provider constants
-  // (ttt/templates.ts's FULL_IMAGE_WIDTH="400", alphaone/templates.ts's width="562") — neither
-  // follows containerMaxWidth − 2×sidePadding, so a formula-based width would silently drift
-  // from what the Simple converter (and the app's real upload/replace flow) actually expects.
-  it("TTT profile renders width=400, matching ttt/templates.ts's FULL_IMAGE_WIDTH", () => {
+  // TTT has no placeholderImageWidth override — it renders at the shared 560 default,
+  // same as every other profile without one. Locks this down: ttt/templates.ts's legacy
+  // FULL_IMAGE_WIDTH="400" was a stale value, not an intentional TTT-specific size, and
+  // must not silently reappear as a profile override.
+  it("TTT profile renders width=560, the shared default (no per-provider override)", () => {
     const html = buildTemplates(mergeTokens(tokens, tttProfile)).image({});
-    expect(html).toContain('width="400"');
-    expect(html).toContain("max-width:400px");
+    expect(html).toContain(`width="${tokens.layout.placeholderImageWidth}"`);
+    expect(html).toContain(`max-width:${tokens.layout.placeholderImageWidth}px`);
+    expect(tttProfile.layout?.placeholderImageWidth).toBeUndefined();
   });
 
   it("AlfaOne profile renders width=562, matching alphaone/templates.ts's wrapImg", () => {

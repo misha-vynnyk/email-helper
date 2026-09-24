@@ -337,6 +337,30 @@ describe("htmlConverter utils", () => {
       expect(result).not.toContain("[[BR_SEP]]");
       expect(result).toBe(input);
     });
+
+    // Bug fix: the merge kept only the FIRST block's attrs, silently discarding the second
+    // block's own color/font-size whenever alignment happened to match — safe for GDocs'
+    // margin/padding-only splitting noise, but not when color/font-size are meaningfully
+    // different and declared directly on the block tag (e.g. Mail.app/Safari paste, which
+    // sometimes skips the inner <span> — see the bare <b style="color:..."> case in
+    // simple/formatter.ts). Two same-align blocks with conflicting color/font-size must NOT
+    // merge — merging would repaint the second block's text in the first block's style.
+    it("should NOT merge two same-align blocks that declare conflicting color/font-size directly on the tag", () => {
+      const input =
+        '<p style="text-align:center;color:#ff0000;font-size:24px;">Red Headline</p>' +
+        '<p style="text-align:center;color:#000000;font-size:14px;">Black body text</p>';
+      const result = mergeSimilarTags(input);
+      expect(result).not.toContain("[[BR_SEP]]");
+      expect(result).toBe(input);
+    });
+
+    it("still merges two same-align blocks that share the same color/font-size (or declare neither)", () => {
+      const input =
+        '<p style="text-align:center;color:#ff0000;font-size:24px;">Line one</p>' +
+        '<p style="text-align:center;color:#ff0000;font-size:24px;">Line two</p>';
+      const result = mergeSimilarTags(input);
+      expect(result).toContain("[[BR_SEP]]");
+    });
   });
 
   describe("replaceAllEmojisAndSymbolsExcludingHTML", () => {

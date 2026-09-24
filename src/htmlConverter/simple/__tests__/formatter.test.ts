@@ -143,6 +143,18 @@ describe("simple converter unified formatter", () => {
           expect(withoutArg).toBe(explicitlyOff);
           expect(withoutArg).not.toContain(tok.color.red);
         });
+
+        // Bug fix: a bare <b style="color:..."> (Mail.app/Safari paste sometimes uses the
+        // <b> tag itself as the ONLY carrier of its own style, no inner <span> to fall
+        // back on — see the case (b) comment on this same regex in formatter.ts) never
+        // resolved its color, unlike the visually-equivalent <span style="font-weight:700;
+        // color:...">, which correctly does via resolveBucketColor.
+        it("resolves the bucket color on a bare <b style=\"color:...\"> with no wrapping span", () => {
+          const result = formatHtml('<p><b style="color: #CC0000;">Warning</b></p>', tok, tmpl, undefined, true);
+          expect(result).toContain("Warning");
+          expect(result).toContain("<b");
+          expect(result).toContain(`color:${tok.color.red}`);
+        });
       });
 
       // Regression (real-world report): the native-link regex used to require an

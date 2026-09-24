@@ -459,7 +459,7 @@ describe("renderNode — bandStack", () => {
     const wrappers = result.match(new RegExp(`padding-top:${p}px;padding-bottom:${p}px;`, "g")) ?? [];
     expect(wrappers.length).toBe(1);
     // Each band's own <td> uses only the internal cell padding, never the block gap.
-    expect(result).toContain(`padding-top:${tokens.layout.alertBandPadV}px`);
+    expect(result).toContain(`padding-top:${tokens.layout.alertBandPadY}px`);
   });
 
   it("gives a light-bg band dark text and a dark-bg band white text", () => {
@@ -688,6 +688,62 @@ describe("renderNode — alertBand", () => {
   });
 });
 
+// ── renderNode — alertBand textRows (2+ consecutive same-bg paragraphs merged) ─
+
+describe("renderNode — alertBand with 2+ textRows", () => {
+  // Bug fix: the top/bottom edge previously fell through blockRow's own default padding
+  // (tok.layout.blockPadY, the generic block gap) instead of alertBand's tighter vertical
+  // inset (alertBandPadY) — making a 2-line stacked band visibly taller than the exact
+  // same content rendered as a single row (the textRows.length===1 branch just above).
+  it("uses alertBandPadY (not the generic blockPadY) for the group's own top/bottom edge", () => {
+    const node: ComponentNode = {
+      kind: "alertBand",
+      props: {
+        bg: "#fff9db",
+        align: "left",
+        lines: [],
+        textRows: [
+          { size: "body", lines: [[{ text: "Line one" }]] },
+          { size: "body", lines: [[{ text: "Line two" }]] },
+        ],
+      },
+    };
+    const result = renderNode(node, tmpl, tokens);
+    // The two per-row <td>s (font-family style, not the outer bg wrapper's own <td>).
+    const rowTds = result.match(/<td align="[^"]*"\s*\n\s*style="font-family:[^"]*"/g) ?? [];
+    expect(rowTds).toHaveLength(2);
+    expect(rowTds[0]).toContain(`padding-top:${tokens.layout.alertBandPadY}px`);
+    expect(rowTds[1]).toContain(`padding-bottom:${tokens.layout.alertBandPadY}px`);
+    for (const td of rowTds) {
+      expect(td).not.toContain(`:${tokens.layout.blockPadY}px`);
+    }
+  });
+
+  // Bug fix: pushMerged (classify.ts) never rewrites the band's top-level `align` past
+  // row 0 — it stays frozen at whichever paragraph merged first. A later row with no
+  // align of its own must default to "left" like any other unaligned paragraph, not
+  // silently inherit row 0's alignment.
+  it("a later row with no align of its own defaults to left, not row 0's alignment", () => {
+    const node: ComponentNode = {
+      kind: "alertBand",
+      props: {
+        bg: "#fff9db",
+        align: "center",
+        lines: [],
+        textRows: [
+          { size: "body", align: "center", lines: [[{ text: "Centered line" }]] },
+          { size: "body", lines: [[{ text: "Unaligned line" }]] },
+        ],
+      },
+    };
+    const result = renderNode(node, tmpl, tokens);
+    const rowTds = result.match(/<td align="[^"]*"\s*\n\s*style="font-family:[^"]*"/g) ?? [];
+    expect(rowTds).toHaveLength(2);
+    expect(rowTds[0]).toContain('align="center"');
+    expect(rowTds[1]).toContain('align="left"');
+  });
+});
+
 // ── renderNode — image ────────────────────────────────────────────────────────
 
 describe("renderNode — image", () => {
@@ -800,7 +856,7 @@ describe("renderNode — alertBand with images (no buttons/bands)", () => {
 
   it("gives each row (text and image) the alertBand horizontal inset directly", () => {
     const html = renderNode(node, tmpl, tokens);
-    const ph = tokens.layout.alertBandPadH;
+    const ph = tokens.layout.alertBandPadX;
     expect(html).toContain(`padding-left:${ph}px;padding-right:${ph}px;`);
   });
 
@@ -812,9 +868,9 @@ describe("renderNode — alertBand with images (no buttons/bands)", () => {
   // Outlook's Word engine honors the HTML width attribute literally (unlike width:100% in
   // style, which every other client respects) — a nested image row must shrink its width by
   // the row's own horizontal padding, or it overflows the box by 2×padX in Outlook specifically.
-  it("shrinks the image width by its own horizontal padding (2×alertBandPadH), not the bare 560px content width", () => {
+  it("shrinks the image width by its own horizontal padding (2×alertBandPadX), not the bare 560px content width", () => {
     const html = renderNode(node, tmpl, tokens);
-    const ph = tokens.layout.alertBandPadH;
+    const ph = tokens.layout.alertBandPadX;
     const contentW = tokens.layout.containerMaxWidth - 2 * tokens.layout.sidePadding;
     const expectedW = contentW - 2 * ph;
     expect(html).toContain(`width="${expectedW}"`);
