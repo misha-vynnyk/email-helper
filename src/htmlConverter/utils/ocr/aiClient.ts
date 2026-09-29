@@ -1,7 +1,12 @@
 import { getApiBase } from "../../../config/api";
 import { OcrAnalyzeResult } from "./analyzer";
+import { analyzeImageViaCloudflare, CloudflareAnalyzeResult, CloudflareCredentialsInput } from "./cloudflareClient";
 import { FILENAME_STOP_WORDS } from "./constants";
 import { cleanupAltCandidate, formatCtaAsAction, truncateAlt } from "./postprocess/cleanup";
+
+export interface CloudflareCallOptions {
+  credentials?: CloudflareCredentialsInput | null;
+}
 
 /**
  * Polish AI-generated alt text to follow accessibility best practices:
@@ -74,9 +79,15 @@ export class AiBackendClient {
   }
 
   /**
-   * Analyzes an image using the AI Backend with retry logic
+   * Analyzes an image using the AI Backend with retry logic.
+   * `provider: "cloudflare"` skips the local server entirely — calls the
+   * email-helper-ai Cloudflare Worker directly (see cloudflareClient.ts).
    */
-  static async analyzeImage(blob: Blob): Promise<OcrAnalyzeResult> {
+  static async analyzeImage(blob: Blob, provider: "ollama" | "cloudflare" = "ollama", cloudflareOptions?: CloudflareCallOptions): Promise<OcrAnalyzeResult> {
+    if (provider === "cloudflare") {
+      return this.analyzeImageViaCloudflareProvider(blob, cloudflareOptions);
+    }
+
     // Check if backend is available first
     const available = await this.isAvailable();
     if (!available) {
@@ -102,6 +113,11 @@ export class AiBackendClient {
     }
 
     throw lastError || new Error("AI analysis failed");
+  }
+
+  private static async analyzeImageViaCloudflareProvider(blob: Blob, options?: CloudflareCallOptions): Promise<OcrAnalyzeResult> {
+    const data = await analyzeImageViaCloudflare({ blob, credentials: options?.credentials });
+    return this.mapBackendResponse(data);
   }
 
   /**
@@ -138,41 +154,46 @@ export class AiBackendClient {
       }
 
       const data = await response.json();
-
-      // Map Backend response to OcrAnalyzeResult
-      // Backend returns: { alt_text, filename, candidates: { alt_texts, filenames }, cta, raw: { ocr, caption, tags } }
-
-      const ocrText = data.raw?.ocr || "";
-      const rawAltCandidates = data.candidates?.alt_texts || [data.alt_text];
-      const filenameCandidates = data.candidates?.filenames || [data.filename];
-      const cta = data.cta || "";
-
-      // Apply accessibility best practices to alt suggestions
-      const altSuggestions = rawAltCandidates
-        .filter((s: string) => s)
-        .map((s: string) => polishAiAltText(s))
-        .filter((s: string) => s && s.length >= 3);
-
-      const nameSuggestions = filenameCandidates
-        .filter((s: string) => s)
-        .map((s: string) => normalizeAiFilenameSuggestion(s))
-        .filter((s: string) => s && s.length >= 3);
-
-      // Format CTA as action description
-      const ctaSuggestions = cta ? [formatCtaAsAction(cta)] : [];
-
-      return {
-        ocrText: ocrText,
-        ocrTextRaw: ocrText,
-        altSuggestions,
-        ctaSuggestions,
-        nameSuggestions,
-        textLikelihood: 1,
-        cacheHit: false,
-        warning: data.warning || undefined,
-      };
+      return this.mapBackendResponse(data);
     } finally {
       clearTimeout(timeoutId);
     }
+  }
+
+  /**
+   * Maps a provider response — Ollama (via /ai-api/api/analyze) or Cloudflare
+   * (via cloudflareClient.ts, same shape by design) — to OcrAnalyzeResult.
+   * Shape: { alt_text, filename, candidates: { alt_texts, filenames }, cta, raw: { ocr, caption, tags }, warning? }
+   */
+  private static mapBackendResponse(data: { alt_text?: string; filename?: string; candidates?: { alt_texts?: string[]; filenames?: string[] }; cta?: string; raw?: { ocr?: string }; warning?: string } | CloudflareAnalyzeResult): OcrAnalyzeResult {
+    const ocrText = data.raw?.ocr || "";
+    const rawAltCandidates = data.candidates?.alt_texts || [data.alt_text];
+    const filenameCandidates = data.candidates?.filenames || [data.filename];
+    const cta = data.cta || "";
+
+    // Apply accessibility best practices to alt suggestions
+    const altSuggestions = rawAltCandidates
+      .filter((s): s is string => Boolean(s))
+      .map((s) => polishAiAltText(s))
+      .filter((s) => s && s.length >= 3);
+
+    const nameSuggestions = filenameCandidates
+      .filter((s): s is string => Boolean(s))
+      .map((s) => normalizeAiFilenameSuggestion(s))
+      .filter((s) => s && s.length >= 3);
+
+    // Format CTA as action description
+    const ctaSuggestions = cta ? [formatCtaAsAction(cta)] : [];
+
+    return {
+      ocrText,
+      ocrTextRaw: ocrText,
+      altSuggestions,
+      ctaSuggestions,
+      nameSuggestions,
+      textLikelihood: 1,
+      cacheHit: false,
+      warning: data.warning || undefined,
+    };
   }
 }

@@ -64,10 +64,11 @@ A synthesized, cross-referenced knowledge base for this project — decisions, s
 | CORS | cross-origin support |
 | express-rate-limit | rate limiting |
 
-### AI Integration (Ollama proxy — `server/routes/aiProxy.js`)
+### AI Integration (`server/routes/aiProxy.js` for Ollama; `cloudflare-worker/` + client-side code for Cloudflare — two independent paths, see full write-up below)
 | Tool | Purpose |
 |------|---------|
-| Ollama (local, external process) | Runs the vision-capable model (default `qwen2.5vl`, configurable) |
+| Ollama (local, external process) | Ollama provider — runs the vision-capable model (default `qwen2.5vl`, configurable); via the local Node backend |
+| Cloudflare Workers AI (free tier) | Cloudflare provider — cloud vision models for machines too weak to run Ollama locally; client-side only, via a public Worker (zero-config) or own account token |
 
 No separate Python/FastAPI service — the old `server/ai/` microservice (FastAPI + PaddleOCR + CLIP + Gemma 3) was removed and replaced by a single Express route that proxies image bytes straight to a local Ollama instance's `/api/generate` and parses its JSON response. See the full write-up under "AI Integration" below.
 
@@ -113,8 +114,12 @@ email-helper-copy/
 │   ├── pathValidator.ts        # Path security validation
 │   ├── workspaceManager.ts     # Workspace/project management
 │   ├── utils/                  # htmlSanitizer, storagePathResolver, gifOptimizer
-│   ├── routes/aiProxy.js       # Proxies image analysis to local Ollama (/ai-api) — replaces the old Python service
+│   ├── routes/aiProxy.js       # Ollama image-analysis proxy (/ai-api) — delegates to aiProviders/
+│   ├── aiProviders/            # ollamaProvider.js, shared.js (prompt/resize/JSON-extract) — shared with the Cloudflare Worker in spirit (worker.js keeps its own copy, see cloudflare-worker/)
 │   └── ollama-settings.json    # Persisted Ollama host/model/prompt settings
+├── cloudflare-worker/          # Independent Cloudflare Workers AI deploy — see its own README.md
+│   ├── src/worker.js           # Zero-config shared mode + own-token relay mode, same endpoint
+│   └── wrangler.toml
 ├── automation/                 # Playwright browser automation
 │   ├── config.json             # Browser profiles & storage provider config
 │   ├── run-upload.js           # CLI entry point
@@ -399,29 +404,45 @@ POST /api/storage/upload         → upload to storage provider (triggers browse
 
 ---
 
-## AI Integration (`server/routes/aiProxy.js`, mounted at `/ai-api`)
+## AI Integration — two independent provider paths, no shared backend
 
-No separate Python microservice — this used to be a FastAPI + PaddleOCR + CLIP + Gemma 3 process on port 8000; it was removed and replaced by a single Express route that proxies straight to a local Ollama instance. `/ai-api` is proxied by Vite to the same backend port as `/api` (see `vite.config.ts`), not to a standalone AI port.
+Image analysis (ALT-text/filename/CTA) has **two providers**, selected client-side via `imageAnalysis.backendProvider: "ollama" | "cloudflare"` (`src/htmlConverter/types.ts`). They do not share an implementation — Ollama goes through the local Node server, Cloudflare bypasses it entirely.
 
-### Endpoints
+### Ollama (`server/routes/aiProxy.js` + `server/aiProviders/`, mounted at `/ai-api`)
+
+Unchanged from before Cloudflare support existed. No separate Python microservice — that used to be a FastAPI + PaddleOCR + CLIP + Gemma 3 process on port 8000, removed and replaced by this single Express route, which proxies to a local/LAN Ollama instance (`server/aiProviders/ollamaProvider.js`).
+
 ```
 GET    /ai-api/health         → { status, ollama_running, ollama_host }
-GET    /ai-api/api/models     → list of models currently pulled in Ollama
-POST   /ai-api/api/analyze    → image upload → { filename, alt_text, cta, raw, cached }
-POST   /ai-api/api/test       → text-only prompt roundtrip (latency check)
+GET    /ai-api/api/models     → models currently pulled in Ollama
+POST   /ai-api/api/analyze    → image upload → { filename, alt_text, cta, raw, cached, warning? }
+POST   /ai-api/api/test       → prompt roundtrip (latency check)
 DELETE /ai-api/api/cache      → clear in-memory response cache
 GET    /ai-api/api/settings   → current host/model/generation params/prompt
 PUT    /ai-api/api/settings   → update host/model/generation params/prompt
 ```
 
-### How it works
-- Resizes the uploaded image to ≤768px JPEG (Sharp), sends it to Ollama's `/api/generate` with `format: "json"` and a fixed prompt asking for `filename`/`alt_text`/`cta`, then parses the JSON out of the response.
-- Model/host/temperature/prompt persist to `ollama-settings.json` (next to `ELECTRON_USER_DATA`, or cwd in dev/web) and survive restarts.
-- If the configured model isn't actually pulled in Ollama, silently falls back to whatever *is* installed and returns a `warning` string instead of failing.
-- In-memory response cache keyed by image MD5 hash (cap 100 entries).
+Resizes the uploaded image to ≤768px JPEG (Sharp), sends to `/api/generate` with `format:"json"` and a fixed prompt; `server/aiProviders/shared.js`'s `extractJsonFromText()` defensively parses the response (direct parse → fenced code block → first-`{`-to-last-`}` substring) rather than trusting `format:"json"` blindly. If the configured model isn't pulled, silently falls back to whatever *is* installed and returns a `warning`. Settings persist to `ollama-settings.json` (next to `ELECTRON_USER_DATA`, or cwd in dev/web). `/ai-api` is proxied by Vite to the same backend port as `/api` — **GitHub Pages (UI-only demo) cannot reach this path at all**, it needs the local Express backend running.
+
+### Cloudflare Workers AI — client-side only, no local server involved
+
+For machines too weak to run Ollama locally (e.g. a MacBook Air), or for the GitHub Pages demo where no backend exists. **Everything happens in the browser/Electron renderer** — `src/htmlConverter/utils/ocr/cloudflareClient.ts` resizes the image client-side (reusing `src/imageConverter/utils/resizeImageData.ts` + `jsquashEncode.ts`, the same jsquash/WASM pipeline the Image Converter tab already uses) and POSTs straight to a public Cloudflare Worker — `cloudflare-worker/src/worker.js`, deployed independently (`cloudflare-worker/README.md`), **not part of `npm run build`/`npm run dev`**. Live at `https://email-helper-ai.vinnikmisha.workers.dev`.
+
+**Why a Worker and not a direct browser→Cloudflare call**: confirmed live (`curl -X OPTIONS api.cloudflare.com/...`) that `api.cloudflare.com` sends no CORS headers at all (405, no `Access-Control-Allow-Origin`) — a browser cannot call it directly under any circumstances, regardless of token. The Worker is a CORS-safe relay, not an optional convenience.
+
+**Two auth modes through the same Worker endpoint**, selected by whether the request body includes `accountId`/`apiToken`:
+- **No credentials (default, zero-config)** — Worker uses its own native `env.AI.run()` binding (no token anywhere in the code, authenticated inside Cloudflare's platform). Protected by a CORS allowlist (`https://misha-vynnyk.github.io` + local dev origins) and a per-IP KV-backed rate limit (20 req/60s) — the Worker's URL is necessarily public (shipped in the JS bundle), and the free daily quota is shared across every caller.
+- **User's own `accountId`/`apiToken`**, entered in Налаштування (`ImageSettingsTab.tsx`) and stored client-side via `src/hooks/useCloudflareCredentials.ts` — `safeStorage`-encrypted in Electron (new IPC channels `credentials:saveCloudflare`/`loadCloudflare`/`clearCloudflare` in `electron/main.ts`+`preload.ts`), plain `localStorage` in the browser (same risk-acceptance precedent as the existing SMTP app-password storage). The Worker relays server-to-server to `api.cloudflare.com` using the caller's token (no CORS issue there — Worker-to-Cloudflare isn't a browser request) and skips its own rate limit, since it's the user's own quota. The token transits through the Worker's request handling for one request only — never logged or persisted by it.
+
+**Model is fixed, not user-selectable**: `@cf/moondream/moondream3.1-9B-A2B` (Moondream 3.1) — the fastest and cheapest-per-token vision model in the free-tier catalog, hardcoded as `MODEL` in `worker.js`. No vision model on Workers AI guarantees JSON-mode (`response_format`/`json_schema`), so the Worker asks for JSON in the prompt text and parses defensively via its own copy of `extractJsonFromText()` — same technique as the Ollama path, independently implemented (Workers runtime can't `require()` the Node backend's copy).
+
+**Two live-discovered gotchas in `worker.js`, neither documented by Cloudflare** (found via `console.log` + `wrangler tail` against the real deployed Worker, not from docs):
+1. `env.AI.run()`'s resolved value for Moondream's `query` task is `{result: {answer, finish_reason, metrics, ...}, usage: {...}}` — one level deeper than `wrangler ai models schema '@cf/moondream/moondream3.1-9B-A2B'` implies (that command only shows the inner `result` shape). `unwrapResult()` handles both the wrapped and unwrapped case defensively.
+2. The binding sometimes hands back a `ReadableStream` of SSE `data: {...}` chunks instead of a resolved object for this model, regardless of the `stream:false` payload param (a binding-vs-REST-API inconsistency — the REST endpoint's `stream:false` buffers server-side, the raw binding here does not always). `readStreamText()` consumes and reconstructs the text when `result instanceof ReadableStream`. `reasoning` also defaults to `true` in Moondream's schema (extra chain-of-thought tokens/latency) — explicitly set `reasoning:false` in the payload to avoid it.
 
 ### Requirements
-- Ollama running locally (or reachable via `OLLAMA_HOST`) with a vision-capable model pulled — default is `qwen2.5vl:latest`, but any Ollama vision model works and is configurable via `PUT /ai-api/api/settings` or `ollama-settings.json`.
+- **Ollama**: running locally (or reachable via `OLLAMA_HOST`) with a vision-capable model pulled — default is `qwen2.5vl:latest`, but any Ollama vision model works.
+- **Cloudflare**: nothing required to just use it (public Worker is zero-config). To deploy your own Worker or use your own account's quota: see `cloudflare-worker/README.md` (`wrangler login && wrangler deploy`) — a manual, one-time action, not something automatable from this repo alone.
 - No Python, no `OMP_NUM_THREADS` tuning, no PaddleOCR/CLIP dependencies — those were specific to the removed FastAPI service.
 
 ---
@@ -654,11 +675,12 @@ npm run automation:upload -- ./file.png health --provider default
 ```
 
 ### Run AI Features
-Requires Ollama running locally with a vision-capable model pulled (no separate service to start — `aiProxy.js` is part of the regular backend, started by `npm run dev`/`dev-backend`):
+Default provider is Ollama — needs it running locally with a vision-capable model pulled (no separate service to start — `aiProxy.js` is part of the regular backend, started by `npm run dev`/`dev-backend`):
 ```bash
 ollama pull qwen2.5vl:latest   # or any other Ollama vision model; configurable in Settings
 npm run dev
 ```
+Alternatively, switch the provider to **Cloudflare Workers AI** in Налаштування → AI аналіз зображень (useful on machines too weak to run Ollama locally, e.g. a MacBook Air) — zero-config by default (public shared Worker), or enter your own Cloudflare Account ID + API Token in that same panel for your own quota. No `.env` var, no local model pull, no backend involved at all for this path.
 
 ---
 
@@ -666,7 +688,7 @@ npm run dev
 
 - **No traditional router** — tab-based SPA navigation
 - **Server is required** for full functionality (blocks, templates, email, image conversion via Sharp)
-- **AI features are optional** — `aiProxy.js` gracefully degrades (returns a 503 with a clear message) when Ollama isn't running or has no models pulled; it's a route on the main backend, not a separate process
+- **AI features are optional** — Ollama path gracefully degrades (`aiProxy.js` returns a 503 with a clear message when Ollama isn't running); Cloudflare path needs no local backend at all — it either hits the public zero-config Worker or, with a user-supplied token, the same Worker relaying to `api.cloudflare.com`
 - **Automation requires Brave browser** — configured automatically on `npm install`
 - **Multi-instance dev** — each instance uses different ports (offset by 10 per instance)
 - **Frontend proxies all `/api` and `/ai-api` requests** in dev mode via Vite proxy

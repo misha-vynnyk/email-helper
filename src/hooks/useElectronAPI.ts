@@ -13,6 +13,11 @@ export interface ElectronUploadResult {
   cancelled?: boolean;
 }
 
+export interface ElectronCloudflareCredentials {
+  accountId: string;
+  apiToken: string;
+}
+
 interface ElectronAPI {
   isElectron: boolean;
   serverPort: number;
@@ -23,6 +28,9 @@ interface ElectronAPI {
   showNotification: (title: string, body: string) => void;
   uploadFile: (req: ElectronUploadRequest) => Promise<ElectronUploadResult>;
   saveToPath: (content: string, folderPath: string, fileName: string) => Promise<{ saved: boolean; filePath?: string; error?: string; canceled?: boolean }>;
+  saveCloudflareCredentials: (data: ElectronCloudflareCredentials) => Promise<{ saved: boolean; error?: string }>;
+  loadCloudflareCredentials: () => Promise<ElectronCloudflareCredentials | null>;
+  clearCloudflareCredentials: () => Promise<{ cleared: boolean; error?: string }>;
 }
 
 declare global {

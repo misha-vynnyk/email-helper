@@ -6,6 +6,8 @@ import { saveAs } from "file-saver";
 import { Check as CheckIcon, X as CloseIcon } from "lucide-react";
 import React, { useEffect, useState } from "react";
 
+import { useCloudflareCredentials } from "@/hooks/useCloudflareCredentials";
+
 import { HistoryPrompt } from "./components/HistoryPrompt";
 import { ImageGrid } from "./components/ImageGrid";
 import { ImageProcessorActions } from "./components/ImageProcessorActions";
@@ -99,8 +101,18 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const initialFolderName = extractFolderName(fileName);
 
+  const { credentials: cloudflareCredentials, loaded: cloudflareCredentialsLoaded } = useCloudflareCredentials();
+
   // Background AI processor hook logic
-  const analysisEnabled = Boolean(imageAnalysisSettings?.enabled && (imageAnalysisSettings.engine === "ocr" || imageAnalysisSettings.useAiBackend));
+  // When the Cloudflare backend is selected, don't start analysis (esp. runMode:"auto") until
+  // useCloudflareCredentials() has finished its async load — otherwise it can silently fire with
+  // the EMPTY placeholder and fall through to the public shared Worker instead of the user's own.
+  const usesCloudflareAiBackend = Boolean(imageAnalysisSettings?.useAiBackend && imageAnalysisSettings.backendProvider === "cloudflare");
+  const analysisEnabled = Boolean(
+    imageAnalysisSettings?.enabled &&
+    (imageAnalysisSettings.engine === "ocr" || imageAnalysisSettings.useAiBackend) &&
+    (!usesCloudflareAiBackend || cloudflareCredentialsLoaded)
+  );
 
   const processedFiles = React.useMemo(() => {
     return images
@@ -127,6 +139,7 @@ export default function ImageProcessor({ editorRef, onLog, visible, onVisibility
   } = useOcrAnalysis({
     enabled: analysisEnabled,
     settings: effectiveAnalysisSettings,
+    cloudflareCredentials,
     files: processedFiles,
   });
 

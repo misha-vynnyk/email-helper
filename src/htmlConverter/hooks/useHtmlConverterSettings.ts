@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { getApiBase } from "@/config/api";
+import { useCloudflareCredentials } from "@/hooks/useCloudflareCredentials";
 
 import { STORAGE_KEYS, SYMBOLS } from "../constants";
 import type { ImageAnalysisSettings } from "../types";
@@ -78,6 +79,7 @@ export const DEFAULT_IMAGE_ANALYSIS_SETTINGS: ImageAnalysisSettings = {
   ocrMaxWidth: 1200,
   useAiBackend: false,
   aiProvider: "gemma3",
+  backendProvider: "ollama",
   autoAnalyzeMaxFiles: 0,
 };
 
@@ -108,8 +110,9 @@ const loadImageAnalysisSettings = (): ImageAnalysisSettings => {
 export function useHtmlConverterSettings() {
   const [ui, setUi] = useState<UiSettings>(() => loadUiSettings());
   const [imageAnalysis, setImageAnalysis] = useState<ImageAnalysisSettings>(() => loadImageAnalysisSettings());
-  const [aiBackendStatus, setAiBackendStatus] = useState<"checking" | "online" | "offline" | "ollama_offline">("offline");
+  const [aiBackendStatus, setAiBackendStatus] = useState<"checking" | "online" | "offline" | "ollama_offline" | "cloudflare_offline">("offline");
   const healthCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const { credentials: cloudflareCredentials, loaded: cloudflareCredentialsLoaded } = useCloudflareCredentials();
 
   // AI Backend Health Check
   useEffect(() => {
@@ -122,6 +125,27 @@ export function useHtmlConverterSettings() {
       return;
     }
 
+    if (imageAnalysis.backendProvider === "cloudflare") {
+      // No periodic network probe here — the public Worker's free-tier rate
+      // limit is shared across every user, and polling it every 30s would
+      // eat into that for no benefit. Status is derived locally from
+      // whether an own-token is partially filled in; use "Тест" in
+      // Налаштування for an actual round-trip check.
+      if (healthCheckRef.current) {
+        clearInterval(healthCheckRef.current);
+        healthCheckRef.current = null;
+      }
+      if (!cloudflareCredentialsLoaded) {
+        // Electron: credentials load asynchronously via IPC — avoid briefly reporting
+        // "online" off the EMPTY placeholder before the real value arrives.
+        setAiBackendStatus("checking");
+        return;
+      }
+      const partiallyConfigured = Boolean(cloudflareCredentials.accountId) !== Boolean(cloudflareCredentials.apiToken);
+      setAiBackendStatus(partiallyConfigured ? "cloudflare_offline" : "online");
+      return;
+    }
+
     const checkHealth = async () => {
       try {
         const res = await fetch(`${getApiBase()}/ai-api/health`, {
@@ -130,8 +154,8 @@ export function useHtmlConverterSettings() {
         });
         if (res.ok) {
           const data = await res.json().catch(() => ({}));
-          // If User picked gemma3 but ollama is down, state is ollama_offline
           if (data.ollama_running === false && imageAnalysis.aiProvider === "gemma3") {
+            // If User picked gemma3 but ollama is down, state is ollama_offline
             setAiBackendStatus("ollama_offline");
           } else {
             setAiBackendStatus("online");
@@ -158,7 +182,7 @@ export function useHtmlConverterSettings() {
         healthCheckRef.current = null;
       }
     };
-  }, [imageAnalysis.useAiBackend, imageAnalysis.aiProvider]);
+  }, [imageAnalysis.useAiBackend, imageAnalysis.aiProvider, imageAnalysis.backendProvider, cloudflareCredentials.accountId, cloudflareCredentials.apiToken, cloudflareCredentialsLoaded]);
 
   // Persist UI Settings
   useEffect(() => {

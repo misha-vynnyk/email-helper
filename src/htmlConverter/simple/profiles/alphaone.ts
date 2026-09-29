@@ -15,6 +15,11 @@ export const profile: SimpleTokensOverride = {
   blockWrapTag: "div",
   headlineWrapTag: "b",
   headlineFontSize: "24px",
+  // Verified 2026-09-24 against a real alpha source repo (promo-project-v18-0-alpha):
+  // processStyles' italic branches consistently emit <i>, never <em> — contradicts the
+  // previous "default/alphaone always used <em>" git-history finding, same as the TTT
+  // cross-check earlier the same day. Same shape as TTT/Red's italicTag override.
+  italicTag: "i",
   button: { height: "53", outerPadding: "3px 4px", innerPadding: "10px 20px", className: "custom-button" },
   footerPaddingTopHtml: "25px",
   footerPaddingBottomHtml: "16px",

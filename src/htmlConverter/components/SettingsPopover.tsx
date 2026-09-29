@@ -23,7 +23,7 @@ type SettingsPopoverProps = {
   setImageAnalysis: Dispatch<SetStateAction<ImageAnalysisSettings>>;
   autoProcess: boolean;
   setAutoProcess: Dispatch<SetStateAction<boolean>>;
-  aiBackendStatus: "checking" | "online" | "offline" | "ollama_offline";
+  aiBackendStatus: "checking" | "online" | "offline" | "ollama_offline" | "cloudflare_offline";
   uploadMode: UploadMode;
   setUploadMode: Dispatch<SetStateAction<UploadMode>>;
   browserDetectionStatus: BrowserDetectionStatus;

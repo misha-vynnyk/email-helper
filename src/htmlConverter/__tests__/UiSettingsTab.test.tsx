@@ -8,6 +8,18 @@ import { fireEvent, render, screen } from "@testing-library/react";
 // transform can't parse) — stub both out for tests.
 jest.mock("@/hooks/useElectronAPI", () => ({ useElectronAPI: () => null }));
 jest.mock("@/config/api", () => ({ getApiBase: () => "", isApiAvailable: () => true, apiCall: jest.fn(), API_URL: "", default: "" }));
+// Same class of issue via a second chain: useHtmlConverterSettings -> useCloudflareCredentials
+// -> useLocalStorage -> utils/logger, which also reads import.meta.env at the top level.
+jest.mock("@/hooks/useCloudflareCredentials", () => ({
+  useCloudflareCredentials: () => ({
+    credentials: { accountId: "", apiToken: "" },
+    setCredentials: jest.fn(),
+    clearCredentials: jest.fn(),
+    loaded: true,
+    hasOwnToken: false,
+    isSecureStorage: false,
+  }),
+}));
 
 import { UiSettingsTab } from "../components/UiSettingsTab";
 import { DEFAULT_UI_SETTINGS, UiSettings } from "../hooks/useHtmlConverterSettings";

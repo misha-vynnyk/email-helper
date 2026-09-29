@@ -56,6 +56,10 @@ server/data/blocks/block-manager-config.json
 server/data/templates/
 server/data/.workspaces.json
 server/ollama-settings.json
+# Actual runtime location in dev/web mode (settingsFilePath() falls back to
+# process.cwd() when ELECTRON_USER_DATA isn't set) — the server/ path above
+# only matches the packaged-Electron case.
+/ollama-settings.json
 
 # Local ideas / notes (not tracked)
 idea/

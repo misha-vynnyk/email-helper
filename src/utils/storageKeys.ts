@@ -27,6 +27,9 @@ export const STORAGE_KEYS = {
 
   // Template Builder
   TEMPLATE_BUILDER_DOWNLOAD_FOLDER: "templateBuilderDownloadFolder",
+
+  // AI (Cloudflare Workers AI — web-build storage only; Electron uses safeStorage instead, see useCloudflareCredentials)
+  CLOUDFLARE_CREDENTIALS: "cloudflareCredentials",
 } as const;
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];

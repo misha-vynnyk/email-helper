@@ -8,6 +8,18 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 // under tsconfig.test.json's CommonJS module target. Same pattern as
 // UiSettingsTab.test.tsx.
 jest.mock("@/config/api", () => ({ getApiBase: () => "", isApiAvailable: () => true, apiCall: jest.fn(), API_URL: "", default: "" }));
+// Same class of issue via a second chain: useHtmlConverterSettings -> useCloudflareCredentials
+// -> useLocalStorage -> utils/logger, which also reads import.meta.env at the top level.
+jest.mock("@/hooks/useCloudflareCredentials", () => ({
+  useCloudflareCredentials: () => ({
+    credentials: { accountId: "", apiToken: "" },
+    setCredentials: jest.fn(),
+    clearCredentials: jest.fn(),
+    loaded: true,
+    hasOwnToken: false,
+    isSecureStorage: false,
+  }),
+}));
 
 import { CheatsheetPanel } from "../components/CheatsheetPanel";
 

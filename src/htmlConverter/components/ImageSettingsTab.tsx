@@ -1,4 +1,5 @@
-import React, { Dispatch, SetStateAction, useCallback,useEffect, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
+import React, { Dispatch, SetStateAction, useCallback,useEffect, useRef, useState } from "react";
 
 import { LocalOnlyBadge } from "@/components/LocalOnlyBadge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -8,10 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { getApiBase } from "@/config/api";
+import { useCloudflareCredentials } from "@/hooks/useCloudflareCredentials";
 
 import { STORAGE_KEYS } from "../constants";
 import type { UiSettings } from "../hooks/useHtmlConverterSettings";
 import type { ImageAnalysisSettings } from "../types";
+import { testCloudflareConnection } from "../utils/ocr/cloudflareClient";
 import { OCR_PRESETS } from "../utils/ocrPresets";
 
 type ImageSettingsTabProps = {
@@ -21,7 +24,7 @@ type ImageSettingsTabProps = {
   setImageAnalysis: Dispatch<SetStateAction<ImageAnalysisSettings>>;
   autoProcess: boolean;
   setAutoProcess: Dispatch<SetStateAction<boolean>>;
-  aiBackendStatus: "checking" | "online" | "offline" | "ollama_offline";
+  aiBackendStatus: "checking" | "online" | "offline" | "ollama_offline" | "cloudflare_offline";
 };
 
 const OLLAMA_HOST_KEY = "html-converter-ollama-host";
@@ -54,22 +57,33 @@ export const ImageSettingsTab: React.FC<ImageSettingsTabProps> = ({ ui, setUi, i
     prompt: "",
     default_prompt: "",
   });
-  const [ollamaSaveStatus, setOllamaSaveStatus] = useState<"idle" | "saving" | "ok" | "error">("idle");
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "ok" | "error">("idle");
   const [showModelParams, setShowModelParams] = useState(false);
   const [showPromptEditor, setShowPromptEditor] = useState(false);
   const [testStatus, setTestStatus] = useState<"idle" | "testing">("idle");
   const [testResult, setTestResult] = useState<TestResult | null>(null);
 
+  const provider = imageAnalysis.backendProvider;
+
+  const { credentials: cfCredentials, setCredentials: setCfCredentials, clearCredentials: clearCfCredentials, loaded: cfCredentialsLoaded, isSecureStorage } = useCloudflareCredentials();
+  const [cfAccountIdInput, setCfAccountIdInput] = useState(cfCredentials.accountId);
+  const [cfApiTokenInput, setCfApiTokenInput] = useState(cfCredentials.apiToken);
+  const [showApiToken, setShowApiToken] = useState(false);
+  const cfSeededRef = useRef(false);
+  useEffect(() => {
+    if (!cfCredentialsLoaded || cfSeededRef.current) return;
+    cfSeededRef.current = true;
+    setCfAccountIdInput(cfCredentials.accountId);
+    setCfApiTokenInput(cfCredentials.apiToken);
+  }, [cfCredentialsLoaded, cfCredentials.accountId, cfCredentials.apiToken]);
+
   const fetchModelsAndSettings = useCallback(async () => {
     try {
-      const [modelsRes, settingsRes] = await Promise.all([
-        fetch(`${getApiBase()}/ai-api/api/models`),
+      const [settingsRes, modelsRes] = await Promise.all([
         fetch(`${getApiBase()}/ai-api/api/settings`),
+        fetch(`${getApiBase()}/ai-api/api/models`),
       ]);
-      if (modelsRes.ok) {
-        const data = await modelsRes.json();
-        setAvailableModels(data.models || []);
-      }
+
       if (settingsRes.ok) {
         const data = await settingsRes.json();
         setOllamaSettings({
@@ -83,6 +97,11 @@ export const ImageSettingsTab: React.FC<ImageSettingsTabProps> = ({ ui, setUi, i
           setOllamaModel(data.model);
           localStorage.setItem(OLLAMA_MODEL_KEY, data.model);
         }
+      }
+
+      if (modelsRes.ok) {
+        const modelsData = await modelsRes.json();
+        setAvailableModels(modelsData.models || []);
       }
     } catch {
       // backend not available yet
@@ -98,11 +117,17 @@ export const ImageSettingsTab: React.FC<ImageSettingsTabProps> = ({ ui, setUi, i
   }, [ollamaModel]);
 
   useEffect(() => {
-    if (imageAnalysis.useAiBackend) fetchModelsAndSettings();
-  }, [imageAnalysis.useAiBackend, fetchModelsAndSettings]);
+    if (imageAnalysis.useAiBackend && provider === "ollama") fetchModelsAndSettings();
+  }, [imageAnalysis.useAiBackend, provider, fetchModelsAndSettings]);
 
-  const handleSaveOllamaSettings = async () => {
-    setOllamaSaveStatus("saving");
+  const handleSave = async () => {
+    setSaveStatus("saving");
+    if (provider === "cloudflare") {
+      const result = await setCfCredentials({ accountId: cfAccountIdInput.trim(), apiToken: cfApiTokenInput.trim() });
+      setSaveStatus(result.saved ? "ok" : "error");
+      setTimeout(() => setSaveStatus("idle"), 2500);
+      return;
+    }
     try {
       const res = await fetch(`${getApiBase()}/ai-api/api/settings`, {
         method: "PUT",
@@ -116,16 +141,23 @@ export const ImageSettingsTab: React.FC<ImageSettingsTabProps> = ({ ui, setUi, i
           prompt: ollamaSettings.prompt,
         }),
       });
-      setOllamaSaveStatus(res.ok ? "ok" : "error");
+      setSaveStatus(res.ok ? "ok" : "error");
     } catch {
-      setOllamaSaveStatus("error");
+      setSaveStatus("error");
     }
-    setTimeout(() => setOllamaSaveStatus("idle"), 2500);
+    setTimeout(() => setSaveStatus("idle"), 2500);
   };
 
   const handleTestModel = async () => {
     setTestStatus("testing");
     setTestResult(null);
+    if (provider === "cloudflare") {
+      const creds = cfAccountIdInput.trim() && cfApiTokenInput.trim() ? { accountId: cfAccountIdInput.trim(), apiToken: cfApiTokenInput.trim() } : null;
+      const result = await testCloudflareConnection(creds);
+      setTestResult(result);
+      setTestStatus("idle");
+      return;
+    }
     try {
       const res = await fetch(`${getApiBase()}/ai-api/api/test`, {
         method: "POST",
@@ -155,6 +187,7 @@ export const ImageSettingsTab: React.FC<ImageSettingsTabProps> = ({ ui, setUi, i
   const statusColor = {
     online: "#10B981",
     ollama_offline: "#F97316",
+    cloudflare_offline: "#F97316",
     checking: "#F59E0B",
     offline: "#EF4444",
   }[aiBackendStatus];
@@ -162,6 +195,7 @@ export const ImageSettingsTab: React.FC<ImageSettingsTabProps> = ({ ui, setUi, i
   const statusLabel = {
     online: "Підключено",
     ollama_offline: "Ollama не запущена",
+    cloudflare_offline: "Cloudflare не налаштована",
     checking: "Перевірка...",
     offline: "Недоступно",
   }[aiBackendStatus];
@@ -447,12 +481,12 @@ export const ImageSettingsTab: React.FC<ImageSettingsTabProps> = ({ ui, setUi, i
               )}
             </div>
 
-            {/* ── Ollama AI ───────────────────────────────────────────────── */}
+            {/* ── AI аналіз зображень ───────────────────────────────────────── */}
             <div className='rounded-lg border border-border/60 overflow-hidden'>
               <div className='flex items-center justify-between px-3 py-2.5 bg-muted/20'>
                 <div className='flex items-center gap-2'>
-                  <span className='text-sm font-medium'>Ollama AI</span>
-                  <LocalOnlyBadge />
+                  <span className='text-sm font-medium'>AI аналіз зображень</span>
+                  {provider === "ollama" && <LocalOnlyBadge />}
                   {imageAnalysis.useAiBackend && (
                     <span
                       className='flex items-center gap-1 text-[11px] font-medium px-1.5 py-0.5 rounded-full border'
@@ -469,42 +503,145 @@ export const ImageSettingsTab: React.FC<ImageSettingsTabProps> = ({ ui, setUi, i
               {imageAnalysis.useAiBackend && (
                 <div className='px-3 pb-3 pt-3 space-y-3 border-t border-border/40'>
 
-                  {aiBackendStatus === "ollama_offline" && (
+                  {/* Provider */}
+                  <div className='space-y-1.5'>
+                    <Label className='text-xs text-muted-foreground'>Провайдер</Label>
+                    <Select value={provider} onValueChange={(v) => {
+                      setImageAnalysis((prev) => ({ ...prev, backendProvider: v as "ollama" | "cloudflare" }));
+                      setTestResult(null);
+                      setSaveStatus("idle");
+                    }}>
+                      <SelectTrigger className='h-8 text-xs'>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value='ollama'>Ollama (локально)</SelectItem>
+                        <SelectItem value='cloudflare'>Cloudflare (хмара)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {provider === "ollama" && aiBackendStatus === "ollama_offline" && (
                     <div className='flex items-center gap-2 px-3 py-2 rounded-md bg-orange-500/10 border border-orange-500/20 text-orange-600 dark:text-orange-400 text-[12px]'>
                       Запусти застосунок Ollama на цьому комп'ютері
                     </div>
                   )}
 
-                  {/* URL + Model */}
-                  <div className='grid grid-cols-[1fr_auto] gap-2 items-end'>
-                    <div className='space-y-1.5'>
-                      <Label className='text-xs text-muted-foreground'>Ollama URL</Label>
-                      <Input className='h-8 text-xs font-mono' value={ollamaHost}
-                        onChange={(e) => setOllamaHost(e.target.value)}
-                        placeholder='http://localhost:11434' />
+                  {provider === "cloudflare" && aiBackendStatus === "cloudflare_offline" && (
+                    <div className='flex items-center gap-2 px-3 py-2 rounded-md bg-orange-500/10 border border-orange-500/20 text-orange-600 dark:text-orange-400 text-[12px]'>
+                      Заповнено лише одне з полів (Account ID / API Token) — задайте обидва, або очистіть обидва, щоб використати спільний безкоштовний сервіс
                     </div>
-                    <button onClick={handleTestModel} disabled={testStatus === "testing" || aiBackendStatus === "ollama_offline"}
-                      className='h-8 px-3 text-xs font-medium rounded-md border border-input bg-background hover:bg-accent transition-all disabled:opacity-40 whitespace-nowrap'>
-                      {testStatus === "testing" ? "..." : "Тест"}
-                    </button>
-                  </div>
+                  )}
 
-                  <div className='flex gap-2'>
-                    <Select value={ollamaModel} onValueChange={setOllamaModel}>
-                      <SelectTrigger className='h-8 text-xs flex-1'>
-                        <SelectValue placeholder='Виберіть модель' />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableModels.length > 0
-                          ? availableModels.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)
-                          : <SelectItem value={ollamaModel}>{ollamaModel}</SelectItem>}
-                      </SelectContent>
-                    </Select>
-                    <button onClick={fetchModelsAndSettings} title='Оновити список'
-                      className='h-8 w-8 text-sm rounded-md border border-input bg-background hover:bg-accent transition-all shrink-0'>
-                      ↻
-                    </button>
-                  </div>
+                  {provider === "ollama" ? (
+                    <>
+                      {/* URL + Model */}
+                      <div className='grid grid-cols-[1fr_auto] gap-2 items-end'>
+                        <div className='space-y-1.5'>
+                          <Label className='text-xs text-muted-foreground'>Ollama URL</Label>
+                          <Input className='h-8 text-xs font-mono' value={ollamaHost}
+                            onChange={(e) => setOllamaHost(e.target.value)}
+                            placeholder='http://localhost:11434' />
+                        </div>
+                        <button onClick={handleTestModel} disabled={testStatus === "testing" || aiBackendStatus === "ollama_offline"}
+                          className='h-8 px-3 text-xs font-medium rounded-md border border-input bg-background hover:bg-accent transition-all disabled:opacity-40 whitespace-nowrap'>
+                          {testStatus === "testing" ? "..." : "Тест"}
+                        </button>
+                      </div>
+
+                      <div className='flex gap-2'>
+                        <Select value={ollamaModel} onValueChange={setOllamaModel}>
+                          <SelectTrigger className='h-8 text-xs flex-1'>
+                            <SelectValue placeholder='Виберіть модель' />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableModels.length > 0
+                              ? availableModels.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)
+                              : <SelectItem value={ollamaModel}>{ollamaModel}</SelectItem>}
+                          </SelectContent>
+                        </Select>
+                        <button onClick={fetchModelsAndSettings} title='Оновити список'
+                          className='h-8 w-8 text-sm rounded-md border border-input bg-background hover:bg-accent transition-all shrink-0'>
+                          ↻
+                        </button>
+                      </div>
+
+                      {/* Generation params */}
+                      <button onClick={() => setShowModelParams((v) => !v)}
+                        className='flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors w-full pt-1'>
+                        <span>{showModelParams ? "▾" : "▸"}</span> Параметри генерації
+                      </button>
+                      {showModelParams && (
+                        <div className='space-y-3 pl-3 border-l-2 border-border/30'>
+                          <div className='space-y-1.5'>
+                            <div className='flex justify-between'>
+                              <Label className='text-xs'>Temperature</Label>
+                              <span className='text-xs text-muted-foreground'>{ollamaSettings.temperature.toFixed(2)}</span>
+                            </div>
+                            <Slider min={0} max={1} step={0.01} value={[ollamaSettings.temperature]}
+                              onValueChange={([v]) => setOllamaSettings((p) => ({ ...p, temperature: v }))} />
+                            <p className='text-[10px] text-muted-foreground'>0 = стабільно, 1 = творчо</p>
+                          </div>
+                          <div className='grid grid-cols-2 gap-3'>
+                            <div className='space-y-1.5'>
+                              <div className='flex justify-between'>
+                                <Label className='text-xs'>Max tokens</Label>
+                                <span className='text-xs text-muted-foreground'>{ollamaSettings.num_predict}</span>
+                              </div>
+                              <Slider min={16} max={512} step={8} value={[ollamaSettings.num_predict]}
+                                onValueChange={([v]) => setOllamaSettings((p) => ({ ...p, num_predict: v }))} />
+                            </div>
+                            <div className='space-y-1.5'>
+                              <div className='flex justify-between'>
+                                <Label className='text-xs'>Context</Label>
+                                <span className='text-xs text-muted-foreground'>{ollamaSettings.num_ctx}</span>
+                              </div>
+                              <Slider min={512} max={8192} step={256} value={[ollamaSettings.num_ctx]}
+                                onValueChange={([v]) => setOllamaSettings((p) => ({ ...p, num_ctx: v }))} />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <button onClick={handleTestModel} disabled={testStatus === "testing"}
+                        className='h-8 px-3 text-xs font-medium rounded-md border border-input bg-background hover:bg-accent transition-all disabled:opacity-40 whitespace-nowrap w-full'>
+                        {testStatus === "testing" ? "..." : "Тест з'єднання"}
+                      </button>
+
+                      {/* Own token (optional) */}
+                      <div className='space-y-1.5'>
+                        <Label className='text-xs text-muted-foreground'>Cloudflare Account ID (опційно)</Label>
+                        <Input className='h-8 text-xs font-mono' value={cfAccountIdInput}
+                          onChange={(e) => setCfAccountIdInput(e.target.value)}
+                          placeholder='залиште порожнім — спільний безкоштовний сервіс' />
+                      </div>
+                      <div className='space-y-1.5'>
+                        <Label className='text-xs text-muted-foreground'>Cloudflare API Token (опційно)</Label>
+                        <div className='relative'>
+                          <Input type={showApiToken ? "text" : "password"} className='h-8 text-xs font-mono pr-8' value={cfApiTokenInput}
+                            onChange={(e) => setCfApiTokenInput(e.target.value)}
+                            placeholder='залиште порожнім — спільний безкоштовний сервіс' />
+                          <button type='button' aria-label='toggle token visibility' onClick={() => setShowApiToken((v) => !v)}
+                            className='absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-muted-foreground hover:text-foreground transition-colors'>
+                            {showApiToken ? <EyeOff className='w-3.5 h-3.5' /> : <Eye className='w-3.5 h-3.5' />}
+                          </button>
+                        </div>
+                      </div>
+                      {(cfCredentials.accountId || cfCredentials.apiToken) && (
+                        <button onClick={() => { clearCfCredentials(); }}
+                          className='text-[11px] text-muted-foreground hover:text-foreground underline transition-colors'>
+                          Прибрати власний токен (повернутись до спільного сервісу)
+                        </button>
+                      )}
+
+                      <p className='text-[10px] text-muted-foreground'>
+                        Безкоштовний спільний Cloudflare Workers AI сервіс — без жодних налаштувань. Або задайте власний Account ID + API Token для власної квоти;
+                        {" "}зберігається {isSecureStorage ? "зашифровано (Electron safeStorage/OS keychain)" : "в localStorage браузера"}, ніколи на сервері.
+                      </p>
+                    </>
+                  )}
 
                   {testResult && (
                     <div className={`px-2.5 py-2 rounded-md text-[11px] font-mono border ${testResult.success ? "bg-green-500/10 border-green-500/20 text-green-700 dark:text-green-400" : "bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400"}`}>
@@ -514,75 +651,42 @@ export const ImageSettingsTab: React.FC<ImageSettingsTabProps> = ({ ui, setUi, i
                     </div>
                   )}
 
-                  {/* Generation params */}
-                  <button onClick={() => setShowModelParams((v) => !v)}
-                    className='flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors w-full pt-1'>
-                    <span>{showModelParams ? "▾" : "▸"}</span> Параметри генерації
-                  </button>
-                  {showModelParams && (
-                    <div className='space-y-3 pl-3 border-l-2 border-border/30'>
-                      <div className='space-y-1.5'>
-                        <div className='flex justify-between'>
-                          <Label className='text-xs'>Temperature</Label>
-                          <span className='text-xs text-muted-foreground'>{ollamaSettings.temperature.toFixed(2)}</span>
-                        </div>
-                        <Slider min={0} max={1} step={0.01} value={[ollamaSettings.temperature]}
-                          onValueChange={([v]) => setOllamaSettings((p) => ({ ...p, temperature: v }))} />
-                        <p className='text-[10px] text-muted-foreground'>0 = стабільно, 1 = творчо</p>
-                      </div>
-                      <div className='grid grid-cols-2 gap-3'>
-                        <div className='space-y-1.5'>
-                          <div className='flex justify-between'>
-                            <Label className='text-xs'>Max tokens</Label>
-                            <span className='text-xs text-muted-foreground'>{ollamaSettings.num_predict}</span>
-                          </div>
-                          <Slider min={16} max={512} step={8} value={[ollamaSettings.num_predict]}
-                            onValueChange={([v]) => setOllamaSettings((p) => ({ ...p, num_predict: v }))} />
-                        </div>
-                        <div className='space-y-1.5'>
-                          <div className='flex justify-between'>
-                            <Label className='text-xs'>Context</Label>
-                            <span className='text-xs text-muted-foreground'>{ollamaSettings.num_ctx}</span>
-                          </div>
-                          <Slider min={512} max={8192} step={256} value={[ollamaSettings.num_ctx]}
-                            onValueChange={([v]) => setOllamaSettings((p) => ({ ...p, num_ctx: v }))} />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Prompt editor */}
-                  <button onClick={() => setShowPromptEditor((v) => !v)}
-                    className='flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors w-full'>
-                    <span>{showPromptEditor ? "▾" : "▸"}</span> Системний промпт
-                  </button>
-                  {showPromptEditor && (
-                    <div className='space-y-2'>
-                      <textarea
-                        className='w-full h-28 text-[11px] font-mono rounded-md border border-input bg-background px-2.5 py-2 resize-y focus:outline-none focus:ring-1 focus:ring-ring'
-                        value={ollamaSettings.prompt}
-                        onChange={(e) => setOllamaSettings((p) => ({ ...p, prompt: e.target.value }))}
-                        placeholder={ollamaSettings.default_prompt}
-                        spellCheck={false}
-                      />
-                      <button onClick={() => setOllamaSettings((p) => ({ ...p, prompt: p.default_prompt }))}
-                        className='text-[11px] text-muted-foreground hover:text-foreground underline transition-colors'>
-                        Скинути до стандартного
+                  {/* Prompt editor — Ollama only (Cloudflare uses a fixed prompt for now) */}
+                  {provider === "ollama" && (
+                    <>
+                      <button onClick={() => setShowPromptEditor((v) => !v)}
+                        className='flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors w-full'>
+                        <span>{showPromptEditor ? "▾" : "▸"}</span> Системний промпт
                       </button>
-                    </div>
+                      {showPromptEditor && (
+                        <div className='space-y-2'>
+                          <textarea
+                            className='w-full h-28 text-[11px] font-mono rounded-md border border-input bg-background px-2.5 py-2 resize-y focus:outline-none focus:ring-1 focus:ring-ring'
+                            value={ollamaSettings.prompt}
+                            onChange={(e) => setOllamaSettings((p) => ({ ...p, prompt: e.target.value }))}
+                            placeholder={ollamaSettings.default_prompt}
+                            spellCheck={false}
+                          />
+                          <button onClick={() => setOllamaSettings((p) => ({ ...p, prompt: p.default_prompt }))}
+                            className='text-[11px] text-muted-foreground hover:text-foreground underline transition-colors'>
+                            Скинути до стандартного
+                          </button>
+                        </div>
+                      )}
+                    </>
                   )}
 
                   {/* Save */}
-                  <button onClick={handleSaveOllamaSettings} disabled={ollamaSaveStatus === "saving"}
+                  <button onClick={handleSave} disabled={saveStatus === "saving"}
                     className='w-full h-8 text-xs font-semibold rounded-md border border-input bg-background hover:bg-accent transition-all disabled:opacity-50 mt-1'>
-                    {ollamaSaveStatus === "saving" ? "Збереження..." : ollamaSaveStatus === "ok" ? "✓ Збережено" : ollamaSaveStatus === "error" ? "✗ Помилка" : "Зберегти налаштування Ollama"}
+                    {saveStatus === "saving" ? "Збереження..." : saveStatus === "ok" ? "✓ Збережено" : saveStatus === "error" ? "✗ Помилка" : "Зберегти налаштування"}
                   </button>
 
                 </div>
               )}
 
               {!imageAnalysis.useAiBackend && (
-                <p className='px-3 pb-2.5 text-[11px] text-muted-foreground'>Генерація ALT-тексту і назв через локальну LLM</p>
+                <p className='px-3 pb-2.5 text-[11px] text-muted-foreground'>Генерація ALT-тексту і назв через Ollama (локально) або Cloudflare (хмара)</p>
               )}
             </div>
 

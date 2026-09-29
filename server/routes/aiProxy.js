@@ -1,6 +1,6 @@
 /**
- * AI Proxy Route — replaces the Python FastAPI service.
- * Accepts image uploads and proxies them to a local Ollama instance.
+ * AI Proxy Route — proxies image analysis to a local Ollama instance for
+ * ALT-text/filename/CTA generation.
  *
  * Mounted at: /ai-api
  * Endpoints:
@@ -15,11 +15,12 @@
 
 const express = require("express");
 const multer = require("multer");
-const https = require("https");
-const http = require("http");
 const fs = require("fs");
 const nodePath = require("path");
 const { createHash } = require("crypto");
+
+const ollamaProvider = require("../aiProviders/ollamaProvider");
+const { DEFAULT_PROMPT, resizeImageToJpeg, extractJsonFromText, normalizeProviderResult } = require("../aiProviders/shared");
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
@@ -59,99 +60,32 @@ let ollamaModel = _saved.model || process.env.OLLAMA_MODEL || "gemma3:4b";
 let modelTemperature = _saved.temperature ?? 0.1;
 let modelNumPredict = _saved.num_predict ?? 64;
 let modelNumCtx = _saved.num_ctx ?? 1024;
-
-const DEFAULT_PROMPT =
-  'Analyze this image and return a strictly formatted JSON object with these keys:\n' +
-  '- "filename": Exactly ONE lowercase word representing the main object (e.g., \'sneaker\', \'logo\', \'fashion\').\n' +
-  '- "alt_text": A very short, crisp, and clean description (max 10 words). No "Image of" or "This is".\n' +
-  '- "cta": Only the text from a Call-to-Action button if visible. Otherwise empty string.\n\n' +
-  'Respond ONLY with valid JSON.';
-
 let modelPrompt = DEFAULT_PROMPT;
+
+function persistAll() {
+  persistSettings({
+    ollama_host: ollamaHost,
+    model: ollamaModel,
+    temperature: modelTemperature,
+    num_predict: modelNumPredict,
+    num_ctx: modelNumCtx,
+  });
+}
 
 const responseCache = new Map();
 const CACHE_MAX = 100;
-
-// ── Helpers ────────────────────────────────────────────────────────────────────
-
-function httpGet(url) {
-  return new Promise((resolve, reject) => {
-    const lib = url.startsWith("https") ? https : http;
-    const req = lib.get(url, { timeout: 5000 }, (res) => {
-      let body = "";
-      res.on("data", (c) => (body += c));
-      res.on("end", () => resolve({ status: res.statusCode, body }));
-    });
-    req.on("error", reject);
-    req.on("timeout", () => { req.destroy(); reject(new Error("timeout")); });
-  });
-}
-
-function httpPost(url, payload) {
-  return new Promise((resolve, reject) => {
-    const body = JSON.stringify(payload);
-    const parsed = new URL(url);
-    const lib = parsed.protocol === "https:" ? https : http;
-    const options = {
-      hostname: parsed.hostname,
-      port: parsed.port || (parsed.protocol === "https:" ? 443 : 80),
-      path: parsed.pathname + parsed.search,
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(body) },
-      timeout: 60000,
-    };
-    const req = lib.request(options, (res) => {
-      let data = "";
-      res.on("data", (c) => (data += c));
-      res.on("end", () => resolve({ status: res.statusCode, body: data }));
-    });
-    req.on("error", reject);
-    req.on("timeout", () => { req.destroy(); reject(new Error("Ollama request timeout")); });
-    req.write(body);
-    req.end();
-  });
-}
-
-/** Model names currently pulled in Ollama (empty array if Ollama is unreachable). */
-async function getInstalledModels() {
-  try {
-    const r = await httpGet(`${ollamaHost}/api/tags`);
-    if (r.status !== 200) return [];
-    const data = JSON.parse(r.body);
-    return (data.models || []).map((m) => m.name);
-  } catch {
-    return [];
-  }
-}
-
-async function resizeImageToJpeg(buffer) {
-  try {
-    const sharp = require("sharp");
-    return await sharp(buffer)
-      .resize(768, 768, { fit: "inside", withoutEnlargement: true })
-      .jpeg({ quality: 85 })
-      .toBuffer();
-  } catch {
-    return buffer;
-  }
-}
 
 // ── Routes ─────────────────────────────────────────────────────────────────────
 
 // Health check — checks Ollama connectivity
 router.get("/health", async (_req, res) => {
-  try {
-    const r = await httpGet(`${ollamaHost}/api/tags`);
-    const ollamaRunning = r.status === 200;
-    res.json({ status: "ok", ollama_running: ollamaRunning, ollama_host: ollamaHost });
-  } catch {
-    res.json({ status: "ok", ollama_running: false, ollama_host: ollamaHost });
-  }
+  const ollamaRunning = await ollamaProvider.checkHealth(ollamaHost);
+  res.json({ status: "ok", ollama_running: ollamaRunning, ollama_host: ollamaHost });
 });
 
 // List models available in Ollama
 router.get("/api/models", async (_req, res) => {
-  res.json({ models: await getInstalledModels() });
+  res.json({ models: await ollamaProvider.listModels(ollamaHost) });
 });
 
 // Analyze image via Ollama
@@ -168,7 +102,7 @@ router.post("/api/analyze", upload.single("file"), async (req, res) => {
     // ELECTRON_USER_DATA) — a fresh profile that never touched Settings falls back to
     // a hardcoded default that may not actually be pulled in this machine's Ollama.
     // Rather than fail outright, switch to whatever IS installed and stick with it.
-    const installed = await getInstalledModels();
+    const installed = await ollamaProvider.listModels(ollamaHost);
     let modelWarning;
     if (installed.length === 0) {
       return res.status(503).json({
@@ -179,55 +113,28 @@ router.post("/api/analyze", upload.single("file"), async (req, res) => {
       const fallback = installed[0];
       modelWarning = `Модель "${ollamaModel}" не встановлена в Ollama — використано "${fallback}". Доступні: ${installed.join(", ")}. Змініть модель в Налаштуваннях, щоб прибрати це попередження.`;
       ollamaModel = fallback;
-      persistSettings({
-        ollama_host: ollamaHost,
-        model: ollamaModel,
-        temperature: modelTemperature,
-        num_predict: modelNumPredict,
-        num_ctx: modelNumCtx,
-      });
+      persistAll();
     }
 
     const optimized = await resizeImageToJpeg(req.file.buffer);
     const base64Image = optimized.toString("base64");
 
-    const payload = {
+    const text = await ollamaProvider.generate({
+      host: ollamaHost,
       model: ollamaModel,
       prompt: modelPrompt,
       images: [base64Image],
-      stream: false,
-      format: "json",
-      // Reasoning models (e.g. qwen3.5) otherwise dump the JSON answer into `thinking`
-      // and leave `response` empty — force the final answer into `response`.
-      think: false,
-      options: { temperature: modelTemperature, num_predict: modelNumPredict, num_ctx: modelNumCtx },
-    };
+      temperature: modelTemperature,
+      num_predict: modelNumPredict,
+      num_ctx: modelNumCtx,
+    });
 
-    const r = await httpPost(`${ollamaHost}/api/generate`, payload);
-    if (r.status !== 200) {
-      return res.status(503).json({ error: `Ollama returned ${r.status}` });
-    }
-
-    let parsed = {};
-    try {
-      const raw = JSON.parse(r.body);
-      parsed = JSON.parse(raw.response || "{}");
-    } catch {
-      parsed = { filename: "image", alt_text: "Image", cta: "" };
-    }
-
-    const response = {
-      filename: String(parsed.filename || "image"),
-      alt_text: String(parsed.alt_text || "Image"),
-      cta: String(parsed.cta || ""),
-      candidates: {
-        filenames: [String(parsed.filename || "image")],
-        alt_texts: [String(parsed.alt_text || "Image")],
-      },
-      raw: { ocr: String(parsed.cta || ""), caption: String(parsed.alt_text || "Image"), tags: [] },
-      cached: false,
-      ...(modelWarning ? { warning: modelWarning } : {}),
-    };
+    const parsed = extractJsonFromText(text);
+    const response = normalizeProviderResult(parsed || {}, {
+      warning:
+        modelWarning ||
+        (parsed ? undefined : "Модель повернула текст без валідного JSON — використано значення за замовчуванням."),
+    });
 
     if (responseCache.size >= CACHE_MAX) responseCache.delete(responseCache.keys().next().value);
     responseCache.set(cacheKey, response);
@@ -238,6 +145,19 @@ router.post("/api/analyze", upload.single("file"), async (req, res) => {
     if (msg.includes("ECONNREFUSED") || msg.includes("timeout")) {
       return res.status(503).json({ error: `Cannot connect to Ollama at ${ollamaHost}. Is it running?` });
     }
+    if (err.ollamaStatus) {
+      return res.status(503).json({ error: `Ollama rejected the request (HTTP ${err.ollamaStatus}).` });
+    }
+    if (err.ollamaEnvelopeError) {
+      // Ollama is reachable but returned a garbage HTTP body — still guarantee a usable result.
+      const response = normalizeProviderResult(
+        {},
+        { warning: "Ollama повернув невалідну відповідь — використано значення за замовчуванням." }
+      );
+      if (responseCache.size >= CACHE_MAX) responseCache.delete(responseCache.keys().next().value);
+      responseCache.set(cacheKey, response);
+      return res.json(response);
+    }
     res.status(500).json({ error: msg });
   }
 });
@@ -247,21 +167,15 @@ router.post("/api/test", express.json(), async (req, res) => {
   const start = Date.now();
   const testModel = req.body?.model || ollamaModel;
   try {
-    const payload = {
+    const text = await ollamaProvider.generate({
+      host: ollamaHost,
       model: testModel,
       prompt: 'Reply with exactly this JSON and nothing else: {"filename":"test","alt_text":"test image","cta":""}',
-      stream: false,
-      format: "json",
-      think: false,
-      options: { temperature: modelTemperature, num_predict: modelNumPredict, num_ctx: modelNumCtx },
-    };
-    const r = await httpPost(`${ollamaHost}/api/generate`, payload);
-    const latency_ms = Date.now() - start;
-    if (r.status !== 200) {
-      return res.json({ success: false, error: `Ollama returned ${r.status}`, latency_ms });
-    }
-    const raw = JSON.parse(r.body);
-    res.json({ success: true, response: raw.response, latency_ms, model: testModel });
+      temperature: modelTemperature,
+      num_predict: modelNumPredict,
+      num_ctx: modelNumCtx,
+    });
+    res.json({ success: true, response: text, latency_ms: Date.now() - start, model: testModel });
   } catch (err) {
     res.json({ success: false, error: err.message, latency_ms: Date.now() - start });
   }
@@ -297,7 +211,7 @@ router.put("/api/settings", express.json(), (req, res) => {
   if (typeof num_ctx === "number") modelNumCtx = num_ctx;
   if (typeof prompt === "string") modelPrompt = prompt || DEFAULT_PROMPT;
   responseCache.clear();
-  persistSettings({ ollama_host: ollamaHost, model: ollamaModel, temperature: modelTemperature, num_predict: modelNumPredict, num_ctx: modelNumCtx });
+  persistAll();
   res.json({ ollama_host: ollamaHost, model: ollamaModel, temperature: modelTemperature, num_predict: modelNumPredict, num_ctx: modelNumCtx, prompt: modelPrompt });
 });
 

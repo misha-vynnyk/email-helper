@@ -53,11 +53,11 @@ export interface SimpleTokens {
   /**
    * Tag used for italic inline text. "em" is the base/default value — confirmed against
    * git history of the three original pre-unification forks (commits 8aa8714, 3314470)
-   * for default/alphaone. Red is ported from a standalone script not present in this
-   * repo, confirmed by the user to need <i> specifically. TTT overrides to "i" too — a
-   * later cross-check (2026-09-24) against a real TTT source repo found its
-   * processStyles emitting <i> consistently, contradicting the original git-history
-   * finding for TTT specifically (default/alphaone still confirmed "em").
+   * for default. Red is ported from a standalone script not present in this repo,
+   * confirmed by the user to need <i> specifically. TTT and alphaone both override to
+   * "i" — later cross-checks (2026-09-24) against real TTT/alphaone source repos found
+   * their processStyles emitting <i> consistently, contradicting the original
+   * git-history finding for those two specifically (default still confirmed "em").
    */
   italicTag: "em" | "i";
 

@@ -163,6 +163,15 @@ export interface ImageAnalysisSettings {
    */
   aiProvider: "gemma3";
   /**
+   * Which backend image analysis goes through. "ollama" = local/LAN Ollama
+   * instance via /ai-api on the Node server. "cloudflare" = the
+   * email-helper-ai Cloudflare Worker (see cloudflare-worker/), called
+   * directly from the client — no local server involved. Own-token
+   * credentials for the Cloudflare path live separately, via
+   * useCloudflareCredentials() (never in this persisted settings object).
+   */
+  backendProvider: "ollama" | "cloudflare";
+  /**
    * Safety limit for auto-run mode. 0 disables auto-run even if runMode="auto".
    */
   autoAnalyzeMaxFiles: number;

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ImageAnalysisSettings } from "../types";
 import { createOcrAnalyzer, type OcrAnalyzer,type OcrAnalyzeResult } from "../utils/imageAnalysis";
+import type { CloudflareCredentialsInput } from "../utils/ocr/cloudflareClient";
 import type { ImageAiAnalysis } from "../utils/ocrUiTypes";
 
 export type OcrFile = { id: string; name: string; path?: string };
@@ -14,6 +15,8 @@ export type AnalyzeFileOptions = {
 export type UseOcrAnalysisArgs = {
   enabled: boolean;
   settings?: ImageAnalysisSettings;
+  /** Own Cloudflare credentials (useCloudflareCredentials()) — never persisted with `settings`; empty/absent means "use the shared public Worker". */
+  cloudflareCredentials?: CloudflareCredentialsInput | null;
   files: OcrFile[];
 };
 
@@ -24,7 +27,7 @@ export type UseOcrAnalysisApi = {
   dispose: () => void;
 };
 
-export function useOcrAnalysis({ enabled, settings, files }: UseOcrAnalysisArgs): UseOcrAnalysisApi {
+export function useOcrAnalysis({ enabled, settings, cloudflareCredentials, files }: UseOcrAnalysisArgs): UseOcrAnalysisApi {
   const [aiById, setAiById] = useState<Record<string, ImageAiAnalysis>>({});
   const abortRef = useRef<AbortController | null>(null);
   const autoQueuedRef = useRef<Set<string>>(new Set());
@@ -74,6 +77,7 @@ export function useOcrAnalysis({ enabled, settings, files }: UseOcrAnalysisArgs)
         const result = await analyzer.analyzeFromUrl({
           url: file.path,
           settings,
+          cloudflareCredentials,
           force,
           signal,
           onProgress: (p) => {
@@ -106,7 +110,7 @@ export function useOcrAnalysis({ enabled, settings, files }: UseOcrAnalysisArgs)
         return null;
       }
     },
-    [enabled, getAnalyzer, settings, setAiState]
+    [enabled, getAnalyzer, settings, cloudflareCredentials, setAiState]
   );
 
   useEffect(() => {

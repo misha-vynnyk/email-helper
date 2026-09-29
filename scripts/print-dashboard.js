@@ -2,12 +2,33 @@
 const os = require('os');
 const http = require('http');
 
+// Interface names that are never the real LAN address other devices on the
+// network could reach — VPN tunnels, AirDrop, Docker/VM bridges, etc. Node's
+// os.networkInterfaces() has no guaranteed order, so without this filter a
+// VPN tunnel or virtual bridge can silently win over the actual Wi-Fi adapter.
+const isVirtualInterface = (name) => /^(utun|awdl|llw|bridge|docker|vboxnet|vmnet|tun|tap|ppp|ipsec)/i.test(name);
+
 function getIP() {
+    if (process.env.DASHBOARD_IP) return process.env.DASHBOARD_IP;
+
     const interfaces = os.networkInterfaces();
-    for (const devName in interfaces) {
-        const iface = interfaces[devName];
-        for (let i = 0; i < iface.length; i++) {
-            const alias = iface[i];
+    const candidates = [];
+    for (const [devName, addrs] of Object.entries(interfaces)) {
+        if (isVirtualInterface(devName)) continue;
+        for (const alias of addrs || []) {
+            if (alias.family === 'IPv4' && !alias.internal) {
+                candidates.push({ devName, address: alias.address });
+            }
+        }
+    }
+    // en0 is the conventional macOS Wi-Fi adapter name — prefer it when present.
+    const preferred = candidates.find((c) => c.devName === 'en0') || candidates[0];
+    if (preferred) return preferred.address;
+
+    // Nothing passed the virtual-interface filter (unusual) — fall back to the
+    // old "first non-internal IPv4, whatever it is" behavior rather than giving up.
+    for (const addrs of Object.values(interfaces)) {
+        for (const alias of addrs || []) {
             if (alias.family === 'IPv4' && alias.address !== '127.0.0.1' && !alias.internal) {
                 return alias.address;
             }

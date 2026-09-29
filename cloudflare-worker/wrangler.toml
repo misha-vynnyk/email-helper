@@ -1,0 +1,27 @@
+name = "email-helper-ai"
+main = "src/worker.js"
+compatibility_date = "2026-09-01"
+
+# Native Workers AI binding — env.AI.run() authenticates inside Cloudflare's
+# own platform, no API token anywhere in this Worker's code or config.
+[ai]
+binding = "AI"
+
+# KV-backed per-IP rate limiter. KV read/write limits are unambiguously part
+# of the Workers Free plan (unlike the newer `[[ratelimits]]` binding, whose
+# free-plan availability wasn't confirmable from the docs at write time) —
+# this is the guaranteed-free choice. Create the namespace first:
+#   wrangler kv namespace create RATE_LIMIT_KV
+# then paste the returned id below.
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "d744d5fa4b964acc91199a26e8d2749e"
+
+# Optional upgrade path once you've confirmed `[[ratelimits]]` works on your
+# account's plan (GA since 2025-09, but plan-tier gating was unclear from
+# docs) — uncomment and swap worker.js to use it instead of the KV counter,
+# it's a cleaner primitive purpose-built for this:
+# [[ratelimits]]
+# name = "AI_RATE_LIMITER"
+# namespace_id = "1001"
+# simple = { limit = 30, period = 60 }

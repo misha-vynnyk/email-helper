@@ -5,6 +5,7 @@
 import { getApiBase } from "../../../config/api";
 import type { ImageAnalysisSettings } from "../../types";
 import { AiBackendClient } from "./aiClient";
+import type { CloudflareCredentialsInput } from "./cloudflareClient";
 import { ALLOWED_SHORT_ALL_CAPS, COMMON_3_LETTER_WORDS } from "./constants";
 import { OcrEngine, pickOcrParamsForRoi } from "./engine";
 import { cleanOcrText } from "./postprocess/cleanup";
@@ -29,7 +30,7 @@ export type OcrAnalyzeResult = {
 };
 
 export type OcrAnalyzer = {
-  analyzeFromUrl: (args: { url: string; settings: ImageAnalysisSettings; force?: boolean; signal: AbortSignal; onProgress?: (progress01: number) => void }) => Promise<OcrAnalyzeResult>;
+  analyzeFromUrl: (args: { url: string; settings: ImageAnalysisSettings; cloudflareCredentials?: CloudflareCredentialsInput | null; force?: boolean; signal: AbortSignal; onProgress?: (progress01: number) => void }) => Promise<OcrAnalyzeResult>;
   clearCache: () => void;
   dispose: () => Promise<void>;
 };
@@ -142,7 +143,7 @@ export function createOcrAnalyzer(): OcrAnalyzer {
       cache.clear();
     },
 
-    analyzeFromUrl: async ({ url, settings, force = false, signal, onProgress }) => {
+    analyzeFromUrl: async ({ url, settings, cloudflareCredentials, force = false, signal, onProgress }) => {
       // PHASE 1: Initialization & Fetching (0% - 10%)
       onProgress?.(0.05);
 
@@ -199,7 +200,9 @@ export function createOcrAnalyzer(): OcrAnalyzer {
 
           try {
             onProgress?.(0.1); // Connecting...
-            const result = await AiBackendClient.analyzeImage(blob);
+            const result = await AiBackendClient.analyzeImage(blob, settings.backendProvider, {
+              credentials: cloudflareCredentials,
+            });
             onProgress?.(1); // Done
 
             // Cache this result

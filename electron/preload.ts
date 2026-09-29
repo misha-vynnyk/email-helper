@@ -22,4 +22,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   saveToPath: (content: string, folderPath: string, fileName: string): Promise<{ saved: boolean; filePath?: string; error?: string; canceled?: boolean }> =>
     ipcRenderer.invoke("file:saveToPath", { content, folderPath, fileName }),
+
+  saveCloudflareCredentials: (data: { accountId: string; apiToken: string }): Promise<{ saved: boolean; error?: string }> =>
+    ipcRenderer.invoke("credentials:saveCloudflare", data),
+
+  loadCloudflareCredentials: (): Promise<{ accountId: string; apiToken: string } | null> =>
+    ipcRenderer.invoke("credentials:loadCloudflare"),
+
+  clearCloudflareCredentials: (): Promise<{ cleared: boolean; error?: string }> =>
+    ipcRenderer.invoke("credentials:clearCloudflare"),
 });

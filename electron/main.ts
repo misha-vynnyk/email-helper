@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, Notification, screen, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Notification, safeStorage, screen, shell } from "electron";
 import fsSync from "fs";
 import fs from "fs/promises";
 import type { Server } from "http";
@@ -129,6 +129,38 @@ function registerIpcHandlers(): void {
     }
     return uploadFile(req, storageProviders);
   });
+
+  ipcMain.handle("credentials:saveCloudflare", (_event, data: { accountId: string; apiToken: string }) => {
+    if (!safeStorage.isEncryptionAvailable()) {
+      return { saved: false, error: "OS keychain encryption unavailable on this machine" };
+    }
+    try {
+      const encrypted = safeStorage.encryptString(JSON.stringify(data));
+      fsSync.writeFileSync(cloudflareCredentialsPath(), encrypted);
+      return { saved: true };
+    } catch (err) {
+      return { saved: false, error: (err as Error).message };
+    }
+  });
+
+  ipcMain.handle("credentials:loadCloudflare", (): { accountId: string; apiToken: string } | null => {
+    try {
+      if (!safeStorage.isEncryptionAvailable()) return null;
+      const encrypted = fsSync.readFileSync(cloudflareCredentialsPath());
+      return JSON.parse(safeStorage.decryptString(encrypted));
+    } catch {
+      return null;
+    }
+  });
+
+  ipcMain.handle("credentials:clearCloudflare", () => {
+    try {
+      if (fsSync.existsSync(cloudflareCredentialsPath())) fsSync.unlinkSync(cloudflareCredentialsPath());
+      return { cleared: true };
+    } catch (err) {
+      return { cleared: false, error: (err as Error).message };
+    }
+  });
 }
 
 // ── Window state persistence ────────────────────────────────────────────────────
@@ -146,6 +178,14 @@ const WINDOW_STATE_SAVE_DEBOUNCE_MS = 500;
 
 function windowStatePath(): string {
   return path.join(app.getPath("userData"), "window-state.json");
+}
+
+// ── Cloudflare credentials (safeStorage, OS-keychain-backed) ───────────────────
+// Unlike window-state.json above, this file's contents are safeStorage.encryptString()
+// output — opaque OS-keychain-derived ciphertext, not plain JSON.
+
+function cloudflareCredentialsPath(): string {
+  return path.join(app.getPath("userData"), "cloudflare-credentials.enc");
 }
 
 function loadWindowState(): WindowState {
