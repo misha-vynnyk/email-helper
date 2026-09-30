@@ -26,9 +26,15 @@ export function cleanEmptyHtmlTags(htmlContent: string): string {
   // Merge adjacent <em> tags only when their opening tags are identical (e.g. the same
   // italic run split across spans by Google Docs). Two <em> runs can carry different
   // colors/styles (e.g. a quote followed by its attribution in a callout) — collapsing
-  // those unconditionally would silently drop the second run's styling.
+  // those unconditionally would silently drop the second run's styling. The content group
+  // must not itself contain another <em>/</em> — without this guard, a lazy match starting
+  // at some outer <em> can skip clean over an unrelated, differently-styled <em> pair sitting
+  // between it and a later same-attrs <em> (e.g. one wrapped in its own <a>), pairing the
+  // FIRST tag's attrs against that FAR-AWAY tag's attrs instead of the pair actually adjacent
+  // to the merge point — silently absorbing the real middle run's closing tag and leaking its
+  // color into everything after it, all the way to the next unrelated </em>.
   htmlContent = htmlContent.replace(
-    /(<em(?:\s+[^>]*)?>)([\s\S]*?)<\/em>\s*<em((?:\s+[^>]*)?)>/g,
+    /(<em(?:\s+[^>]*)?>)((?:(?!<\/?em\b)[\s\S])*?)<\/em>\s*<em((?:\s+[^>]*)?)>/g,
     (match, openTag: string, content: string, secondAttrs: string) => {
       const firstAttrs = openTag.slice(3, -1).trim();
       return firstAttrs === secondAttrs.trim() ? `${openTag}${content} ` : match;

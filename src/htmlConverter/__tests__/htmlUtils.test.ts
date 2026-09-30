@@ -70,6 +70,31 @@ describe("htmlConverter utils", () => {
       const input = "<ul><li>Item 1</li><li>  </li></ul>";
       expect(cleanEmptyHtmlTags(input)).toBe("<ul><li>Item 1</li></ul>");
     });
+
+    // Regression: the "merge adjacent <em> tags with identical attrs" pass used a lazy
+    // [\s\S]*? content group with no guard against it containing another <em>/</em> pair —
+    // when the very next </em> wasn't immediately followed by <em> (e.g. a link sits in
+    // between), the engine kept expanding across that unrelated <em>...</em> (inside the
+    // <a>) and paired the FIRST <em>'s (attrs-less) opening tag with a LATER, unrelated
+    // attrs-less <em> much further downstream — silently swallowing a real run's own
+    // closing tag along the way and leaking ITS color into everything after it, all the
+    // way to that far-away </em>. Restricting content to exclude nested <em>/</em>
+    // forces each match attempt to stay genuinely local.
+    it("does not merge across an unrelated <em> pair sitting between two same-attrs <em> tags", () => {
+      const input =
+        '<em>Please read the offering circular at</em> <a href="urlhere" style="color:#0000ff;">' +
+        '<em>https://example.com/</em></a><em style="color:#0000ff;">.</em> <em>Timelines are subject to change.</em>';
+      const out = cleanEmptyHtmlTags(input);
+      // The colored period must stay in its own tag — not left dangling open to swallow
+      // the plain black sentence that follows it.
+      expect(out).toContain('<em style="color:#0000ff;">.</em>');
+      expect(out).toContain("<em>Timelines are subject to change.</em>");
+    });
+
+    it("still merges genuinely adjacent same-attrs <em> tags (the real GDocs split-span case)", () => {
+      const input = "<em>foo</em> <em>bar</em>";
+      expect(cleanEmptyHtmlTags(input)).toBe("<em>foo bar</em>");
+    });
   });
 
   describe("isSignatureImageTag", () => {
