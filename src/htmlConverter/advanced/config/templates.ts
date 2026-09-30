@@ -579,8 +579,24 @@ ${indentHtml(rows.join("\n"), 6)}
       if (segments) {
         // One <tr> per segment — a real button row (its own <td bgcolor>) instead of a
         // bare <a> interleaved with text; see AlertBandOpts.segments and buttonTableHtml.
-        const sp = tok.layout.sidePadding;
         const rowsHtml = buildSegmentRows(segments, align, textColor, tok);
+        // The 20px side-padding wrapper below exists to inset flowing TEXT from the band's
+        // edges (see e2e.test.ts's "uses the standard block side padding" regression, whose
+        // fixture has real prose around its button) — a band with no text segment at all
+        // (e.g. a colored bar whose entire content IS one button) has nothing that wrapper
+        // needs to inset, since button/band/image rows already carry their own inset/width
+        // management (buttonTableHtml, the band branch below, imageRowHtml). Nest one less
+        // table in that case instead of always paying for it.
+        if (!segments.some(s => s.kind === "text")) {
+          return `<tr>
+  <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
+    <table align="center" border="0" bgcolor="${bg}" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;${borderStyle}" role="presentation">
+${indentHtml(rowsHtml, 6)}
+    </table>
+  </td>
+</tr>`;
+        }
+        const sp = tok.layout.sidePadding;
         return `<tr>
   <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
     <table align="center" border="0" bgcolor="${bg}" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;${borderStyle}" role="presentation">

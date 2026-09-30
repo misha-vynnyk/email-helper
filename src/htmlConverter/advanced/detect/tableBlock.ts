@@ -261,6 +261,33 @@ function flattenCellForAlertBand(
         prevP = null;
         continue;
       }
+      // classifyTable returned null for a single-cell nested table → that cell had no
+      // bg/border of its own to classify against (classifySingleCell's transparent-cell
+      // early return — see tableBlock.test.ts's "h5 marker with neither bg nor border..."
+      // case for why that's deliberate: with nothing of its own to key off, classifySingleCell
+      // can't pick a fallback color — that ambiguity is exactly why it stays silent instead
+      // of guessing). GDocs' OTHER layout-wrapper habit wraps button-only content in exactly
+      // this kind of colorless <div><table> even when the real color already lives one or two
+      // levels further up (this flatten call's own ambientBg) — unlike a genuinely standalone
+      // h5 (flowBlock.ts's own house-default fallback), here the ambient color IS the
+      // button's real background, so this becomes a fill-less "ghost" button (same shape as
+      // the border-only ghost branch in classifySingleCell) that just inherits whatever
+      // color/contrast the surrounding band already renders with, instead of painting a
+      // second, unrelated house-green box on top of it. Only single-cell tables whose sole
+      // content is the h5 marker qualify — anything else (extra paragraphs, an image) still
+      // falls through to the generic flatten-to-text path below, unchanged.
+      if (nestedComponent === null && child.rows.length === 1 && child.rows[0].cells.length === 1) {
+        const innerCell = child.rows[0].cells[0];
+        if (hasButtonMarker(innerCell)) {
+          const innerOwnWidthPx = child.colWidths?.length === 1 ? child.colWidths[0] : undefined;
+          buttons.push({
+            atLine: lines.length,
+            props: { runs: flattenRuns(innerCell, tok, warn), href: tok.placeholderHref, bg: undefined, radius: 0, fullWidth: isFullWidthButton(innerOwnWidthPx, ambientWidthPx, tok) },
+          });
+          prevP = null;
+          continue;
+        }
+      }
       warn?.(WARN.nestedTableFlattened);
       for (const row of child.rows) {
         for (const nested of row.cells) {
@@ -291,8 +318,38 @@ function findHref(cell: CellNode, tok: Tokens): string | null {
 }
 
 /** True if the cell contains an h5 paragraph (the "Кнопка" marker). */
+/**
+ * GDocs sometimes wraps a cell's real content in a redundant <div><table> layout-wrapper —
+ * a single-row/single-cell table that exists purely for its own padding, not a second
+ * visual surface (fromDom.ts preserves it as a literal nested TableNode; most visible when
+ * a button-only cell already sits inside an ambient colored <td> one level up — the cell's
+ * ENTIRE content is just this one wrapper, nothing else). Unwraps through that layer
+ * (recursively, in case GDocs nests it twice) to reach the cell that actually carries the
+ * meaningful content, so the OUTER cell's own bg/border can be recognized as the button's
+ * real color directly, instead of nesting a second "ghost button inside a band" structure.
+ * Only unwraps when the wrapper itself has no bg/border of its own — a nested table that IS
+ * meaningfully colored/bordered is a deliberate second surface, not a layout artifact, and
+ * must keep its own identity (guarded the same way classifySingleCell's own transparent-cell
+ * check treats "no bg, no border" as the redundant/no-signal case). A wrapper sitting
+ * alongside OTHER real content (e.g. intro text + a separate nested button table) is mixed
+ * content, not this pattern at all — the `children.length === 1` check keeps that case
+ * untouched, handled elsewhere by flattenCellForAlertBand's own nested-table branch.
+ */
+function unwrapRedundantWrapperCell(cell: CellNode): CellNode {
+  if (cell.children.length === 1) {
+    const only = cell.children[0];
+    if (only.type === "table" && only.rows.length === 1 && only.rows[0].cells.length === 1) {
+      const inner = only.rows[0].cells[0];
+      if (!inner.bg && !inner.border) {
+        return unwrapRedundantWrapperCell(inner);
+      }
+    }
+  }
+  return cell;
+}
+
 function hasButtonMarker(cell: CellNode): boolean {
-  return cell.children.some(
+  return unwrapRedundantWrapperCell(cell).children.some(
     n => n.type === "p" && (n as Paragraph).headingLevel === 5
   );
 }
@@ -409,9 +466,14 @@ export function classifySingleCell(
   // Requires an actual bg — a bordered-but-transparent h5 cell falls through to the
   // border-handling branches below instead of reaching render with bg === undefined.
   if (hasButtonMarker(cell) && bg && bg !== tok.color.rootBackground) {
+    // Extract runs from the unwrapped cell (not `cell` itself) — when the h5 sits behind a
+    // redundant wrapper table, flattening `cell` directly would recurse into that nested
+    // table via flattenRuns' generic table-flattening path and emit a spurious "nested table
+    // flattened" warning, even though it's fully handled here, not lost.
+    const contentCell = unwrapRedundantWrapperCell(cell);
     return {
       kind: "buttonBand",
-      props: { runs: flattenRuns(cell, tok, warn), href: tok.placeholderHref, bg, radius: 0, fullWidth: isFullWidthButton(ownWidthPx, ambientWidthPx, tok) },
+      props: { runs: flattenRuns(contentCell, tok, warn), href: tok.placeholderHref, bg, radius: 0, fullWidth: isFullWidthButton(ownWidthPx, ambientWidthPx, tok) },
     };
   }
 
@@ -422,7 +484,7 @@ export function classifySingleCell(
   if (hasButtonMarker(cell) && (!bg || bg === tok.color.rootBackground) && border) {
     return {
       kind: "buttonBand",
-      props: { runs: flattenRuns(cell, tok, warn), href: tok.placeholderHref, bg: undefined, border, radius: 0, fullWidth: isFullWidthButton(ownWidthPx, ambientWidthPx, tok) },
+      props: { runs: flattenRuns(unwrapRedundantWrapperCell(cell), tok, warn), href: tok.placeholderHref, bg: undefined, border, radius: 0, fullWidth: isFullWidthButton(ownWidthPx, ambientWidthPx, tok) },
     };
   }
 

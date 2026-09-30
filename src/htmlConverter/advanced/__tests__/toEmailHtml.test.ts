@@ -1139,3 +1139,45 @@ describe("renderNode — alertBand/calloutLeft nested button run color", () => {
     expect(html).toContain("#ffffff");
   });
 });
+
+// ── renderNode — alertBand whose ENTIRE content is a button, no text at all ─────
+// Regression: the segments path always wrapped stacked rows in an extra 20px
+// side-padding <table> meant to inset flowing TEXT (see the e2e "uses the standard
+// block side padding" fixture, which DOES have prose around its button) — a band
+// with nothing but a button (e.g. a colored footer bar that IS the CTA, no separate
+// headline/body text) doesn't need that inset at all, since buttonTableHtml already
+// centers and pads itself. Reported by a user as "why are there three tables for one
+// button" — confirmed the middle table was genuinely redundant in this exact shape.
+describe("renderNode — alertBand with only a button (no text) skips the extra inset table", () => {
+  it("does not nest a second content-less wrapper table around the lone button", () => {
+    const node: ComponentNode = {
+      kind: "alertBand",
+      props: {
+        lines: [],
+        bg: "#1a472a",
+        buttons: [{ atLine: 0, props: { runs: [{ text: "Invest Now" }], href: "urlhere" } }],
+      },
+    };
+    const html = renderNode(node, tmpl, tokens);
+    expect(html).toContain('bgcolor="#1a472a"');
+    expect(html).toContain("Invest Now");
+    // The 20px side-padding wrapper is the "has text" shape — must not appear here.
+    expect(html).not.toContain(`padding-left:${tokens.layout.sidePadding}px;padding-right:${tokens.layout.sidePadding}px;`);
+    // Exactly two <table> elements: the colored band itself and the button's own
+    // bulletproof table — no extra content-less wrapper table in between.
+    expect(html.match(/<table\b/g)?.length).toBe(2);
+  });
+
+  it("still uses the side-padding wrapper when there IS text alongside the button", () => {
+    const node: ComponentNode = {
+      kind: "alertBand",
+      props: {
+        lines: [[{ text: "Headline" }]],
+        bg: "#1a472a",
+        buttons: [{ atLine: 1, props: { runs: [{ text: "Invest Now" }], href: "urlhere" } }],
+      },
+    };
+    const html = renderNode(node, tmpl, tokens);
+    expect(html).toContain(`padding-left:${tokens.layout.sidePadding}px;padding-right:${tokens.layout.sidePadding}px;`);
+  });
+});

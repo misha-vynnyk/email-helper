@@ -135,6 +135,103 @@ describe("classifyTable — single-cell", () => {
     expect(result?.kind).toBe("buttonBand");
   });
 
+  // Regression: GDocs sometimes wraps the h5 in its own redundant <div><table> single-cell
+  // layout-wrapper, even when the OUTER cell already has the button's real bg — the wrapper
+  // itself carries no bg/border of its own, existing purely for its own padding. Before this
+  // fix, hasButtonMarker only checked DIRECT paragraph children, so this outer cell missed
+  // the h5 entirely and fell into the generic isDarkBg/light-bg alertBand path instead —
+  // producing an alertBand with a nested "ghost" button (bg: undefined) rather than a plain
+  // top-level buttonBand carrying the real bg directly. Reported by the user as "why are
+  // there three nested tables for one button" after a first fix attempt only patched the
+  // alertBand rendering shape without addressing this root classification gap.
+  it("h5 wrapped in a redundant bg/border-less single-cell table still classifies as a plain buttonBand (not alertBand+nested button)", () => {
+    const buttonCell = makeCell({
+      children: [{ type: "p", size: "small", headingLevel: 5, lines: [[makeRun("Invest Now →")]] }],
+    });
+    const wrapperTable: TableNode = makeTable([[buttonCell]]);
+    const outerCell = makeCell({ bg: "#1a472a", children: [wrapperTable] });
+    const table = makeTable([[outerCell]]);
+    const warn = jest.fn();
+    const result = classifyTable(table, undefined, warn);
+    expect(result?.kind).toBe("buttonBand");
+    const props = result?.props as Record<string, unknown>;
+    expect(props["bg"]).toBe("#1a472a");
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  // Same pattern, border-only ("ghost") variant: the outer cell has a border but no bg.
+  it("h5 wrapped in a redundant wrapper table inside a border-only outer cell still classifies as a ghost buttonBand", () => {
+    const buttonCell = makeCell({
+      children: [{ type: "p", size: "small", headingLevel: 5, lines: [[makeRun("Invest Now →")]] }],
+    });
+    const wrapperTable: TableNode = makeTable([[buttonCell]]);
+    const outerCell = makeCell({ border: { top: { color: "#000000" } }, children: [wrapperTable] });
+    const table = makeTable([[outerCell]]);
+    const result = classifyTable(table);
+    expect(result?.kind).toBe("buttonBand");
+    const props = result?.props as Record<string, unknown>;
+    expect(props["bg"]).toBeUndefined();
+    expect(props["border"]).toEqual({ top: { color: "#000000" } });
+  });
+
+  // A wrapper table that itself has a real bg/border must NOT be treated as "redundant" —
+  // it's a deliberately colored/bordered second surface, not a layout artifact, and must
+  // keep its own identity (falls through to the generic nested-table path instead).
+  it("does NOT unwrap through a nested wrapper table that has its own bg (not a redundant layout artifact)", () => {
+    const buttonCell = makeCell({
+      bg: "#222222",
+      children: [{ type: "p", size: "small", headingLevel: 5, lines: [[makeRun("Invest Now →")]] }],
+    });
+    const wrapperTable: TableNode = makeTable([[buttonCell]]);
+    const outerCell = makeCell({ bg: "#1a472a", children: [wrapperTable] });
+    const table = makeTable([[outerCell]]);
+    const result = classifyTable(table);
+    // Outer cell's own hasButtonMarker check must NOT see through the colored inner table —
+    // it stays an alertBand (generic content path), not a plain buttonBand on the outer bg.
+    expect(result?.kind).not.toBe("buttonBand");
+  });
+
+  // Safety net for the unwrapRedundantWrapperCell fix above — confirms it is narrowly scoped
+  // to "an h5 hiding behind an empty single-cell wrapper" and cannot change classification
+  // for any other cell shape (plain text, images, deeper nesting, multi-cell tables).
+  describe("unwrapRedundantWrapperCell does not affect non-button content", () => {
+    it("a redundant single-cell wrapper around plain text (no h5) classifies exactly as before", () => {
+      const plainCell = makeCell({ children: [makePara("Just some text")] });
+      const wrapperTable: TableNode = makeTable([[plainCell]]);
+      const outerCell = makeCell({ bg: "#1a472a", children: [wrapperTable] });
+      const result = classifyTable(makeTable([[outerCell]]));
+      expect(result?.kind).not.toBe("buttonBand");
+      expect(result?.kind).toBe("alertBand");
+    });
+
+    it("a redundant single-cell wrapper around an image (no h5) classifies exactly as before", () => {
+      const imageCell = makeCell({ children: [{ type: "img", src: "x.png" }] });
+      const wrapperTable: TableNode = makeTable([[imageCell]]);
+      const outerCell = makeCell({ bg: "#1a472a", children: [wrapperTable] });
+      const result = classifyTable(makeTable([[outerCell]]));
+      expect(result?.kind).not.toBe("buttonBand");
+    });
+
+    it("a double redundant wrapper (table nested in a wrapper nested in a cell) around a real h5 still resolves to buttonBand", () => {
+      const buttonCell = makeCell({
+        children: [{ type: "p", size: "small", headingLevel: 5, lines: [[makeRun("Go")]] }],
+      });
+      const innerWrapper: TableNode = makeTable([[buttonCell]]);
+      const midCell = makeCell({ children: [innerWrapper] });
+      const outerWrapper: TableNode = makeTable([[midCell]]);
+      const outerCell = makeCell({ bg: "#1a472a", children: [outerWrapper] });
+      const result = classifyTable(makeTable([[outerCell]]));
+      expect(result?.kind).toBe("buttonBand");
+    });
+
+    it("multi-cell tables (statsGrid) are completely untouched by this change", () => {
+      const cellA = makeCell({ bg: "#111111", children: [{ type: "p", size: "small", lines: [[makeRun("A")]] }] });
+      const cellB = makeCell({ bg: "#222222", children: [{ type: "p", size: "small", lines: [[makeRun("B")]] }] });
+      const result = classifyTable(makeTable([[cellA, cellB]]));
+      expect(result?.kind).toBe("statsGrid");
+    });
+  });
+
   // Fix #1: colspan=2 on a single physical cell → still single-cell, NOT statsGrid
   it("single physical cell with colspan=2 is NOT classified as statsGrid", () => {
     const cell = makeCell({ bg: "#f5f5f5", colspan: 2 });
@@ -834,6 +931,33 @@ describe("classifyTable — calloutLeft honors § (tightNext/tightBefore)", () =
     expect(buttons[0].props["border"]).toEqual({
       top: { color: "#bf9000" }, right: { color: "#bf9000" }, bottom: { color: "#bf9000" }, left: { color: "#bf9000" },
     });
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  // Same regression, fully transparent variant: GDocs' OTHER layout-wrapper habit wraps
+  // button-only content in a <div><table> whose own cell has neither bg nor border at all —
+  // classifySingleCell correctly stays silent on that inner cell alone (see the single-cell
+  // describe block's "h5 marker with neither bg nor border..." test), but flattenCellForAlertBand
+  // must still recognize the h5 marker directly and promote it to a fill-less "ghost" button
+  // that inherits the surrounding band's own color, instead of falling through to the generic
+  // nested-table-flattened path and losing the button entirely.
+  it("preserves a nested fully-transparent (no bg, no border) h5-button table as a ghost button", () => {
+    const buttonCell = makeCell({
+      children: [{ type: "p", size: "small", headingLevel: 5, lines: [[makeRun("Invest Now →")]] }],
+    });
+    const buttonTable: TableNode = makeTable([[buttonCell]]);
+    const cell = makeCell({
+      border: { left: { color: "#38a169" } },
+      children: [makePara("Intro text"), buttonTable],
+    });
+    const warn = jest.fn();
+    const result = classifyTable(makeTable([[cell]]), undefined, warn);
+    expect(result?.kind).toBe("calloutLeft");
+    const props = result?.props as Record<string, unknown>;
+    const buttons = props["buttons"] as { atLine: number; props: Record<string, unknown> }[];
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0].props["bg"]).toBeUndefined();
+    expect(buttons[0].props["border"]).toBeUndefined();
     expect(warn).not.toHaveBeenCalled();
   });
 });
