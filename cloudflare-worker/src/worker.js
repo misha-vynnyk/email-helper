@@ -37,10 +37,17 @@ const RATE_LIMIT = { requests: 20, windowSeconds: 60 };
 const MODEL = { id: "@cf/moondream/moondream3.1-9B-A2B", kind: "moondream" };
 
 function corsHeaders(origin) {
-  const allowed = origin && ALLOWED_ORIGIN_PATTERNS.some((p) => p.test(origin));
+  // The packaged Electron build loads the renderer via `win.loadFile()` (a
+  // `file://` URL), which Chromium treats as an opaque origin — fetch() sends
+  // it as the literal string "null" (sometimes omitted entirely), never as a
+  // real scheme+host. Confirmed live: dev-mode Electron (loadURL against the
+  // Vite dev server, a real http://localhost origin) worked fine; the built
+  // app got a 403 here. Allow that case alongside the regular http(s) origins.
+  const isOpaqueOrigin = !origin || origin === "null";
+  const allowed = isOpaqueOrigin || ALLOWED_ORIGIN_PATTERNS.some((p) => p.test(origin));
   if (!allowed) return null;
   return {
-    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Origin": isOpaqueOrigin ? "null" : origin,
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
     "Access-Control-Max-Age": "86400",
