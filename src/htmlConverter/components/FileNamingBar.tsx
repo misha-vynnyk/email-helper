@@ -112,7 +112,7 @@ export function FileNamingBar({
               }`}
           >
             {mode === "simple" ? (
-              "Simple"
+              "Default"
             ) : (
               <span className='inline-flex items-center gap-1.5'>
                 Advanced

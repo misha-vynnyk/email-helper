@@ -83,10 +83,14 @@ describe("convertAdvanced — plain-text fixture", () => {
     expect(html).toContain("our website");
   });
 
-  it("preserves small print text (rendered at body size — <p> always body)", () => {
-    // <p> elements always get size="body" in fromDom; only <h5>/<h6> → small.
-    // The small font-size on the span is context-only, not used for paragraph role.
+  it("shrinks the small-print paragraph to smallPx, relative to the fixture's own ~14pt baseline", () => {
+    // The fixture's other paragraphs are unanimously 14pt; the disclaimer is unanimously
+    // 9pt (ratio 9/14 ≈ 0.64 ≤ smallSizeRatio) — font-size detection demotes it to "small"
+    // (12px), while every other plain <p> stays at bodyPx (18px), tag-derived as always.
     expect(html).toContain("Small print");
+    const idx = html.indexOf("Small print");
+    const tdOpen = html.lastIndexOf("<td", idx);
+    expect(html.slice(tdOpen, idx)).toContain(`font-size:${tokens.font.smallPx}px`);
   });
 
   it("snapshot — default profile", () => {
@@ -287,10 +291,25 @@ describe("convertAdvanced — paragraph gaps and the pairwise zero-margin signal
     });
 
     it("end-to-end on a real GDocs-shaped fixture: a large-pt heading row directly followed by a body-paragraph row", () => {
+      // This fixture's "heading" is a plain <p> manually sized to 19.5pt (not a real <h1>),
+      // sitting in a GDocs padding-only layout-wrapper <table> alongside ~12pt body prose —
+      // exactly the font-size-detection feature's own headline-promotion case (a document-
+      // relative baseline of ~12pt makes 19.5pt cross the headline ratio). It now renders as
+      // its OWN "headline"-sized paragraph block, not merged with the body text into one
+      // <span>'s <br><br> — pushMerged's full-merge path requires matching size, and a
+      // headline block can't share one <span> with body text. The margin/padding-derived
+      // gap-boundary mechanism this describe block tests is still exercised end-to-end (see
+      // the <br><br> WITHIN the two body sentences below), just no longer between these two
+      // specific paragraphs, since they're no longer merge-eligible at all.
       const html = convertAdvanced(loadFixture("gdocs-heading-row.html"));
+      expect(html).toContain("font-size:22px");
+      const headingIdx = html.indexOf("A Heading That Should Stay Distinct.");
+      const strongOpen = html.lastIndexOf("<strong", headingIdx);
+      expect(html.slice(strongOpen, headingIdx)).toContain("font-weight:bold");
+
       const gap = html.slice(
-        html.indexOf("A Heading That Should Stay Distinct."),
         html.indexOf("First body sentence"),
+        html.indexOf("Second body sentence"),
       );
       expect(gap).toContain("<br><br>");
     });

@@ -52,3 +52,24 @@ export function getAlign(style: Record<string, string>): "left" | "center" | "ri
   if (a === "center" || a === "right" || a === "left") return a;
   return undefined;
 }
+
+// Shared CSS px→pt ratio (96 CSS px per inch, 72pt per inch) — the one place this constant
+// is declared; fromDom.ts's lengthToPt reuses it too instead of hand-rolling its own copy.
+export function pxToPt(n: number): number {
+  return n * (72 / 96);
+}
+
+// Parses both "Npt" and "Npx" font-size values to a plain pt number — GDocs normally emits
+// pt, but px shows up too (the pre-existing normalize.test.ts fixture this feature revives
+// uses font-size:18px, and the removed sizeFromStyle helper this replaces handled both
+// units). Anything else (missing unit, NaN, other units) returns undefined — "no reliable
+// size", not zero.
+export function parseFontSizeToPt(value: string | undefined): number | undefined {
+  if (!value) return undefined;
+  const v = value.trim();
+  const n = parseFloat(v);
+  if (isNaN(n)) return undefined;
+  if (v.endsWith("px")) return pxToPt(n);
+  if (v.endsWith("pt")) return n;
+  return undefined;
+}

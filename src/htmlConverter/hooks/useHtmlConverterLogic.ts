@@ -193,6 +193,7 @@ export function useHtmlConverterLogic({ editorRef, outputHtmlRef, outputMjmlRef 
     oneBrSymbol: ui.oneBrSymbol,
     formatHtmlOnDownload: ui.formatHtmlOnDownload,
     preserveTextColors: ui.preserveTextColors,
+    detectFontSizeRoles: ui.detectFontSizeRoles,
   });
 
   const handleDownloadHTML = useCallback(async () => {

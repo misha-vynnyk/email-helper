@@ -25,6 +25,7 @@ export type UiSettings = {
   browserExecutablePath: string;
   formatHtmlOnDownload: boolean;
   preserveTextColors: boolean;
+  detectFontSizeRoles: boolean;
 };
 
 export const DEFAULT_UI_SETTINGS: UiSettings = {
@@ -46,6 +47,7 @@ export const DEFAULT_UI_SETTINGS: UiSettings = {
   browserExecutablePath: "",
   formatHtmlOnDownload: true,
   preserveTextColors: false,
+  detectFontSizeRoles: true,
 };
 
 export const DEFAULT_IMAGE_ANALYSIS_SETTINGS: ImageAnalysisSettings = {

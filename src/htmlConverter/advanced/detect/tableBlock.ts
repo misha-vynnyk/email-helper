@@ -278,11 +278,12 @@ function flattenCellForAlertBand(
       // falls through to the generic flatten-to-text path below, unchanged.
       if (nestedComponent === null && child.rows.length === 1 && child.rows[0].cells.length === 1) {
         const innerCell = child.rows[0].cells[0];
-        if (hasButtonMarker(innerCell)) {
+        const unwrappedInner = unwrapRedundantWrapperCell(innerCell, tok);
+        if (isSoleButtonMarkerCell(unwrappedInner)) {
           const innerOwnWidthPx = child.colWidths?.length === 1 ? child.colWidths[0] : undefined;
           buttons.push({
             atLine: lines.length,
-            props: { runs: flattenRuns(innerCell, tok, warn), href: tok.placeholderHref, bg: undefined, radius: 0, fullWidth: isFullWidthButton(innerOwnWidthPx, ambientWidthPx, tok) },
+            props: { runs: flattenRuns(unwrappedInner, tok, warn), href: tok.placeholderHref, bg: undefined, radius: 0, fullWidth: isFullWidthButton(innerOwnWidthPx, ambientWidthPx, tok) },
           });
           prevP = null;
           continue;
@@ -317,7 +318,6 @@ function findHref(cell: CellNode, tok: Tokens): string | null {
   return null;
 }
 
-/** True if the cell contains an h5 paragraph (the "Кнопка" marker). */
 /**
  * GDocs sometimes wraps a cell's real content in a redundant <div><table> layout-wrapper —
  * a single-row/single-cell table that exists purely for its own padding, not a second
@@ -329,29 +329,51 @@ function findHref(cell: CellNode, tok: Tokens): string | null {
  * real color directly, instead of nesting a second "ghost button inside a band" structure.
  * Only unwraps when the wrapper itself has no bg/border of its own — a nested table that IS
  * meaningfully colored/bordered is a deliberate second surface, not a layout artifact, and
- * must keep its own identity (guarded the same way classifySingleCell's own transparent-cell
- * check treats "no bg, no border" as the redundant/no-signal case). A wrapper sitting
- * alongside OTHER real content (e.g. intro text + a separate nested button table) is mixed
- * content, not this pattern at all — the `children.length === 1` check keeps that case
- * untouched, handled elsewhere by flattenCellForAlertBand's own nested-table branch.
+ * must keep its own identity. Uses the SAME transparency formula as isTransparentCell
+ * (fromDom.ts) and classifySingleCell's own early return below — a wrapper cell whose bg
+ * merely repeats tok.color.rootBackground is still "no signal", same as no bg at all. A
+ * wrapper sitting alongside OTHER real content (e.g. intro text + a separate nested button
+ * table) is mixed content, not this pattern at all — the `children.length === 1` check keeps
+ * that case untouched, handled elsewhere by flattenCellForAlertBand's own nested-table branch.
  */
-function unwrapRedundantWrapperCell(cell: CellNode): CellNode {
+function unwrapRedundantWrapperCell(cell: CellNode, tok: Tokens): CellNode {
   if (cell.children.length === 1) {
     const only = cell.children[0];
     if (only.type === "table" && only.rows.length === 1 && only.rows[0].cells.length === 1) {
       const inner = only.rows[0].cells[0];
-      if (!inner.bg && !inner.border) {
-        return unwrapRedundantWrapperCell(inner);
+      if (!inner.border && (!inner.bg || inner.bg === tok.color.rootBackground)) {
+        return unwrapRedundantWrapperCell(inner, tok);
       }
     }
   }
   return cell;
 }
 
-function hasButtonMarker(cell: CellNode): boolean {
-  return unwrapRedundantWrapperCell(cell).children.some(
-    n => n.type === "p" && (n as Paragraph).headingLevel === 5
-  );
+/**
+ * True when an (already-unwrapped) cell's ONLY meaningful content is the h5 "Кнопка" marker —
+ * empty/whitespace-only paragraphs and stray <br>-only lines don't count against it, but a
+ * real sibling paragraph or image does. Callers that find this true may safely treat the
+ * ENTIRE cell as the button's label — anything else (an h5 sharing a cell with an image or
+ * a second paragraph) must fall through to the generic content path instead, which is the
+ * only one that keeps that sibling content instead of silently dropping/merging it.
+ */
+function isSoleButtonMarkerCell(unwrapped: CellNode): boolean {
+  let sawMarker = false;
+  for (const child of unwrapped.children) {
+    if (child.type === "p") {
+      const p = child as Paragraph;
+      if (p.headingLevel === 5) {
+        if (sawMarker) return false; // two h5 markers isn't "sole" either
+        sawMarker = true;
+        continue;
+      }
+      const isBlank = p.lines.length === 0 || p.lines.every(line => line.every(r => r.text.trim() === ""));
+      if (!isBlank) return false;
+      continue;
+    }
+    return false; // any non-paragraph sibling (image, table, ...) disqualifies "sole"
+  }
+  return sawMarker;
 }
 
 /** True if the cell has at least one non-empty run (ignores <br>-only cells). */
@@ -460,20 +482,25 @@ export function classifySingleCell(
   // No color and no border, or bg matches root background with no border → transparent, let classify.ts unwrap
   if (!border && (!bg || bg === tok.color.rootBackground)) return null;
 
+  // Computed once and reused by both h5-marker branches below — the redundant-wrapper unwrap
+  // and the "sole content" check are the same regardless of which branch (filled vs. ghost)
+  // ends up firing.
+  const unwrapped = unwrapRedundantWrapperCell(cell, tok);
+  const isButtonMarkerCell = isSoleButtonMarkerCell(unwrapped);
+
   // h5 marker inside a colored cell → button using cell's bg color and no border-radius
   // (GDocs uses a colored td around an h5 to mark a button; radius comes from the cell,
   //  which never has border-radius in GDocs → use 0 to match the source document)
   // Requires an actual bg — a bordered-but-transparent h5 cell falls through to the
   // border-handling branches below instead of reaching render with bg === undefined.
-  if (hasButtonMarker(cell) && bg && bg !== tok.color.rootBackground) {
+  if (isButtonMarkerCell && bg && bg !== tok.color.rootBackground) {
     // Extract runs from the unwrapped cell (not `cell` itself) — when the h5 sits behind a
     // redundant wrapper table, flattening `cell` directly would recurse into that nested
     // table via flattenRuns' generic table-flattening path and emit a spurious "nested table
     // flattened" warning, even though it's fully handled here, not lost.
-    const contentCell = unwrapRedundantWrapperCell(cell);
     return {
       kind: "buttonBand",
-      props: { runs: flattenRuns(contentCell, tok, warn), href: tok.placeholderHref, bg, radius: 0, fullWidth: isFullWidthButton(ownWidthPx, ambientWidthPx, tok) },
+      props: { runs: flattenRuns(unwrapped, tok, warn), href: tok.placeholderHref, bg, radius: 0, fullWidth: isFullWidthButton(ownWidthPx, ambientWidthPx, tok) },
     };
   }
 
@@ -481,10 +508,10 @@ export function classifySingleCell(
   // cell's own border with no fill. An explicit h5 marker is authoritative over the
   // border-shape heuristics below (bottom-rule/left-accent) — same precedence flowBlock.ts
   // already gives a standalone h5 over its own isLeftAccentOnly check.
-  if (hasButtonMarker(cell) && (!bg || bg === tok.color.rootBackground) && border) {
+  if (isButtonMarkerCell && (!bg || bg === tok.color.rootBackground) && border) {
     return {
       kind: "buttonBand",
-      props: { runs: flattenRuns(unwrapRedundantWrapperCell(cell), tok, warn), href: tok.placeholderHref, bg: undefined, border, radius: 0, fullWidth: isFullWidthButton(ownWidthPx, ambientWidthPx, tok) },
+      props: { runs: flattenRuns(unwrapped, tok, warn), href: tok.placeholderHref, bg: undefined, border, radius: 0, fullWidth: isFullWidthButton(ownWidthPx, ambientWidthPx, tok) },
     };
   }
 

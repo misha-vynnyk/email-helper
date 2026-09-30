@@ -36,6 +36,10 @@ interface UseHtmlExportProps {
   oneBrSymbol?: string;
   formatHtmlOnDownload?: boolean;
   preserveTextColors?: boolean;
+  /** Advanced-converter-only master switch for plain-paragraph font-size detection (small
+   *  print / manually-sized "fake headlines") — see advanced/config/tokens.ts's
+   *  sizeDetectionEnabled. Default true; the Simple converter pipeline is untouched by it. */
+  detectFontSizeRoles?: boolean;
 }
 
 export function useHtmlExport({
@@ -55,6 +59,7 @@ export function useHtmlExport({
   oneBrSymbol,
   formatHtmlOnDownload = false,
   preserveTextColors = false,
+  detectFontSizeRoles = true,
 }: UseHtmlExportProps) {
   const [previewHtml, setPreviewHtml] = useState("");
   const clearPreviewHtml = useCallback(() => setPreviewHtml(""), []);
@@ -133,11 +138,18 @@ export function useHtmlExport({
       // Advanced mode: convert raw pasted HTML (unmodified) via the new pipeline.
       if (converterMode === "advanced") {
         const rawHtml = rawPastedHtmlRef.current ?? editorContent;
-        const profileOverride =
+        const baseProfileOverride =
           storageProfile === "ttt"      ? tttProfile :
           storageProfile === "alphaone" ? alphaoneProfile :
           storageProfile === "red"      ? redProfile :
           defaultProfile;
+        // Additive spread onto the profile's OWN font override, never a wholesale
+        // replacement — alphaone/red already override font.stack/headlinePx, and
+        // replacing `.font` wholesale here would silently discard those every time this
+        // toggle is off while on that storage profile.
+        const profileOverride = detectFontSizeRoles
+          ? baseProfileOverride
+          : { ...baseProfileOverride, font: { ...baseProfileOverride.font, sizeDetectionEnabled: false } };
         const conversion = convertAdvancedDetailed(rawHtml, profileOverride, oneBrSymbol);
         let result = conversion.html;
         for (const warning of conversion.warnings) {
@@ -200,7 +212,7 @@ export function useHtmlExport({
       const message = error instanceof Error ? error.message : "Невідома помилка";
       addLog(`❌ Помилка експорту HTML: ${message}`);
     }
-  }, [addLog, editorRef, outputHtmlRef, outputMjmlRef, uploadedUrlMap, uploadedAltMap, uploadedWidthMap, setHasOutput, triggerResetReplacement, storageProfile, converterMode, rawPastedHtmlRef, oneBrSymbol, preserveTextColors]);
+  }, [addLog, editorRef, outputHtmlRef, outputMjmlRef, uploadedUrlMap, uploadedAltMap, uploadedWidthMap, setHasOutput, triggerResetReplacement, storageProfile, converterMode, rawPastedHtmlRef, oneBrSymbol, preserveTextColors, detectFontSizeRoles]);
 
   const handleExportMJML = useCallback(() => {
     if (converterMode === "advanced") {

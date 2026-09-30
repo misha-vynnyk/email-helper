@@ -98,8 +98,8 @@ exports[`convertAdvanced — button-dark fixture snapshot — default profile 1`
               </tr>
               <tr>
                 <td align=\\"left\\"
-                  style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-top:14px;padding-bottom:14px;\\">
-                  <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
+                  style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-top:14px;padding-bottom:14px;\\">
+                  <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
                     <span style=\\"color:#666666;\\">No credit card required. Cancel any time.</span>
                   </span>
                 </td>
@@ -165,13 +165,20 @@ exports[`convertAdvanced — plain-text fixture snapshot — default profile 1`]
               <tr><td height=\\"16\\" width=\\"100%\\" style=\\"max-width:100%\\" class=\\"md-horizontal-space\\">&#160;</td></tr>
               <tr>
                 <td align=\\"left\\"
-                  style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-top:14px;padding-bottom:14px;\\">
+                  style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-top:14px;padding-bottom:0px;\\">
                   <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:18px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
                     Welcome to our monthly newsletter! <br>
                     This month we are sharing important updates about our products and services. <br>
                     <b>Key highlight:</b>   <span style=\\"color:#cc0000;\\">new pricing takes effect July 1.</span> <br>
                     <em>Please review the attached documents carefully.</em> <br>
-                    Visit us at   <a href=\\"urlhere\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration:underline;font-weight:700;color:#1155cc;\\">our website</a>   for details. <br>
+                    Visit us at   <a href=\\"urlhere\\" style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;text-decoration:underline;font-weight:700;color:#1155cc;\\">our website</a>   for details.
+                  </span>
+                </td>
+              </tr>
+              <tr>
+                <td align=\\"left\\"
+                  style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000; padding-top:0px;padding-bottom:14px;\\">
+                  <span style=\\"font-family:'Roboto', Arial, Helvetica, sans-serif;font-size:12px;font-style:normal;font-weight:normal;line-height:1.5;text-align:left;color:#000000;\\">
                     <span style=\\"color:#666666;\\">Small print: terms and conditions apply.</span>
                   </span>
                 </td>

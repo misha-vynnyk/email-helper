@@ -11,6 +11,13 @@ export interface Run {
    * marker). Consumed by fromDom's splitIntoLines to detect § at a paragraph's end —
    * never present on a run that reaches rendering. */
   oneBr?: true;
+  /** Internal only: the run's own resolved (inherited-or-declared) font-size in pt,
+   * rounded. Used by parseParagraph's small/headline detection (unanimity check) and
+   * by computeBodyBaselinePt's document-wide baseline — must be deleted from every run
+   * before parseParagraph returns its Paragraph, since (unlike oneBr, which only ever
+   * lives on a synthetic LINE_BREAK sentinel) this is set on real text runs and will
+   * not vanish on its own. */
+  measuredPt?: number;
 }
 
 export interface Paragraph {

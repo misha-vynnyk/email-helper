@@ -43,6 +43,17 @@ function corsHeaders(origin) {
   // real scheme+host. Confirmed live: dev-mode Electron (loadURL against the
   // Vite dev server, a real http://localhost origin) worked fine; the built
   // app got a 403 here. Allow that case alongside the regular http(s) origins.
+  //
+  // NOTE: this check (and the allowlist below) is browser cooperation, not an
+  // abuse boundary — CORS is enforced by browsers, not by this server, so any
+  // non-browser caller (curl, a script) can already send whatever Origin value
+  // it wants, including one from ALLOWED_ORIGIN_PATTERNS, and pass regardless
+  // of this opaque-origin case. Don't "tighten" this to guard against scripted
+  // abuse (e.g. restricting isOpaqueOrigin to the literal "null" string) — it
+  // would just break the real, already-fixed Electron case above for no actual
+  // security gain. The real gate against abuse is the per-IP rate limit below
+  // (checkRateLimit) — it applies to every non-own-token request regardless of
+  // Origin and isn't affected by anything here.
   const isOpaqueOrigin = !origin || origin === "null";
   const allowed = isOpaqueOrigin || ALLOWED_ORIGIN_PATTERNS.some((p) => p.test(origin));
   if (!allowed) return null;

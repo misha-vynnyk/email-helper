@@ -582,31 +582,27 @@ ${indentHtml(rows.join("\n"), 6)}
         const rowsHtml = buildSegmentRows(segments, align, textColor, tok);
         // The 20px side-padding wrapper below exists to inset flowing TEXT from the band's
         // edges (see e2e.test.ts's "uses the standard block side padding" regression, whose
-        // fixture has real prose around its button) — a band with no text segment at all
-        // (e.g. a colored bar whose entire content IS one button) has nothing that wrapper
-        // needs to inset, since button/band/image rows already carry their own inset/width
-        // management (buttonTableHtml, the band branch below, imageRowHtml). Nest one less
-        // table in that case instead of always paying for it.
-        if (!segments.some(s => s.kind === "text")) {
-          return `<tr>
-  <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
-    <table align="center" border="0" bgcolor="${bg}" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;${borderStyle}" role="presentation">
+        // fixture has real prose around its button) — button/image rows already carry their
+        // own inset/width management (buttonTableHtml, imageRowHtml) and don't need it, but a
+        // "band" segment's own row (buildSegmentRows above) renders its nested colored table
+        // at width:100% with no horizontal inset of its own — it relies on THIS wrapper for
+        // its gap from the outer band's edges, same as a text segment. Only skip the wrapper
+        // (one less nested table) when neither kind is present.
+        const needsSideInset = segments.some(s => s.kind === "text" || s.kind === "band");
+        const sp = tok.layout.sidePadding;
+        const inner = needsSideInset
+          ? `<tr>
+  <td align="center" style="padding-left:${sp}px;padding-right:${sp}px;">
+    <table align="center" border="0" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;" role="presentation">
 ${indentHtml(rowsHtml, 6)}
     </table>
   </td>
-</tr>`;
-        }
-        const sp = tok.layout.sidePadding;
+</tr>`
+          : rowsHtml;
         return `<tr>
   <td align="center" style="padding-top:${p}px;padding-bottom:${p}px;">
     <table align="center" border="0" bgcolor="${bg}" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;${borderStyle}" role="presentation">
-      <tr>
-        <td align="center" style="padding-left:${sp}px;padding-right:${sp}px;">
-          <table align="center" border="0" cellspacing="0" cellpadding="0" width="100%" style="width:100%;max-width:100%;padding:0;margin:0;" role="presentation">
-${indentHtml(rowsHtml, 12)}
-          </table>
-        </td>
-      </tr>
+${indentHtml(inner, 6)}
     </table>
   </td>
 </tr>`;

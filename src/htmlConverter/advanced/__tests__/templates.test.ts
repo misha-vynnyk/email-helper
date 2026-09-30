@@ -182,6 +182,58 @@ describe("buildTemplates — border on buttonBand/alertBand", () => {
   });
 });
 
+// ── alertBand segments — side-padding wrapper inset (regression) ──────────────
+
+describe("buildTemplates — alertBand segments side-padding wrapper", () => {
+  it("insets a lone text segment with the standard side padding (no regression)", () => {
+    const html = tmpl.alertBand({
+      bg: "#000000",
+      segments: [{ kind: "text", html: "hello" }],
+    });
+    expect(html).toContain(`padding-left:${tokens.layout.sidePadding}px;padding-right:${tokens.layout.sidePadding}px;`);
+  });
+
+  it("skips the side-padding wrapper when the only segment is a button (self-inseting, no regression)", () => {
+    const html = tmpl.alertBand({
+      bg: "#000000",
+      segments: [{ kind: "button", label: "Go", href: "https://example.com" }],
+    });
+    expect(html).not.toContain(`padding-left:${tokens.layout.sidePadding}px;padding-right:${tokens.layout.sidePadding}px;`);
+  });
+
+  it("skips the side-padding wrapper when the only segment is an image (self-inseting, no regression)", () => {
+    const html = tmpl.alertBand({
+      bg: "#000000",
+      segments: [{ kind: "image" }],
+    });
+    expect(html).not.toContain(`padding-left:${tokens.layout.sidePadding}px;padding-right:${tokens.layout.sidePadding}px;`);
+  });
+
+  // Regression: a lone nested "band" segment (a colored table with no sibling text) must
+  // still get the 20px inset from the outer band's edges — buildSegmentRows' band case
+  // renders its nested table at width:100% with no horizontal inset of its own, so without
+  // this wrapper it renders flush against the outer band, unlike buttons/images which do
+  // carry their own inset (buttonTableHtml/imageRowHtml).
+  it("insets a lone nested band segment with the standard side padding", () => {
+    const html = tmpl.alertBand({
+      bg: "#000000",
+      segments: [{ kind: "band", html: "nested content", bg: "#222222" }],
+    });
+    expect(html).toContain(`padding-left:${tokens.layout.sidePadding}px;padding-right:${tokens.layout.sidePadding}px;`);
+  });
+
+  it("insets when a band segment sits alongside a button (mixed non-text case)", () => {
+    const html = tmpl.alertBand({
+      bg: "#000000",
+      segments: [
+        { kind: "button", label: "Go", href: "https://example.com" },
+        { kind: "band", html: "nested content", bg: "#222222" },
+      ],
+    });
+    expect(html).toContain(`padding-left:${tokens.layout.sidePadding}px;padding-right:${tokens.layout.sidePadding}px;`);
+  });
+});
+
 // ── border-only ("ghost") buttonBand — no fill at all ─────────────────────────
 
 describe("buildTemplates — buttonBand with no bg (border-only ghost button)", () => {

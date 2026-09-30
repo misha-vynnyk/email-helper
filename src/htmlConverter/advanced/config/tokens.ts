@@ -53,6 +53,38 @@ export interface Tokens {
     cellPx: number;
     linkWeight: number;
     linkDecoration: string;
+    /**
+     * Master on/off switch for reading a plain paragraph's own font-size to promote/demote
+     * its size role (see ir/fromDom.ts's parseParagraph) — real heading tags and table-cell
+     * text are never affected regardless of this flag. `false` restores the exact pre-feature
+     * behavior (byte-for-byte): every plain <p> stays "body". A dedicated flag rather than
+     * overloading e.g. smallMaxPt's optionality, since a threshold field silently also gating
+     * headline promotion would be a confusing double duty for a reader skimming this file.
+     */
+    sizeDetectionEnabled?: boolean;
+    /** Absolute fallback threshold (small side) — used only when the document doesn't have
+     *  enough flow-paragraph text to compute a trustworthy baseline (see baselineMinCharacters/
+     *  baselineMinParagraphs). A paragraph's own measured pt at/below this becomes "small". */
+    smallMaxPt?: number;
+    /** Primary path (small side): a paragraph's own measured pt divided by the document's
+     *  computed baseline pt: at/below this ratio → "small". Independently tuned from
+     *  headlineSizeRatio, not its reciprocal — see config/tokens.ts's default-value comment. */
+    smallSizeRatio?: number;
+    /** Absolute fallback threshold (large side) — counterpart to smallMaxPt, used only when
+     *  no reliable baseline exists. A paragraph's own measured pt at/above this becomes
+     *  "headline". */
+    headlineMinPt?: number;
+    /** Primary path (large side): a paragraph's own measured pt divided by the document's
+     *  computed baseline pt: at/above this ratio → "headline". */
+    headlineSizeRatio?: number;
+    /** Minimum total weighted (trimmed) character count among qualifying flow paragraphs
+     *  before computeBodyBaselinePt's computed baseline is trusted at all — below this, the
+     *  document falls back to the absolute smallMaxPt/headlineMinPt thresholds instead. */
+    baselineMinCharacters?: number;
+    /** Minimum number of qualifying flow paragraphs before the computed baseline is trusted,
+     *  independent of character count (guards against e.g. one very long paragraph alone
+     *  looking like enough signal). */
+    baselineMinParagraphs?: number;
   };
   layout: {
     containerMaxWidth: number;
@@ -207,6 +239,26 @@ export const tokens: Tokens = {
     cellPx: 14,   // table-cell text (statsGrid cards, recordRow data cells)
     linkWeight: 700,
     linkDecoration: "underline",
+    // Plain-paragraph size detection (small print / manually-sized "fake headlines") —
+    // primary path is relative to the document's OWN computed baseline (smallSizeRatio/
+    // headlineSizeRatio); the absolute pt thresholds (smallMaxPt/headlineMinPt) are only a
+    // fallback for documents with too little flow-paragraph text to trust a computed
+    // baseline. Real heading tags and table-cell text are never affected either way.
+    sizeDetectionEnabled: true,
+    smallMaxPt: 9,     // pre-bafb49c value, not re-guessed
+    smallSizeRatio: 0.8,   // "at least 20% smaller than this document's own normal text"
+    headlineMinPt: 18,   // reasoned from typical GDocs heading-style sizes (H2≈16pt, H1≈20pt)
+                         // and the 19.5pt real value in the gdocs-heading-row.html fixture —
+                         // the default most likely to need retuning after real-doc testing
+    headlineSizeRatio: 1.3,   // independently tuned from smallSizeRatio, not its reciprocal
+    baselineMinCharacters: 40,
+    // 3, not 2 — a 2-paragraph document (e.g. a short intro line + a longer disclaimer)
+    // can have the DISCLAIMER win the character-weighted mode purely by being wordier,
+    // which would then wrongly read the intro line as oversized relative to it. Requiring
+    // a 3rd qualifying paragraph before trusting a computed baseline avoids that inversion;
+    // 2-paragraph documents fall back to the absolute smallMaxPt/headlineMinPt thresholds
+    // instead, which classify both paragraphs correctly.
+    baselineMinParagraphs: 3,
   },
   layout: {
     containerMaxWidth: 600,

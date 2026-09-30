@@ -4,14 +4,20 @@
 const ALWAYS_STRIP = new Set([
   "white-space", "vertical-align", "font-variant",
   "overflow", "overflow-wrap",
-  "font-family", "font-size", "line-height",
+  "font-family", "line-height",
   "margin", "margin-right",
   "padding-top", "padding-bottom", "padding-right",
   "border-collapse", "border-spacing",
 ]);
-// Document metrics are stripped — vertical rhythm and text sizes come exclusively from
-// the token system; the § marker is the author's channel for tight spacing. Deliberate
-// exceptions:
+// Document metrics are stripped — vertical rhythm and text sizes come from the token
+// system, selected by role; the § marker is the author's channel for tight spacing.
+// Deliberate exceptions:
+//   - font-size is kept — fromDom reads it to detect small-print/headline-scale plain
+//     paragraphs, relative to the document's own baseline (falling back to an absolute
+//     pt/px cutoff for short/low-signal documents). The raw value is never rendered
+//     directly, only mapped to one of the existing size-role tokens (body/small/
+//     headline); real heading tags and table-cell text stay 100% tag/token-locked,
+//     unaffected by their own declared size (see ir/fromDom.ts's parseParagraph).
 //   - margin-top / margin-bottom are KEPT: fromDom reads them ONLY for the paragraph-
 //     boundary rule (ir/spacing.ts isGapBoundary) — prev margin-bottom + cur margin-top,
 //     both explicitly declared, summed and compared against the gapMarginThresholdPt

@@ -1,6 +1,7 @@
 import { mergeTokens,tokens } from "../config/tokens";
 import { classifyTable } from "../detect/tableBlock";
 import type { CellNode, Paragraph,TableNode } from "../ir/types";
+import { WARN } from "../warnings";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -230,6 +231,84 @@ describe("classifyTable — single-cell", () => {
       const result = classifyTable(makeTable([[cellA, cellB]]));
       expect(result?.kind).toBe("statsGrid");
     });
+  });
+
+  // Regression: an h5 marker sharing its cell with an <img> must NOT collapse the whole
+  // cell into a single buttonBand — that would flatten the image away (WARN.imageDroppedInCell)
+  // and glue whatever text is on it into the button label. hasButtonMarker used to fire on
+  // "some child is an h5", without checking that the h5 was the cell's ONLY content — the
+  // fix (isSoleButtonMarkerCell) requires exclusivity, so this falls through to the generic
+  // alertBand path instead, which already keeps images as a real `images` entry.
+  it("h5 marker sharing a cell with an image does not swallow the image into a buttonBand", () => {
+    const cell = makeCell({
+      bg: "#1a472a",
+      children: [
+        { type: "p", size: "small", headingLevel: 5, lines: [[makeRun("Invest Now →")]] },
+        { type: "img", src: "x.png" },
+      ],
+    });
+    const warn = jest.fn();
+    const result = classifyTable(makeTable([[cell]]), undefined, warn);
+    expect(result?.kind).not.toBe("buttonBand");
+    const props = result?.props as Record<string, unknown>;
+    const images = props["images"] as unknown[];
+    expect(images).toHaveLength(1);
+    expect(warn).not.toHaveBeenCalledWith(WARN.imageDroppedInCell);
+  });
+
+  // Regression: an h5 marker sharing its cell with a second real paragraph must not have
+  // that paragraph's text silently glued onto the button label either.
+  it("h5 marker sharing a cell with a second paragraph does not merge into one buttonBand label", () => {
+    const cell = makeCell({
+      bg: "#1a472a",
+      children: [
+        { type: "p", size: "small", headingLevel: 5, lines: [[makeRun("Invest Now →")]] },
+        makePara("Terms apply"),
+      ],
+    });
+    const result = classifyTable(makeTable([[cell]]));
+    expect(result?.kind).not.toBe("buttonBand");
+  });
+
+  // Regression: an h5 hidden behind TWO levels of redundant wrapper table, reached via
+  // flattenCellForAlertBand's ghost-button branch (not classifySingleCell's own button
+  // branches) — that branch used to call flattenRuns on the raw, non-unwrapped inner cell,
+  // so the leftover nested wrapper table inside it fired a spurious nestedTableFlattened
+  // warning even though the button was correctly recognized and nothing was actually lost.
+  it("h5 hidden behind two levels of redundant wrapper table inside a callout box resolves to a button with no false warning", () => {
+    const buttonCell = makeCell({
+      children: [{ type: "p", size: "small", headingLevel: 5, lines: [[makeRun("Go")]] }],
+    });
+    const level2Wrapper: TableNode = makeTable([[buttonCell]]);
+    const midCell = makeCell({ children: [level2Wrapper] });
+    const buttonTable: TableNode = makeTable([[midCell]]);
+    const cell = makeCell({
+      border: { left: { color: "#38a169" } },
+      children: [makePara("Intro text"), buttonTable],
+    });
+    const warn = jest.fn();
+    const result = classifyTable(makeTable([[cell]]), undefined, warn);
+    expect(result?.kind).toBe("calloutLeft");
+    const props = result?.props as Record<string, unknown>;
+    const buttons = props["buttons"] as { atLine: number; props: Record<string, unknown> }[];
+    expect(buttons).toHaveLength(1);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  // Safety net for the transparency-check fix: a wrapper whose inner cell's bg merely
+  // repeats the document's root background (not literally absent) must still be treated
+  // as "no signal" and unwrapped, same as no bg at all — matching isTransparentCell/
+  // classifySingleCell's own early-return formula.
+  it("a wrapper cell whose inner cell's bg equals the root background still unwraps", () => {
+    const buttonCell = makeCell({
+      bg: tokens.color.rootBackground,
+      children: [{ type: "p", size: "small", headingLevel: 5, lines: [[makeRun("Go")]] }],
+    });
+    const wrapperTable: TableNode = makeTable([[buttonCell]]);
+    const outerCell = makeCell({ bg: "#1a472a", children: [wrapperTable] });
+    const result = classifyTable(makeTable([[outerCell]]));
+    expect(result?.kind).toBe("buttonBand");
+    expect((result?.props as Record<string, unknown>)["bg"]).toBe("#1a472a");
   });
 
   // Fix #1: colspan=2 on a single physical cell → still single-cell, NOT statsGrid

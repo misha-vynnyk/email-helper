@@ -129,9 +129,14 @@ describe("normalize", () => {
     expect(getStyle(body, "span")).toContain("color");
   });
 
-  it("strips font-size — text sizes come only from the size tokens (body/small/headline/cell)", () => {
+  it("keeps font-size — fromDom reads it to detect small-print/headline-scale plain paragraphs, relative to the document's own baseline (px form)", () => {
     const body = normalize('<p style="font-size: 18px;">hi</p>');
-    expect(body.querySelector("p")?.hasAttribute("style")).toBe(false);
+    expect(getStyle(body, "p")).toContain("font-size");
+  });
+
+  it("keeps font-size (pt form)", () => {
+    const body = normalize('<p style="font-size: 9pt;">hi</p>');
+    expect(getStyle(body, "p")).toContain("font-size");
   });
 
   it("removes style attr entirely when nothing survives stripping", () => {

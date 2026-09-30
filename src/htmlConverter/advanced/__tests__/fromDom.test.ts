@@ -1,7 +1,8 @@
 // Unit tests for ir/fromDom — covers paths not reached by e2e fixtures.
+import type { Tokens } from "../config/tokens";
 import { tokens } from "../config/tokens";
-import { fromDom, resetListGroupCounter } from "../ir/fromDom";
-import type { Paragraph, TableNode } from "../ir/types";
+import { computeBodyBaselinePt, fromDom, resetListGroupCounter } from "../ir/fromDom";
+import type { Paragraph, Run, TableNode } from "../ir/types";
 
 function parse(html: string): HTMLBodyElement {
   const doc = new DOMParser().parseFromString(`<body>${html}</body>`, "text/html");
@@ -17,6 +18,29 @@ function firstParagraph(html: string): Paragraph {
   const p = result.find((n) => n.type === "p");
   if (!p) throw new Error(`No paragraph node in: ${html}`);
   return p as Paragraph;
+}
+
+// Mirrors how index.ts drives a real conversion: compute the document-wide baseline once,
+// then thread it through the same fromDom() call — unlike the bare firstParagraph/nodes
+// helpers above, which always run with baselinePt=undefined (the low-signal fallback path).
+function nodesWithBaseline(html: string, tok: Tokens = tokens) {
+  const body = parse(html);
+  const baselinePt = computeBodyBaselinePt(body, tok);
+  return fromDom(body, "#ffffff", tok, undefined, baselinePt);
+}
+
+function allParagraphs(html: string, tok: Tokens = tokens): Paragraph[] {
+  return nodesWithBaseline(html, tok).filter((n): n is Paragraph => n.type === "p");
+}
+
+function firstParagraphWithBaseline(html: string, tok: Tokens = tokens): Paragraph {
+  const p = allParagraphs(html, tok)[0];
+  if (!p) throw new Error(`No paragraph node in: ${html}`);
+  return p;
+}
+
+function everyRun(p: Paragraph): Run[] {
+  return p.lines.flat();
 }
 
 // ── Heading size roles ────────────────────────────────────────────────────────
@@ -793,19 +817,199 @@ describe("fromDom — border style from the document", () => {
   });
 });
 
-// ── Inline font-size is never a size signal (sizes come only from tokens) ────
+// ── Plain-paragraph font-size detection (small print / manually-sized "fake headlines") ──
+// Symmetric: a plain <p> can be demoted to "small" or promoted to "headline", relative to
+// the document's own computed baseline, falling back to absolute pt/px cutoffs for
+// low-signal documents. Real heading tags are never affected either way (still covered by
+// the dedicated "fromDom — heading size roles" describe block above).
 
-describe("fromDom — inline font-size is ignored", () => {
-  it("a 9pt span does NOT demote the paragraph to small", () => {
-    expect(firstParagraph('<p><span style="font-size:9pt">tiny print</span></p>').size).toBe("body");
+// Three ~14pt flow paragraphs — enough qualifying paragraphs/characters (well above
+// baselineMinParagraphs=3 / baselineMinCharacters=40) to establish a trustworthy ~14pt
+// document baseline in every test below that needs one.
+const BASELINE_14PT = [
+  '<p><span style="font-size:14pt">This is a normal paragraph in the document body.</span></p>',
+  '<p><span style="font-size:14pt">Another normal paragraph continues the flow here.</span></p>',
+  '<p><span style="font-size:14pt">A third normal paragraph keeps the baseline steady.</span></p>',
+].join("");
+
+describe("fromDom — font-size detection, relative to the document's own baseline", () => {
+  it("a whole-paragraph 9pt disclaimer becomes small, relative to a ~14pt baseline established elsewhere", () => {
+    const html = BASELINE_14PT + '<p><span style="font-size:9pt">Terms and conditions apply to this offer.</span></p>';
+    const paragraphs = allParagraphs(html);
+    expect(paragraphs.map(p => p.size)).toEqual(["body", "body", "body", "small"]);
   });
 
-  it("a large span does NOT promote the paragraph to headline", () => {
-    expect(firstParagraph('<p><span style="font-size:24pt">big</span></p>').size).toBe("body");
+  it("the same 9pt disclaimer declared as 12px (px→pt conversion) gets the identical result", () => {
+    // 12px × 72/96 = 9pt (decision 7 — px is parsed, not just pt).
+    const html = BASELINE_14PT + '<p><span style="font-size:12px">Terms and conditions apply to this offer.</span></p>';
+    const paragraphs = allParagraphs(html);
+    expect(paragraphs[3].size).toBe("small");
   });
 
-  it("heading tags still decide the role regardless of span sizes", () => {
-    expect(firstParagraph('<h1><span style="font-size:9pt">x</span></h1>').size).toBe("headline");
+  it("a low-signal fragment (just one 9pt paragraph, nothing else) falls back to the absolute cutoff — still small", () => {
+    const html = '<p><span style="font-size:9pt">Terms and conditions apply to this offer, alone.</span></p>';
+    expect(firstParagraphWithBaseline(html).size).toBe("small");
+  });
+
+  it("a uniformly-small document (baseline ≈8pt) with no paragraph meaningfully below it stays body — the relative check, not a fixed number, drives the outcome", () => {
+    const html = [
+      '<p><span style="font-size:8pt">This entire document is written at a smaller-than-typical scale by design choice.</span></p>',
+      '<p><span style="font-size:8pt">Every paragraph here uses the same reduced size consistently throughout.</span></p>',
+      '<p><span style="font-size:9pt">This paragraph is only slightly larger than the rest of the text.</span></p>',
+    ].join("");
+    const paragraphs = allParagraphs(html);
+    expect(paragraphs.every(p => p.size === "body")).toBe(true);
+  });
+
+  // Regression: collectBaselineCandidates only ever treats a literal <p> as baseline signal —
+  // a bare <a> at flow position (not wrapped in <p>) is invisible to the baseline computation.
+  // But the Fallback branch (fromDom's catch-all for unrecognized tags) used to still run full
+  // size detection on it via parseParagraph, measuring it against a baseline that never
+  // counted it. It must get the same "not a real flow paragraph" treatment already given to
+  // headings/lists/images — always body, regardless of its own measured size.
+  it("a bare <a> at flow position (not wrapped in <p>) is never reclassified by size detection", () => {
+    const html = BASELINE_14PT + '<a href="x"><span style="font-size:9pt">Fine print link</span></a>';
+    const paragraphs = allParagraphs(html);
+    expect(paragraphs.map(p => p.size)).toEqual(["body", "body", "body", "body"]);
+  });
+
+  it("a mixed-size paragraph (one run at a size that WOULD trigger small on its own, the rest normal, no other formatting difference) stays body — the unanimity safeguard", () => {
+    // Regression guard for decision 5's critical fix: computing unanimity on the MERGED runs
+    // (instead of the raw pre-merge list) would fuse these two identically-formatted runs and
+    // silently inherit only the FIRST run's measuredPt (9pt) — which alone, against the ~14pt
+    // baseline below, would wrongly read as "small". The correct unanimity check (on raw runs)
+    // detects the 9pt/14pt mismatch and leaves the paragraph tag-derived ("body").
+    const html = BASELINE_14PT +
+      '<p><span style="font-size:9pt">Small lead-in </span><span style="font-size:14pt">and the rest of this sentence is normal-sized text.</span></p>';
+    const paragraphs = allParagraphs(html);
+    expect(paragraphs[3].size).toBe("body");
+  });
+
+  it("a whole-paragraph 24pt block becomes headline, relative to a ~14pt baseline established elsewhere", () => {
+    const html = BASELINE_14PT + '<p><span style="font-size:24pt">This is a big oversized announcement line.</span></p>';
+    const paragraphs = allParagraphs(html);
+    expect(paragraphs[3].size).toBe("headline");
+  });
+
+  it("the symmetric mixed-size case (one run at a size that WOULD trigger headline on its own, the rest normal) stays body", () => {
+    const html = BASELINE_14PT +
+      '<p><span style="font-size:24pt">BIG </span><span style="font-size:14pt">the rest of this sentence is normal-sized text.</span></p>';
+    const paragraphs = allParagraphs(html);
+    expect(paragraphs[3].size).toBe("body");
+  });
+
+  it("a low-signal fragment (just one 24pt paragraph, nothing else) falls back to the absolute cutoff — still headline", () => {
+    const html = '<p><span style="font-size:24pt">This oversized announcement line stands alone.</span></p>';
+    expect(firstParagraphWithBaseline(html).size).toBe("headline");
+  });
+
+  it("a uniformly-large document (baseline ≈20pt) with nothing meaningfully bigger stays body — the ratio check, not a fixed number, drives the large side too", () => {
+    const html = [
+      '<p><span style="font-size:20pt">This whole document uses an unusually large scale by design choice.</span></p>',
+      '<p><span style="font-size:20pt">Every paragraph here uses the same enlarged size consistently throughout.</span></p>',
+      '<p><span style="font-size:21pt">This paragraph is only slightly larger than the rest of the text.</span></p>',
+    ].join("");
+    const paragraphs = allParagraphs(html);
+    expect(paragraphs.every(p => p.size === "body")).toBe(true);
+  });
+
+  it("a measurement-promoted headline paragraph does NOT get a headingLevel (stays a plain paragraph component, only its rendered size changes)", () => {
+    const html = BASELINE_14PT + '<p><span style="font-size:24pt">This is a big oversized announcement line.</span></p>';
+    const promoted = allParagraphs(html)[3];
+    expect(promoted.size).toBe("headline");
+    expect(promoted.headingLevel).toBeUndefined();
+  });
+
+  it("a real <h1> with a small inner span is untouched by measurement — tag always wins, unconditionally", () => {
+    const html = BASELINE_14PT + '<h1><span style="font-size:9pt">Odd but still a real heading</span></h1>';
+    const result = nodesWithBaseline(html);
+    const heading = result.find((n): n is Paragraph => n.type === "p" && n.headingLevel === 1);
+    expect(heading?.size).toBe("headline");
+  });
+
+  it("a 9pt disclaimer INSIDE a table cell (e.g. a stats-grid card) stays body — table-cell content is excluded entirely", () => {
+    // Regression guard for detect/tableBlock.ts:198's `child.size === "body"` gate (pseudo-
+    // column/"recordRow" promotion for stats-grid-shaped cells) — this cell has its own
+    // border, so it's a real (non-transparent) table cell, not a GDocs padding-only wrapper.
+    const html = BASELINE_14PT +
+      '<table><tr><td style="border:1px solid #cccccc;">' +
+      '<p><span style="font-size:9pt">Small print inside a bordered cell.</span></p>' +
+      "</td></tr></table>";
+    const result = nodesWithBaseline(html);
+    const table = result.find((n): n is TableNode => n.type === "table");
+    const cellParagraph = table?.rows[0].cells[0].children.find((n): n is Paragraph => n.type === "p");
+    expect(cellParagraph?.size).toBe("body");
+  });
+
+  it("a small-print <li> list item doesn't crash and its size is irrelevant once routed to a list component", () => {
+    const html = BASELINE_14PT + '<ul><li><span style="font-size:9pt">Fine print bullet</span></li></ul>';
+    const result = nodesWithBaseline(html);
+    const li = result.find((n): n is Paragraph => n.type === "p" && n.listItem === true);
+    expect(li).toBeDefined();
+  });
+
+  it("no run in the final Paragraph.lines ever carries measuredPt, regardless of whether the paragraph was reclassified", () => {
+    const html = BASELINE_14PT +
+      '<p><span style="font-size:9pt">Small print.</span></p>' +
+      '<p><span style="font-size:24pt">Big headline.</span></p>';
+    const paragraphs = allParagraphs(html);
+    for (const p of paragraphs) {
+      for (const run of everyRun(p)) {
+        expect(run.measuredPt).toBeUndefined();
+      }
+    }
+  });
+
+  it("disabling sizeDetectionEnabled restores exact pre-feature behavior for both directions", () => {
+    const disabledTokens: Tokens = { ...tokens, font: { ...tokens.font, sizeDetectionEnabled: false } };
+    const html = BASELINE_14PT +
+      '<p><span style="font-size:9pt">Small print.</span></p>' +
+      '<p><span style="font-size:24pt">Big headline.</span></p>';
+    const paragraphs = allParagraphs(html, disabledTokens);
+    expect(paragraphs.every(p => p.size === "body")).toBe(true);
+  });
+});
+
+describe("computeBodyBaselinePt", () => {
+  it("picks the character-weighted dominant size, not a simple per-paragraph majority", () => {
+    // Two SHORT 20pt paragraphs (by paragraph count, 20pt would "win" 2-to-1) vs one LONG
+    // 10pt paragraph whose total character count outweighs both 20pt paragraphs combined.
+    const html = [
+      '<p><span style="font-size:20pt">Short.</span></p>',
+      '<p><span style="font-size:20pt">Also short.</span></p>',
+      '<p><span style="font-size:10pt">This single paragraph is deliberately much longer than the other two combined, so its character weight dominates the vote even though it is only one paragraph among three.</span></p>',
+    ].join("");
+    const baseline = computeBodyBaselinePt(parse(html), tokens);
+    expect(baseline).toBe(10);
+  });
+
+  it("excludes table-cell and list-item text from the computation", () => {
+    const html = BASELINE_14PT +
+      '<table><tr><td style="border:1px solid #ccc;"><p><span style="font-size:60pt">Ignore me</span></p></td></tr></table>' +
+      '<ul><li><span style="font-size:60pt">Ignore me too</span></li></ul>';
+    const baseline = computeBodyBaselinePt(parse(html), tokens);
+    expect(baseline).toBe(14);
+  });
+
+  it("returns undefined for a low-signal document (below baselineMinCharacters or baselineMinParagraphs)", () => {
+    const oneShortParagraph = '<p><span style="font-size:14pt">Hi.</span></p>';
+    expect(computeBodyBaselinePt(parse(oneShortParagraph), tokens)).toBeUndefined();
+
+    const twoParagraphsOnly = [
+      '<p><span style="font-size:14pt">This paragraph alone has plenty of characters in it.</span></p>',
+      '<p><span style="font-size:14pt">So does this second one, comfortably past the character floor.</span></p>',
+    ].join("");
+    expect(computeBodyBaselinePt(parse(twoParagraphsOnly), tokens)).toBeUndefined();
+  });
+
+  it("resolves an exact weighted-character tie to the smaller pt", () => {
+    const html = [
+      '<p><span style="font-size:20pt">Same weight exactly here</span></p>',
+      '<p><span style="font-size:10pt">Same weight exactly here</span></p>',
+      '<p><span style="font-size:10pt">padding paragraph to clear the paragraph-count floor</span></p>',
+    ].join("");
+    const baseline = computeBodyBaselinePt(parse(html), tokens);
+    expect(baseline).toBe(10);
   });
 });
 

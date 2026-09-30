@@ -6,7 +6,7 @@ import { buildTemplates, templates as defaultTemplates } from "./config/template
 import type { TokensOverride } from "./config/tokens";
 import { mergeTokens,tokens } from "./config/tokens";
 import { classify } from "./detect/classify";
-import { fromDom, resetListGroupCounter } from "./ir/fromDom";
+import { computeBodyBaselinePt, fromDom, resetListGroupCounter } from "./ir/fromDom";
 import { normalize } from "./normalize";
 import { normalizeSymbols,preprocess } from "./preprocess";
 import { renderAll } from "./render/toEmailHtml";
@@ -46,7 +46,11 @@ export function convertAdvancedDetailed(
   // fromDom's listGroupId counter is module-level (recursion would reset a local one) —
   // reset it here, the single entry point into one document's fromDom-recursion tree.
   resetListGroupCounter();
-  const structural  = fromDom(bodyEl, tok.color.rootBackground, tok, warn);
+  // Computed once, at the true document root, then threaded unchanged through every
+  // recursive fromDom() call — see computeBodyBaselinePt. Skipped entirely when the
+  // feature is disabled (byte-for-byte pre-feature behavior).
+  const baselinePt = tok.font.sizeDetectionEnabled === false ? undefined : computeBodyBaselinePt(bodyEl, tok);
+  const structural  = fromDom(bodyEl, tok.color.rootBackground, tok, warn, baselinePt);
   // The only place with no ambient context to inherit — the document's own usable content
   // width (full container minus its side padding) is the immediate container for anything
   // classified at the top level.
